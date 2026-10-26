@@ -169,3 +169,37 @@ test("the exact current foundation has five contained production modules", async
   assert.equal(result.files, 5);
   assert.deepEqual(result.violations, []);
 });
+
+test("relative and linked checkout roots use the same canonical production boundary", async (context) => {
+  const { directory, put } = await fixture(context);
+  await put(
+    "src/shared/api/token.ts",
+    'import type { Token } from "./types.ts";',
+  );
+  const linkedRoot = path.join(directory, "linked-checkout");
+  await symlink(
+    directory,
+    linkedRoot,
+    process.platform === "win32" ? "junction" : "dir",
+  );
+
+  const direct = await checkBoundaries(directory);
+  const linked = await checkBoundaries(linkedRoot);
+
+  assert.deepEqual(direct.violations, []);
+  assert.deepEqual(linked, direct);
+  assert.deepEqual(
+    await checkBoundaries(path.relative(process.cwd(), directory)),
+    direct,
+  );
+
+  await put("src/shared/api/token.test.ts", "export type TestOnly = string;");
+  await put(
+    "src/shared/api/token.ts",
+    'import type { TestOnly } from "./token.test.ts";',
+  );
+  assert.match(
+    (await checkBoundaries(linkedRoot)).violations.join("\n"),
+    /published production modules/,
+  );
+});

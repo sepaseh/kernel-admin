@@ -23,6 +23,13 @@ never read real environment files or credentials. Commits, pushes, remote
 comments and merging require explicit authorization.
 
 Use native CI, CodeRabbit and SonarQube Cloud evidence for the current revision.
-CodeRabbit reviews are manual-only; request a review only within an authorized
-cycle and respect the provider's actual allowance. Keep assistant guidance in
-English and maintained human documentation in English and Persian.
+CodeRabbit reviews are manual-only. Before a request, require every non-CodeRabbit
+required check to pass for the latest head, including protected build/e2e/visual,
+scanner and actual Sonar quality gate, and verify zero open/unresolved issues of
+any severity in its complete applicable Sonar report, including existing code.
+Missing or stale evidence blocks requests; new commits invalidate preflight.
+A documented false positive still open at Sonar blocks requests too. Follow
+[Contributing](CONTRIBUTING.md#before-requesting-coderabbit) for authorization,
+quota and duplicate-request rules; exclude CodeRabbit's own check/approval only
+from preflight to avoid a cycle. Keep assistant guidance in English and maintained
+human documentation in English and Persian.

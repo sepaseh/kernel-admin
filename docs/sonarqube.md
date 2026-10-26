@@ -40,12 +40,27 @@ Retain source/security analysis and honest coverage. Do not exclude code or
 weaken a quality gate to hide a failure. Review actual findings and correct real
 defects before rerunning affected checks.
 
+Before any CodeRabbit request, require every non-CodeRabbit required check to pass
+for the latest head, including protected build/e2e/visual checks, the scanner and
+the actual quality gate. Inspect the complete applicable latest PR/branch Sonar
+report, all pages and all severities including existing code: zero open/unresolved
+issues are required. A green quality gate or zero new-code issues is insufficient.
+Record the revision, project/context, report link and complete count. Missing,
+pending, skipped, failed or stale checks or zero-issue evidence block the request;
+new commits invalidate preflight. Follow
+[the request policy](../CONTRIBUTING.md#before-requesting-coderabbit) for explicit
+authorization, actual quota and no duplicate in-flight request for the same head.
+CodeRabbit's own check/approval is excluded only from preflight to avoid a cycle.
+
 The S9382 finding at `scripts/check-pr-size.mjs:152` concerns dependent GitHub
 pagination: each next URL comes from the preceding response's `Link` header.
 Requests must remain sequential so complete enumeration and head/base checks stay
 correct. This finding has been reviewed as a false positive; the provider issue
-is still open and has not been classified there. Keep the implementation clear
-without suppression, wrappers or parallelization. ESLint also documents
+is still open and has not been classified there. It therefore **blocks CodeRabbit
+requests even when the quality gate passes**. Documentation is not provider
+resolution: require properly authorized classification or a real fix with fresh
+analysis. Keep the implementation clear without suppression, exclusions, wrappers
+or parallelization. ESLint also documents
 [dependent iterations as an exception](https://eslint.org/docs/latest/rules/no-await-in-loop#when-not-to-use-it).
 
 Missing credentials or project settings must produce a visible setup failure.

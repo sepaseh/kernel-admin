@@ -23,7 +23,7 @@ to each GitHub diff and counts additions, deletions, renames and binaries.
 ## Complete phase gate
 
 Use [`.nvmrc`](../.nvmrc), the Node range in
-[`package.json`](../package.json) and npm 12:
+[`package.json`](../package.json) and the npm bundled with that Node.js release:
 
 ```sh
 npm ci
@@ -53,10 +53,14 @@ unprivileged PR CI therefore performs the read-only file-count check during the
 initial publication. Do not report the trusted default-branch guard as installed
 until it actually exists there.
 
-CodeRabbit reviews are manual-only. Request one review after local fixes and
-validation are ready within an authorized review cycle; wait for its real result
-and respect the provider's reported allowance. Check the actual Sonar analysis
-and asynchronous quality gate separately. Follow
+CodeRabbit reviews are manual-only. Before requesting one, complete
+[the latest-head preflight](../CONTRIBUTING.md#before-requesting-coderabbit): every
+required non-CodeRabbit check must pass, including protected build/e2e/visual,
+scanner and actual Sonar quality gate, with zero open/unresolved issues of any
+severity in the complete applicable Sonar report, including existing code.
+Missing evidence or an open documented false positive blocks requests; a new
+commit invalidates preflight. Exclude CodeRabbit's own check/approval only to avoid
+a cycle. Require authorization, available quota and no in-flight duplicate. Follow
 [branch protection](branch-protection.md).
 
 ## Runnable panel readiness

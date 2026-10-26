@@ -95,7 +95,8 @@ const sourceFiles = async (directory) => {
   return files.flat();
 };
 
-export const checkBoundaries = async (root = repository) => {
+export const checkBoundaries = async (requestedRoot = repository) => {
+  const root = await realpath(requestedRoot);
   const manifest = JSON.parse(
     await readFile(path.join(root, "package.json"), "utf8"),
   );

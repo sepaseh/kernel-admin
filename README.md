@@ -18,6 +18,18 @@ phase publishes admin primitives and their tests. `applicationReady` is
 - [Contrast helpers](src/shared/lib/color-contrast.ts) calculate readable display
   colors without changing persisted theme choices.
 
+Key transforms rename plain-object keys and omit null object fields. Their result
+is `unknown`; validate and narrow it to the expected HTTP contract before use.
+Non-plain values retain their runtime identity, but their types also require
+narrowing. A future API client must validate transformed responses rather than
+assume that converting keys preserves a generic input type.
+
+Contrast helpers accept hex colors and comma-form `rgb()`/`rgba()` with channels
+from 0 to 255 and alpha from 0 to 1; unsupported or malformed inputs throw
+`TypeError`. The display adjustment checks every rounded shade along blends toward
+black and white, preserving the chosen hue where possible. If neither path can
+meet every surface's target, it returns the best available shade on those paths.
+
 The toolchain has development dependencies and no runtime dependencies. This
 phase contains no React screens, Ant Design components, API client, server or
 browser fixtures. The separate API owns authentication, database and storage.
@@ -25,7 +37,7 @@ browser fixtures. The separate API owns authentication, database and storage.
 ## Install and validate
 
 Use the Node.js version in [`.nvmrc`](.nvmrc), within the supported range in
-[`package.json`](package.json), and npm 12.
+[`package.json`](package.json), and the npm bundled with that Node.js release.
 
 ```sh
 npm ci
