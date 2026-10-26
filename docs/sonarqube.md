@@ -40,6 +40,14 @@ Retain source/security analysis and honest coverage. Do not exclude code or
 weaken a quality gate to hide a failure. Review actual findings and correct real
 defects before rerunning affected checks.
 
+The S9382 finding at `scripts/check-pr-size.mjs:152` concerns dependent GitHub
+pagination: each next URL comes from the preceding response's `Link` header.
+Requests must remain sequential so complete enumeration and head/base checks stay
+correct. This finding has been reviewed as a false positive; the provider issue
+is still open and has not been classified there. Keep the implementation clear
+without suppression, wrappers or parallelization. ESLint also documents
+[dependent iterations as an exception](https://eslint.org/docs/latest/rules/no-await-in-loop#when-not-to-use-it).
+
 Missing credentials or project settings must produce a visible setup failure.
 `sonar.qualitygate.wait=false` means the scanner does not wait for the
 asynchronous provider decision. A successful scanner job and a passing native

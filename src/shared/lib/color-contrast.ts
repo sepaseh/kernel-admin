@@ -1,17 +1,17 @@
 type Rgb = readonly [number, number, number];
 
 const parse = (color: string, background: Rgb = [255, 255, 255]): Rgb => {
-  const hex = color.match(/^#([\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i)?.[1];
+  const hex = /^#([\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i.exec(color)?.[1];
   const expanded =
     hex && hex.length < 5
       ? [...hex].map((value) => value + value).join("")
       : hex;
   const values = expanded
-    ? expanded.match(/../g)!.map((value) => parseInt(value, 16))
+    ? expanded.match(/../g)!.map((value) => Number.parseInt(value, 16))
     : color.match(/[\d.]+/g)?.map(Number);
   if (!values || values.length < 3) return background;
-  const alpha =
-    values.length > 3 ? (expanded ? values[3] / 255 : values[3]) : 1;
+  let alpha = 1;
+  if (values.length > 3) alpha = expanded ? values[3] / 255 : values[3];
   return values
     .slice(0, 3)
     .map((value, index) =>
