@@ -2,14 +2,18 @@
 
 [English](CONTRIBUTING.md) · [فارسی](CONTRIBUTING.fa.md)
 
-The current [foundation phase](docs/bootstrap.md) contains framework-free admin
-primitives and repository tooling. Preserve its declared scope and independent
+The current [catalogs phase](docs/bootstrap.md) contains pure localization data,
+framework-free admin primitives and repository tooling. Preserve its declared scope and independent
 project boundary.
 
 ## Source ownership
 
 Transport state and types belong in `src/shared/api`, the cross-feature profile
 limit in `src/shared/contracts`, and pure display/data helpers in `src/shared/lib`.
+Pure catalog objects, the code registry and Persian calendar data belong in
+`src/shared/i18n`; read [localization](docs/localization.md). Keep all ten code-named
+catalogs complete and flat, with matching keys and interpolation. Runtime adapters
+must be introduced separately with their actual integration tests.
 Do not add source dependencies on another checkout, npm workspaces, local-package
 links or backend SDKs. Keep API behavior behind HTTP in the separate API project.
 
@@ -19,7 +23,7 @@ transforms and contrast calculations independent of UI initialization and privat
 state.
 
 The [publication inventory](.github/bootstrap-policy.json) declares the exact
-maintained snapshot. Update it deliberately for reviewed foundation files. Its
+maintained snapshot. Update it deliberately for reviewed phase files. Its
 size is separate from the 100-file limit on each PR's diff.
 
 ## Validation
@@ -82,7 +86,7 @@ coverage and dependency directories out of commits.
 
 Follow [branch protection](docs/branch-protection.md). A successful skipped status
 is not a substantive review, and a scanner job is not the asynchronous Sonar
-quality gate. Required checks follow the published phase. The foundation requires
+quality gate. Required checks follow the published phase. The catalogs phase requires
 its CI and provider checks; it supplies no runnable panel. Before any runnable
 panel merges, introduce genuine build, end-to-end and visual jobs, observe them
 pass, add them to required checks and expand the canonical full gate. Do not use

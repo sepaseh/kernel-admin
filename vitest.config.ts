@@ -11,6 +11,10 @@ export default defineConfig({
       include: [
         "src/shared/api/token.ts",
         "src/shared/contracts/index.ts",
+        "src/shared/i18n/catalogs.ts",
+        "src/shared/i18n/locales.ts",
+        "src/shared/i18n/dayjs/fa.ts",
+        "src/shared/i18n/locales/*.ts",
         "src/shared/lib/transform.ts",
         "src/shared/lib/color-contrast.ts",
         "scripts/run-audit.mjs",

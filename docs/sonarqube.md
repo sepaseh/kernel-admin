@@ -33,8 +33,9 @@ work to create a baseline.
 [sonar-project.properties](../sonar-project.properties) analyzes published `src`
 and `scripts`, classifies test files separately and imports two real reports:
 `coverage/unit/lcov.info` and `coverage/governance/lcov.info`. The workflow
-generates both from the same checked-out revision. They cover the foundation
-primitives and tooling, not React screens, HTTP integration or a complete panel.
+generates both from the same checked-out revision. They cover the published
+catalogs, pure Persian calendar data, primitives and tooling. They do not cover
+React screens, runtime localization adapters, HTTP integration or a complete panel.
 
 Retain source/security analysis and honest coverage. Do not exclude code or
 weaken a quality gate to hide a failure. Review actual findings and correct real
@@ -52,7 +53,7 @@ new commits invalidate preflight. Follow
 authorization, actual quota and no duplicate in-flight request for the same head.
 CodeRabbit's own check/approval is excluded only from preflight to avoid a cycle.
 
-Foundation protection follows its published scope and requires the CI/provider
+Catalog-phase protection follows its published scope and requires the CI/provider
 contexts in [branch protection](branch-protection.md). Before any runnable panel
 merges, real build/e2e/visual jobs must pass and become required checks, with the
 canonical full gate expanded. Phase alignment does not waive scanner execution,
@@ -80,6 +81,6 @@ branch for credentialed analysis. Local tests do not contact SonarQube Cloud or
 copy another repository's token.
 
 Follow [branch protection](branch-protection.md) and the
-[foundation scope](bootstrap.md). See the
+[published scope](bootstrap.md). See the
 [official scanner](https://github.com/SonarSource/sonarqube-scan-action) and
 [analysis-method documentation](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/automatic-analysis).
