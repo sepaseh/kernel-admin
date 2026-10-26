@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { evaluateFiles, inspectPullRequest } from "./check-pr-size.mjs";
 
@@ -273,4 +278,71 @@ test("validates its target before making requests", async () => {
     );
     assert.equal(requests, 0);
   }
+});
+
+const cliFixture = async (context) => {
+  const parent = path.resolve(tmpdir());
+  const root = await mkdtemp(path.join(parent, "kernel-admin-pr-size-cli-"));
+  context.after(async () => {
+    assert.equal(path.dirname(root), parent);
+    await rm(root, { recursive: true, force: true });
+  });
+  const eventPath = path.join(root, "event.json");
+  await writeFile(
+    eventPath,
+    JSON.stringify({ pull_request: { head: { sha: head }, number: 1 } }),
+  );
+  return (fetchSource) =>
+    spawnSync(
+      process.execPath,
+      [
+        "--import",
+        `data:text/javascript,${encodeURIComponent(fetchSource)}`,
+        fileURLToPath(new URL("./check-pr-size.mjs", import.meta.url)),
+      ],
+      {
+        encoding: "utf8",
+        env: {
+          GITHUB_EVENT_PATH: eventPath,
+          GITHUB_REPOSITORY: "example/api",
+        },
+        windowsHide: true,
+      },
+    );
+};
+
+test("CLI success emits one JSON record with diagnostic counts and revisions", async (context) => {
+  const run = await cliFixture(context);
+  const result =
+    run(`globalThis.fetch = async (url) => new Response(JSON.stringify(
+    url.includes('/files') ? ${JSON.stringify(files(1))} : ${JSON.stringify(pull(1))}
+  ));`);
+
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, "");
+  assert.equal(result.stdout.trim().split(/\r?\n/).length, 1);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    baseSha: base,
+    changedFiles: 1,
+    headSha: head,
+    maximumChangedFiles: 100,
+    status: "passed",
+    statusCounts: { added: 1 },
+  });
+});
+
+test("CLI failure escapes injected control characters within one JSON diagnostic", async (context) => {
+  const run = await cliFixture(context);
+  const message = "Synthetic remote failure\r\n::error::forged\u001b[31m";
+  const result = run(`globalThis.fetch = async () => {
+    throw new Error(${JSON.stringify(message)});
+  };`);
+
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.equal(result.stderr.trim().split(/\r?\n/).length, 1);
+  assert.equal(result.stderr.includes("\u001b"), false);
+  assert.deepEqual(JSON.parse(result.stderr), { status: "failed", message });
 });

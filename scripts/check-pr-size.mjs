@@ -167,12 +167,14 @@ if (
       repository: process.env.GITHUB_REPOSITORY,
       token: process.env.GITHUB_TOKEN,
     });
-    console.log(
-      `PR file limit passed: ${result.changedFiles}/${maximumChangedFiles}; additions, deletions, renames and binary files all count.`,
-    );
+    console.log(JSON.stringify({ status: "passed", ...result }));
   } catch (error) {
     console.error(
-      error instanceof Error ? error.message : "PR file check failed.",
+      JSON.stringify({
+        status: "failed",
+        message:
+          error instanceof Error ? error.message : "PR file check failed.",
+      }),
     );
     process.exitCode = 1;
   }
