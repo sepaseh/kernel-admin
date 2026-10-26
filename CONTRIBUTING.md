@@ -66,14 +66,16 @@ coverage and dependency directories out of commits.
 
 Follow [branch protection](docs/branch-protection.md). A successful skipped status
 is not a substantive review, and a scanner job is not the asynchronous Sonar
-quality gate. Do not remove required build, end-to-end or visual checks to merge
-this foundation. A runnable panel must add its actual application, complete
-validation and UI evidence before declaring readiness.
+quality gate. Required checks follow the published phase. The foundation requires
+its CI and provider checks; it supplies no runnable panel. Before any runnable
+panel merges, introduce genuine build, end-to-end and visual jobs, observe them
+pass, add them to required checks and expand the canonical full gate. Do not use
+placeholder jobs or skipped checks to claim readiness.
 
 ## Before requesting CodeRabbit
 
-Require all non-CodeRabbit required checks to pass for the latest published head,
-including protected build/e2e/visual checks, scanner execution and the actual
+Require all non-CodeRabbit required checks for the published phase to pass for the
+latest published head, including scanner execution and the actual
 Sonar quality gate. The complete applicable latest PR/branch Sonar report must
 contain zero open/unresolved issues, across every severity and existing/new code;
 inspect every page. A green quality gate or zero new-code issues alone is not

@@ -55,7 +55,7 @@ until it actually exists there.
 
 CodeRabbit reviews are manual-only. Before requesting one, complete
 [the latest-head preflight](../CONTRIBUTING.md#before-requesting-coderabbit): every
-required non-CodeRabbit check must pass, including protected build/e2e/visual,
+required non-CodeRabbit check for the published phase must pass, including the
 scanner and actual Sonar quality gate, with zero open/unresolved issues of any
 severity in the complete applicable Sonar report, including existing code.
 Missing evidence or an open documented false positive blocks requests; a new
@@ -65,12 +65,14 @@ a cycle. Require authorization, available quota and no in-flight duplicate. Foll
 
 ## Runnable panel readiness
 
-This phase provides no production build, end-to-end or visual job. Existing
-requirements for those checks remain blocking. Do not remove requirements or
-add placeholder passing jobs to merge the foundation.
+Foundation protection requires the published CI and provider checks listed in
+[branch protection](branch-protection.md). This phase provides no production
+build, end-to-end or visual job and does not require those application-only jobs.
+Do not add placeholder passing jobs or describe skipped checks as evidence.
 
 Introduce the actual React/Vite panel, HTTP integration, complete catalogs,
 component tests, production build, browser, accessibility, performance and visual
-evidence in coherent later work. Expand the canonical full gate and inventory
-before declaring application readiness. Passing this foundation gate cannot
+evidence in coherent later work. Before any runnable panel merges, expand the
+canonical full gate and inventory, observe genuine build/e2e/visual jobs pass and
+add them to required checks. Passing this foundation gate cannot
 establish those results in advance.

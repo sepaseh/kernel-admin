@@ -40,8 +40,8 @@ Retain source/security analysis and honest coverage. Do not exclude code or
 weaken a quality gate to hide a failure. Review actual findings and correct real
 defects before rerunning affected checks.
 
-Before any CodeRabbit request, require every non-CodeRabbit required check to pass
-for the latest head, including protected build/e2e/visual checks, the scanner and
+Before any CodeRabbit request, require every non-CodeRabbit required check for the
+published phase to pass for the latest head, including the scanner and
 the actual quality gate. Inspect the complete applicable latest PR/branch Sonar
 report, all pages and all severities including existing code: zero open/unresolved
 issues are required. A green quality gate or zero new-code issues is insufficient.
@@ -51,6 +51,12 @@ new commits invalidate preflight. Follow
 [the request policy](../CONTRIBUTING.md#before-requesting-coderabbit) for explicit
 authorization, actual quota and no duplicate in-flight request for the same head.
 CodeRabbit's own check/approval is excluded only from preflight to avoid a cycle.
+
+Foundation protection follows its published scope and requires the CI/provider
+contexts in [branch protection](branch-protection.md). Before any runnable panel
+merges, real build/e2e/visual jobs must pass and become required checks, with the
+canonical full gate expanded. Phase alignment does not waive scanner execution,
+the actual quality gate or the zero-open-issue request condition.
 
 The S9382 finding at `scripts/check-pr-size.mjs:152` concerns dependent GitHub
 pagination: each next URL comes from the preceding response's `Link` header.

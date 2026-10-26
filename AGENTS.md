@@ -16,6 +16,12 @@ runnable phase must introduce the React/Vite application and its complete
 validation, preserving Ant Design, antd-style, React Router, Axios and directly
 typed component parameters without FC aliases.
 
+Required checks follow the published phase: the foundation requires `check`,
+`SonarQube Cloud analysis`, `SonarCloud Code Analysis` and `CodeRabbit`. Before
+any runnable panel merges, introduce real build/e2e/visual jobs, expand the full
+canonical gate, observe those jobs pass and add them to required checks. Do not
+substitute placeholder jobs or skipped checks for application evidence.
+
 Run `npm run validate -- full` on the exact proposed snapshot before an
 authorized commit or PR handoff. Keep each PR at 100 or fewer GitHub changed-file
 entries, including deletions, renames and binaries. Preserve private state and
@@ -24,7 +30,7 @@ comments and merging require explicit authorization.
 
 Use native CI, CodeRabbit and SonarQube Cloud evidence for the current revision.
 CodeRabbit reviews are manual-only. Before a request, require every non-CodeRabbit
-required check to pass for the latest head, including protected build/e2e/visual,
+required check for the published phase to pass for the latest head, including the
 scanner and actual Sonar quality gate, and verify zero open/unresolved issues of
 any severity in its complete applicable Sonar report, including existing code.
 Missing or stale evidence blocks requests; new commits invalidate preflight.

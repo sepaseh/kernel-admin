@@ -62,5 +62,7 @@ changed-file entries** and validate the exact proposed revision.
 
 Use native CI, CodeRabbit and SonarQube Cloud checks with
 [branch protection](docs/branch-protection.md). Configuration is not evidence of
-a completed hosted check. This phase does not supply production build, end-to-end
-or visual jobs, and existing requirements for those checks remain blocking.
+a completed hosted check. Foundation protection requires its published CI and
+provider checks. Before any runnable panel merges, genuine build, end-to-end and
+visual jobs must pass and become required checks, and the canonical full gate
+must expand to cover the application.
