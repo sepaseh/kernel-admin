@@ -126,7 +126,7 @@ test("all ten local admin catalogs contain complete nonempty keys and interpolat
   assert.equal(localeCodes.length, 10);
   assert.deepEqual(Object.keys(catalogs).sort(), [...localeCodes].sort());
   const english = flatCatalog(catalogs.en);
-  assert.ok(Object.keys(english).length > 100);
+  assert.equal(Object.keys(english).length, 110);
   for (const code of localeCodes)
     parity(english, flatCatalog(catalogs[code]), code);
 });
