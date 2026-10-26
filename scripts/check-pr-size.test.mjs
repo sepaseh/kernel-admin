@@ -334,7 +334,8 @@ test("CLI success emits one JSON record with diagnostic counts and revisions", a
 
 test("CLI failure escapes injected control characters within one JSON diagnostic", async (context) => {
   const run = await cliFixture(context);
-  const message = "Synthetic remote failure\r\n::error::forged\u001b[31m";
+  const message =
+    "Synthetic remote failure\r\n::error::forged\u001b[31m\u2028second\u2029third";
   const result = run(`globalThis.fetch = async () => {
     throw new Error(${JSON.stringify(message)});
   };`);
@@ -344,5 +345,10 @@ test("CLI failure escapes injected control characters within one JSON diagnostic
   assert.equal(result.stdout, "");
   assert.equal(result.stderr.trim().split(/\r?\n/).length, 1);
   assert.equal(result.stderr.includes("\u001b"), false);
-  assert.deepEqual(JSON.parse(result.stderr), { status: "failed", message });
+  assert.equal(/[\u2028\u2029]/.test(result.stderr), false);
+  assert.deepEqual(JSON.parse(result.stderr), {
+    status: "failed",
+    message:
+      "Synthetic remote failure\r\n::error::forged\u001b[31m second third",
+  });
 });

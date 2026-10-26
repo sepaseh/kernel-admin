@@ -167,14 +167,19 @@ if (
       repository: process.env.GITHUB_REPOSITORY,
       token: process.env.GITHUB_TOKEN,
     });
-    console.log(JSON.stringify({ status: "passed", ...result }));
+    console.log(
+      JSON.stringify({ status: "passed", ...result }).replaceAll(
+        /[\r\n\u2028\u2029]/g,
+        " ",
+      ),
+    );
   } catch (error) {
     console.error(
       JSON.stringify({
         status: "failed",
         message:
           error instanceof Error ? error.message : "PR file check failed.",
-      }),
+      }).replaceAll(/[\r\n\u2028\u2029]/g, " "),
     );
     process.exitCode = 1;
   }
