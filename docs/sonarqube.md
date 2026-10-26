@@ -58,16 +58,15 @@ merges, real build/e2e/visual jobs must pass and become required checks, with th
 canonical full gate expanded. Phase alignment does not waive scanner execution,
 the actual quality gate or the zero-open-issue request condition.
 
-The S9382 finding at `scripts/check-pr-size.mjs:152` concerns dependent GitHub
-pagination: each next URL comes from the preceding response's `Link` header.
-Requests must remain sequential so complete enumeration and head/base checks stay
-correct. This finding has been reviewed as a false positive; the provider issue
-is still open and has not been classified there. It therefore **blocks CodeRabbit
-requests even when the quality gate passes**. Documentation is not provider
-resolution: require properly authorized classification or a real fix with fresh
-analysis. Keep the implementation clear without suppression, exclusions, wrappers
-or parallelization. ESLint also documents
-[dependent iterations as an exception](https://eslint.org/docs/latest/rules/no-await-in-loop#when-not-to-use-it).
+The PR-size guard uses the **100-file limit** to avoid unnecessary pagination.
+It rejects over-limit metadata before listing files, then requests one page with
+`per_page=100` for an eligible PR. Any next-page link is inconsistent with that
+scope and fails closed without following the target. Complete file metadata,
+duplicate detection and stable head/base/count checks remain required. This
+reduces requests without suppressing a rule, parallelizing dependent pages or
+weakening the cap. Require fresh provider analysis to establish that the earlier
+S9382 finding is resolved; a code change or this explanation alone is not
+zero-open-issue evidence.
 
 Missing credentials or project settings must produce a visible setup failure.
 `sonar.qualitygate.wait=false` means the scanner does not wait for the
