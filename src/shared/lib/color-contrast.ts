@@ -16,8 +16,7 @@ const parse = (color: string, background: Rgb = [255, 255, 255]): Rgb => {
     const components = functional?.[2].split(",").map((value) => value.trim());
     const expectedLength = functional?.[1].toLowerCase() === "rgba" ? 4 : 3;
     if (
-      !components ||
-      components.length !== expectedLength ||
+      components?.length !== expectedLength ||
       components.some((value) => !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(value))
     )
       throw new TypeError("Expected a hex or comma-form RGB(A) theme color");
