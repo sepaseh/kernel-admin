@@ -38,7 +38,23 @@ inventory. Start with a focused check during development, then run the complete
 an isolated checkout/export of the exact proposed snapshot. Passing checks over
 unpublished, untracked application files do not validate a partial PR.
 
-The complete phase gate covers snapshot integrity, dependencies, boundaries,
+Initial publication is staged within the 100-file PR cap. On every PR, CI runs
+the same `npm run validate -- full` command after installation; it does not keep
+a shorter command list or select checks by changed paths. Before any command
+runs, the runner rejects duplicate check definitions, unknown profile entries,
+and a full profile that omits a required check, repeats one or includes a manual
+or advisory check. Focused profiles remain development tools and cannot replace
+this complete published-scope gate. Expand it with genuine application checks as
+their source arrives, before merging a runnable panel.
+
+The required CI policy check parses YAML with unique keys. It rejects PR path,
+branch or lifecycle filters, conditional/advisory validation, non-root execution,
+shell overrides and missing or reordered installation/full steps. All current
+checks belong to `check`. Future multi-job application validation requires an
+explicit policy and workflow transition, so a Windows visual check cannot silently
+enter this Linux-only command plan.
+
+The nine required phase checks cover snapshot integrity, semantic CI policy, dependencies, boundaries,
 types, lint, formatting, measured unit tests and governance tests. The selected
 unit scope retains minimum coverage thresholds of 69% lines, 68% statements,
 59% functions and 54% branches. Do not reduce them to hide a failure or fabricate

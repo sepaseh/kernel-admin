@@ -4,7 +4,7 @@ import { test } from "node:test";
 
 import { commandArguments, runProfile } from "./validate.mjs";
 
-test("the current full gate covers every required check once in local and CI execution", () => {
+test("the current full gate executes every published required check in declared order", () => {
   const read = (file) =>
     readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
   const manifest = JSON.parse(read(".agents/validation.json"));
@@ -23,13 +23,15 @@ test("the current full gate covers every required check once in local and CI exe
     const [, script] = commandArguments(command);
     assert.equal(typeof pkg.scripts[script], "string");
   }
-  const ciCommands = read(".github/workflows/ci.yml")
-    .split(/\r?\n/)
-    .flatMap((line) => {
-      const match = /^ {6}- run: (npm run .+)$/.exec(line);
-      return match ? [match[1]] : [];
-    });
-  assert.deepEqual(ciCommands, commands);
+  const executed = [];
+  assert.equal(
+    runProfile(manifest, "full", (args) => {
+      executed.push(args);
+      return 0;
+    }),
+    0,
+  );
+  assert.deepEqual(executed, commands.map(commandArguments));
 });
 test("validation runner preserves arguments without a shell", () => {
   assert.deepEqual(commandArguments("npm run test:e2e -- --project=chromium"), [
@@ -74,12 +76,19 @@ test("validation runner accepts script names and forwards root-looking script ar
     commandArguments("npm run test -- --prefix=fixture -w value -C fixture"),
     ["run", "test", "--", "--prefix=fixture", "-w", "value", "-C", "fixture"],
   );
+  assert.deepEqual(commandArguments("npm run test -- \"two words\" ''"), [
+    "run",
+    "test",
+    "--",
+    "two words",
+    "",
+  ]);
 });
 test("validation profiles stop at the first failed required command", () => {
   const manifest = {
     checks: [
-      { id: "first", command: "npm run lint" },
-      { id: "second", command: "npm run typecheck" },
+      { id: "first", command: "npm run lint", kind: "required" },
+      { id: "second", command: "npm run typecheck", kind: "required" },
     ],
     profiles: { full: ["first", "second"] },
   };
@@ -102,4 +111,119 @@ test("validation profiles stop at the first failed required command", () => {
       ),
     /Unknown validation check/,
   );
+});
+
+const mixedManifest = () => ({
+  checks: [
+    { id: "types", command: "npm run typecheck", kind: "required" },
+    { id: "tests", command: "npm run test", kind: "required" },
+    { id: "lab", command: "npm run lighthouse", kind: "advisory" },
+    { id: "deploy", command: "npm run deploy", kind: "manual" },
+  ],
+  profiles: {
+    full: ["types", "tests"],
+    focused: ["tests"],
+    operator: ["lab", "deploy"],
+  },
+});
+
+test("full validation rejects omitted, repeated or non-required checks before execution", () => {
+  for (const ids of [
+    ["types"],
+    ["types", "types", "tests"],
+    ["types", "lab"],
+    ["types", "deploy"],
+    ["types", "tests", "lab"],
+    ["types", "tests", "deploy"],
+  ]) {
+    const manifest = mixedManifest();
+    manifest.profiles.full = ids;
+    const executed = [];
+    assert.throws(
+      () => runProfile(manifest, "full", (args) => executed.push(args)),
+      /every required check exactly once|must not repeat/,
+    );
+    assert.deepEqual(executed, []);
+  }
+});
+
+test("validation rejects duplicate check definitions instead of silently selecting the last one", () => {
+  const manifest = mixedManifest();
+  manifest.checks.push({
+    id: "types",
+    command: "npm run skipped-types",
+    kind: "required",
+  });
+  let runs = 0;
+  assert.throws(
+    () => runProfile(manifest, "focused", () => runs++),
+    /unique IDs/,
+  );
+  assert.equal(runs, 0);
+});
+
+test("validation rejects malformed definitions and unknown later entries before any command runs", () => {
+  for (const checks of [
+    undefined,
+    [],
+    [undefined],
+    [{ id: " ", command: "npm run test", kind: "required" }],
+    [{ id: "types", command: "npm run test", kind: "optional" }],
+  ]) {
+    let runs = 0;
+    assert.throws(() =>
+      runProfile({ ...mixedManifest(), checks }, "full", () => {
+        runs++;
+        return 0;
+      }),
+    );
+    assert.equal(runs, 0);
+  }
+  for (const profile of [
+    ["types", "missing"],
+    ["types", "types"],
+  ]) {
+    const manifest = mixedManifest();
+    manifest.profiles.focused = profile;
+    let runs = 0;
+    assert.throws(() =>
+      runProfile(manifest, "focused", () => {
+        runs++;
+        return 0;
+      }),
+    );
+    assert.equal(runs, 0);
+  }
+  const manifest = mixedManifest();
+  manifest.checks[1].command = "npm run test && git push";
+  let runs = 0;
+  assert.throws(() =>
+    runProfile(manifest, "full", () => {
+      runs++;
+      return 0;
+    }),
+  );
+  assert.equal(runs, 0);
+});
+
+test("focused profiles keep their explicit scope and may include manual or advisory checks", () => {
+  const manifest = mixedManifest();
+  const executed = [];
+  assert.equal(
+    runProfile(manifest, "focused", (_args, check) => {
+      executed.push(check.id);
+      return 0;
+    }),
+    0,
+  );
+  assert.deepEqual(executed, ["tests"]);
+  executed.length = 0;
+  assert.equal(
+    runProfile(manifest, "operator", (_args, check) => {
+      executed.push(check.id);
+      return 0;
+    }),
+    0,
+  );
+  assert.deepEqual(executed, ["lab", "deploy"]);
 });

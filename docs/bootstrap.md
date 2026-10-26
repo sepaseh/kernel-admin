@@ -31,10 +31,28 @@ npm run validate -- full
 ```
 
 The [canonical manifest](../.agents/validation.json) defines the complete
-current-phase gate. It checks the exact inventory, audit, source boundaries,
+current-phase gate. Its nine required checks cover the exact inventory, semantic CI policy, audit, source boundaries,
 types, lint, formatting and both test runs. Vitest runs in Node with environment
 file discovery disabled. Tests use synthetic inputs; no UI, API process, browser
 or real environment/state is required.
+
+Initial publication is staged under the 100-file PR cap. Every PR runs this
+complete published-scope gate through the same `npm run validate -- full` command
+used locally, with no selection by changed paths. CI does not maintain a second
+list of checks. The runner validates the selected command plan before execution:
+duplicate check definitions or profile entries, unknown IDs, missing required
+checks and manual/advisory entries in `full` fail the gate. Focused profiles are
+development helpers; application checks join the complete gate when their source
+is published, before any runnable panel merges.
+
+The CI policy check parses YAML with unique mapping keys and requires one
+unconditional `npm ci` before one unconditional canonical full run. It rejects
+PR path/branch filters, omitted lifecycle events, conditional or advisory check
+execution, non-root working directories and shell overrides. Other conditional
+steps such as the PR-size guard or artifact upload do not make validation optional.
+The current policy allows only the `check` job for full-profile checks; introduce
+job-aware validation and update this policy explicitly before adding build,
+browser or Windows visual checks.
 
 Unit tests produce `coverage/unit/lcov.info`; Node governance tests produce
 `coverage/governance/lcov.info`. Both are measured in this checkout and imported

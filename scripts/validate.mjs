@@ -28,15 +28,48 @@ export const commandArguments = (command) => {
     throw new Error("Validation commands must pass script arguments after --");
   return args.slice(1);
 };
+const indexChecks = (definitions) => {
+  if (!Array.isArray(definitions) || !definitions.length)
+    throw new Error("Validation checks must be a nonempty array");
+  const checks = new Map();
+  for (const check of definitions) {
+    if (
+      typeof check?.id !== "string" ||
+      !check.id.trim() ||
+      !["required", "advisory", "manual"].includes(check.kind) ||
+      checks.has(check.id)
+    )
+      throw new Error("Validation checks need unique IDs and declared kinds");
+    checks.set(check.id, check);
+  }
+  return checks;
+};
 export const runProfile = (manifest, profile, run) => {
-  const ids = manifest.profiles?.[profile];
+  const ids = manifest?.profiles?.[profile];
   if (!Array.isArray(ids) || !ids.length)
     throw new Error("Unknown or empty validation profile: " + profile);
-  const checks = new Map(manifest.checks.map((check) => [check.id, check]));
-  for (const id of ids) {
+  const checks = indexChecks(manifest.checks);
+  if (new Set(ids).size !== ids.length)
+    throw new Error("Validation profiles must not repeat check IDs");
+  const commands = ids.map((id) => {
     const check = checks.get(id);
     if (!check) throw new Error("Unknown validation check: " + id);
-    const result = run(commandArguments(check.command), check);
+    return { args: commandArguments(check.command), check };
+  });
+  if (profile === "full") {
+    const required = [...checks.values()].filter(
+      (check) => check.kind === "required",
+    );
+    if (
+      required.length !== commands.length ||
+      commands.some(({ check }) => check.kind !== "required")
+    )
+      throw new Error(
+        "The full profile must run every required check exactly once",
+      );
+  }
+  for (const { args, check } of commands) {
+    const result = run(args, check);
     if (result !== 0) return result ?? 1;
   }
   return 0;

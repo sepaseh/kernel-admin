@@ -28,6 +28,18 @@ entries, including deletions, renames and binaries. Preserve private state and
 never read real environment files or credentials. Commits, pushes, remote
 comments and merging require explicit authorization.
 
+Initial publication is staged. Every PR runs all required checks for its published
+scope through the same canonical full command as local validation, regardless of
+changed paths. The runner rejects omitted, repeated or non-required entries in
+the full profile before executing commands. Focused profiles are development
+tools and cannot replace the PR gate; add real application checks as their source
+is published, before any runnable panel merge.
+
+The semantic YAML guard rejects PR event filters, conditional/advisory validation,
+non-root commands and missing or reordered installation/full steps. Its current
+single-job policy rejects checks assigned elsewhere; extend that policy deliberately
+before introducing real multi-job application validation.
+
 Use native CI, CodeRabbit and SonarQube Cloud evidence for the current revision.
 CodeRabbit reviews are manual-only. Before a request, require every non-CodeRabbit
 required check for the published phase to pass for the latest head, including the
