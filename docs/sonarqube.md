@@ -59,16 +59,16 @@ flat literal string object, fully erased type imports and type aliases; executab
 helpers, spreads, computed values and initialization calls are forbidden. Keep
 that regression when changing this exception and verify a fresh provider result.
 
-The `typescript:S2068` finding on the Spanish catalog's
-[`password: "Contraseña"` label](../src/shared/i18n/locales/es.ts#L65) concerns UI
-copy, not a credential. Keep the real translation unchanged. Resolving such a
-finding would require a legitimate **False Positive** classification in Sonar
-with separate explicit authorization; the approved data-duplication exception
-does not authorize that action. Do not obfuscate the label or add a security
-suppression. The S2068 issue remains **OPEN**; no provider classification or
-resolution is claimed here. Until the complete
-fresh report contains zero open/unresolved issues, this finding still blocks a
-CodeRabbit request even if the duplication gate passes.
+Sonar classifies the `typescript:S2068` finding `AaF5MEhhW1T9WAfdDDLs` on the
+Spanish catalog's
+[`password: "Contraseña"` label](../src/shared/i18n/locales/es.ts#L65) as
+**False Positive**, under separate explicit user authorization. The value is
+visible UI text, not an authentication credential. The translation is unchanged;
+no security-rule suppression or source/coverage exclusion was added. This
+classification applies only to this exact literal-label finding and does not
+authorize classifying other issues. Before requesting CodeRabbit, verify a fresh
+report for the exact current head with zero open/unresolved issues and a passing
+actual quality gate.
 
 ## Review readiness
 
