@@ -11,6 +11,71 @@ import { faDayjs } from "./dayjs/fa.ts";
 import { localeCodes } from "./locales.ts";
 
 const source = path.dirname(fileURLToPath(import.meta.url));
+const literalCatalogObject = (initializer: ts.Expression | undefined) => {
+  let expression = initializer;
+  while (
+    expression &&
+    (ts.isAsExpression(expression) ||
+      ts.isSatisfiesExpression(expression) ||
+      ts.isParenthesizedExpression(expression))
+  )
+    expression = expression.expression;
+  assert.ok(expression && ts.isObjectLiteralExpression(expression));
+  return expression;
+};
+const assertLiteralCatalogModule = (content: string, code: string) => {
+  const module = ts.createSourceFile(
+    `${code}.ts`,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  let catalogs = 0;
+  for (const statement of module.statements) {
+    if (ts.isTypeAliasDeclaration(statement)) continue;
+    if (ts.isImportDeclaration(statement)) {
+      assert.equal(
+        statement.importClause?.phaseModifier,
+        ts.SyntaxKind.TypeKeyword,
+      );
+      assert.ok(
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+          statement.moduleSpecifier.text.startsWith("."),
+      );
+      continue;
+    }
+    assert.ok(ts.isVariableStatement(statement));
+    assert.ok(
+      statement.modifiers?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+      ),
+    );
+    assert.equal(
+      statement.declarationList.flags & ts.NodeFlags.BlockScoped,
+      ts.NodeFlags.Const,
+    );
+    assert.equal(statement.declarationList.declarations.length, 1);
+    const declaration = statement.declarationList.declarations[0];
+    assert.ok(ts.isIdentifier(declaration.name));
+    assert.equal(declaration.name.text, code);
+    const object = literalCatalogObject(declaration.initializer);
+    const keys = new Set<string>();
+    for (const property of object.properties) {
+      assert.ok(ts.isPropertyAssignment(property));
+      assert.ok(
+        ts.isIdentifier(property.name) || ts.isStringLiteral(property.name),
+      );
+      assert.equal(keys.has(property.name.text), false);
+      keys.add(property.name.text);
+      assert.ok(
+        ts.isStringLiteral(property.initializer) ||
+          ts.isNoSubstitutionTemplateLiteral(property.initializer),
+      );
+    }
+    catalogs++;
+  }
+  assert.equal(catalogs, 1);
+};
 const flatCatalog = (value: unknown): Record<string, string> => {
   assert.ok(value && typeof value === "object" && !Array.isArray(value));
   const result: Record<string, string> = {};
@@ -110,6 +175,49 @@ test("each language owns translated core messages rather than an English placeho
     assert.notEqual(catalogs[code].networkError, catalogs.en.networkError);
     assert.notEqual(catalogs[code].login, catalogs.en.login);
   }
+});
+
+test("language leaf modules contain literal string data and erased types without executable logic", async () => {
+  for (const code of localeCodes)
+    assertLiteralCatalogModule(
+      await readFile(path.join(source, "locales", `${code}.ts`), "utf8"),
+      code,
+    );
+});
+
+test("the literal-data guard accepts erased wrappers and type declarations", () => {
+  for (const content of [
+    'export const fa = { login: "ورود" } as const;',
+    'import type { TranslationCatalog } from "./en.ts"; export const fa = { login: "ورود" } satisfies TranslationCatalog;',
+    "export const fa = ({ login: `ورود` }); export type Catalog = typeof fa;",
+  ])
+    assert.doesNotThrow(() => assertLiteralCatalogModule(content, "fa"));
+});
+
+test("the literal-data guard rejects spreads, helpers, calls and computed catalog content", () => {
+  for (const content of [
+    'import { en } from "./en.ts"; export const fa = { login: "ورود" };',
+    'import { type TranslationCatalog } from "./en.ts"; export const fa = { login: "ورود" };',
+    'import "./runtime.ts"; export const fa = { login: "ورود" };',
+    'export const fa = { ...en, login: "ورود" };',
+    'const helper = () => "ورود"; export const fa = { login: helper() };',
+    'export function helper() {} export const fa = { login: "ورود" };',
+    'export const fa = (() => ({ login: "ورود" }))();',
+    'export const fa = { login: translate("login") };',
+    'export const fa = { ["login"]: "ورود" };',
+    'export const fa = { get login() { return "ورود"; } };',
+    'export const fa = { login() { return "ورود"; } };',
+    "export const fa = { login };",
+    'export const fa = { login: { value: "ورود" } };',
+    "export const fa = { login: `Hello ${user}` };",
+    'export const fa = { login: "ورود", login: "دوباره" };',
+    'export let fa = { login: "ورود" };',
+    'export using fa = { login: "ورود" };',
+    'export await using fa = { login: "ورود" };',
+    'export const fa = { login: "ورود" }, helper = () => {};',
+    'export const fa = { login: "ورود" }; sideEffect();',
+  ])
+    assert.throws(() => assertLiteralCatalogModule(content, "fa"));
 });
 
 test("Persian calendar data preserves weekdays, months and relative time", () => {

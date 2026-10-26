@@ -41,6 +41,37 @@ Retain source/security analysis and honest coverage. Do not exclude code or
 weaken a quality gate to hide a failure. Review actual findings and correct real
 defects before rerunning affected checks.
 
+## Static catalog data and label findings
+
+The first catalog PR analysis reported **66.5% duplicated lines on new code**.
+The ten complete language records intentionally repeat the same required key
+schema with different translated values. This data repetition is not duplicated
+runtime logic, and removing it through English spreads or fallback catalogs would
+break local translation ownership.
+
+The authorized duplication-only exception is exactly
+`sonar.cpd.exclusions=src/shared/i18n/locales/*.ts`, covering only the ten language
+data files. It does not exclude these files from source or
+security analysis, tests or measured coverage. Registry code, locale metadata,
+Persian calendar data and all other source remain in duplication analysis. The
+catalog AST regression requires each excluded leaf module to contain only its
+flat literal string object, fully erased type imports and type aliases; executable
+helpers, spreads, computed values and initialization calls are forbidden. Keep
+that regression when changing this exception and verify a fresh provider result.
+
+The `typescript:S2068` finding on the Spanish catalog's
+[`password: "Contraseña"` label](../src/shared/i18n/locales/es.ts#L65) concerns UI
+copy, not a credential. Keep the real translation unchanged. Resolving such a
+finding would require a legitimate **False Positive** classification in Sonar
+with separate explicit authorization; the approved data-duplication exception
+does not authorize that action. Do not obfuscate the label or add a security
+suppression. The S2068 issue remains **OPEN**; no provider classification or
+resolution is claimed here. Until the complete
+fresh report contains zero open/unresolved issues, this finding still blocks a
+CodeRabbit request even if the duplication gate passes.
+
+## Review readiness
+
 Before any CodeRabbit request, require every non-CodeRabbit required check for the
 published phase to pass for the latest head, including the scanner and
 the actual quality gate. Inspect the complete applicable latest PR/branch Sonar

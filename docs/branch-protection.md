@@ -9,11 +9,12 @@ approvals, require an up-to-date branch and prohibit force pushes and deletion.
 Repository administrators manage the actual remote settings.
 
 Required checks follow the published phase. Catalog-phase protection requires these
-four native contexts with their observed GitHub App identities:
+five native contexts with their observed GitHub App identities:
 
 | Required context           | Provider       | App ID   |
 | -------------------------- | -------------- | -------- |
 | `check`                    | GitHub Actions | `15368`  |
+| `PR file limit`            | GitHub Actions | `15368`  |
 | `SonarQube Cloud analysis` | GitHub Actions | `15368`  |
 | `SonarCloud Code Analysis` | SonarCloud     | `12526`  |
 | `CodeRabbit`               | CodeRabbit     | `347564` |

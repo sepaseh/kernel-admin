@@ -28,7 +28,7 @@ validation, preserving Ant Design, antd-style, React Router, Axios and directly
 typed component parameters without FC aliases.
 
 Required checks follow the published phase: the catalogs phase requires `check`,
-`SonarQube Cloud analysis`, `SonarCloud Code Analysis` and `CodeRabbit`. Before
+`PR file limit`, `SonarQube Cloud analysis`, `SonarCloud Code Analysis` and `CodeRabbit`. Before
 any runnable panel merges, introduce real build/e2e/visual jobs, expand the full
 canonical gate, observe those jobs pass and add them to required checks. Do not
 substitute placeholder jobs or skipped checks for application evidence.
