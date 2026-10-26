@@ -1,0 +1,17 @@
+dist
+dist-ssr
+node_modules
+*.local
+.vitest-cache
+.vitest
+.stryker-tmp
+
+**/coverage/
+**/storybook-static/
+**/test-results/
+**/playwright-report/
+releases/
+
+# Verbatim historical evidence; maintained archive landing pages remain formatted.
+docs/reference/original-kernel/
+docs/qa/history/
