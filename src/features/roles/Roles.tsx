@@ -56,7 +56,7 @@ export const RolesPage = () => {
     setDetailTarget(id);
     const value = await details.run((signal) => fetchRole(id, signal));
     if (value) {
-      navigate(
+      void navigate(
         { hash: roleDrawerKeys.update, pathname, search },
         { state: true },
       );

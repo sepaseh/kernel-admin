@@ -129,7 +129,7 @@ export const UsersPage = () => {
     setDetailTarget({ id, hash });
     const value = await details.run((signal) => fetchUser(id, signal));
     if (value) {
-      navigate({ hash, pathname, search }, { state: true });
+      void navigate({ hash, pathname, search }, { state: true });
     }
   };
 
