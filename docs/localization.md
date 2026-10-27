@@ -2,10 +2,10 @@
 
 [English](localization.md) · [فارسی](localization.fa.md)
 
-The [runtime-localization phase](bootstrap.md) publishes complete local catalogs
+The [http-lifecycle phase](bootstrap.md) publishes complete local catalogs
 and real translation/date adapters. Tests exercise their installed dependencies
-in Node. applicationReady:false remains deliberate: no runnable panel, HTTP
-settings integration or browser journey is published.
+in Node. applicationReady:false remains deliberate: no runnable panel, UI
+provider integration or browser journey is published; the HTTP settings adapter is included.
 
 ## One complete catalog per language
 
@@ -37,9 +37,10 @@ identity and emits a diagnostic; fallback never excuses missing translations.
 including region variants. It selects a supported catalog only, with no direction
 or calendar table. The API owns active language, direction, calendar and both
 public/native names; only a super-administrator may change the active language.
-The future HTTP settings adapter must validate and preserve complete server
-metadata and explicit retry/error behavior. This phase does not implement that
-settings flow, a visitor chooser or browser integration. Theme and compact
+The [HTTP settings adapter](http-client.md) validates and preserves complete server
+metadata and localized errors. Missing/unsupported metadata fails without local
+direction/calendar inference. This phase does not implement a visitor chooser or
+provider/browser integration. Theme and compact
 preferences are separate concerns.
 
 The [error helper](../src/shared/lib/error.ts) preserves actual Error messages and
@@ -74,5 +75,5 @@ ten literal language-data files alone retain their authorized CPD exception.
 Run npm ci then npm run validate -- full. All nine canonical checks run on every
 PR regardless of changed paths, with environment-file discovery disabled and real
 LCOV from this exact checkout. Follow [Sonar preflight](sonarqube.md). Component,
-HTTP metadata, production build, browser, accessibility and visual evidence must
+provider integration, production build, browser, accessibility and visual evidence must
 join the canonical gate before any runnable panel merges.

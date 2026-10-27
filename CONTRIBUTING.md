@@ -2,8 +2,8 @@
 
 [English](CONTRIBUTING.md) · [فارسی](CONTRIBUTING.fa.md)
 
-The current [runtime-localization phase](docs/bootstrap.md) contains complete catalog data, real translation/date adapters,
-framework-free admin primitives and repository tooling. Preserve its declared scope and independent
+The current [http-lifecycle phase](docs/bootstrap.md) contains HTTP feature adapters, request lifecycle hooks, complete server settings
+validation, local translation/date adapters, primitives and repository tooling. Preserve its declared scope and independent
 project boundary.
 
 ## Source ownership
@@ -14,7 +14,8 @@ Pure catalog objects, the code registry and Persian calendar data belong in
 `src/shared/i18n`; read [localization](docs/localization.md). Keep all ten code-named
 catalogs complete and flat, with matching keys and interpolation. Runtime adapters own i18next/React translation initialization and Day.js/Jalaliday
 registration. Their real integration tests run in Node with synthetic storage.
-The HTTP settings adapter and UI remain future work.
+Read [HTTP ownership](docs/http-client.md) and [request lifecycle](docs/request-lifecycle.md).
+UI wiring and the theme engine remain future work.
 Do not add source dependencies on another checkout, npm workspaces, local-package
 links or backend SDKs. Keep API behavior behind HTTP in the separate API project.
 
@@ -87,7 +88,7 @@ coverage and dependency directories out of commits.
 
 Follow [branch protection](docs/branch-protection.md). A successful skipped status
 is not a substantive review, and a scanner job is not the asynchronous Sonar
-quality gate. Required checks follow the published phase. The runtime-localization phase requires
+quality gate. Required checks follow the published phase. The http-lifecycle phase requires
 its CI and provider checks; it supplies no runnable panel. Before any runnable
 panel merges, introduce genuine build, end-to-end and visual jobs, observe them
 pass, add them to required checks and expand the canonical full gate. Do not use

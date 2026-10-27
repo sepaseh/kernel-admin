@@ -62,19 +62,70 @@ const runtimeFiles = [
   "src/shared/lib/error.ts",
   "src/shared/lib/error.test.ts",
 ];
+const httpFiles = [
+  "src/features/account/api.test.ts",
+  "src/features/account/api.ts",
+  "src/features/account/types.ts",
+  "src/features/auth/api.test.ts",
+  "src/features/auth/api.ts",
+  "src/features/auth/index.ts",
+  "src/features/auth/logout.test.ts",
+  "src/features/auth/types.ts",
+  "src/features/calendar/api.test.ts",
+  "src/features/calendar/api.ts",
+  "src/features/roles/api.test.ts",
+  "src/features/roles/api.ts",
+  "src/features/roles/types.ts",
+  "src/features/settings/api.test.ts",
+  "src/features/settings/api.ts",
+  "src/features/settings/components/logo-upload/api.test.ts",
+  "src/features/settings/components/logo-upload/api.ts",
+  "src/features/settings/types.ts",
+  "src/features/users/api.helpers.test.ts",
+  "src/features/users/api.test.ts",
+  "src/features/users/api.ts",
+  "src/features/users/types.ts",
+  "src/shared/api/client.test.ts",
+  "src/shared/api/client.ts",
+  "src/shared/api/config.test.ts",
+  "src/shared/api/config.ts",
+  "src/shared/api/index.ts",
+  "src/shared/api/token-response.test.ts",
+  "src/shared/api/token-response.ts",
+  "src/shared/api/transport.test.ts",
+  "src/shared/contracts/appearance.test.ts",
+  "src/shared/contracts/appearance.ts",
+  "src/shared/hooks/useReadRequest.ts",
+  "src/shared/hooks/useReadResource.test.ts",
+  "src/shared/hooks/useReadResource.ts",
+  "src/test/http-setup.ts",
+  "src/test/mocks/handlers.ts",
+  "src/test/mocks/server.ts",
+  "src/vite-env.d.ts",
+  "docs/http-client.md",
+  "docs/http-client.fa.md",
+  "docs/request-lifecycle.md",
+  "docs/request-lifecycle.fa.md",
+];
 const publishedSource = (file, phase) =>
   phase !== "governance" &&
   (isFoundationSource(file) ||
-    (["catalogs", "runtime-localization"].includes(phase) &&
+    (phase === "http-lifecycle" && httpFiles.includes(file)) ||
+    (["catalogs", "runtime-localization", "http-lifecycle"].includes(phase) &&
       catalogFiles.includes(file)) ||
-    (phase === "runtime-localization" && runtimeFiles.includes(file)));
+    (["runtime-localization", "http-lifecycle"].includes(phase) &&
+      runtimeFiles.includes(file)));
 
 export const validateBootstrapPolicy = (policy) => {
   if (
     policy?.schemaVersion !== 1 ||
-    !["governance", "foundation", "catalogs", "runtime-localization"].includes(
-      policy.phase,
-    ) ||
+    ![
+      "governance",
+      "foundation",
+      "catalogs",
+      "runtime-localization",
+      "http-lifecycle",
+    ].includes(policy.phase) ||
     policy.applicationReady !== false ||
     policy.maximumChangedFiles !== 100 ||
     !Array.isArray(policy.allowedFiles) ||
@@ -89,7 +140,7 @@ export const validateBootstrapPolicy = (policy) => {
       file.includes("\\") ||
       file.split("/").some((part) => !part || part === "." || part === "..") ||
       /[*?[\]{}:\r\n]/.test(file) ||
-      /^(?:drizzle|collection|deploy|node_modules|server|coverage)(?:\/|$)/.test(
+      /^(?:apps|packages|drizzle|collection|deploy|node_modules|server|coverage)(?:\/|$)/.test(
         file,
       ) ||
       file === "drizzle.config.ts" ||
@@ -110,10 +161,15 @@ export const validateBootstrapPolicy = (policy) => {
     ...(policy.phase === "governance"
       ? [".github/workflows/bootstrap.yml"]
       : foundationFiles),
-    ...(["catalogs", "runtime-localization"].includes(policy.phase)
+    ...(["catalogs", "runtime-localization", "http-lifecycle"].includes(
+      policy.phase,
+    )
       ? catalogFiles
       : []),
-    ...(policy.phase === "runtime-localization" ? runtimeFiles : []),
+    ...(["runtime-localization", "http-lifecycle"].includes(policy.phase)
+      ? runtimeFiles
+      : []),
+    ...(policy.phase === "http-lifecycle" ? httpFiles : []),
   ];
   if (requiredFiles.some((file) => !files.has(file)))
     throw new Error(
@@ -199,6 +255,8 @@ export const inspectBootstrap = async (root) => {
     }),
   );
   const scopeByPhase = {
+    "http-lifecycle":
+      "Published admin HTTP transport, feature wire adapters, complete server-owned settings metadata and request lifecycle hooks, with synthetic HTTP and real hook tests; the runnable panel, production build and browser journeys are not published or validated.",
     "runtime-localization":
       "Published admin primitives, complete catalogs and real translation/date runtime adapters; UI, API integration and browser journeys are not published or validated.",
     governance:

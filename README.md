@@ -2,8 +2,9 @@
 
 [English](README.md) · [فارسی](README.fa.md)
 
-Kernel Admin is a standalone TypeScript project. The current **runtime-localization**
-phase publishes local catalogs, real translation/date adapters, admin primitives and their tests. `applicationReady` is
+Kernel Admin is a standalone TypeScript project. The current **http-lifecycle**
+phase publishes HTTP/feature adapters, request lifecycle hooks, server-owned settings
+validation, local catalogs, real translation/date adapters and their tests. `applicationReady` is
 **false**: this snapshot does not provide a runnable management panel.
 
 ## Current scope
@@ -23,11 +24,19 @@ phase publishes local catalogs, real translation/date adapters, admin primitives
   from UI messages. Read [localization](docs/localization.md) for ownership and
   integrity checks.
 
+- [HTTP transport and feature owners](docs/http-client.md) preserve session generations,
+  validate token/settings replies and consume the independent API.
+- [Read lifecycle hooks](docs/request-lifecycle.md) cancel obsolete work and preserve
+  accepted data across refresh failures.
+- [Appearance vocabulary](src/shared/contracts/appearance.ts) owns Theme and seven
+  palette fields without initializing Ant Design.
+
 Key transforms rename plain-object keys and omit null object fields. Their result
 is `unknown`; validate and narrow it to the expected HTTP contract before use.
 Non-plain values retain their runtime identity, but their types also require
-narrowing. A future API client must validate transformed responses rather than
-assume that converting keys preserves a generic input type.
+narrowing. The HTTP client explicitly asserts ordinary DTO shapes at its contract boundary;
+critical token and settings replies are runtime-validated. Key conversion never
+preserves or proves a generic input type.
 
 Contrast helpers accept hex colors and comma-form `rgb()`/`rgba()` with channels
 from 0 to 255 and alpha from 0 to 1; unsupported or malformed inputs throw
@@ -41,8 +50,8 @@ language. The date adapter registers nine vendor locales plus the local Persian
 locale, including English as `en-gb`, and supports explicit Gregorian/Jalali calendar selection.
 Code normalization only selects a supported catalog; it does not select direction
 or calendar. The translated error helper preserves real `Error` messages.
-This phase contains no React screens, Ant Design components, API client, server or
-browser fixtures. The separate API owns
+This phase contains HTTP and real hook tests with synthetic MSW/jsdom fixtures,
+with no React screens, Ant Design engine, server or browser journeys. The separate API owns
 authentication, database and storage, plus active language, direction and calendar.
 
 ## Install and validate
@@ -62,7 +71,8 @@ synthetic values and require no environment file, running API or browser.
 
 The two test runs produce real `coverage/unit/lcov.info` and
 `coverage/governance/lcov.info` from this checkout. These reports cover the
-published catalogs, runtime adapters, calendar data, primitives and repository tooling; they are not complete panel
+published HTTP modules, lifecycle hooks, catalogs, runtime adapters, calendar data,
+primitives and repository tooling; they are not complete panel
 coverage. Generated reports are not committed. See [Sonar setup](docs/sonarqube.md).
 
 ## Contribute
@@ -73,7 +83,7 @@ changed-file entries** and validate the exact proposed revision.
 
 Use native CI, CodeRabbit and SonarQube Cloud checks with
 [branch protection](docs/branch-protection.md). Configuration is not evidence of
-a completed hosted check. Runtime-localization protection requires its published CI and
+a completed hosted check. HTTP/lifecycle protection requires its published CI and
 provider checks. Before any runnable panel merges, genuine build, end-to-end and
 visual jobs must pass and become required checks, and the canonical full gate
 must expand to cover the application.

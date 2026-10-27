@@ -35,8 +35,10 @@ and `scripts`, classifies test files separately and imports two real reports:
 `coverage/unit/lcov.info` and `coverage/governance/lcov.info`. The workflow
 generates both from the same checked-out revision. They cover the published
 catalogs, real translation/date runtime adapters, pure Persian calendar data,
-primitives and tooling. They do not cover React screens, HTTP integration or a
-complete panel.
+HTTP feature adapters, session races, lifecycle hooks, primitives and tooling.
+Test support under src/test is classified as test code, alongside *.test.ts;
+production modules remain analyzed and measured. They do not cover React screens,
+production backend/browser integration or a complete panel.
 
 Retain source/security analysis and honest coverage. Do not exclude code or
 weaken a quality gate to hide a failure. Review actual findings and correct real
@@ -85,7 +87,7 @@ new commits invalidate preflight. Follow
 authorization, actual quota and no duplicate in-flight request for the same head.
 CodeRabbit's own check/approval is excluded only from preflight to avoid a cycle.
 
-Runtime-localization protection follows its published scope and requires the CI/provider
+HTTP/lifecycle protection follows its published scope and requires the CI/provider
 contexts in [branch protection](branch-protection.md). Before any runnable panel
 merges, real build/e2e/visual jobs must pass and become required checks, with the
 canonical full gate expanded. Phase alignment does not waive scanner execution,
