@@ -313,22 +313,37 @@ const phaseOrder = [
 ];
 const supportsPhase = (phase, minimum) =>
   phaseOrder.indexOf(phase) >= phaseOrder.indexOf(minimum);
-const phaseSourceGroups = [
-  ["catalogs", catalogFiles],
-  ["runtime-localization", runtimeFiles],
-  ["http-lifecycle", httpFiles],
-  ["ui-foundation", uiFiles],
-  ["core-auth", coreAuthFiles],
-  ["business-screens", businessFiles],
-  ["storybook-verification", storybookFiles],
-];
 const publishedSource = (file, phase) =>
   phase !== "governance" &&
   (isFoundationSource(file) ||
-    phaseSourceGroups.some(
-      ([minimum, files]) =>
-        supportsPhase(phase, minimum) && files.includes(file),
-    ));
+    (supportsPhase(phase, "catalogs") && catalogFiles.includes(file)) ||
+    (supportsPhase(phase, "runtime-localization") &&
+      runtimeFiles.includes(file)) ||
+    (supportsPhase(phase, "http-lifecycle") && httpFiles.includes(file)) ||
+    (supportsPhase(phase, "ui-foundation") && uiFiles.includes(file)) ||
+    (supportsPhase(phase, "core-auth") && coreAuthFiles.includes(file)) ||
+    (supportsPhase(phase, "business-screens") &&
+      businessFiles.includes(file)) ||
+    (phase === "storybook-verification" && storybookFiles.includes(file)));
+
+const isForbiddenPublicationPath = (file, phase) =>
+  typeof file !== "string" ||
+  !file ||
+  file.includes("\\") ||
+  file.split("/").some((part) => !part || part === "." || part === "..") ||
+  /[*?[\]{}:\r\n]/.test(file) ||
+  /^(?:apps|packages|drizzle|collection|deploy|node_modules|server|coverage)(?:\/|$)/.test(
+    file,
+  ) ||
+  file === "drizzle.config.ts" ||
+  file === "index.html" ||
+  file === "vite.config.ts" ||
+  ((file.startsWith(".storybook/") || file === "vitest.storybook.config.ts") &&
+    (phase !== "storybook-verification" || !storybookFiles.includes(file))) ||
+  (file.startsWith("src/") && !publishedSource(file, phase)) ||
+  (phase === "governance" && /^package(?:-lock)?\.json$/.test(file)) ||
+  /(?:^|\/)(?:\.env(?:\.|$)|settings\.local\.json$)/.test(file) ||
+  /\.(?:pem|key|pfx|p12|sqlite|db)$/.test(file);
 
 export const validateBootstrapPolicy = (policy) => {
   if (
@@ -342,29 +357,7 @@ export const validateBootstrapPolicy = (policy) => {
     throw new Error("An explicit non-runnable publication phase is required.");
   const files = new Set();
   for (const file of policy.allowedFiles) {
-    if (
-      typeof file !== "string" ||
-      !file ||
-      file.includes("\\") ||
-      file.split("/").some((part) => !part || part === "." || part === "..") ||
-      /[*?[\]{}:\r\n]/.test(file) ||
-      /^(?:apps|packages|drizzle|collection|deploy|node_modules|server|coverage)(?:\/|$)/.test(
-        file,
-      ) ||
-      file === "drizzle.config.ts" ||
-      file === "index.html" ||
-      file === "vite.config.ts" ||
-      ((file.startsWith(".storybook/") ||
-        file === "vitest.storybook.config.ts") &&
-        (policy.phase !== "storybook-verification" ||
-          !storybookFiles.includes(file))) ||
-      (file.startsWith("src/") && !publishedSource(file, policy.phase)) ||
-      (policy.phase === "governance" &&
-        /^package(?:-lock)?\.json$/.test(file)) ||
-      /(?:^|\/)(?:\.env(?:\.|$)|settings\.local\.json$)/.test(file) ||
-      /\.(?:pem|key|pfx|p12|sqlite|db)$/.test(file) ||
-      files.has(file)
-    )
+    if (isForbiddenPublicationPath(file, policy.phase) || files.has(file))
       throw new Error(
         "Publication files must be unique, exact paths within their declared phase.",
       );
