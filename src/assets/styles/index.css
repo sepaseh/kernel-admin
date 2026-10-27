@@ -1,0 +1,64 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: currentColor;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+img {
+  border: none;
+}
+
+input {
+  font-family: inherit;
+}
+
+li {
+  list-style-type: none;
+}
+
+html {
+  font-family: Vazirmatn, system-ui, sans-serif;
+  min-width: 320px;
+  overflow-x: hidden;
+}
+
+html:lang(fa) {
+  font-feature-settings: "ss01";
+}
+
+select,
+textarea {
+  font-family: inherit;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* An opaque keyboard outline stays visible beyond Ant Design's pale focus tint. */
+:root :is(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--admin-focus-color, CanvasText);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

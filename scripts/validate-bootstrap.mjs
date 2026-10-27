@@ -107,13 +107,75 @@ const httpFiles = [
   "docs/request-lifecycle.md",
   "docs/request-lifecycle.fa.md",
 ];
+const uiFiles = [
+  "docs/ui-foundation.fa.md",
+  "docs/ui-foundation.md",
+  "public/favicon.svg",
+  "public/logo.svg",
+  "src/assets/assets.test.ts",
+  "src/assets/fonts/vazirmatn/OFL.txt",
+  "src/assets/fonts/vazirmatn/Vazirmatn-Variable.woff2",
+  "src/assets/styles/index.css",
+  "src/assets/styles/vazirmatn.css",
+  "src/shared/config/constants.ts",
+  "src/shared/config/index.ts",
+  "src/shared/config/theme.test.ts",
+  "src/shared/config/theme.ts",
+  "src/shared/hooks/index.ts",
+  "src/shared/hooks/useGoBack.test.tsx",
+  "src/shared/hooks/useGoBack.ts",
+  "src/shared/lib/index.ts",
+  "src/shared/lib/observability.test.ts",
+  "src/shared/lib/observability.ts",
+  "src/shared/lib/observability.vitals.test.ts",
+  "src/shared/storage/compact.ts",
+  "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
+  "src/shared/storage/hooks/useLocalStorageWatcher.ts",
+  "src/shared/storage/index.ts",
+  "src/shared/storage/preferences.test.ts",
+  "src/shared/storage/state.test.ts",
+  "src/shared/storage/state.ts",
+  "src/shared/storage/theme.ts",
+  "src/shared/ui/digits-input/DigitsInput.test.tsx",
+  "src/shared/ui/digits-input/DigitsInput.tsx",
+  "src/shared/ui/digits-input/index.ts",
+  "src/shared/ui/error-boundary/ErrorBoundary.test.tsx",
+  "src/shared/ui/error-boundary/ErrorBoundary.tsx",
+  "src/shared/ui/error-boundary/index.ts",
+  "src/shared/ui/form-drawer/FormDrawer.test.tsx",
+  "src/shared/ui/form-drawer/FormDrawer.tsx",
+  "src/shared/ui/form-drawer/index.ts",
+  "src/shared/ui/otp-input/OtpInput.test.tsx",
+  "src/shared/ui/otp-input/OtpInput.tsx",
+  "src/shared/ui/otp-input/index.ts",
+  "src/shared/ui/password-fields/PasswordFields.test.tsx",
+  "src/shared/ui/password-fields/PasswordFields.tsx",
+  "src/shared/ui/password-fields/index.ts",
+  "src/shared/ui/request-feedback/RequestFeedback.test.tsx",
+  "src/shared/ui/request-feedback/RequestFeedback.tsx",
+  "src/shared/ui/request-feedback/index.ts",
+  "src/shared/ui/route-loading/RouteLoading.test.tsx",
+  "src/shared/ui/route-loading/RouteLoading.tsx",
+  "src/shared/ui/route-loading/index.ts",
+  "src/test/render.tsx",
+  "src/test/setup.ts",
+];
 const publishedSource = (file, phase) =>
   phase !== "governance" &&
   (isFoundationSource(file) ||
-    (phase === "http-lifecycle" && httpFiles.includes(file)) ||
-    (["catalogs", "runtime-localization", "http-lifecycle"].includes(phase) &&
+    (phase === "ui-foundation" && uiFiles.includes(file)) ||
+    (["http-lifecycle", "ui-foundation"].includes(phase) &&
+      httpFiles.includes(file)) ||
+    ([
+      "catalogs",
+      "runtime-localization",
+      "http-lifecycle",
+      "ui-foundation",
+    ].includes(phase) &&
       catalogFiles.includes(file)) ||
-    (["runtime-localization", "http-lifecycle"].includes(phase) &&
+    (["runtime-localization", "http-lifecycle", "ui-foundation"].includes(
+      phase,
+    ) &&
       runtimeFiles.includes(file)));
 
 export const validateBootstrapPolicy = (policy) => {
@@ -125,6 +187,7 @@ export const validateBootstrapPolicy = (policy) => {
       "catalogs",
       "runtime-localization",
       "http-lifecycle",
+      "ui-foundation",
     ].includes(policy.phase) ||
     policy.applicationReady !== false ||
     policy.maximumChangedFiles !== 100 ||
@@ -161,15 +224,23 @@ export const validateBootstrapPolicy = (policy) => {
     ...(policy.phase === "governance"
       ? [".github/workflows/bootstrap.yml"]
       : foundationFiles),
-    ...(["catalogs", "runtime-localization", "http-lifecycle"].includes(
-      policy.phase,
-    )
+    ...([
+      "catalogs",
+      "runtime-localization",
+      "http-lifecycle",
+      "ui-foundation",
+    ].includes(policy.phase)
       ? catalogFiles
       : []),
-    ...(["runtime-localization", "http-lifecycle"].includes(policy.phase)
+    ...(["runtime-localization", "http-lifecycle", "ui-foundation"].includes(
+      policy.phase,
+    )
       ? runtimeFiles
       : []),
-    ...(policy.phase === "http-lifecycle" ? httpFiles : []),
+    ...(["http-lifecycle", "ui-foundation"].includes(policy.phase)
+      ? httpFiles
+      : []),
+    ...(policy.phase === "ui-foundation" ? uiFiles : []),
   ];
   if (requiredFiles.some((file) => !files.has(file)))
     throw new Error(
@@ -255,6 +326,8 @@ export const inspectBootstrap = async (root) => {
     }),
   );
   const scopeByPhase = {
+    "ui-foundation":
+      "Published Ant Design widgets, theme/preferences/observability foundations, real font/vector asset validation and synthetic HTTP/React tests; application composition, production build, browser journeys and visual validation remain unpublished.",
     "http-lifecycle":
       "Published admin HTTP transport, feature wire adapters, complete server-owned settings metadata and request lifecycle hooks, with synthetic HTTP and real hook tests; the runnable panel, production build and browser journeys are not published or validated.",
     "runtime-localization":

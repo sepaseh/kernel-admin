@@ -1,14 +1,16 @@
-# Kernel Admin http-lifecycle instructions
+# Kernel Admin ui-foundation instructions
 
 Read [README](README.md), [Contributing](CONTRIBUTING.md), the current
 [publication inventory](.github/bootstrap-policy.json) and canonical
 [validation manifest](.agents/validation.json) before changes.
 
-This standalone npm project publishes framework-free admin primitives, ten
+Read [UI foundation](docs/ui-foundation.md) for Ant Design widgets, the theme adapter, compact/theme-only storage, optional observability and actual font/vector asset checks. Keep component parameters explicitly typed; no FC or FunctionComponent aliases.
+
+This standalone npm project publishes admin primitives, ten
 complete flat catalogs, real translation/date adapters, HTTP feature adapters and
 request lifecycle hooks. Read [HTTP ownership](docs/http-client.md) and
 [request lifecycle](docs/request-lifecycle.md). Keep source
-independent of another checkout, backend SDKs, npm workspaces and UI initialization.
+independent of another checkout, backend SDKs, npm workspaces and application initialization.
 The separate API owns authentication execution, database access and storage.
 
 Read [localization](docs/localization.md). Keep one code-named catalog per language,
@@ -25,23 +27,23 @@ Code normalization selects a supported catalog only. The API remains authoritati
 for active language, direction, calendar and names. The HTTP settings adapter validates complete server metadata, without inferring
 direction or calendar from language codes. Preserve these runtime checks. Only a super-administrator changes active language.
 
-The http-lifecycle phase has applicationReady:false. It contains no runnable
+The ui-foundation phase has applicationReady:false. It contains no runnable
 panel, production build, browser journey or visual evidence. Synthetic Axios/MSW
 transport tests and real React hooks in isolated jsdom do not establish full
 server/browser integration.
 A runnable phase must introduce React/Vite and complete real validation, preserving
 Ant Design, antd-style, React Router, Axios and directly typed component parameters
-without FC aliases. Before a runnable panel merges, expand the canonical full gate,
+without FC aliases. Before a runnable panel merges, expand the canonical full nineteen-check application gate,
 observe genuine build/e2e/visual jobs pass and add them to required checks.
 
 Preserve synchronous request-intent generation binding, token generation,
 login/logout invalidation, cancellation and shared-refresh semantics. Validate
 unknown token/settings replies before state changes. The appearance contract
-owns Theme and the seven palette fields; future Ant Design adapters must import
+owns Theme and the seven palette fields; the Ant Design adapter must import
 it. Feature wire types use only exact erased local vocabulary. Only
-the declared runtime-adapter modules may import their exact registry dependencies;
+the declared runtime-adapter and widget modules may import their exact registry dependencies;
 pure contracts, catalogs and primitives stay isolated. Every production module
-belongs in measured coverage. Tests use synthetic state and actual installed
+belongs in measured coverage. Font assets must pass real WOFF2 cmap/axis/default-outline, license, hash and CSS-reference checks, plus safe SVG parsing; presence alone is not validation. Keep browser font loading and visual evidence for the later runnable gate. Tests use synthetic state and actual installed
 translation/date/HTTP dependencies, fail-closed synthetic MSW responses and
 isolated React hook rendering, never real environment files or credentials.
 

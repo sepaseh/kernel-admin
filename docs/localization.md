@@ -2,7 +2,7 @@
 
 [English](localization.md) · [فارسی](localization.fa.md)
 
-The [http-lifecycle phase](bootstrap.md) publishes complete local catalogs
+The [ui-foundation phase](bootstrap.md) publishes complete local catalogs
 and real translation/date adapters. Tests exercise their installed dependencies
 in Node. applicationReady:false remains deliberate: no runnable panel, UI
 provider integration or browser journey is published; the HTTP settings adapter is included.

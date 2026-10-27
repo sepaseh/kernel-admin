@@ -1,9 +1,9 @@
-# HTTP/lifecycle phase
+# UI foundation phase
 
 [English](bootstrap.md) · [فارسی](bootstrap.fa.md)
 
 The [publication policy](../.github/bootstrap-policy.json) declares the
-**http-lifecycle** phase with `applicationReady: false`. It contains ten complete flat
+**ui-foundation** phase with `applicationReady: false`. It contains ten complete flat
 catalogs, their code registry, pure Persian calendar data and integrity tests,
 alongside token state, transport/profile contracts, HTTP key transforms and
 color-contrast helpers. The real i18next/react-i18next adapter initializes fixed Persian bootstrap
@@ -17,6 +17,8 @@ translation/date tests. This scope is not a runnable panel.
 See [README](../README.md) for source ownership and
 [localization](localization.md) for catalog rules. [Contributing](../CONTRIBUTING.md)
 defines validation and review policy.
+
+The phase also publishes [UI foundation](ui-foundation.md): seven Ant Design widgets, theme/preferences/observability adapters, route-back behavior and six validated local assets. Its 169-file exact inventory contains 68 production modules; the independent PR delta remains limited to 100 files.
 
 ## Exact snapshot
 
@@ -42,7 +44,7 @@ npm run validate -- full
 The [canonical manifest](../.agents/validation.json) defines the complete
 current-phase gate. Its nine required checks cover the exact inventory, semantic CI policy, audit, source boundaries,
 types, lint, formatting and both test runs. Vitest runs in Node with environment
-file discovery disabled; the hook test alone uses isolated jsdom. Tests use synthetic inputs; no UI, API process, browser
+file discovery disabled; widget, hook, preference and asset tests use isolated jsdom. Tests use synthetic inputs; no running panel, API process, browser
 or real environment/state is required.
 
 Initial publication is staged under the 100-file PR cap. Every PR runs this
@@ -95,7 +97,7 @@ a cycle. Require authorization, available quota and no in-flight duplicate. Foll
 
 ## Runnable panel readiness
 
-HTTP/lifecycle protection requires the published CI and provider checks listed in
+UI-foundation protection requires the published CI and provider checks listed in
 [branch protection](branch-protection.md). This phase provides no production
 build, end-to-end or visual job and does not require those application-only jobs.
 Do not add placeholder passing jobs or describe skipped checks as evidence.
@@ -105,5 +107,5 @@ production build, browser,
 accessibility, performance and visual
 evidence in coherent later work. Before any runnable panel merges, expand the
 canonical full gate and inventory, observe genuine build/e2e/visual jobs pass and
-add them to required checks. Passing this http-lifecycle phase gate cannot
+add them to required checks. Passing this ui-foundation phase gate cannot
 establish those results in advance.

@@ -252,9 +252,9 @@ test("undeclared production and linked source are not hidden by an empty import 
   await assert.rejects(checkBoundaries(directory), /symbolic links/);
 });
 
-test("the exact current http-lifecycle phase has forty-two contained production modules", async () => {
+test("the exact current ui-foundation phase has sixty-eight contained production modules", async () => {
   const result = await checkBoundaries();
-  assert.equal(result.files, 42);
+  assert.equal(result.files, 68);
   assert.deepEqual(result.violations, []);
 });
 
@@ -300,6 +300,7 @@ test("runtime adapters may import only exact declared packages contained in this
     ["src/shared/i18n/date.ts", "jalaliday", "jalaliday"],
     ["src/shared/api/client.ts", "axios", "axios"],
     ["src/shared/hooks/useReadRequest.ts", "react", "react"],
+    ["src/shared/ui/digits-input/DigitsInput.tsx", "react", "react"],
   ]) {
     const adapter = path.join(root, source);
     const target = path.join(root, "node_modules", dependency, "index.d.ts");
