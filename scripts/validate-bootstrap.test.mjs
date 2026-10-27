@@ -33,6 +33,14 @@ const policy = (overrides = {}) => ({
   schemaVersion: 1,
   ...overrides,
 });
+const isCoreAuthPhaseFile = (file) =>
+  /^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|register))\/|docs\/(?:core-auth|admin-request-reliability|adr\/|architecture|security\/authentication-review))/.test(
+    file,
+  ) ||
+  [
+    "src/features/auth/useOtpRequest.ts",
+    "src/features/auth/useOtpRequest.test.tsx",
+  ].includes(file);
 
 const foundationFiles = [
   ...coreFiles.filter((file) => file !== ".github/workflows/bootstrap.yml"),
@@ -394,12 +402,19 @@ test("runtime-localization inspects its exact non-runnable inventory", async (co
 });
 
 test("UI foundation requires the complete previous HTTP closure and forbids application composition", async (context) => {
-  const current = JSON.parse(
+  const latest = JSON.parse(
     await readFile(
       new URL("../.github/bootstrap-policy.json", import.meta.url),
       "utf8",
     ),
   );
+  const current = {
+    ...latest,
+    phase: "ui-foundation",
+    allowedFiles: latest.allowedFiles.filter(
+      (file) => !isCoreAuthPhaseFile(file),
+    ),
+  };
   assert.equal(current.phase, "ui-foundation");
   assert.equal(validateBootstrapPolicy(current).size, 169);
   const required = current.allowedFiles.filter(
@@ -447,4 +462,50 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
   assert.equal(result.applicationReady, false);
   assert.match(result.scope, /synthetic HTTP\/React tests/);
   assert.equal(result.files, 169);
+});
+
+test("core-auth preserves its complete prior closure, owners and tests without a runnable entry", async (context) => {
+  const current = JSON.parse(
+    await readFile(
+      new URL("../.github/bootstrap-policy.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.equal(current.phase, "core-auth");
+  assert.equal(validateBootstrapPolicy(current).size, 223);
+  const phaseFiles = current.allowedFiles.filter(isCoreAuthPhaseFile);
+  assert.equal(phaseFiles.length, 54);
+  for (const missing of phaseFiles)
+    assert.throws(
+      () =>
+        validateBootstrapPolicy({
+          ...current,
+          allowedFiles: current.allowedFiles.filter((file) => file !== missing),
+        }),
+      /mandatory/,
+    );
+  for (const file of [
+    "index.html",
+    "src/main.tsx",
+    "src/app/App.tsx",
+    "src/app/Routes.tsx",
+    "src/features/users/Users.tsx",
+    "src/features/login/unpublished.tsx",
+    "src/test/storybook/fixtures.ts",
+  ])
+    assert.throws(() =>
+      validateBootstrapPolicy({
+        ...current,
+        allowedFiles: [...current.allowedFiles, file],
+      }),
+    );
+  assert.throws(() =>
+    validateBootstrapPolicy({ ...current, applicationReady: true }),
+  );
+  const { root } = await fixture(context, current);
+  const result = await inspectBootstrap(root);
+  assert.equal(result.phase, "core-auth");
+  assert.equal(result.files, 223);
+  assert.equal(result.applicationReady, false);
+  assert.match(result.scope, /no application entry point/);
 });

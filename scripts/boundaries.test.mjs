@@ -252,9 +252,9 @@ test("undeclared production and linked source are not hidden by an empty import 
   await assert.rejects(checkBoundaries(directory), /symbolic links/);
 });
 
-test("the exact current ui-foundation phase has sixty-eight contained production modules", async () => {
+test("the exact core-auth phase has ninety-four contained production modules", async () => {
   const result = await checkBoundaries();
-  assert.equal(result.files, 68);
+  assert.equal(result.files, 94);
   assert.deepEqual(result.violations, []);
 });
 
@@ -301,6 +301,10 @@ test("runtime adapters may import only exact declared packages contained in this
     ["src/shared/api/client.ts", "axios", "axios"],
     ["src/shared/hooks/useReadRequest.ts", "react", "react"],
     ["src/shared/ui/digits-input/DigitsInput.tsx", "react", "react"],
+    ["src/app/providers/core/Core.tsx", "dayjs", "dayjs"],
+    ["src/app/providers/antd/Antd.tsx", "antd/locale/fa_IR", "antd"],
+    ["src/features/login/styles.ts", "antd-style", "antd-style"],
+    ["src/layouts/default/Default.tsx", "lucide-react", "lucide-react"],
   ]) {
     const adapter = path.join(root, source);
     const target = path.join(root, "node_modules", dependency, "index.d.ts");
@@ -392,6 +396,44 @@ test("pure catalog and contract modules cannot depend on the published runtime a
   }
 });
 
+test("core adapters retain exact package and erased route-vocabulary ownership", () => {
+  const localeOwner = path.join(root, "src/app/providers/antd/Antd.tsx");
+  const locale = path.join(root, "node_modules/antd/locale/fa_IR.d.ts");
+  assert.equal(
+    check("antd/locale/fa_IR", locale, localeOwner, false, "antd"),
+    undefined,
+  );
+  for (const specifier of [
+    "antd/locale/xx_XX",
+    "antd/es/internal",
+    "dayjs/locale/xx",
+  ])
+    assert.match(
+      check(specifier, locale, localeOwner, false, "antd"),
+      /not allowed/,
+    );
+  const routeOwner = path.join(root, "src/app/config/routes.ts");
+  const i18next = path.join(root, "node_modules/i18next/index.d.ts");
+  assert.equal(
+    check("i18next", i18next, routeOwner, true, "i18next"),
+    undefined,
+  );
+  assert.match(
+    check("i18next", i18next, routeOwner, false, "i18next"),
+    /not allowed/,
+  );
+  assert.match(
+    check(
+      "antd/locale/fa_IR",
+      locale,
+      path.join(root, "src/app/providers/core/Core.tsx"),
+      false,
+      "antd",
+    ),
+    /not allowed/,
+  );
+});
+
 test("HTTP package ownership, type erasure and package identity fail closed", () => {
   const client = path.join(root, "src/shared/api/client.ts");
   const axios = path.join(root, "node_modules/axios/index.d.ts");
@@ -424,6 +466,37 @@ test("HTTP package ownership, type erasure and package identity fail closed", ()
   );
   assert.match(
     check("react", reactTypes, hook, true, "@types/react"),
+    /not allowed/,
+  );
+});
+
+test("the OTP lifecycle owner admits only its exact contained runtime and erased form types", () => {
+  const owner = path.join(root, "src/features/auth/useOtpRequest.ts");
+  const react = path.join(root, "node_modules/@types/react/index.d.ts");
+  const axios = path.join(root, "node_modules/axios/index.d.ts");
+  const antd = path.join(root, "node_modules/antd/es/index.d.ts");
+  assert.equal(check("react", react, owner, false, "@types/react"), undefined);
+  assert.equal(check("axios", axios, owner, false, "axios"), undefined);
+  assert.equal(check("antd", antd, owner, true, "antd"), undefined);
+  assert.match(check("antd", antd, owner, false, "antd"), /not allowed/);
+  assert.match(
+    check("react", react, owner, true, "@types/react"),
+    /not allowed/,
+  );
+  for (const dependency of ["react-dom", "react-i18next", "axios/internal"]) {
+    assert.match(
+      check(
+        dependency,
+        path.join(root, "node_modules", dependency, "index.js"),
+        owner,
+        false,
+        dependency,
+      ),
+      /not allowed/,
+    );
+  }
+  assert.match(
+    check("axios", axios, owner, false, "synthetic-alias"),
     /not allowed/,
   );
 });

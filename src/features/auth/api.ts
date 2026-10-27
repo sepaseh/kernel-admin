@@ -28,14 +28,24 @@ export const changePassword = async (
 
 export const forgotPassword = async (
   params: ForgotPasswordParams,
+  signal?: AbortSignal,
 ): Promise<void> => {
-  return apiClient.post<void>(`${basePath}/forgot-password`, params);
+  return apiClient.post<void>(`${basePath}/forgot-password`, params, {
+    signal,
+  });
 };
 
-export const login = async (params: LoginParams): Promise<AccessTokenProps> => {
+export const login = async (
+  params: LoginParams,
+  signal?: AbortSignal,
+): Promise<AccessTokenProps> => {
   const version = getAccessTokenVersion();
-  const response = await apiClient.post<unknown>(`${basePath}/login`, params);
-  if (version !== getAccessTokenVersion()) throw new CanceledError();
+  const response = await apiClient.post<unknown>(`${basePath}/login`, params, {
+    signal,
+  });
+  if (signal?.aborted || version !== getAccessTokenVersion()) {
+    throw new CanceledError();
+  }
   const result = parseAccessToken(response);
   setAccessToken(result.accessToken);
   return result;
@@ -58,13 +68,17 @@ export const logout = (): Promise<void> => {
 
 export const register = async (
   params: RegisterParams,
+  signal?: AbortSignal,
 ): Promise<AccessTokenProps> => {
   const version = getAccessTokenVersion();
   const response = await apiClient.post<unknown>(
     `${basePath}/register`,
     params,
+    { signal },
   );
-  if (version !== getAccessTokenVersion()) throw new CanceledError();
+  if (signal?.aborted || version !== getAccessTokenVersion()) {
+    throw new CanceledError();
+  }
   const result = parseAccessToken(response);
   setAccessToken(result.accessToken);
   return result;
@@ -72,6 +86,9 @@ export const register = async (
 
 export const requestOtp = async (
   params: OtpRequestParams,
+  signal?: AbortSignal,
 ): Promise<OtpRequestProps> => {
-  return apiClient.post<OtpRequestProps>(`${basePath}/otp-request`, params);
+  return apiClient.post<OtpRequestProps>(`${basePath}/otp-request`, params, {
+    signal,
+  });
 };
