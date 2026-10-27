@@ -1,13 +1,16 @@
-# Foundation phase
+# Catalogs phase
 
 [English](bootstrap.md) · [فارسی](bootstrap.fa.md)
 
 The [publication policy](../.github/bootstrap-policy.json) declares the
-**foundation** phase with `applicationReady: false`. Its eight source files
-contain token state, transport/profile contracts, HTTP key transforms,
-color-contrast helpers and their unit tests. This scope is not a runnable panel.
+**catalogs** phase with `applicationReady: false`. It contains ten complete flat
+catalogs, their code registry, pure Persian calendar data and integrity tests,
+alongside token state, transport/profile contracts, HTTP key transforms and
+color-contrast helpers. Runtime i18next, React and date-vendor adapters are not
+published. This scope is not a runnable panel.
 See [README](../README.md) for source ownership and
-[Contributing](../CONTRIBUTING.md) for validation and review policy.
+[localization](localization.md) for catalog rules. [Contributing](../CONTRIBUTING.md)
+defines validation and review policy.
 
 ## Exact snapshot
 
@@ -57,7 +60,9 @@ browser or Windows visual checks.
 Unit tests produce `coverage/unit/lcov.info`; Node governance tests produce
 `coverage/governance/lcov.info`. Both are measured in this checkout and imported
 by [Sonar](sonarqube.md). Do not fabricate reports or describe this selected
-coverage as coverage of a full panel.
+coverage as coverage of a full panel. Catalog data and calendar integrity tests
+run inside the existing unit suite and produce measured coverage from these
+published modules.
 
 ## Hosted review
 
@@ -66,10 +71,11 @@ coverage as coverage of a full panel.
 trusted default-branch code pinned to `github.workflow_sha`. It must never execute
 PR-head code in a `pull_request_target` event.
 
-An empty initial default branch has no trusted policy workflow yet. The ordinary
-unprivileged PR CI therefore performs the read-only file-count check during the
-initial publication. Do not report the trusted default-branch guard as installed
-until it actually exists there.
+The PR-policy workflow is published on the default branch. It validates the
+100-file cap using trusted default-branch code; the ordinary unprivileged PR CI
+also performs its early read-only file-count check. Verify actual hosted results
+for the proposed head instead of treating the workflow's presence as execution
+evidence.
 
 CodeRabbit reviews are manual-only. Before requesting one, complete
 [the latest-head preflight](../CONTRIBUTING.md#before-requesting-coderabbit): every
@@ -83,14 +89,15 @@ a cycle. Require authorization, available quota and no in-flight duplicate. Foll
 
 ## Runnable panel readiness
 
-Foundation protection requires the published CI and provider checks listed in
+Catalog-phase protection requires the published CI and provider checks listed in
 [branch protection](branch-protection.md). This phase provides no production
 build, end-to-end or visual job and does not require those application-only jobs.
 Do not add placeholder passing jobs or describe skipped checks as evidence.
 
-Introduce the actual React/Vite panel, HTTP integration, complete catalogs,
-component tests, production build, browser, accessibility, performance and visual
+Introduce the actual React/Vite panel, HTTP integration, runtime localization
+adapters and their integration tests, component tests, production build, browser,
+accessibility, performance and visual
 evidence in coherent later work. Before any runnable panel merges, expand the
 canonical full gate and inventory, observe genuine build/e2e/visual jobs pass and
-add them to required checks. Passing this foundation gate cannot
+add them to required checks. Passing this pure-data phase gate cannot
 establish those results in advance.

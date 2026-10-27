@@ -1,23 +1,34 @@
-# Kernel Admin foundation instructions
+# Kernel Admin catalog instructions
 
 Read [README](README.md), [Contributing](CONTRIBUTING.md), the current
 [publication inventory](.github/bootstrap-policy.json) and the canonical
 [validation manifest](.agents/validation.json) before changes.
 
-This standalone npm project currently publishes framework-free admin primitives:
-in-memory access-token state, HTTP key transforms, color-contrast helpers and
-small shared contracts. Keep these modules independent of another checkout,
+This standalone npm project's catalogs phase publishes framework-free admin
+primitives and ten complete flat translation catalogs, their local code registry
+and pure Persian calendar data. Keep these modules independent of another checkout,
 backend SDKs and UI initialization. The API owns authentication execution,
 database access and storage.
 
-The foundation has `applicationReady: false`. Do not claim a working panel,
+Read [localization](docs/localization.md) before changing catalogs. Keep one
+code-named catalog per registered language, root string messages, complete keys
+and i18next interpolation parity; do not add common objects or compatibility aliases.
+Leaf catalog files, locales.ts and dayjs/fa.ts may import only fully erased local
+types. Do not load fallback data through runtime imports/re-exports, dynamic imports
+or require. Only catalogs.ts may load the canonical local catalog objects at runtime.
+The code list selects catalogs only. The API owns active language, direction,
+calendar and names; future runtime adapters must consume that metadata without
+persisting a visitor language choice or inferring direction/calendar from a code.
+Runtime i18next/React/date adapters are not published in this phase.
+
+The catalogs phase has `applicationReady: false`. Do not claim a working panel,
 production build, browser journey or visual check from these unit tests. A
 runnable phase must introduce the React/Vite application and its complete
 validation, preserving Ant Design, antd-style, React Router, Axios and directly
 typed component parameters without FC aliases.
 
-Required checks follow the published phase: the foundation requires `check`,
-`SonarQube Cloud analysis`, `SonarCloud Code Analysis` and `CodeRabbit`. Before
+Required checks follow the published phase: the catalogs phase requires `check`,
+`PR file limit`, `SonarQube Cloud analysis`, `SonarCloud Code Analysis` and `CodeRabbit`. Before
 any runnable panel merges, introduce real build/e2e/visual jobs, expand the full
 canonical gate, observe those jobs pass and add them to required checks. Do not
 substitute placeholder jobs or skipped checks for application evidence.

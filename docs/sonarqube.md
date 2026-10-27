@@ -33,12 +33,44 @@ work to create a baseline.
 [sonar-project.properties](../sonar-project.properties) analyzes published `src`
 and `scripts`, classifies test files separately and imports two real reports:
 `coverage/unit/lcov.info` and `coverage/governance/lcov.info`. The workflow
-generates both from the same checked-out revision. They cover the foundation
-primitives and tooling, not React screens, HTTP integration or a complete panel.
+generates both from the same checked-out revision. They cover the published
+catalogs, pure Persian calendar data, primitives and tooling. They do not cover
+React screens, runtime localization adapters, HTTP integration or a complete panel.
 
 Retain source/security analysis and honest coverage. Do not exclude code or
 weaken a quality gate to hide a failure. Review actual findings and correct real
 defects before rerunning affected checks.
+
+## Static catalog data and label findings
+
+The first catalog PR analysis reported **66.5% duplicated lines on new code**.
+The ten complete language records intentionally repeat the same required key
+schema with different translated values. This data repetition is not duplicated
+runtime logic, and removing it through English spreads or fallback catalogs would
+break local translation ownership.
+
+The authorized duplication-only exception is exactly
+`sonar.cpd.exclusions=src/shared/i18n/locales/*.ts`, covering only the ten language
+data files. It does not exclude these files from source or
+security analysis, tests or measured coverage. Registry code, locale metadata,
+Persian calendar data and all other source remain in duplication analysis. The
+catalog AST regression requires each excluded leaf module to contain only its
+flat literal string object, fully erased type imports and type aliases; executable
+helpers, spreads, computed values and initialization calls are forbidden. Keep
+that regression when changing this exception and verify a fresh provider result.
+
+Sonar classifies the `typescript:S2068` finding `AaF5MEhhW1T9WAfdDDLs` on the
+Spanish catalog's
+[`password: "Contraseña"` label](../src/shared/i18n/locales/es.ts#L65) as
+**False Positive**, under separate explicit user authorization. The value is
+visible UI text, not an authentication credential. The translation is unchanged;
+no security-rule suppression or source/coverage exclusion was added. This
+classification applies only to this exact literal-label finding and does not
+authorize classifying other issues. Before requesting CodeRabbit, verify a fresh
+report for the exact current head with zero open/unresolved issues and a passing
+actual quality gate.
+
+## Review readiness
 
 Before any CodeRabbit request, require every non-CodeRabbit required check for the
 published phase to pass for the latest head, including the scanner and
@@ -52,7 +84,7 @@ new commits invalidate preflight. Follow
 authorization, actual quota and no duplicate in-flight request for the same head.
 CodeRabbit's own check/approval is excluded only from preflight to avoid a cycle.
 
-Foundation protection follows its published scope and requires the CI/provider
+Catalog-phase protection follows its published scope and requires the CI/provider
 contexts in [branch protection](branch-protection.md). Before any runnable panel
 merges, real build/e2e/visual jobs must pass and become required checks, with the
 canonical full gate expanded. Phase alignment does not waive scanner execution,
@@ -80,6 +112,6 @@ branch for credentialed analysis. Local tests do not contact SonarQube Cloud or
 copy another repository's token.
 
 Follow [branch protection](branch-protection.md) and the
-[foundation scope](bootstrap.md). See the
+[published scope](bootstrap.md). See the
 [official scanner](https://github.com/SonarSource/sonarqube-scan-action) and
 [analysis-method documentation](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/automatic-analysis).

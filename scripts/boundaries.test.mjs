@@ -12,8 +12,8 @@ import {
 
 const root = path.resolve("synthetic-foundation");
 const file = path.join(root, "src/shared/api/token.ts");
-const check = (specifier, resolved, source = file) =>
-  boundaryViolation({ root, file: source, specifier, resolved });
+const check = (specifier, resolved, source = file, typeOnly = false) =>
+  boundaryViolation({ root, file: source, specifier, resolved, typeOnly });
 
 test("captures static, erased, re-export, dynamic, require and computed import edges", () => {
   const edges = inspectImports(
@@ -33,6 +33,10 @@ test("captures static, erased, re-export, dynamic, require and computed import e
     ],
   );
   assert.equal(edges[0].line, 1);
+  assert.deepEqual(
+    edges.map((edge) => edge.typeOnly),
+    [false, true, true, true, false, false, false, false],
+  );
 });
 
 test("production imports cannot target packages or builtins even through erased types", () => {
@@ -85,6 +89,77 @@ test("wire contracts cannot import other published infrastructure", () => {
     /pure contract modules/,
   );
   assert.equal(check("./index.ts", contract, contract), undefined);
+});
+
+test("catalog data resolves only to its own published pure local modules", () => {
+  const catalog = path.join(root, "src/shared/i18n/catalogs.ts");
+  const english = path.join(root, "src/shared/i18n/locales/en.ts");
+  assert.equal(check("./locales/en.ts", english, catalog), undefined);
+  assert.equal(
+    check(
+      "./en.ts",
+      english,
+      path.join(root, "src/shared/i18n/locales/fa.ts"),
+      true,
+    ),
+    undefined,
+  );
+  assert.match(
+    check("../api/token.ts", file, catalog),
+    /Catalog data must depend only/,
+  );
+  for (const runtime of ["index.ts", "date.ts"])
+    assert.match(
+      check(
+        `./${runtime}`,
+        path.join(root, "src/shared/i18n", runtime),
+        catalog,
+      ),
+      /published production modules/,
+    );
+  for (const dependency of ["react", "i18next", "dayjs", "@kernel/i18n"])
+    assert.match(
+      check(dependency, english, catalog),
+      /packages and Node builtins/,
+    );
+});
+
+test("catalog data cannot import English runtime fallback through static, dynamic or require forms", () => {
+  const english = path.join(root, "src/shared/i18n/locales/en.ts");
+  const persian = path.join(root, "src/shared/i18n/locales/fa.ts");
+  for (const syntax of [
+    'import { en } from "./en.ts";',
+    'import { type TranslationCatalog } from "./en.ts";',
+    'export { en } from "./en.ts";',
+    'const english = import("./en.ts");',
+    'const english = require("./en.ts");',
+    'import english = require("./en.ts");',
+  ]) {
+    const [edge] = inspectImports(syntax);
+    assert.match(
+      check(edge.specifier, english, persian, edge.typeOnly),
+      /fully erased type references/,
+    );
+  }
+  for (const syntax of [
+    'import type { TranslationCatalog } from "./en.ts";',
+    'export type { TranslationCatalog } from "./en.ts";',
+    'type Catalog = import("./en.ts").TranslationCatalog;',
+    'import type Catalog = require("./en.ts");',
+  ]) {
+    const [edge] = inspectImports(syntax);
+    assert.equal(
+      check(edge.specifier, english, persian, edge.typeOnly),
+      undefined,
+    );
+  }
+  for (const source of [
+    path.join(root, "src/shared/i18n/locales.ts"),
+    path.join(root, "src/shared/i18n/dayjs/fa.ts"),
+  ]) {
+    assert.match(check("./locales/en.ts", english, source), /fully erased/);
+    assert.equal(check("./locales/en.ts", english, source, true), undefined);
+  }
 });
 
 const fixture = async (context) => {
@@ -164,9 +239,9 @@ test("undeclared production and linked source are not hidden by an empty import 
   await assert.rejects(checkBoundaries(directory), /symbolic links/);
 });
 
-test("the exact current foundation has five contained production modules", async () => {
+test("the exact current catalog phase has eighteen contained production modules", async () => {
   const result = await checkBoundaries();
-  assert.equal(result.files, 5);
+  assert.equal(result.files, 18);
   assert.deepEqual(result.violations, []);
 });
 

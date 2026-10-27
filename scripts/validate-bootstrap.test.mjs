@@ -53,6 +53,21 @@ const foundationPolicy = (overrides = {}) =>
     phase: "foundation",
     ...overrides,
   });
+const catalogFiles = [
+  "src/shared/i18n/catalogs.ts",
+  "src/shared/i18n/catalogs.test.ts",
+  "src/shared/i18n/locales.ts",
+  "src/shared/i18n/dayjs/fa.ts",
+  ...["ar", "de", "en", "es", "fa", "fr", "it", "pt", "ru", "tr"].map(
+    (code) => `src/shared/i18n/locales/${code}.ts`,
+  ),
+];
+const catalogPolicy = (overrides = {}) =>
+  foundationPolicy({
+    phase: "catalogs",
+    allowedFiles: [...foundationFiles, ...catalogFiles],
+    ...overrides,
+  });
 
 const fixture = async (context, declaredPolicy = policy()) => {
   const parent = path.resolve(os.tmpdir());
@@ -195,6 +210,68 @@ test("foundation allows its pure source and toolchain, while rejecting runnable 
       ),
     /mandatory/,
   );
+});
+
+test("catalog publication requires every language, registry, calendar-data and test file", () => {
+  assert.equal(
+    validateBootstrapPolicy(catalogPolicy()).size,
+    foundationFiles.length + catalogFiles.length,
+  );
+  for (const missing of catalogFiles)
+    assert.throws(
+      () =>
+        validateBootstrapPolicy(
+          catalogPolicy({
+            allowedFiles: [...foundationFiles, ...catalogFiles].filter(
+              (file) => file !== missing,
+            ),
+          }),
+        ),
+      /mandatory guard files/,
+    );
+});
+
+test("catalog publication cannot admit runtime adapters, split catalogs or unrelated application source", () => {
+  for (const file of [
+    "src/shared/i18n/index.ts",
+    "src/shared/i18n/date.ts",
+    "src/shared/i18n/common.ts",
+    "src/shared/i18n/locales/fa/common.ts",
+    "src/shared/i18n/locales/xx.ts",
+    "src/features/settings/api.ts",
+    "src/main.tsx",
+  ])
+    assert.throws(() =>
+      validateBootstrapPolicy(
+        catalogPolicy({
+          allowedFiles: [...foundationFiles, ...catalogFiles, file],
+        }),
+      ),
+    );
+  assert.throws(() =>
+    validateBootstrapPolicy(catalogPolicy({ applicationReady: true })),
+  );
+  for (const file of catalogFiles)
+    assert.throws(() =>
+      validateBootstrapPolicy(
+        foundationPolicy({ allowedFiles: [...foundationFiles, file] }),
+      ),
+    );
+});
+
+test("catalog publication inspects its exact non-runnable snapshot and ignores only ordinary generated directories", async (context) => {
+  const { root, put } = await fixture(context, catalogPolicy());
+  await mkdir(path.join(root, "node_modules"));
+  await mkdir(path.join(root, "coverage"));
+  assert.deepEqual(await inspectBootstrap(root), {
+    applicationReady: false,
+    files: foundationFiles.length + catalogFiles.length,
+    phase: "catalogs",
+    scope:
+      "Published admin primitives and complete local catalog data; runtime translation adapters, UI, API integration and browser behavior are not published or validated.",
+  });
+  await put("src/shared/i18n/common.ts", "// undeclared source\n");
+  await assert.rejects(inspectBootstrap(root), /Unexpected bootstrap path/);
 });
 
 test("the 100-file limit applies to a PR delta rather than the total published inventory", () => {

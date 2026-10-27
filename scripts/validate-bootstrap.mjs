@@ -42,11 +42,24 @@ const foundationSources = new Set([
   "src/shared/lib/color-contrast.test.ts",
 ]);
 const isFoundationSource = (file) => foundationSources.has(file);
+const catalogFiles = [
+  "src/shared/i18n/catalogs.ts",
+  "src/shared/i18n/catalogs.test.ts",
+  "src/shared/i18n/locales.ts",
+  "src/shared/i18n/dayjs/fa.ts",
+  ...["ar", "de", "en", "es", "fa", "fr", "it", "pt", "ru", "tr"].map(
+    (code) => `src/shared/i18n/locales/${code}.ts`,
+  ),
+];
+const publishedSource = (file, phase) =>
+  phase !== "governance" &&
+  (isFoundationSource(file) ||
+    (phase === "catalogs" && catalogFiles.includes(file)));
 
 export const validateBootstrapPolicy = (policy) => {
   if (
     policy?.schemaVersion !== 1 ||
-    !["governance", "foundation"].includes(policy.phase) ||
+    !["governance", "foundation", "catalogs"].includes(policy.phase) ||
     policy.applicationReady !== false ||
     policy.maximumChangedFiles !== 100 ||
     !Array.isArray(policy.allowedFiles) ||
@@ -65,8 +78,7 @@ export const validateBootstrapPolicy = (policy) => {
         file,
       ) ||
       file === "drizzle.config.ts" ||
-      (file.startsWith("src/") &&
-        (policy.phase !== "foundation" || !isFoundationSource(file))) ||
+      (file.startsWith("src/") && !publishedSource(file, policy.phase)) ||
       (policy.phase === "governance" &&
         /^package(?:-lock)?\.json$/.test(file)) ||
       /(?:^|\/)(?:\.env(?:\.|$)|settings\.local\.json$)/.test(file) ||
@@ -80,9 +92,10 @@ export const validateBootstrapPolicy = (policy) => {
   }
   const requiredFiles = [
     ...coreFiles,
-    ...(policy.phase === "foundation"
-      ? foundationFiles
-      : [".github/workflows/bootstrap.yml"]),
+    ...(policy.phase === "governance"
+      ? [".github/workflows/bootstrap.yml"]
+      : foundationFiles),
+    ...(policy.phase === "catalogs" ? catalogFiles : []),
   ];
   if (requiredFiles.some((file) => !files.has(file)))
     throw new Error(
@@ -119,7 +132,7 @@ export const inspectBootstrap = async (root) => {
         const relative = directory ? `${directory}/${entry.name}` : entry.name;
         if (relative === ".git") return;
         if (
-          policy.phase === "foundation" &&
+          policy.phase !== "governance" &&
           ["node_modules", "coverage"].includes(relative)
         ) {
           if (entry.isSymbolicLink() || !entry.isDirectory())
@@ -167,14 +180,19 @@ export const inspectBootstrap = async (root) => {
       }
     }),
   );
+  const scopeByPhase = {
+    governance:
+      "Published governance files only; the admin application is not published or validated.",
+    foundation:
+      "Published admin token state, transport types and pure utilities only; UI, API integration and browser behavior are not published or validated.",
+    catalogs:
+      "Published admin primitives and complete local catalog data; runtime translation adapters, UI, API integration and browser behavior are not published or validated.",
+  };
   return {
     applicationReady: false,
     files: found.size,
     phase: policy.phase,
-    scope:
-      policy.phase === "foundation"
-        ? "Published admin token state, transport types and pure utilities only; UI, API integration and browser behavior are not published or validated."
-        : "Published governance files only; the admin application is not published or validated.",
+    scope: scopeByPhase[policy.phase],
   };
 };
 

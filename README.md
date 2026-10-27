@@ -2,8 +2,8 @@
 
 [English](README.md) · [فارسی](README.fa.md)
 
-Kernel Admin is a standalone TypeScript project. The current **foundation**
-phase publishes admin primitives and their tests. `applicationReady` is
+Kernel Admin is a standalone TypeScript project. The current **catalogs**
+phase publishes pure localization data, admin primitives and their tests. `applicationReady` is
 **false**: this snapshot does not provide a runnable management panel.
 
 ## Current scope
@@ -17,6 +17,11 @@ phase publishes admin primitives and their tests. `applicationReady` is
   between camel case and snake case.
 - [Contrast helpers](src/shared/lib/color-contrast.ts) calculate readable display
   colors without changing persisted theme choices.
+- [Catalogs](src/shared/i18n/catalogs.ts) register one complete flat object for
+  each of the ten [local codes](src/shared/i18n/locales.ts), with 110 root messages
+  per language. [Persian calendar data](src/shared/i18n/dayjs/fa.ts) stays separate
+  from UI messages. Read [localization](docs/localization.md) for ownership and
+  integrity checks.
 
 Key transforms rename plain-object keys and omit null object fields. Their result
 is `unknown`; validate and narrow it to the expected HTTP contract before use.
@@ -32,7 +37,8 @@ meet every surface's target, it returns the best available shade on those paths.
 
 The toolchain has development dependencies and no runtime dependencies. This
 phase contains no React screens, Ant Design components, API client, server or
-browser fixtures. The separate API owns authentication, database and storage.
+browser fixtures or runtime i18next/date adapters. The separate API owns
+authentication, database and storage, plus active language, direction and calendar.
 
 ## Install and validate
 
@@ -51,18 +57,18 @@ synthetic values and require no environment file, running API or browser.
 
 The two test runs produce real `coverage/unit/lcov.info` and
 `coverage/governance/lcov.info` from this checkout. These reports cover the
-published primitives and repository tooling; they are not complete panel
+published catalogs, calendar data, primitives and repository tooling; they are not complete panel
 coverage. Generated reports are not committed. See [Sonar setup](docs/sonarqube.md).
 
 ## Contribute
 
 Read [Contributing](CONTRIBUTING.md) and the
-[foundation guide](docs/bootstrap.md). Keep each PR at **100 or fewer GitHub
+[publication guide](docs/bootstrap.md). Keep each PR at **100 or fewer GitHub
 changed-file entries** and validate the exact proposed revision.
 
 Use native CI, CodeRabbit and SonarQube Cloud checks with
 [branch protection](docs/branch-protection.md). Configuration is not evidence of
-a completed hosted check. Foundation protection requires its published CI and
+a completed hosted check. Catalog-phase protection requires its published CI and
 provider checks. Before any runnable panel merges, genuine build, end-to-end and
 visual jobs must pass and become required checks, and the canonical full gate
 must expand to cover the application.
