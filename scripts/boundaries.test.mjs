@@ -84,6 +84,7 @@ test("only resolved published production modules are valid local targets", () =>
   for (const target of [
     undefined,
     path.join(root, "src/shared/api/token.test.ts"),
+    path.join(root, "src/features/users/Users.stories.tsx"),
     path.join(root, "src/shared/api/unpublished.ts"),
     path.resolve(root, "../another-project/src/shared/api/types.ts"),
   ])
@@ -252,10 +253,33 @@ test("undeclared production and linked source are not hidden by an empty import 
   await assert.rejects(checkBoundaries(directory), /symbolic links/);
 });
 
-test("the exact business-screens phase contains all measured production modules", async () => {
+test("the Storybook phase retains all measured production modules", async () => {
   const result = await checkBoundaries();
   assert.equal(result.files, 118);
   assert.deepEqual(result.violations, []);
+});
+
+test("browser stories are test-only and cannot conceal production modules or become production imports", async (context) => {
+  const { directory, put } = await fixture(context);
+  await put(
+    "src/shared/api/Example.stories.tsx",
+    "export const Synthetic = {};\n",
+  );
+  assert.equal((await checkBoundaries(directory)).files, 1);
+  await put(
+    "src/shared/api/Example.stories.ts",
+    "export const production = true;\n",
+  );
+  assert.match(
+    (await checkBoundaries(directory)).violations.join("\n"),
+    /Unpublished production module/,
+  );
+  await rm(path.join(directory, "src/shared/api/Example.stories.ts"));
+  await put("src/shared/api/token.ts", 'import "./Example.stories.tsx";\n');
+  assert.match(
+    (await checkBoundaries(directory)).violations.join("\n"),
+    /published production modules/,
+  );
 });
 
 test("relative and linked checkout roots use the same canonical production boundary", async (context) => {

@@ -9,6 +9,7 @@ import {
   Form,
   Row,
   Select,
+  theme as antdTheme,
 } from "antd";
 import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -42,6 +43,7 @@ const loadSettings = async (signal: AbortSignal) => {
 
 export const SettingsPage = () => {
   const { t } = useTranslation();
+  const { token } = antdTheme.useToken();
   const { messageAPI, modalAPI } = useAntd();
   const { acceptSettings, user } = useCore();
   const { canUpdate } = getRoutePermissions("settings", user);
@@ -178,6 +180,7 @@ export const SettingsPage = () => {
                           format="hex"
                           showText
                           style={{ width: "100%" }}
+                          styles={{ description: { color: token.colorText } }}
                         />
                       </Form.Item>
                     ))}

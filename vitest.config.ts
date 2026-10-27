@@ -11,11 +11,12 @@ export default defineConfig({
     env: {
       VITE_API_BASE_URL: "http://localhost",
       VITE_OBSERVABILITY_URL: "",
-      VITE_RELEASE_ID: "synthetic-business-screens",
+      VITE_RELEASE_ID: "synthetic-storybook-verification",
     },
     setupFiles: ["./src/test/http-setup.ts", "./src/test/setup.ts"],
     environmentOptions: { jsdom: { url: "http://localhost/" } },
     include: [
+      ".storybook/request-guard.test.ts",
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
       "scripts/run-audit.test.mjs",

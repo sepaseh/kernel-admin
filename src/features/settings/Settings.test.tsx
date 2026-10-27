@@ -256,3 +256,16 @@ it("ignores a rethrown save error after leaving before its consumer continuation
   expect(mocks.messageError).not.toHaveBeenCalled();
   expect(mocks.acceptSettings).not.toHaveBeenCalled();
 });
+
+it("keeps read-only palette values visible without opening editing or submitting", async () => {
+  mocks.canUpdate = false;
+  const { user } = render(<SettingsPage />);
+  const paletteValues = await screen.findAllByText("#FFFFFF");
+
+  expect(screen.getByRole("button", { name: "submit" })).toBeDisabled();
+  await user.click(paletteValues[0]);
+  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "submit" }));
+  expect(mocks.modalConfirm).not.toHaveBeenCalled();
+  expect(updateApplicationSettings).not.toHaveBeenCalled();
+});

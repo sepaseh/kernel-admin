@@ -54,6 +54,14 @@ const isBusinessPhaseFile = (file) =>
         file,
       );
 
+const isStorybookPhaseFile = (file) =>
+  file.startsWith(".storybook/") ||
+  file.endsWith(".stories.tsx") ||
+  file === "vitest.storybook.config.ts" ||
+  /^(?:docs\/storybook-verification(?:\.fa)?\.md|src\/test\/storybook\/(?:StoryAppearance\.ts|StoryShell\.test\.tsx))$/.test(
+    file,
+  );
+
 const foundationFiles = [
   ...coreFiles.filter((file) => file !== ".github/workflows/bootstrap.yml"),
   ".agents/validation.json",
@@ -424,7 +432,10 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
     ...latest,
     phase: "ui-foundation",
     allowedFiles: latest.allowedFiles.filter(
-      (file) => !isCoreAuthPhaseFile(file) && !isBusinessPhaseFile(file),
+      (file) =>
+        !isCoreAuthPhaseFile(file) &&
+        !isBusinessPhaseFile(file) &&
+        !isStorybookPhaseFile(file),
     ),
   };
   assert.equal(current.phase, "ui-foundation");
@@ -487,7 +498,7 @@ test("core-auth preserves its complete prior closure, owners and tests without a
     ...latest,
     phase: "core-auth",
     allowedFiles: latest.allowedFiles.filter(
-      (file) => !isBusinessPhaseFile(file),
+      (file) => !isBusinessPhaseFile(file) && !isStorybookPhaseFile(file),
     ),
   };
   assert.equal(current.phase, "core-auth");
@@ -530,12 +541,19 @@ test("core-auth preserves its complete prior closure, owners and tests without a
 });
 
 test("business screens require the complete prior closure and all guarded form modules without application or Storybook composition", async (context) => {
-  const current = JSON.parse(
+  const latest = JSON.parse(
     await readFile(
       new URL("../.github/bootstrap-policy.json", import.meta.url),
       "utf8",
     ),
   );
+  const current = {
+    ...latest,
+    phase: "business-screens",
+    allowedFiles: latest.allowedFiles.filter(
+      (file) => !isStorybookPhaseFile(file),
+    ),
+  };
   assert.equal(current.phase, "business-screens");
   assert.equal(
     validateBootstrapPolicy(current).size,
@@ -578,4 +596,50 @@ test("business screens require the complete prior closure and all guarded form m
   assert.equal(result.phase, "business-screens");
   assert.equal(result.applicationReady, false);
   assert.match(result.scope, /no application entry point/);
+});
+
+test("Storybook verification requires every explicit story, isolated configuration and browser fixture without publishing an application", async (context) => {
+  const current = JSON.parse(
+    await readFile(
+      new URL("../.github/bootstrap-policy.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.equal(current.phase, "storybook-verification");
+  const required = current.allowedFiles.filter(isStorybookPhaseFile);
+  assert.equal(required.length, 37);
+  for (const missing of required) {
+    assert.throws(
+      () =>
+        validateBootstrapPolicy({
+          ...current,
+          allowedFiles: current.allowedFiles.filter((file) => file !== missing),
+        }),
+      /mandatory/,
+    );
+  }
+  for (const file of [
+    "index.html",
+    "src/main.tsx",
+    "src/app/App.tsx",
+    "src/app/Routes.tsx",
+    "src/features/users/Unpublished.stories.tsx",
+    ".storybook/ambient.ts",
+    "src/test/storybook/ambient.ts",
+    "vite.config.ts",
+  ]) {
+    const invalid = {
+      ...current,
+      allowedFiles: [...current.allowedFiles, file],
+    };
+    assert.throws(() => validateBootstrapPolicy(invalid));
+  }
+  assert.throws(() =>
+    validateBootstrapPolicy({ ...current, applicationReady: true }),
+  );
+  const { root } = await fixture(context, current);
+  const result = await inspectBootstrap(root);
+  assert.equal(result.files, current.allowedFiles.length);
+  assert.equal(result.applicationReady, false);
+  assert.match(result.scope, /real Chromium component interactions/);
 });

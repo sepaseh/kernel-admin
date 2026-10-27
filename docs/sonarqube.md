@@ -30,13 +30,13 @@ work to create a baseline.
 
 ## Scope and evidence
 
-[sonar-project.properties](../sonar-project.properties) analyzes published `src`
-and `scripts`, classifies test files separately and imports two real reports:
+[sonar-project.properties](../sonar-project.properties) analyzes published `src`,
+`scripts` and `.storybook`, classifies test files separately and imports two real reports:
 `coverage/unit/lcov.info` and `coverage/governance/lcov.info`. The workflow
 generates both from the same checked-out revision. They cover the published
 catalogs, real translation/date runtime adapters, pure Persian calendar data,
 HTTP feature adapters, session races, lifecycle hooks, Core/Ant Design providers, authentication forms, layouts, access/navigation metadata, Ant Design widgets, theme/preferences/observability adapters, primitives and tooling. Provider/form/layout tests use synthetic HTTP/jsdom fixtures; see [Core and authentication](core-auth.md). Real font and vector-asset validation runs in the same required unit suite; see [UI foundation](ui-foundation.md).
-Test support under src/test is classified as test code, alongside *.test.ts and *.test.tsx;
+Test support under src/test and .storybook, plus registered *.stories.tsx modules, is classified as test code, alongside *.test.ts and *.test.tsx;
 production modules remain analyzed and measured. The application entry point, App/Routes composition, production backend/browser integration and a complete panel remain outside this phase.
 
 Retain source/security analysis and honest coverage. Do not exclude code or
@@ -86,7 +86,7 @@ new commits invalidate preflight. Follow
 authorization, actual quota and no duplicate in-flight request for the same head.
 CodeRabbit's own check/approval is excluded only from preflight to avoid a cycle.
 
-Core-auth protection follows its published scope and requires the CI/provider
+Storybook-verification protection follows its published scope and requires the CI/provider
 contexts in [branch protection](branch-protection.md). Before any runnable panel
 merges, real build/e2e/visual jobs must pass and become required checks, with the
 canonical full gate expanded. Phase alignment does not waive scanner execution,
@@ -118,4 +118,4 @@ Follow [branch protection](branch-protection.md) and the
 [official scanner](https://github.com/SonarSource/sonarqube-scan-action) and
 [analysis-method documentation](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/automatic-analysis).
 
-[Business screen/form modules](business-screens.md) and the shared mutation guard are included in production analysis and measured coverage. Their React tests use synthetic jsdom; no Storybook/browser result is claimed.
+[Business screen/form modules](business-screens.md) and the shared mutation guard are included in production analysis and measured coverage. Their React tests use synthetic jsdom. [Storybook verification](storybook-verification.md) adds required static workshop build and real Chromium play/accessibility checks across all registered stories, with synthetic API fixtures. Those results are separate from unit/governance LCOV and do not establish production backend integration or a complete application E2E journey. No production source, security, coverage or duplication exclusion is authorized by the browser suite. Matching test inclusions/source exclusions classify test code once rather than hiding production modules.

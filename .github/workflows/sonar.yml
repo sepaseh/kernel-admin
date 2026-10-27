@@ -39,10 +39,9 @@ jobs:
       - name: Verify the exact declared publication snapshot
         run: node scripts/validate-bootstrap.mjs
       - run: npm ci
-      - name: Measure coverage for published source, catalogs and tooling
-        run: |
-          npm run test:coverage
-          npm run test:governance
+      - run: npm run browser:install
+      - name: Validate the complete published scope and measured coverage
+        run: npm run validate -- full
       - name: Analyze published source and measured coverage
         uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         env:

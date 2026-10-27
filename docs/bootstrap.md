@@ -1,9 +1,9 @@
-# Business screen and form phase
+# Storybook verification phase
 
 [English](bootstrap.md) · [فارسی](bootstrap.fa.md)
 
 The [publication policy](../.github/bootstrap-policy.json) declares the
-**business-screens** phase with `applicationReady: false`. It contains ten complete flat
+**storybook-verification** phase with `applicationReady: false`. It contains ten complete flat
 catalogs, their code registry, pure Persian calendar data and integrity tests,
 alongside token state, transport/profile contracts, HTTP key transforms and
 color-contrast helpers. The real i18next/react-i18next adapter initializes fixed Persian bootstrap
@@ -18,14 +18,15 @@ See [README](../README.md) for source ownership and
 [localization](localization.md) for catalog rules. [Contributing](../CONTRIBUTING.md)
 defines validation and review policy.
 
-The phase also publishes [UI foundation](ui-foundation.md): seven Ant Design widgets, theme/preferences/observability adapters, route-back behavior and six validated local assets. [Core and authentication](core-auth.md) adds Core/Ant Design providers, typed access/navigation metadata, authentication forms and layout modules. [Business screens](business-screens.md) adds account, users/roles, settings, calendar and a dashboard frame with guarded mutation and permission checks. Its 266-file exact inventory contains 118 production modules; the independent PR delta remains limited to 100 files. No application entry point or App/Routes composition is published.
+The phase also publishes [UI foundation](ui-foundation.md): seven Ant Design widgets, theme/preferences/observability adapters, route-back behavior and six validated local assets. [Core and authentication](core-auth.md) adds Core/Ant Design providers, typed access/navigation metadata, authentication forms and layout modules. [Business screens](business-screens.md) adds account, users/roles, settings, calendar and a dashboard frame with guarded mutation and permission checks. [Storybook verification](storybook-verification.md) adds all registered component stories, complete synthetic API owner mocks, a static workshop build and real Chromium play/accessibility checks. The policy owns the exact maintained file inventory; the independent PR delta remains limited to 100 files. No application entry point or App/Routes composition is published.
 
 ## Exact snapshot
 
 The inventory guard requires the exact declared maintained files and rejects
-unexpected source, private paths and symbolic links. Only ordinary root
-`node_modules` and `coverage` directories, plus Git metadata, are outside the
-maintained inventory. Do not use ambient untracked application files to make a
+unexpected source, private paths and symbolic links. Only explicitly declared generated
+directories, including root `node_modules` and `coverage`, plus Git metadata, are outside
+the maintained inventory. Static Storybook output belongs under `coverage/storybook-static`.
+Do not use ambient untracked application files to make a
 partial publication appear complete.
 
 The inventory may grow beyond 100 files. The separate **100-file PR cap** applies
@@ -38,14 +39,18 @@ Use [`.nvmrc`](../.nvmrc), the Node range in
 
 ```sh
 npm ci
+npm run browser:install
 npm run validate -- full
 ```
 
 The [canonical manifest](../.agents/validation.json) defines the complete
-current-phase gate. Its nine required checks cover the exact inventory, semantic CI policy, audit, source boundaries,
-types, lint, formatting and both test runs. Vitest runs in Node with environment
-file discovery disabled; provider, form, layout, widget, hook, preference and asset tests use isolated jsdom. Tests use synthetic inputs; no running panel, API process, browser
-or real environment/state is required.
+current-phase gate. Its eleven required checks cover the exact inventory, semantic CI policy, audit, source boundaries,
+types, lint, formatting, both measured test runs, `build-storybook` and `test:storybook`.
+Unit tests use Node or isolated jsdom with environment-file discovery disabled.
+Storybook uses its dedicated Vite configuration, complete synthetic feature/client
+mocks and real headless Chromium. All registered stories run their play assertions
+and accessibility audits with violations treated as errors. No running panel,
+API process or real environment/state is required.
 
 Initial publication is staged under the 100-file PR cap. Every PR runs this
 complete published-scope gate through the same `npm run validate -- full` command
@@ -57,13 +62,13 @@ development helpers; application checks join the complete gate when their source
 is published, before any runnable panel merges.
 
 The CI policy check parses YAML with unique mapping keys and requires one
-unconditional `npm ci` before one unconditional canonical full run. It rejects
+unconditional `npm ci`, then `npm run browser:install`, before one unconditional canonical full run. It rejects
 PR path/branch filters, omitted lifecycle events, conditional or advisory check
 execution, non-root working directories and shell overrides. Other conditional
 steps such as the PR-size guard or artifact upload do not make validation optional.
-The current policy allows only the `check` job for full-profile checks; introduce
-job-aware validation and update this policy explicitly before adding build,
-browser or Windows visual checks.
+The current policy keeps all eleven checks, including Storybook build/browser
+verification, in `check`. Introduce job-aware validation and update this policy
+explicitly before adding separate application or Windows visual jobs.
 
 Unit tests produce `coverage/unit/lcov.info`; Node governance tests produce
 `coverage/governance/lcov.info`. Both are measured in this checkout and imported
@@ -97,14 +102,15 @@ a cycle. Require authorization, available quota and no in-flight duplicate. Foll
 
 ## Runnable panel readiness
 
-Core-auth protection requires the published CI and provider checks listed in
-[branch protection](branch-protection.md). This phase provides no production
-build, end-to-end or visual job and does not require those application-only jobs.
+Storybook-verification protection requires the published CI and provider checks listed in
+[branch protection](branch-protection.md). Static workshop build and isolated component
+browser/a11y checks run within `check`; they are not a production panel build,
+complete application E2E journey or visual-regression job.
 Do not add placeholder passing jobs or describe skipped checks as evidence.
 
 Introduce the actual React/Vite entry point and App/Routes composition, production build, browser,
 accessibility, performance and visual
 evidence in coherent later work. Before any runnable panel merges, expand the
 canonical full gate and inventory, observe genuine build/e2e/visual jobs pass and
-add them to required checks. Passing this business-screens phase gate cannot
+add them to required checks. Passing this storybook-verification phase gate cannot
 establish those results in advance.

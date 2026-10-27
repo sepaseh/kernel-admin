@@ -6,7 +6,9 @@ The `business-screens` phase adds account, users, roles, settings, calendar and
 dashboard modules to the existing [Core/auth foundation](core-auth.md).
 `applicationReady: false` remains deliberate: these are independently tested
 modules without an application entry point or assembled App/Routes tree.
-Storybook, production builds, browser journeys and visual evidence remain later work.
+[Storybook verification](storybook-verification.md) now adds isolated component
+build/browser/a11y checks; production panel builds, complete application journeys
+and visual-regression evidence remain later work.
 The dashboard currently supplies a layout frame; it does not publish dashboard metrics.
 
 ## Mutation ownership
@@ -63,10 +65,11 @@ Calendar writes use the same lifecycle and preserve API date payloads and read r
 ## Verification boundary
 
 The exact inventory, production dependency ownership and measured coverage grow
-with these modules. All nine canonical checks and existing thresholds remain
+with these modules. All eleven canonical checks and existing thresholds remain
 required. Real React/Ant Design tests run in isolated jsdom; synthetic HTTP tests
-use fail-closed mocks. Test support uses existing dependencies and does not activate
-Storybook or import another checkout.
+use fail-closed mocks. Test support stays independent of another checkout. The
+separate Storybook test project uses full synthetic API owner mocks and real
+Chromium; it does not run application startup or replace measured unit/governance coverage.
 
 These tests do not establish a runnable panel or external API behavior. The later
 application phase must introduce and pass all nineteen genuine required checks,

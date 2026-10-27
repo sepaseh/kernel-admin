@@ -4,8 +4,10 @@
 
 The `ui-foundation` phase publishes reusable Ant Design widgets, the theme adapter,
 compact/theme preferences, route-back behavior, optional error/performance reporting
-and local visual assets. It has no application entry point, routes, Core provider,
-screens or Storybook composition. `applicationReady` remains false; see the
+and local visual assets. Later publications add Core providers, business screens
+and [Storybook verification](storybook-verification.md), including static workshop
+build and real Chromium play/accessibility checks. The application entry point and
+App/Routes composition remain future work. `applicationReady` remains false; see the
 [publication gate](bootstrap.md).
 
 The [appearance contract](../src/shared/contracts/appearance.ts) alone owns Theme,
@@ -57,5 +59,6 @@ motion classes without `!important` declarations.
 The full [canonical manifest](../.agents/validation.json) remains mandatory on every
 PR. Coverage includes every published production module. React/jsdom tests cover
 widget actions and RTL feedback, theme contrast, local preferences and Router
-hooks. No static check or jsdom result substitutes for the later nineteen-check
-application gate, genuine build, browser journeys or visual validation.
+hooks. The full gate now also requires Storybook build and browser/a11y verification.
+Neither static/jsdom nor isolated component-browser results substitute for the later
+nineteen-check application gate, production panel build, complete E2E or visual validation.
