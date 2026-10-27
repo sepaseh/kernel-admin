@@ -134,10 +134,14 @@ describe("authentication API", () => {
   });
 
   it("submits password and OTP operations to their endpoints", async () => {
-    await changePassword({
-      currentPassword: currentCredential,
-      newPassword: replacementCredential,
-    });
+    const controller = new AbortController();
+    await changePassword(
+      {
+        currentPassword: currentCredential,
+        newPassword: replacementCredential,
+      },
+      controller.signal,
+    );
     await forgotPassword({
       mobile: "09120000000",
       otp: "123456",
@@ -145,10 +149,15 @@ describe("authentication API", () => {
     });
     await requestOtp({ mobile: "09120000000", purpose: "login" });
 
-    expect(apiClient.post).toHaveBeenNthCalledWith(1, "/auth/change-password", {
-      currentPassword: currentCredential,
-      newPassword: replacementCredential,
-    });
+    expect(apiClient.post).toHaveBeenNthCalledWith(
+      1,
+      "/auth/change-password",
+      {
+        currentPassword: currentCredential,
+        newPassword: replacementCredential,
+      },
+      { signal: controller.signal },
+    );
     expect(apiClient.post).toHaveBeenNthCalledWith(
       2,
       "/auth/forgot-password",

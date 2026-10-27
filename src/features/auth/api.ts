@@ -22,8 +22,11 @@ let pendingLogout: { promise: Promise<void>; version: number } | undefined;
 
 export const changePassword = async (
   params: ChangePasswordParams,
+  signal?: AbortSignal,
 ): Promise<void> => {
-  return apiClient.post<void>(`${basePath}/change-password`, params);
+  return apiClient.post<void>(`${basePath}/change-password`, params, {
+    signal,
+  });
 };
 
 export const forgotPassword = async (

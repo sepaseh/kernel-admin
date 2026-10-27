@@ -35,4 +35,20 @@ describe("settings file upload", () => {
     expect((body as FormData).get("file")).toBe(file);
     expect((body as FormData).get("visibility")).toBe("public");
   });
+
+  it("forwards optional cancellation while preserving the upload deadline and body", async () => {
+    const controller = new AbortController();
+    const file = new File(["logo"], "logo.png", { type: "image/png" });
+    vi.mocked(apiClient.post).mockResolvedValue({
+      contentType: "image/png",
+      id: "logo-1",
+      visibility: "public",
+    });
+    await uploadFile(file, "public", controller.signal);
+    const [path, body, config] = vi.mocked(apiClient.post).mock.calls[0];
+    expect(path).toBe("/files");
+    expect(config).toEqual({ signal: controller.signal, timeout: 60_000 });
+    expect((body as FormData).get("file")).toBe(file);
+    expect((body as FormData).get("visibility")).toBe("public");
+  });
 });

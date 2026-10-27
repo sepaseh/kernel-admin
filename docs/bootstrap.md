@@ -1,9 +1,9 @@
-# Core and authentication phase
+# Business screen and form phase
 
 [English](bootstrap.md) · [فارسی](bootstrap.fa.md)
 
 The [publication policy](../.github/bootstrap-policy.json) declares the
-**core-auth** phase with `applicationReady: false`. It contains ten complete flat
+**business-screens** phase with `applicationReady: false`. It contains ten complete flat
 catalogs, their code registry, pure Persian calendar data and integrity tests,
 alongside token state, transport/profile contracts, HTTP key transforms and
 color-contrast helpers. The real i18next/react-i18next adapter initializes fixed Persian bootstrap
@@ -18,7 +18,7 @@ See [README](../README.md) for source ownership and
 [localization](localization.md) for catalog rules. [Contributing](../CONTRIBUTING.md)
 defines validation and review policy.
 
-The phase also publishes [UI foundation](ui-foundation.md): seven Ant Design widgets, theme/preferences/observability adapters, route-back behavior and six validated local assets. [Core and authentication](core-auth.md) adds Core/Ant Design providers, typed access/navigation metadata, authentication forms and layout modules. Its 223-file exact inventory contains 94 production modules; the independent PR delta remains limited to 100 files. No application entry point or App/Routes composition is published.
+The phase also publishes [UI foundation](ui-foundation.md): seven Ant Design widgets, theme/preferences/observability adapters, route-back behavior and six validated local assets. [Core and authentication](core-auth.md) adds Core/Ant Design providers, typed access/navigation metadata, authentication forms and layout modules. [Business screens](business-screens.md) adds account, users/roles, settings, calendar and a dashboard frame with guarded mutation and permission checks. Its 266-file exact inventory contains 118 production modules; the independent PR delta remains limited to 100 files. No application entry point or App/Routes composition is published.
 
 ## Exact snapshot
 
@@ -106,5 +106,5 @@ Introduce the actual React/Vite entry point and App/Routes composition, producti
 accessibility, performance and visual
 evidence in coherent later work. Before any runnable panel merges, expand the
 canonical full gate and inventory, observe genuine build/e2e/visual jobs pass and
-add them to required checks. Passing this core-auth phase gate cannot
+add them to required checks. Passing this business-screens phase gate cannot
 establish those results in advance.

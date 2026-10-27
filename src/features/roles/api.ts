@@ -3,12 +3,18 @@ import type { PermissionGroup, Role, RoleRequest } from "./types.ts";
 
 const basePath = "/roles";
 
-export const createRole = async (params: RoleRequest): Promise<Role> => {
-  return apiClient.post<Role>(basePath, params);
+export const createRole = async (
+  params: RoleRequest,
+  signal?: AbortSignal,
+): Promise<Role> => {
+  return apiClient.post<Role>(basePath, params, { signal });
 };
 
-export const deleteRole = async (id: Role["id"]): Promise<void> => {
-  return apiClient.del<void>(`${basePath}/${id}`);
+export const deleteRole = async (
+  id: Role["id"],
+  signal?: AbortSignal,
+): Promise<void> => {
+  return apiClient.del<void>(`${basePath}/${id}`, { signal });
 };
 
 export const fetchPermissions = async (
@@ -33,6 +39,7 @@ export const fetchRoles = async (signal?: AbortSignal): Promise<Role[]> => {
 export const updateRole = async (
   id: Role["id"],
   params: RoleRequest,
+  signal?: AbortSignal,
 ): Promise<Role> => {
-  return apiClient.patch<Role>(`${basePath}/${id}`, params);
+  return apiClient.patch<Role>(`${basePath}/${id}`, params, { signal });
 };

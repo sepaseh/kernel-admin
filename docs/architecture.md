@@ -2,11 +2,11 @@
 
 [English](architecture.md) · [فارسی](architecture.fa.md)
 
-Scope updated: 27 October 2026. The published `core-auth` phase has
+Scope updated: 27 October 2026. The published `business-screens` phase has
 `applicationReady: false`. It contains independent React source using Ant
 Design/antd-style, React Router and Axios, with Core/Ant Design providers,
-authentication forms, layout modules and typed navigation/access metadata. There
-is no application entry point, App/Routes composition, business-page UI,
+authentication forms, layout modules, business screen/form modules and typed navigation/access metadata. There
+is no application entry point, App/Routes composition,
 production build or browser journey. Module and synthetic jsdom tests do not
 establish a runnable React/Vite panel.
 
@@ -45,7 +45,7 @@ It keeps validated code, direction, calendar and names together; i18next and
 Day.js follow them, while Ant Design selects the vendor locale and applies the
 document language/direction. Fixed Persian bootstrap and retry feedback do not
 create a visitor preference. Only theme and compact settings persist in browser
-storage. Business settings/calendar screens remain future work.
+storage. The [business settings/calendar modules](business-screens.md) use this metadata without introducing a visitor language preference.
 
 Unsupported or malformed language metadata produces an explicit settings error,
 never a local override. Local maps select supported vendor locales and translate

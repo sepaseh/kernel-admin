@@ -6,8 +6,8 @@ The `core-auth` publication adds Core/Ant Design providers, access and navigatio
 metadata, login/registration/password recovery forms, and authentication/default
 layouts to the existing HTTP and UI foundations. It has
 `applicationReady: false`: there is no application entry point, assembled route
-tree or runnable panel. Route metadata includes future destinations; it does not
-publish those business screens.
+tree or runnable panel. The later [business-screens phase](business-screens.md)
+adds destination modules while application routing remains future work.
 
 ## Provider and preference ownership
 

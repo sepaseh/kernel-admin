@@ -104,5 +104,10 @@ export const fetchLanguages = (
 
 export const updateApplicationSettings = (
   params: ApplicationSettingsRequest,
-): Promise<ApplicationSettings> =>
-  apiClient.put<unknown>(basePath, params).then(normalizeApplicationSettings);
+  signal?: AbortSignal,
+): Promise<ApplicationSettings> => {
+  const request = signal
+    ? apiClient.put<unknown>(basePath, params, { signal })
+    : apiClient.put<unknown>(basePath, params);
+  return request.then(normalizeApplicationSettings);
+};

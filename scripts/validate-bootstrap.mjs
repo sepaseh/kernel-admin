@@ -216,42 +216,78 @@ const coreAuthFiles = [
   "src/layouts/default/Default.tsx",
   "src/layouts/default/index.ts",
 ];
+const businessFiles = [
+  "docs/api-client.fa.md",
+  "docs/api-client.md",
+  "docs/business-screens.fa.md",
+  "docs/business-screens.md",
+  "docs/input-validation.fa.md",
+  "docs/input-validation.md",
+  "src/features/account/Account.test.tsx",
+  "src/features/account/Account.tsx",
+  "src/features/account/index.ts",
+  "src/features/calendar/Calendar.test.tsx",
+  "src/features/calendar/Calendar.tsx",
+  "src/features/calendar/index.ts",
+  "src/features/calendar/styles.ts",
+  "src/features/dashboard/Dashboard.tsx",
+  "src/features/dashboard/index.ts",
+  "src/features/roles/Roles.test.tsx",
+  "src/features/roles/Roles.tsx",
+  "src/features/roles/components/role-form/RoleForm.tsx",
+  "src/features/roles/constants.ts",
+  "src/features/roles/index.ts",
+  "src/features/settings/Settings.test.tsx",
+  "src/features/settings/Settings.tsx",
+  "src/features/settings/components/logo-upload/LogoUpload.test.tsx",
+  "src/features/settings/components/logo-upload/LogoUpload.tsx",
+  "src/features/settings/components/logo-upload/index.ts",
+  "src/features/settings/index.ts",
+  "src/features/users/Users.test.tsx",
+  "src/features/users/Users.tsx",
+  "src/features/users/components/user-form/UserForm.tsx",
+  "src/features/users/components/user-role-form/UserRoleForm.tsx",
+  "src/features/users/constants.ts",
+  "src/features/users/hooks/useDebouncedFilters.test.tsx",
+  "src/features/users/hooks/useDebouncedFilters.ts",
+  "src/features/users/hooks/useFilterParams.test.tsx",
+  "src/features/users/hooks/useFilterParams.ts",
+  "src/features/users/index.ts",
+  "src/features/users/tools/password.test.ts",
+  "src/features/users/tools/password.ts",
+  "src/shared/hooks/useMutationRequest.test.tsx",
+  "src/shared/hooks/useMutationRequest.ts",
+  "src/test/integration/forms.test.tsx",
+  "src/test/storybook/StoryShell.tsx",
+  "src/test/storybook/fixtures.ts",
+];
+const phaseOrder = [
+  "governance",
+  "foundation",
+  "catalogs",
+  "runtime-localization",
+  "http-lifecycle",
+  "ui-foundation",
+  "core-auth",
+  "business-screens",
+];
+const supportsPhase = (phase, minimum) =>
+  phaseOrder.indexOf(phase) >= phaseOrder.indexOf(minimum);
 const publishedSource = (file, phase) =>
   phase !== "governance" &&
   (isFoundationSource(file) ||
-    (phase === "core-auth" && coreAuthFiles.includes(file)) ||
-    (["ui-foundation", "core-auth"].includes(phase) &&
-      uiFiles.includes(file)) ||
-    (["http-lifecycle", "ui-foundation", "core-auth"].includes(phase) &&
-      httpFiles.includes(file)) ||
-    ([
-      "catalogs",
-      "runtime-localization",
-      "http-lifecycle",
-      "ui-foundation",
-      "core-auth",
-    ].includes(phase) &&
-      catalogFiles.includes(file)) ||
-    ([
-      "runtime-localization",
-      "http-lifecycle",
-      "ui-foundation",
-      "core-auth",
-    ].includes(phase) &&
-      runtimeFiles.includes(file)));
+    (supportsPhase(phase, "catalogs") && catalogFiles.includes(file)) ||
+    (supportsPhase(phase, "runtime-localization") &&
+      runtimeFiles.includes(file)) ||
+    (supportsPhase(phase, "http-lifecycle") && httpFiles.includes(file)) ||
+    (supportsPhase(phase, "ui-foundation") && uiFiles.includes(file)) ||
+    (supportsPhase(phase, "core-auth") && coreAuthFiles.includes(file)) ||
+    (phase === "business-screens" && businessFiles.includes(file)));
 
 export const validateBootstrapPolicy = (policy) => {
   if (
     policy?.schemaVersion !== 1 ||
-    ![
-      "governance",
-      "foundation",
-      "catalogs",
-      "runtime-localization",
-      "http-lifecycle",
-      "ui-foundation",
-      "core-auth",
-    ].includes(policy.phase) ||
+    !phaseOrder.includes(policy.phase) ||
     policy.applicationReady !== false ||
     policy.maximumChangedFiles !== 100 ||
     !Array.isArray(policy.allowedFiles) ||
@@ -288,28 +324,14 @@ export const validateBootstrapPolicy = (policy) => {
     ...(policy.phase === "governance"
       ? [".github/workflows/bootstrap.yml"]
       : foundationFiles),
-    ...([
-      "catalogs",
-      "runtime-localization",
-      "http-lifecycle",
-      "ui-foundation",
-      "core-auth",
-    ].includes(policy.phase)
-      ? catalogFiles
-      : []),
-    ...([
-      "runtime-localization",
-      "http-lifecycle",
-      "ui-foundation",
-      "core-auth",
-    ].includes(policy.phase)
+    ...(supportsPhase(policy.phase, "catalogs") ? catalogFiles : []),
+    ...(supportsPhase(policy.phase, "runtime-localization")
       ? runtimeFiles
       : []),
-    ...(["http-lifecycle", "ui-foundation", "core-auth"].includes(policy.phase)
-      ? httpFiles
-      : []),
-    ...(["ui-foundation", "core-auth"].includes(policy.phase) ? uiFiles : []),
-    ...(policy.phase === "core-auth" ? coreAuthFiles : []),
+    ...(supportsPhase(policy.phase, "http-lifecycle") ? httpFiles : []),
+    ...(supportsPhase(policy.phase, "ui-foundation") ? uiFiles : []),
+    ...(supportsPhase(policy.phase, "core-auth") ? coreAuthFiles : []),
+    ...(policy.phase === "business-screens" ? businessFiles : []),
   ];
   if (requiredFiles.some((file) => !files.has(file)))
     throw new Error(
@@ -395,6 +417,8 @@ export const inspectBootstrap = async (root) => {
     }),
   );
   const scopeByPhase = {
+    "business-screens":
+      "Published business screen/form modules with guarded mutations and synthetic HTTP/React tests; no application entry point, assembled routes, production build, Storybook/browser journey or visual gate is published.",
     "core-auth":
       "Published Core and Ant Design providers, typed access/navigation metadata, authentication forms and layouts with synthetic lifecycle tests; no application entry point, route composition, production build, browser journey or visual gate is published.",
     "ui-foundation":

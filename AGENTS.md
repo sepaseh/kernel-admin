@@ -1,4 +1,4 @@
-# Kernel Admin core-auth instructions
+# Kernel Admin business-screens instructions
 
 Read [README](README.md), [Contributing](CONTRIBUTING.md), the current
 [publication inventory](.github/bootstrap-policy.json) and canonical
@@ -9,7 +9,7 @@ Read [Core and authentication](docs/core-auth.md) for provider lifecycle, access
 
 This standalone npm project publishes admin primitives, ten
 complete flat catalogs, real translation/date adapters, HTTP feature adapters and
-request lifecycle hooks, Core/Ant Design providers, authentication forms and layout modules. Read [HTTP ownership](docs/http-client.md) and
+request lifecycle hooks, Core/Ant Design providers, authentication forms, business screen/form modules and layouts. Read [HTTP ownership](docs/http-client.md) and
 [request lifecycle](docs/request-lifecycle.md). Keep source
 independent of another checkout, backend SDKs, npm workspaces and application initialization.
 The separate API owns authentication execution, database access and storage.
@@ -28,7 +28,9 @@ Code normalization selects a supported catalog only. The API remains authoritati
 for active language, direction, calendar and names. The HTTP settings adapter validates complete server metadata, without inferring
 direction or calendar from language codes. Preserve these runtime checks. Only a super-administrator changes active language.
 
-The core-auth phase has applicationReady:false. It contains no application entry point, App/Routes composition or runnable
+Read [Business screens](docs/business-screens.md) for account field ownership, guarded mutations, permission-aware forms and synthetic verification.
+
+The business-screens phase has applicationReady:false. It contains no application entry point, App/Routes composition or runnable
 panel, production build, browser journey or visual evidence. Synthetic Axios/MSW
 transport tests and real React provider/form/hook tests in isolated jsdom do not establish full
 server/browser integration.

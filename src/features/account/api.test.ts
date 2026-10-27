@@ -34,30 +34,72 @@ describe("account API", () => {
   });
 
   it("requests and verifies email changes", async () => {
-    await requestEmailVerification({ email: "ada@example.com" });
-    await verifyEmail({ email: "ada@example.com", otp: "123456" });
+    const controller = new AbortController();
+    await requestEmailVerification(
+      { email: "ada@example.com" },
+      controller.signal,
+    );
+    await verifyEmail(
+      { email: "ada@example.com", otp: "123456" },
+      controller.signal,
+    );
 
     expect(apiClient.post).toHaveBeenNthCalledWith(
       1,
       "/account/request-email-verification",
       { email: "ada@example.com" },
+      { signal: controller.signal },
     );
-    expect(apiClient.post).toHaveBeenNthCalledWith(2, "/account/verify-email", {
-      email: "ada@example.com",
-      otp: "123456",
-    });
+    expect(apiClient.post).toHaveBeenNthCalledWith(
+      2,
+      "/account/verify-email",
+      {
+        email: "ada@example.com",
+        otp: "123456",
+      },
+      { signal: controller.signal },
+    );
   });
 
   it("updates profile and username fields", async () => {
-    await updateProfile({ firstName: "Ada", lastName: "Lovelace" });
-    await updateUsername({ username: "ada" });
+    const controller = new AbortController();
+    await updateProfile(
+      { firstName: "Ada", lastName: "Lovelace" },
+      controller.signal,
+    );
+    await updateUsername({ username: "ada" }, controller.signal);
 
-    expect(apiClient.patch).toHaveBeenCalledWith("/account/update-profile", {
-      firstName: "Ada",
-      lastName: "Lovelace",
-    });
-    expect(apiClient.post).toHaveBeenCalledWith("/account/update-username", {
-      username: "ada",
-    });
+    expect(apiClient.patch).toHaveBeenCalledWith(
+      "/account/update-profile",
+      {
+        firstName: "Ada",
+        lastName: "Lovelace",
+      },
+      { signal: controller.signal },
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      "/account/update-username",
+      {
+        username: "ada",
+      },
+      { signal: controller.signal },
+    );
+  });
+
+  it("keeps write calls without an optional signal compatible", async () => {
+    await requestEmailVerification({ email: "ada@example.com" });
+    await updateProfile({ firstName: "Ada" });
+    await updateUsername({ username: "ada" });
+    await verifyEmail({ email: "ada@example.com", otp: "123456" });
+    expect(apiClient.patch).toHaveBeenCalledWith(
+      "/account/update-profile",
+      { firstName: "Ada" },
+      { signal: undefined },
+    );
+    expect(apiClient.post).toHaveBeenLastCalledWith(
+      "/account/verify-email",
+      { email: "ada@example.com", otp: "123456" },
+      { signal: undefined },
+    );
   });
 });

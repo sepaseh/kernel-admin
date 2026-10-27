@@ -2,10 +2,10 @@
 
 [English](admin-request-reliability.md) · [فارسی](admin-request-reliability.fa.md)
 
-Scope updated: 27 October 2026. The non-runnable `core-auth` phase publishes
+Scope updated: 27 October 2026. The non-runnable `business-screens` phase publishes
 feature-owned HTTP adapters, request hooks, Core/Ant Design providers,
-authentication forms and layout modules. `applicationReady` remains false: no
-application entry point, App/Routes composition, business-page tables, build or
+authentication forms, business screens and layout modules. `applicationReady` remains false: no
+application entry point, App/Routes composition, build or
 browser journey is published. Small read hooks coordinate request lifetime; no
 query library, frontend database access or business-service duplication is introduced.
 
@@ -44,21 +44,21 @@ The published Core settings and default-layout account checks use these hooks.
 A changed loader discards its predecessor's data; reloading the same resource
 retains its last successful result. Synthetic loader tests cover reverse-order
 completion, obsolete work, unmount and development StrictMode cleanup. Users,
-roles, calendar and settings business screens are later work; their published
-HTTP adapters alone are not page integration evidence.
+roles, calendar and settings modules now consume these guarded reads; their real
+React/jsdom tests remain distinct from production API/browser integration.
 
 `shared/ui/request-feedback` distinguishes an initial failure from a refresh
 failure and offers retry. Core settings errors and account-check errors have
 visible feedback. The default layout hides protected children during its account
-check or a transient error. Later business screens must distinguish failed reads
+check or a transient error. Business screens distinguish failed reads
 from successful empty results and preserve accepted data after a refresh failure.
-Mutation errors remain feature-owned; these requirements do not claim that the
-unpublished business forms or tables have been tested.
+Mutation errors remain feature-owned. The shared mutation lifecycle and its
+record/session/permission guards are described in [business screens](business-screens.md).
 
 Core exposes `acceptSettings`: replacing its read snapshot invalidates older
 initial work before applying accepted language, logos and palettes. Its initial
-failure is visible with retry. A future settings editor must supply accepted,
-validated data and preserve this behavior; no settings page is published here.
+failure is visible with retry. The settings editor supplies accepted,
+validated data and preserves this behavior.
 Only theme/compact preferences are browser-persisted. Active language, direction,
 calendar and names remain API-owned, with fixed Persian bootstrap until accepted
 settings arrive; there is no visitor language selector.
