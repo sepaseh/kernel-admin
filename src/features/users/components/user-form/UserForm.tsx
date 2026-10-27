@@ -9,6 +9,7 @@ import { createUser, updateUser } from "@/features/users/api";
 import { userDrawerKeys } from "@/features/users/constants";
 import { generatePassword } from "@/features/users/tools/password";
 import type { User, UserRequest } from "@/features/users/types";
+import { getAccessTokenVersion } from "@/shared/api/token";
 import { profileNameMaxLength } from "@/shared/contracts";
 import {
   isCurrentMutationError,
@@ -44,6 +45,8 @@ export const UserForm = ({ data, onFinish }: UserFormProps) => {
     if (!open) return;
 
     try {
+      const loginVersion = getAccessTokenVersion();
+      let appliedPassword: string | undefined;
       const result = await mutation.run(async (signal) => {
         if (isUpdate) {
           await updateUser(data.id, values, signal);
@@ -51,17 +54,19 @@ export const UserForm = ({ data, onFinish }: UserFormProps) => {
         }
         const password = generatePassword();
         await createUser({ ...values, password }, signal);
-        return password;
+        appliedPassword = password;
       });
-      if (!result?.isCurrent()) return;
-      const password = result.data;
-      if (password) {
-        void navigator.clipboard?.writeText(password).catch(() => undefined);
+      if (appliedPassword && getAccessTokenVersion() === loginVersion) {
+        void navigator.clipboard
+          ?.writeText(appliedPassword)
+          .catch(() => undefined);
         notificationAPI.success({
-          description: password,
+          description: appliedPassword,
           message: t("password"),
         });
       }
+      if (!result?.isCurrent()) return;
+
       messageAPI.success(t(isUpdate ? "userUpdated" : "userCreated"));
       goBack();
       onFinish();

@@ -33,6 +33,7 @@ import { UserRoleForm } from "@/features/users/components/user-role-form/UserRol
 import { useFilterParams } from "@/features/users/hooks/useFilterParams";
 import { useDebouncedFilters } from "@/features/users/hooks/useDebouncedFilters";
 import { generatePassword } from "@/features/users/tools/password";
+import { getAccessTokenVersion } from "@/shared/api/token";
 import {
   isCurrentMutationError,
   useMutationRequest,
@@ -166,16 +167,21 @@ export const UsersPage = () => {
       okType: "default",
       onOk: async () => {
         try {
-          const result = await mutation.run(async (signal) => {
+          const loginVersion = getAccessTokenVersion();
+          let appliedPassword: string | undefined;
+          await mutation.run(async (signal) => {
             const password = generatePassword();
             await updateUserPassword(id, { password }, signal);
-            return password;
+            appliedPassword = password;
           });
-          if (!result?.isCurrent()) return;
-          const password = result.data;
-          void navigator.clipboard?.writeText(password).catch(() => undefined);
+          if (!appliedPassword || getAccessTokenVersion() !== loginVersion)
+            return;
+
+          void navigator.clipboard
+            ?.writeText(appliedPassword)
+            .catch(() => undefined);
           notificationAPI.success({
-            description: password,
+            description: appliedPassword,
             message: t("password"),
           });
         } catch (error) {

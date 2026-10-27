@@ -5,19 +5,21 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { fetchRoles } from "@/features/roles/api";
+import { clearAccessToken, setAccessToken } from "@/shared/api/token";
 import { render, screen } from "@/test/render";
 import { users } from "@/test/storybook/fixtures";
 
-import { deleteUser, fetchUser, fetchUsers } from "./api";
+import { deleteUser, fetchUser, fetchUsers, updateUserPassword } from "./api";
 import { UsersPage } from "./Users";
 
 const mocks = vi.hoisted(() => ({
   messageAPI: { error: vi.fn(), success: vi.fn() },
   modalAPI: { confirm: vi.fn() },
+  notificationAPI: { success: vi.fn() },
   permissions: { canCreate: false, canDelete: true, canUpdate: false },
 }));
 vi.mock("@/app/hooks", () => ({
-  useAntd: () => ({ ...mocks, notificationAPI: {} }),
+  useAntd: () => mocks,
   useCore: () => ({ user: { isSystemAdmin: false } }),
 }));
 vi.mock("@/app/lib", () => ({ getRoutePermissions: () => mocks.permissions }));
@@ -51,15 +53,129 @@ const renderUsers = () =>
   );
 
 beforeEach(() => {
+  clearAccessToken();
   mocks.permissions.canCreate = false;
   mocks.permissions.canDelete = true;
   mocks.permissions.canUpdate = false;
   vi.mocked(fetchRoles).mockReset().mockResolvedValue([]);
   vi.mocked(deleteUser).mockReset().mockResolvedValue(undefined);
+  vi.mocked(updateUserPassword).mockReset().mockResolvedValue(undefined);
   vi.mocked(fetchUsers).mockReset().mockResolvedValue({
     items: users,
     total: users.length,
   });
+});
+
+const beginPasswordReset = async () => {
+  mocks.permissions.canUpdate = true;
+  const view = renderUsers();
+  const clipboard = vi
+    .spyOn(navigator.clipboard, "writeText")
+    .mockResolvedValue(undefined);
+  await screen.findByText("Sara Ahmadi");
+  await view.user.click(screen.getAllByRole("button", { name: "password" })[0]);
+  const confirmation = mocks.modalAPI.confirm.mock.calls[0][0] as {
+    onCancel: () => void;
+    onOk: () => Promise<void>;
+  };
+  let completion!: Promise<void>;
+  act(() => {
+    completion = confirmation.onOk();
+  });
+  await waitFor(() => expect(updateUserPassword).toHaveBeenCalledOnce());
+  return { ...view, clipboard, completion, confirmation };
+};
+
+it.each(["unmount", "cancel", "permission"] as const)(
+  "reveals an acknowledged password reset after %s within the same login",
+  async (change) => {
+    let release!: () => void;
+    vi.mocked(updateUserPassword).mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = () => resolve(undefined);
+      }),
+    );
+    const view = await beginPasswordReset();
+    const password = vi.mocked(updateUserPassword).mock.calls[0][1].password;
+    if (change === "unmount") view.unmount();
+    else if (change === "cancel") act(() => view.confirmation.onCancel());
+    else {
+      mocks.permissions.canUpdate = false;
+      view.rerender(
+        <MemoryRouter>
+          <UsersPage />
+        </MemoryRouter>,
+      );
+    }
+    expect(vi.mocked(updateUserPassword).mock.calls[0][2]?.aborted).toBe(true);
+    await act(async () => {
+      release();
+      await view.completion;
+    });
+    expect(mocks.notificationAPI.success).toHaveBeenCalledExactlyOnceWith({
+      description: password,
+      message: "password",
+    });
+    expect(view.clipboard).toHaveBeenCalledExactlyOnceWith(password);
+    expect(mocks.messageAPI.success).not.toHaveBeenCalled();
+    expect(mocks.messageAPI.error).not.toHaveBeenCalled();
+    expect(fetchUsers).toHaveBeenCalledOnce();
+  },
+);
+
+it.each(["login", "logout"] as const)(
+  "never reveals a completed password reset after %s changes the session",
+  async (change) => {
+    let release!: () => void;
+    vi.mocked(updateUserPassword).mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = () => resolve(undefined);
+      }),
+    );
+    const view = await beginPasswordReset();
+    act(() => {
+      if (change === "login") setAccessToken("synthetic-new-login");
+      else clearAccessToken();
+    });
+    await act(async () => {
+      release();
+      await view.completion;
+    });
+    expect(mocks.notificationAPI.success).not.toHaveBeenCalled();
+    expect(view.clipboard).not.toHaveBeenCalled();
+    expect(mocks.messageAPI.success).not.toHaveBeenCalled();
+    expect(mocks.messageAPI.error).not.toHaveBeenCalled();
+  },
+);
+
+it("does not claim or reveal a password when the canceled reset rejects", async () => {
+  let reject!: (reason: Error) => void;
+  vi.mocked(updateUserPassword).mockReturnValueOnce(
+    new Promise((_, rejectRequest) => {
+      reject = rejectRequest;
+    }),
+  );
+  const view = await beginPasswordReset();
+  act(() => view.confirmation.onCancel());
+  await act(async () => {
+    reject(new Error("Synthetic request did not acknowledge success"));
+    await view.completion;
+  });
+  expect(mocks.notificationAPI.success).not.toHaveBeenCalled();
+  expect(view.clipboard).not.toHaveBeenCalled();
+  expect(mocks.messageAPI.error).not.toHaveBeenCalled();
+});
+
+it("reveals a currently completed password reset once", async () => {
+  const view = await beginPasswordReset();
+  await act(async () => view.completion);
+  const password = vi.mocked(updateUserPassword).mock.calls[0][1].password;
+  expect(password).toMatch(/^[a-z0-9]{16}$/);
+  expect(mocks.notificationAPI.success).toHaveBeenCalledExactlyOnceWith({
+    description: password,
+    message: "password",
+  });
+  expect(view.clipboard).toHaveBeenCalledExactlyOnceWith(password);
 });
 
 it("does not start an old delete confirmation after delete permission is revoked", async () => {

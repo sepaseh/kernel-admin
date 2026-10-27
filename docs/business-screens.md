@@ -22,9 +22,12 @@ render cannot invalidate the operation owned by the still-visible screen.
 
 `run` returns an accepted result object, including for a successful void response.
 Callers check `result?.isCurrent()` immediately before accepting data, displaying
-success or navigating: cancellation or another request can intervene after the
-promise settles. Current errors stay available to the owning form; cancellation
-does not produce a generic error toast. There is no automatic mutation retry.
+ordinary success feedback owned by that consumer or navigating: cancellation or
+another request can intervene after the promise settles. Current errors stay available to the owning form; cancellation
+does not produce a generic error toast. The hook does not retry mutations;
+the HTTP client may replay an eligible protected write once after a 401 and
+successful refresh in the same login generation. Transient write failures are
+not automatically replayed.
 Errors preserve their original value in `cause`; consumers check
 `isCurrentMutationError(error)` before showing feedback from `error.cause`, since
 the request can become obsolete between rejection and the caller's catch.
@@ -41,6 +44,15 @@ including direct hash navigation. Closing a drawer, changing record or changing
 session invalidates pending continuations. Menus and disabled controls improve
 presentation; the separate API must authorize every operation.
 User filters retain their 500ms debounce and cancel pending timers on unmount.
+
+Generated user passwords are a specific acknowledged outcome: after a create-user
+or reset-password request resolves successfully, the initiating operation retains
+the password and uses the app-level notification to show it within the same login
+generation, even if its consumer unmounted, changed scope or cancelled. The
+notification never crosses a login-generation change. Ordinary obsolete form
+updates, navigation and error feedback remain guarded. An aborted or rejected HTTP
+response does not establish whether the server applied the password and must not
+be presented as confirmed success.
 
 Settings preserve API-owned language, direction, calendar and palettes. Only a
 super-administrator includes a language change; accepted settings replace the

@@ -16,9 +16,10 @@ query library, frontend database access or business-service duplication is intro
   These are individual request deadlines, not a 15-second budget for an entire
   request/refresh/replay sequence. New longer operations need a deliberate policy.
 - A protected **401** with its original dispatch generation retains the existing
-  single refresh/single replay behavior within the same login session. Public
-  authentication and public settings failures do not refresh. A 401 without its
-  request config or originating generation is normalized without refreshing or
+  single refresh/single replay behavior within the same login session, including
+  eligible writes that have not been cancelled. Public authentication and public
+  GET/HEAD /settings failures do not refresh; PUT /settings is protected. A 401
+  without its request config or originating generation is normalized without refreshing or
   expiring the current login; current credentials cannot establish its owner.
   There is no automatic replay for network failures, timeouts, 429 or 5xx.
 - Concurrent readers within one session share one refresh. A cancelled reader
@@ -91,6 +92,14 @@ These guards protect frontend state and request replay. Cancellation cannot undo
 an already committed server mutation or browser cookie side effect. API-side
 authentication, authorization, transaction and session-revocation rules remain
 authoritative and require separate API verification.
+
+For user creation and password reset, a successful API acknowledgement retains
+the generated password for an app-level notification within the initiating login
+generation. Consumer unmount, scope changes or cancellation do not discard this
+acknowledged password. A changed login generation suppresses the notification;
+normal obsolete form state, navigation and errors remain guarded. If the HTTP
+response is aborted or rejected, the server outcome is unknown and no confirmed
+password-change success is announced.
 
 A terminal client refresh failure expires local in-memory credentials and the
 admin UI session only; it does not itself revoke server sessions. Server-side

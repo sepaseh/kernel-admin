@@ -76,6 +76,30 @@ const findFocusedField = async (name: string) => {
   return field;
 };
 
+const LeaveCreateForm = () => {
+  const navigate = useNavigate();
+  return <button onClick={() => void navigate("/")}>Leave creation</button>;
+};
+
+const beginUserCreation = async (onFinish: () => void) => {
+  const view = renderAtHash(
+    <>
+      <LeaveCreateForm />
+      <UserForm onFinish={onFinish} />
+    </>,
+    "#create",
+  );
+  const clipboard = vi
+    .spyOn(navigator.clipboard, "writeText")
+    .mockResolvedValue(undefined);
+  await view.user.type(await findFocusedField("firstName"), "Ada");
+  await view.user.type(screen.getByLabelText("lastName"), "Lovelace");
+  await view.user.type(screen.getByLabelText("mobile"), "09120000000");
+  await view.user.click(screen.getByRole("button", { name: "submit" }));
+  await waitFor(() => expect(api.createUser).toHaveBeenCalledOnce());
+  return { ...view, clipboard };
+};
+
 beforeEach(() => {
   mocks.currentUser.isSystemAdmin = true;
   clearAccessToken();
@@ -188,6 +212,92 @@ describe("user identity form", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(mocks.notificationSuccess).not.toHaveBeenCalled();
     expect(mocks.goBack).not.toHaveBeenCalled();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+});
+
+describe("generated creation credentials", () => {
+  it.each(["unmount", "route"] as const)(
+    "reveals an acknowledged creation password after %s without stale form effects",
+    async (change) => {
+      let release!: () => void;
+      vi.mocked(api.createUser).mockReturnValueOnce(
+        new Promise((resolve) => {
+          release = () => resolve(userData);
+        }),
+      );
+      const onFinish = vi.fn();
+      const view = await beginUserCreation(onFinish);
+      const password = vi.mocked(api.createUser).mock.calls[0][0].password;
+      if (change === "unmount") view.unmount();
+      else
+        await act(async () => {
+          fireEvent.click(
+            screen.getByRole("button", {
+              name: "Leave creation",
+              hidden: true,
+            }),
+          );
+        });
+      expect(vi.mocked(api.createUser).mock.calls[0][1]?.aborted).toBe(true);
+      await act(async () => release());
+      expect(mocks.notificationSuccess).toHaveBeenCalledExactlyOnceWith({
+        description: password,
+        message: "password",
+      });
+      expect(view.clipboard).toHaveBeenCalledExactlyOnceWith(password);
+      expect(mocks.messageSuccess).not.toHaveBeenCalled();
+      expect(mocks.messageError).not.toHaveBeenCalled();
+      expect(mocks.goBack).not.toHaveBeenCalled();
+      expect(onFinish).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["login", "logout"] as const)(
+    "does not reveal creation credentials after %s changes the session",
+    async (change) => {
+      let release!: () => void;
+      vi.mocked(api.createUser).mockReturnValueOnce(
+        new Promise((resolve) => {
+          release = () => resolve(userData);
+        }),
+      );
+      const onFinish = vi.fn();
+      const view = await beginUserCreation(onFinish);
+      act(() => {
+        if (change === "login") setAccessToken("synthetic-new-login");
+        else clearAccessToken();
+      });
+      await act(async () => release());
+      expect(mocks.notificationSuccess).not.toHaveBeenCalled();
+      expect(view.clipboard).not.toHaveBeenCalled();
+      expect(mocks.messageSuccess).not.toHaveBeenCalled();
+      expect(mocks.messageError).not.toHaveBeenCalled();
+      expect(mocks.goBack).not.toHaveBeenCalled();
+      expect(onFinish).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not claim or reveal creation credentials when the canceled request rejects", async () => {
+    let reject!: (reason: Error) => void;
+    vi.mocked(api.createUser).mockReturnValueOnce(
+      new Promise((_, rejectRequest) => {
+        reject = rejectRequest;
+      }),
+    );
+    const onFinish = vi.fn();
+    const view = await beginUserCreation(onFinish);
+    await view.user.keyboard("{Escape}");
+    expect(vi.mocked(api.createUser).mock.calls[0][1]?.aborted).toBe(true);
+    expect(mocks.goBack).toHaveBeenCalledOnce();
+    await act(async () =>
+      reject(new Error("Synthetic response was not acknowledged")),
+    );
+    expect(mocks.notificationSuccess).not.toHaveBeenCalled();
+    expect(view.clipboard).not.toHaveBeenCalled();
+    expect(mocks.messageSuccess).not.toHaveBeenCalled();
+    expect(mocks.messageError).not.toHaveBeenCalled();
+    expect(mocks.goBack).toHaveBeenCalledOnce();
     expect(onFinish).not.toHaveBeenCalled();
   });
 });
