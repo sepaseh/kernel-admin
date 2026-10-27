@@ -68,6 +68,7 @@ const productionPaths = [
   "src/features/auth/api.ts",
   "src/features/auth/types.ts",
   "src/features/auth/index.ts",
+  "src/features/auth/useOtpRequest.ts",
   "src/features/account/api.ts",
   "src/features/account/types.ts",
   "src/features/roles/api.ts",
@@ -114,6 +115,7 @@ const runtimeImports = {
     "react",
   ],
   "src/app/providers/core/Core.tsx": ["dayjs", "react"],
+  "src/features/auth/useOtpRequest.ts": ["axios", "react"],
   "src/features/forgot-pass/ForgotPass.tsx": [
     "antd",
     "axios",
@@ -183,6 +185,7 @@ const typeImports = {
   "src/app/config/routes.ts": ["i18next"],
   "src/app/providers/antd/Antd.tsx": ["antd", "react"],
   "src/app/providers/core/Core.tsx": ["react"],
+  "src/features/auth/useOtpRequest.ts": ["antd"],
   "src/features/forgot-pass/ForgotPass.tsx": ["antd"],
   "src/features/login/Login.tsx": ["antd"],
   "src/features/register/Register.tsx": ["antd"],
@@ -312,6 +315,34 @@ const localSourceViolation = ({
   return undefined;
 };
 
+const dependencyPackageName = (specifier, resolvedPackage) => {
+  if (specifier === "react" && resolvedPackage === "@types/react")
+    return "@types/react";
+  if (specifier.startsWith("dayjs/")) return "dayjs";
+  if (specifier.startsWith("antd/locale/")) return "antd";
+  return specifier;
+};
+
+const packageImportViolation = ({
+  root,
+  relativeFile,
+  specifier,
+  resolved,
+  typeOnly,
+  resolvedPackage,
+}) => {
+  const imports = typeOnly ? typeImports : runtimeImports;
+  const packageName = dependencyPackageName(specifier, resolvedPackage);
+  const packageRoot = path.join(root, "node_modules", packageName) + path.sep;
+  if (
+    imports[relativeFile]?.includes(specifier) &&
+    resolvedPackage === packageName &&
+    resolved?.startsWith(packageRoot)
+  )
+    return undefined;
+  return "Pure source imports must use published local production modules; packages and Node builtins are not allowed except exact contained runtime-adapter dependencies";
+};
+
 export const boundaryViolation = ({
   root,
   file,
@@ -323,28 +354,15 @@ export const boundaryViolation = ({
   if (!specifier)
     return "Use literal module paths so source boundaries can be checked";
   const relativeFile = path.relative(root, file).split(path.sep).join("/");
-  if (!specifier.startsWith(".") && !specifier.startsWith("@/")) {
-    const allowed = (typeOnly ? typeImports : runtimeImports)[
-      relativeFile
-    ]?.includes(specifier);
-    const dependency = specifier.startsWith("dayjs/")
-      ? "dayjs"
-      : specifier.startsWith("antd/locale/")
-        ? "antd"
-        : specifier;
-    const packageName =
-      dependency === "react" && resolvedPackage === "@types/react"
-        ? "@types/react"
-        : dependency;
-    const packageRoot = path.join(root, "node_modules", packageName) + path.sep;
-    if (
-      allowed &&
-      resolvedPackage === packageName &&
-      resolved?.startsWith(packageRoot)
-    )
-      return undefined;
-    return "Pure source imports must use published local production modules; packages and Node builtins are not allowed except exact contained runtime-adapter dependencies";
-  }
+  if (!specifier.startsWith(".") && !specifier.startsWith("@/"))
+    return packageImportViolation({
+      root,
+      relativeFile,
+      specifier,
+      resolved,
+      typeOnly,
+      resolvedPackage,
+    });
   if (!resolved || !publishedModules(root).has(path.resolve(resolved)))
     return "Pure source imports must resolve to published production modules in this repository";
   return localSourceViolation({ root, file, resolved, typeOnly, relativeFile });

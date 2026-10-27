@@ -1,4 +1,3 @@
-import type { FormProps } from "antd";
 import { Button, Flex, Form, Input, Typography } from "antd";
 import { isCancel } from "axios";
 import { UserRound } from "lucide-react";
@@ -8,8 +7,9 @@ import { Link, useNavigate } from "react-router";
 
 import { routeTree } from "@/app/config";
 import { useAntd } from "@/app/hooks";
-import { register, requestOtp } from "@/features/auth/api.ts";
+import { register } from "@/features/auth/api.ts";
 import type { RegisterParams } from "@/features/auth/types.ts";
+import { useOtpRequest } from "@/features/auth/useOtpRequest.ts";
 import { profileNameMaxLength } from "@/shared/contracts";
 import { getErrorMessage } from "@/shared/lib";
 import { DigitsInput } from "@/shared/ui/digits-input";
@@ -22,53 +22,34 @@ type RegisterFormParams = RegisterParams & {
 
 export const RegisterPage = () => {
   const { t } = useTranslation();
-  const [remainingSeconds, setRemainingSeconds] = useState(0);
-  const [requestingOtp, setRequestingOtp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const otpRequest = useRef<AbortController | undefined>(undefined);
   const submission = useRef<AbortController | undefined>(undefined);
   const { messageAPI } = useAntd();
   const [form] = Form.useForm<RegisterFormParams>();
   const navigate = useNavigate();
-
-  const handleOtpRequest = async () => {
-    if (otpRequest.current || remainingSeconds) return;
-
-    const controller = new AbortController();
-    otpRequest.current = controller;
-    setRequestingOtp(true);
-    try {
-      const values = await form
-        .validateFields(["mobile"])
-        .catch(() => undefined);
-      if (!values || controller.signal.aborted) return;
-      const { mobile } = values;
-      const response = await requestOtp(
-        { mobile, purpose: "register" },
-        controller.signal,
-      );
-      if (controller.signal.aborted || form.getFieldValue("mobile") !== mobile)
-        return;
-      setRemainingSeconds(response.remainingSeconds);
+  const {
+    handleOtpRequest,
+    handleValuesChange,
+    remainingSeconds,
+    requestingOtp,
+  } = useOtpRequest({
+    form,
+    onError: (error) => {
+      void messageAPI.error(getErrorMessage(error));
+    },
+    onSuccess: () => {
       void messageAPI.success(t("codeRequested"));
-    } catch (error) {
-      if (!controller.signal.aborted && !isCancel(error))
-        void messageAPI.error(getErrorMessage(error));
-    } finally {
-      if (otpRequest.current === controller) {
-        otpRequest.current = undefined;
-        if (!controller.signal.aborted) setRequestingOtp(false);
-      }
-    }
-  };
+    },
+    purpose: "register",
+  });
 
-  const handleSubmit: FormProps<RegisterFormParams>["onFinish"] = async ({
+  const handleSubmit = async ({
     firstName,
     lastName,
     mobile,
     otp,
     password,
-  }) => {
+  }: RegisterFormParams): Promise<void> => {
     if (submission.current) return;
 
     const controller = new AbortController();
@@ -92,35 +73,13 @@ export const RegisterPage = () => {
     }
   };
 
-  const handleValuesChange = (changed: Partial<RegisterFormParams>) => {
-    if (!Object.hasOwn(changed, "mobile")) return;
-    otpRequest.current?.abort();
-    otpRequest.current = undefined;
-    setRequestingOtp(false);
-    setRemainingSeconds(0);
-    form.setFieldValue("otp", "");
-  };
-
   useEffect(
     () => () => {
-      otpRequest.current?.abort();
       submission.current?.abort();
-      otpRequest.current = undefined;
       submission.current = undefined;
     },
     [],
   );
-
-  useEffect(() => {
-    if (!remainingSeconds) return;
-
-    const timeout = window.setTimeout(
-      () => setRemainingSeconds((seconds) => Math.max(0, seconds - 1)),
-      1000,
-    );
-
-    return () => window.clearTimeout(timeout);
-  }, [remainingSeconds]);
 
   return (
     <Flex gap={32} vertical>
@@ -133,7 +92,7 @@ export const RegisterPage = () => {
       <Form
         form={form}
         layout="vertical"
-        onFinish={handleSubmit}
+        onFinish={(values) => void handleSubmit(values)}
         onValuesChange={handleValuesChange}
         requiredMark={false}
         scrollToFirstError={{ focus: true }}

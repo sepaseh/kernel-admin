@@ -2,7 +2,7 @@ import "@/shared/i18n/date";
 
 import dayjs from "dayjs";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { RouteKey } from "@/app/config";
 import type { CoreContextValue } from "@/app/contexts";
@@ -59,22 +59,32 @@ export const CoreProvider = ({ children }: CoreProviderProps) => {
     },
     [applySettings],
   );
-  const settings = useReadResource(loadSettings);
-  const reloadSettings = settings.reload;
-  const acceptSettings = (value: ApplicationSettings) => {
-    settings.replace(value);
-    applySettings(value);
-  };
+  const {
+    error: settingsError,
+    loading: settingsLoading,
+    reload: reloadSettings,
+    replace: replaceSettings,
+  } = useReadResource(loadSettings);
+  const acceptSettings = useCallback(
+    (value: ApplicationSettings) => {
+      replaceSettings(value);
+      applySettings(value);
+    },
+    [applySettings, replaceSettings],
+  );
 
-  const changeTheme = (theme: Theme, fromStorage?: boolean) => {
+  const changeTheme = useCallback((theme: Theme, fromStorage?: boolean) => {
     if (!fromStorage) setThemeStorage(theme);
     setTheme(theme);
-  };
+  }, []);
 
-  const changeCompact = (compact: boolean, fromStorage?: boolean) => {
-    if (!fromStorage) setCompactStorage(compact);
-    setCompact(compact);
-  };
+  const changeCompact = useCallback(
+    (compact: boolean, fromStorage?: boolean) => {
+      if (!fromStorage) setCompactStorage(compact);
+      setCompact(compact);
+    },
+    [],
+  );
 
   useLocalStorageWatcher(storageKeys.compact, () => {
     changeCompact(getCompact(), true);
@@ -83,6 +93,43 @@ export const CoreProvider = ({ children }: CoreProviderProps) => {
   useLocalStorageWatcher(storageKeys.theme, () => {
     changeTheme(getTheme(), true);
   });
+
+  const value = useMemo<CoreContextValue>(
+    () => ({
+      acceptSettings,
+      compact,
+      currentRoute,
+      language,
+      logos,
+      retrySettings: reloadSettings,
+      settingsError,
+      settingsLoading,
+      setCompact: changeCompact,
+      setCurrentRoute,
+      setLogos,
+      setTheme: changeTheme,
+      setThemePalettes,
+      setUser,
+      theme,
+      themePalettes,
+      user,
+    }),
+    [
+      acceptSettings,
+      changeCompact,
+      changeTheme,
+      compact,
+      currentRoute,
+      language,
+      logos,
+      reloadSettings,
+      settingsError,
+      settingsLoading,
+      theme,
+      themePalettes,
+      user,
+    ],
+  );
 
   useEffect(() => {
     void i18nInstance.changeLanguage(language.code);
@@ -100,29 +147,5 @@ export const CoreProvider = ({ children }: CoreProviderProps) => {
     return () => window.removeEventListener("focus", refreshOnFocus);
   }, [reloadSettings]);
 
-  return (
-    <CoreContext.Provider
-      value={{
-        acceptSettings,
-        compact,
-        currentRoute,
-        language,
-        logos,
-        retrySettings: settings.reload,
-        settingsError: settings.error,
-        settingsLoading: settings.loading,
-        setCompact: changeCompact,
-        setCurrentRoute,
-        setLogos,
-        setTheme: changeTheme,
-        setThemePalettes,
-        setUser,
-        theme,
-        themePalettes,
-        user,
-      }}
-    >
-      {children}
-    </CoreContext.Provider>
-  );
+  return <CoreContext.Provider value={value}>{children}</CoreContext.Provider>;
 };

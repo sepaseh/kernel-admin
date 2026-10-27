@@ -100,6 +100,8 @@
     "src/features/auth/index.ts",
     "src/features/auth/logout.test.ts",
     "src/features/auth/types.ts",
+    "src/features/auth/useOtpRequest.test.tsx",
+    "src/features/auth/useOtpRequest.ts",
     "src/features/calendar/api.test.ts",
     "src/features/calendar/api.ts",
     "src/features/forgot-pass/ForgotPass.test.tsx",

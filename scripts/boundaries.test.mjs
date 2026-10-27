@@ -252,9 +252,9 @@ test("undeclared production and linked source are not hidden by an empty import 
   await assert.rejects(checkBoundaries(directory), /symbolic links/);
 });
 
-test("the exact core-auth phase has ninety-three contained production modules", async () => {
+test("the exact core-auth phase has ninety-four contained production modules", async () => {
   const result = await checkBoundaries();
-  assert.equal(result.files, 93);
+  assert.equal(result.files, 94);
   assert.deepEqual(result.violations, []);
 });
 
@@ -466,6 +466,37 @@ test("HTTP package ownership, type erasure and package identity fail closed", ()
   );
   assert.match(
     check("react", reactTypes, hook, true, "@types/react"),
+    /not allowed/,
+  );
+});
+
+test("the OTP lifecycle owner admits only its exact contained runtime and erased form types", () => {
+  const owner = path.join(root, "src/features/auth/useOtpRequest.ts");
+  const react = path.join(root, "node_modules/@types/react/index.d.ts");
+  const axios = path.join(root, "node_modules/axios/index.d.ts");
+  const antd = path.join(root, "node_modules/antd/es/index.d.ts");
+  assert.equal(check("react", react, owner, false, "@types/react"), undefined);
+  assert.equal(check("axios", axios, owner, false, "axios"), undefined);
+  assert.equal(check("antd", antd, owner, true, "antd"), undefined);
+  assert.match(check("antd", antd, owner, false, "antd"), /not allowed/);
+  assert.match(
+    check("react", react, owner, true, "@types/react"),
+    /not allowed/,
+  );
+  for (const dependency of ["react-dom", "react-i18next", "axios/internal"]) {
+    assert.match(
+      check(
+        dependency,
+        path.join(root, "node_modules", dependency, "index.js"),
+        owner,
+        false,
+        dependency,
+      ),
+      /not allowed/,
+    );
+  }
+  assert.match(
+    check("axios", axios, owner, false, "synthetic-alias"),
     /not allowed/,
   );
 });

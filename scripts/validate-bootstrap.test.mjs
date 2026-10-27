@@ -33,6 +33,14 @@ const policy = (overrides = {}) => ({
   schemaVersion: 1,
   ...overrides,
 });
+const isCoreAuthPhaseFile = (file) =>
+  /^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|register))\/|docs\/(?:core-auth|admin-request-reliability|adr\/|architecture|security\/authentication-review))/.test(
+    file,
+  ) ||
+  [
+    "src/features/auth/useOtpRequest.ts",
+    "src/features/auth/useOtpRequest.test.tsx",
+  ].includes(file);
 
 const foundationFiles = [
   ...coreFiles.filter((file) => file !== ".github/workflows/bootstrap.yml"),
@@ -404,10 +412,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
     ...latest,
     phase: "ui-foundation",
     allowedFiles: latest.allowedFiles.filter(
-      (file) =>
-        !/^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|register))\/|docs\/(?:core-auth|admin-request-reliability|adr\/|architecture|security\/authentication-review))/.test(
-          file,
-        ),
+      (file) => !isCoreAuthPhaseFile(file),
     ),
   };
   assert.equal(current.phase, "ui-foundation");
@@ -467,13 +472,9 @@ test("core-auth preserves its complete prior closure, owners and tests without a
     ),
   );
   assert.equal(current.phase, "core-auth");
-  assert.equal(validateBootstrapPolicy(current).size, 220);
-  const phaseFiles = current.allowedFiles.filter((file) =>
-    /^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|register))\/|docs\/(?:core-auth|admin-request-reliability|adr\/|architecture|security\/authentication-review))/.test(
-      file,
-    ),
-  );
-  assert.equal(phaseFiles.length, 51);
+  assert.equal(validateBootstrapPolicy(current).size, 222);
+  const phaseFiles = current.allowedFiles.filter(isCoreAuthPhaseFile);
+  assert.equal(phaseFiles.length, 53);
   for (const missing of phaseFiles)
     assert.throws(
       () =>
@@ -504,7 +505,7 @@ test("core-auth preserves its complete prior closure, owners and tests without a
   const { root } = await fixture(context, current);
   const result = await inspectBootstrap(root);
   assert.equal(result.phase, "core-auth");
-  assert.equal(result.files, 220);
+  assert.equal(result.files, 222);
   assert.equal(result.applicationReady, false);
   assert.match(result.scope, /no application entry point/);
 });

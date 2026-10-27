@@ -1,4 +1,3 @@
-import type { FormProps } from "antd";
 import { Button, Flex, Form, Input, Typography } from "antd";
 import { isCancel } from "axios";
 import { useEffect, useRef, useState } from "react";
@@ -23,7 +22,7 @@ export const LoginPage = () => {
   const navigate = useNavigate();
   const { styles } = useLoginStyles();
 
-  const handleSubmit: FormProps<LoginParams>["onFinish"] = async (values) => {
+  const handleSubmit = async (values: LoginParams): Promise<void> => {
     if (submission.current) return;
 
     const controller = new AbortController();
@@ -73,7 +72,7 @@ export const LoginPage = () => {
       <Form
         form={form}
         layout="vertical"
-        onFinish={handleSubmit}
+        onFinish={(values) => void handleSubmit(values)}
         requiredMark={false}
         scrollToFirstError={{ focus: true }}
       >

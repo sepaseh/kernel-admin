@@ -17,6 +17,9 @@ during refresh, supports retry and refreshes on focus. Accepting a saved setting
 snapshot supersedes the older read. Aborted or obsolete reads cannot overwrite
 the current settings. `SettingsFeedback` exposes loading, failure and retry state
 to the eventual application composition.
+Core keeps its context value and action callbacks stable when an unrelated parent
+render does not change state. Actual settings and appearance changes still reach
+context consumers.
 
 The API owns the active language, direction, calendar, names, logos and palettes.
 Core passes the exact validated metadata to i18next, Day.js and `AntdProvider`;
@@ -54,6 +57,10 @@ unmount. Changing the mobile number aborts its old OTP request and clears the ol
 OTP/cooldown state before a new request. A pending-operation guard binds intent
 before asynchronous OTP field validation. Validation failures remain inline;
 canceled work does not produce a generic failure toast or a late redirect.
+Registration and password recovery share the domain-owned `useOtpRequest`
+lifecycle for validation, cancellation, mobile reset and countdown. The forms keep
+their own submit operations and explicitly adapt asynchronous submission to the
+form's void completion callback; no promise is mistaken for a synchronous result.
 
 Login and registration also inspect cancellation after transport fulfillment and
 before storing an access token, alongside the existing session-generation guard.

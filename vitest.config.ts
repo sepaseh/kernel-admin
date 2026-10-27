@@ -37,6 +37,7 @@ export default defineConfig({
         "src/app/providers/core/Core.tsx",
         "src/app/providers/core/SettingsFeedback.tsx",
         "src/app/providers/index.ts",
+        "src/features/auth/useOtpRequest.ts",
         "src/features/forgot-pass/ForgotPass.tsx",
         "src/features/forgot-pass/index.ts",
         "src/features/login/Login.tsx",

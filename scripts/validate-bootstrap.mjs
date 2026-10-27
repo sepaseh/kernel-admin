@@ -195,6 +195,8 @@ const coreAuthFiles = [
   "src/app/providers/core/Core.tsx",
   "src/app/providers/core/SettingsFeedback.tsx",
   "src/app/providers/index.ts",
+  "src/features/auth/useOtpRequest.test.tsx",
+  "src/features/auth/useOtpRequest.ts",
   "src/features/forgot-pass/ForgotPass.test.tsx",
   "src/features/forgot-pass/ForgotPass.tsx",
   "src/features/forgot-pass/index.ts",

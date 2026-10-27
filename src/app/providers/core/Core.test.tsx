@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, waitFor } from "@testing-library/react";
 import dayjs from "dayjs";
+import { memo } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useCore } from "@/app/hooks";
@@ -122,7 +123,9 @@ const Consumer = () => {
 
 beforeEach(() => {
   localStorage.clear();
-  mocks.fetchApplicationSettings.mockRejectedValue(new Error("Unavailable"));
+  mocks.fetchApplicationSettings
+    .mockReset()
+    .mockRejectedValue(new Error("Unavailable"));
   mocks.getCompact.mockReturnValue(false);
   mocks.getTheme.mockReturnValue("light");
 });
@@ -133,6 +136,44 @@ afterEach(() => {
 });
 
 describe("CoreProvider", () => {
+  it("does not rerender a memoized consumer for an unrelated parent render", async () => {
+    mocks.fetchApplicationSettings.mockResolvedValueOnce(savedSettings);
+    const observeRender = vi.fn();
+    const ObservedConsumer = memo(() => {
+      const { settingsLoading, theme } = useCore();
+      observeRender();
+      return (
+        <output aria-label="observed-theme">{`${settingsLoading}:${theme}`}</output>
+      );
+    });
+    const { rerender, user } = render(
+      <CoreProvider>
+        <ObservedConsumer />
+        <Consumer />
+      </CoreProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText("observed-theme")).toHaveTextContent(
+        "false:light",
+      ),
+    );
+    observeRender.mockClear();
+
+    rerender(
+      <CoreProvider>
+        <ObservedConsumer />
+        <Consumer />
+      </CoreProvider>,
+    );
+    expect(observeRender).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "theme" }));
+    expect(screen.getByLabelText("observed-theme")).toHaveTextContent(
+      "false:dark",
+    );
+    expect(observeRender).toHaveBeenCalledOnce();
+  });
+
   it("makes an initial settings failure retryable instead of silently swallowing it", async () => {
     mocks.fetchApplicationSettings
       .mockRejectedValueOnce(new Error("Offline"))
@@ -320,13 +361,13 @@ describe("CoreProvider", () => {
       ),
     );
     act(() => window.dispatchEvent(new Event("focus")));
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByLabelText("core-state")).toHaveTextContent(
         "root:fa:light:false:anonymous",
-      ),
-    );
-    expect(mocks.fetchApplicationSettings).toHaveBeenCalledTimes(2);
-    expect(mocks.changeLanguage).toHaveBeenLastCalledWith("fa");
+      );
+      expect(mocks.fetchApplicationSettings).toHaveBeenCalledTimes(2);
+      expect(mocks.changeLanguage).toHaveBeenLastCalledWith("fa");
+    });
   });
 
   it("applies refreshed direction and calendar even when the language code is unchanged", async () => {
@@ -348,21 +389,21 @@ describe("CoreProvider", () => {
         <Consumer />
       </CoreProvider>,
     );
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByLabelText("language-metadata")).toHaveTextContent(
         "en:ltr:gregorian:English:English",
-      ),
-    );
-    expect(dayjs().year()).toBe(2026);
+      );
+      expect(dayjs().year()).toBe(2026);
+    });
     act(() => window.dispatchEvent(new Event("focus")));
-    await waitFor(() =>
+    await waitFor(() => {
       expect(screen.getByLabelText("language-metadata")).toHaveTextContent(
         "en:rtl:jalali:Server English:Server native English",
-      ),
-    );
-    expect(dayjs().year()).toBe(1405);
-    expect(dayjs.locale()).toBe("en-gb");
-    expect(mocks.changeLanguage).toHaveBeenLastCalledWith("en");
+      );
+      expect(dayjs().year()).toBe(1405);
+      expect(dayjs.locale()).toBe("en-gb");
+      expect(mocks.changeLanguage).toHaveBeenLastCalledWith("en");
+    });
   });
 
   it("persists theme and compact preferences without a public language setter", async () => {
