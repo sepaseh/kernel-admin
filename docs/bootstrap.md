@@ -1,16 +1,19 @@
-# Runtime-localization phase
+# HTTP/lifecycle phase
 
 [English](bootstrap.md) · [فارسی](bootstrap.fa.md)
 
 The [publication policy](../.github/bootstrap-policy.json) declares the
-**runtime-localization** phase with `applicationReady: false`. It contains ten complete flat
+**http-lifecycle** phase with `applicationReady: false`. It contains ten complete flat
 catalogs, their code registry, pure Persian calendar data and integrity tests,
 alongside token state, transport/profile contracts, HTTP key transforms and
 color-contrast helpers. The real i18next/react-i18next adapter initializes fixed Persian bootstrap
 resources, while Day.js/Jalaliday registers nine vendor locales plus the local
 Persian locale. Supported-code
-normalization and translated error messages are also published. These adapters
-are tested against their real dependencies in Node. This scope is not a runnable panel.
+normalization and translated error messages are also published. The phase also publishes [HTTP transport and feature adapters](http-client.md),
+complete server language/palette metadata validation, pure appearance vocabulary
+and [request lifecycle hooks](request-lifecycle.md). Tests use real Axios with
+fail-closed MSW and real React hook rendering in isolated jsdom, alongside Node
+translation/date tests. This scope is not a runnable panel.
 See [README](../README.md) for source ownership and
 [localization](localization.md) for catalog rules. [Contributing](../CONTRIBUTING.md)
 defines validation and review policy.
@@ -39,7 +42,7 @@ npm run validate -- full
 The [canonical manifest](../.agents/validation.json) defines the complete
 current-phase gate. Its nine required checks cover the exact inventory, semantic CI policy, audit, source boundaries,
 types, lint, formatting and both test runs. Vitest runs in Node with environment
-file discovery disabled. Tests use synthetic inputs; no UI, API process, browser
+file discovery disabled; the hook test alone uses isolated jsdom. Tests use synthetic inputs; no UI, API process, browser
 or real environment/state is required.
 
 Initial publication is staged under the 100-file PR cap. Every PR runs this
@@ -92,15 +95,15 @@ a cycle. Require authorization, available quota and no in-flight duplicate. Foll
 
 ## Runnable panel readiness
 
-Runtime-localization protection requires the published CI and provider checks listed in
+HTTP/lifecycle protection requires the published CI and provider checks listed in
 [branch protection](branch-protection.md). This phase provides no production
 build, end-to-end or visual job and does not require those application-only jobs.
 Do not add placeholder passing jobs or describe skipped checks as evidence.
 
-Introduce the actual React/Vite panel, HTTP integration and validated server
-language/direction/calendar metadata, component tests, production build, browser,
+Introduce the actual React/Vite panel, provider integration, component tests,
+production build, browser,
 accessibility, performance and visual
 evidence in coherent later work. Before any runnable panel merges, expand the
 canonical full gate and inventory, observe genuine build/e2e/visual jobs pass and
-add them to required checks. Passing this runtime-localization phase gate cannot
+add them to required checks. Passing this http-lifecycle phase gate cannot
 establish those results in advance.

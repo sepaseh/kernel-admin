@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -384,4 +391,57 @@ test("runtime-localization inspects its exact non-runnable inventory", async (co
     result.files,
     foundationFiles.length + catalogFiles.length + runtimeFiles.length,
   );
+});
+
+test("HTTP/lifecycle publication requires the complete independent closure without admitting UI or source links", async (context) => {
+  const current = JSON.parse(
+    await readFile(
+      new URL("../.github/bootstrap-policy.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.equal(current.phase, "http-lifecycle");
+  assert.equal(validateBootstrapPolicy(current).size, 118);
+  const required = current.allowedFiles.filter(
+    (file) =>
+      (file.startsWith("src/") &&
+        !runtimePolicy().allowedFiles.includes(file)) ||
+      /^docs\/(?:http-client|request-lifecycle)(?:\.fa)?\.md$/.test(file),
+  );
+  assert.equal(required.length, 43);
+  for (const missing of required)
+    assert.throws(
+      () =>
+        validateBootstrapPolicy({
+          ...current,
+          allowedFiles: current.allowedFiles.filter((file) => file !== missing),
+        }),
+      /mandatory/,
+    );
+  for (const file of [
+    "src/main.tsx",
+    "src/app/Core.tsx",
+    "src/shared/config/theme.ts",
+    "src/features/users/Users.tsx",
+    "src/shared/hooks/unpublished.ts",
+    "src/shared/api/client.spec.ts",
+    "src/test/unlisted.ts",
+    "apps/admin/index.ts",
+    "packages/contracts/index.ts",
+  ])
+    assert.throws(() =>
+      validateBootstrapPolicy({
+        ...current,
+        allowedFiles: [...current.allowedFiles, file],
+      }),
+    );
+  assert.throws(() =>
+    validateBootstrapPolicy({ ...current, applicationReady: true }),
+  );
+  const { root } = await fixture(context, current);
+  const result = await inspectBootstrap(root);
+  assert.equal(result.phase, "http-lifecycle");
+  assert.equal(result.applicationReady, false);
+  assert.match(result.scope, /synthetic HTTP and real hook tests/);
+  assert.equal(result.files, 118);
 });

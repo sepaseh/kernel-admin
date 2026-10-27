@@ -1,11 +1,13 @@
-# Kernel Admin runtime-localization instructions
+# Kernel Admin http-lifecycle instructions
 
 Read [README](README.md), [Contributing](CONTRIBUTING.md), the current
 [publication inventory](.github/bootstrap-policy.json) and canonical
 [validation manifest](.agents/validation.json) before changes.
 
 This standalone npm project publishes framework-free admin primitives, ten
-complete flat catalogs and real local translation/date adapters. Keep source
+complete flat catalogs, real translation/date adapters, HTTP feature adapters and
+request lifecycle hooks. Read [HTTP ownership](docs/http-client.md) and
+[request lifecycle](docs/request-lifecycle.md). Keep source
 independent of another checkout, backend SDKs, npm workspaces and UI initialization.
 The separate API owns authentication execution, database access and storage.
 
@@ -17,24 +19,31 @@ Only catalogs.ts loads the canonical catalog objects. Data cannot import adapter
 
 The runtime adapter owns i18next/react-i18next initialization with fixed Persian
 bootstrap fallback. Never read or persist a visitor language preference. The date
-adapter registers all ten real Day.js locales and Jalaliday; English uses en-gb.
+adapter registers nine vendor Day.js locales plus local Persian faDayjs and
+Jalaliday; English uses en-gb.
 Code normalization selects a supported catalog only. The API remains authoritative
-for active language, direction, calendar and names. The future HTTP settings
-adapter must validate complete server metadata, without inferring direction or
-calendar from language codes. Only a super-administrator changes active language.
+for active language, direction, calendar and names. The HTTP settings adapter validates complete server metadata, without inferring
+direction or calendar from language codes. Preserve these runtime checks. Only a super-administrator changes active language.
 
-The runtime-localization phase has applicationReady:false. It contains no runnable
-panel, HTTP integration, production build, browser journey or visual evidence.
+The http-lifecycle phase has applicationReady:false. It contains no runnable
+panel, production build, browser journey or visual evidence. Synthetic Axios/MSW
+transport tests and real React hooks in isolated jsdom do not establish full
+server/browser integration.
 A runnable phase must introduce React/Vite and complete real validation, preserving
 Ant Design, antd-style, React Router, Axios and directly typed component parameters
 without FC aliases. Before a runnable panel merges, expand the canonical full gate,
 observe genuine build/e2e/visual jobs pass and add them to required checks.
 
-Preserve token generation, login/logout invalidation and refresh semantics. Only
+Preserve synchronous request-intent generation binding, token generation,
+login/logout invalidation, cancellation and shared-refresh semantics. Validate
+unknown token/settings replies before state changes. The appearance contract
+owns Theme and the seven palette fields; future Ant Design adapters must import
+it. Feature wire types use only exact erased local vocabulary. Only
 the declared runtime-adapter modules may import their exact registry dependencies;
 pure contracts, catalogs and primitives stay isolated. Every production module
 belongs in measured coverage. Tests use synthetic state and actual installed
-translation/date dependencies, never real environment files or credentials.
+translation/date/HTTP dependencies, fail-closed synthetic MSW responses and
+isolated React hook rendering, never real environment files or credentials.
 
 Run npm run validate -- full on the exact proposed snapshot before every authorized
 commit or PR handoff. All nine required commands run on every PR regardless of

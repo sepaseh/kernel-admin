@@ -12,8 +12,21 @@ import {
 
 const root = path.resolve("synthetic-foundation");
 const file = path.join(root, "src/shared/api/token.ts");
-const check = (specifier, resolved, source = file, typeOnly = false) =>
-  boundaryViolation({ root, file: source, specifier, resolved, typeOnly });
+const check = (
+  specifier,
+  resolved,
+  source = file,
+  typeOnly = false,
+  resolvedPackage,
+) =>
+  boundaryViolation({
+    root,
+    file: source,
+    specifier,
+    resolved,
+    typeOnly,
+    resolvedPackage,
+  });
 
 test("captures static, erased, re-export, dynamic, require and computed import edges", () => {
   const edges = inspectImports(
@@ -239,9 +252,9 @@ test("undeclared production and linked source are not hidden by an empty import 
   await assert.rejects(checkBoundaries(directory), /symbolic links/);
 });
 
-test("the exact current runtime-localization phase has twenty-two contained production modules", async () => {
+test("the exact current http-lifecycle phase has forty-two contained production modules", async () => {
   const result = await checkBoundaries();
-  assert.equal(result.files, 22);
+  assert.equal(result.files, 42);
   assert.deepEqual(result.violations, []);
 });
 
@@ -285,10 +298,15 @@ test("runtime adapters may import only exact declared packages contained in this
     ["src/shared/i18n/index.ts", "react-i18next", "react-i18next"],
     ["src/shared/i18n/date.ts", "dayjs/locale/en-gb", "dayjs"],
     ["src/shared/i18n/date.ts", "jalaliday", "jalaliday"],
+    ["src/shared/api/client.ts", "axios", "axios"],
+    ["src/shared/hooks/useReadRequest.ts", "react", "react"],
   ]) {
     const adapter = path.join(root, source);
     const target = path.join(root, "node_modules", dependency, "index.d.ts");
-    assert.equal(check(specifier, target, adapter), undefined);
+    assert.equal(
+      check(specifier, target, adapter, false, dependency),
+      undefined,
+    );
     assert.match(
       check(
         specifier,
@@ -318,5 +336,113 @@ test("pure catalog and contract modules cannot depend on the published runtime a
       check("../i18n/index", adapter, path.join(root, source)),
       /(?:Catalog data|Wire contracts)/,
     );
+  }
+});
+
+test("HTTP package ownership, type erasure and package identity fail closed", () => {
+  const client = path.join(root, "src/shared/api/client.ts");
+  const axios = path.join(root, "node_modules/axios/index.d.ts");
+  const settings = path.join(root, "src/features/settings/api.ts");
+  assert.equal(check("axios", axios, client, true, "axios"), undefined);
+  assert.match(check("axios", axios, settings, true, "axios"), /not allowed/);
+  assert.match(
+    check("axios", axios, client, false, "synthetic-alias"),
+    /not allowed/,
+  );
+  assert.match(
+    check(
+      "react-dom",
+      path.join(root, "node_modules/react-dom/index.d.ts"),
+      client,
+      false,
+      "react-dom",
+    ),
+    /not allowed/,
+  );
+  const hook = path.join(root, "src/shared/hooks/useReadRequest.ts");
+  const reactTypes = path.join(root, "node_modules/@types/react/index.d.ts");
+  assert.equal(
+    check("react", reactTypes, hook, false, "@types/react"),
+    undefined,
+  );
+  assert.match(
+    check("react", reactTypes, client, false, "@types/react"),
+    /not allowed/,
+  );
+  assert.match(
+    check("react", reactTypes, hook, true, "@types/react"),
+    /not allowed/,
+  );
+});
+
+test("feature wire vocabulary cannot acquire runtime imports or unrelated local types", () => {
+  const settings = path.join(root, "src/features/settings/types.ts");
+  const appearance = path.join(root, "src/shared/contracts/appearance.ts");
+  assert.equal(
+    check("../../shared/contracts/appearance.ts", appearance, settings, true),
+    undefined,
+  );
+  assert.match(
+    check("../../shared/contracts/appearance.ts", appearance, settings),
+    /exact erased/,
+  );
+  assert.match(
+    check("../../shared/api/token.ts", file, settings, true),
+    /exact erased/,
+  );
+  for (const target of [
+    "src/test/http-setup.ts",
+    "src/vite-env.d.ts",
+    "src/features/users/Users.tsx",
+  ])
+    assert.match(
+      check("./target.ts", path.join(root, target), settings, true),
+      /published production/,
+    );
+});
+
+test("registry aliases and local dependency protocols cannot escape the standalone boundary", async (context) => {
+  const { directory, put } = await fixture(context);
+  for (const version of [
+    "npm:other@1.0.0",
+    "user/repo",
+    "github:user/repo",
+    "gitlab:user/repo",
+    "bitbucket:user/repo",
+    "ssh://git@example.test/source",
+    "latest",
+    "",
+    "file:../source",
+    "link:../source",
+    "workspace:*",
+    "https://example.test/source.tgz",
+    "git+https://example.test/source.git",
+    "../source",
+    "C:/source",
+  ]) {
+    for (const field of ["dependencies", "devDependencies"]) {
+      await put(
+        "package.json",
+        JSON.stringify({
+          name: "synthetic-foundation",
+          [field]: { axios: version },
+        }),
+      );
+      assert.match(
+        (await checkBoundaries(directory)).violations.join("\n"),
+        /(?:registry|workspaces)/,
+      );
+    }
+  }
+});
+
+test("development tooling accepts valid registry semver ranges", async (context) => {
+  const { directory, put } = await fixture(context);
+  for (const version of ["7.8.5", "^7.8.5", "~6.0.3", ">=6 <8", "7.x"]) {
+    await put(
+      "package.json",
+      JSON.stringify({ devDependencies: { typescript: version } }),
+    );
+    assert.deepEqual((await checkBoundaries(directory)).violations, []);
   }
 });
