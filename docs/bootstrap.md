@@ -1,13 +1,15 @@
-# Catalogs phase
+# Runtime-localization phase
 
 [English](bootstrap.md) · [فارسی](bootstrap.fa.md)
 
 The [publication policy](../.github/bootstrap-policy.json) declares the
-**catalogs** phase with `applicationReady: false`. It contains ten complete flat
+**runtime-localization** phase with `applicationReady: false`. It contains ten complete flat
 catalogs, their code registry, pure Persian calendar data and integrity tests,
 alongside token state, transport/profile contracts, HTTP key transforms and
-color-contrast helpers. Runtime i18next, React and date-vendor adapters are not
-published. This scope is not a runnable panel.
+color-contrast helpers. The real i18next/react-i18next adapter initializes fixed Persian bootstrap
+resources, while Day.js/Jalaliday registers all ten vendor locales. Supported-code
+normalization and translated error messages are also published. These adapters
+are tested against their real dependencies in Node. This scope is not a runnable panel.
 See [README](../README.md) for source ownership and
 [localization](localization.md) for catalog rules. [Contributing](../CONTRIBUTING.md)
 defines validation and review policy.
@@ -89,13 +91,13 @@ a cycle. Require authorization, available quota and no in-flight duplicate. Foll
 
 ## Runnable panel readiness
 
-Catalog-phase protection requires the published CI and provider checks listed in
+Runtime-localization protection requires the published CI and provider checks listed in
 [branch protection](branch-protection.md). This phase provides no production
 build, end-to-end or visual job and does not require those application-only jobs.
 Do not add placeholder passing jobs or describe skipped checks as evidence.
 
-Introduce the actual React/Vite panel, HTTP integration, runtime localization
-adapters and their integration tests, component tests, production build, browser,
+Introduce the actual React/Vite panel, HTTP integration and validated server
+language/direction/calendar metadata, component tests, production build, browser,
 accessibility, performance and visual
 evidence in coherent later work. Before any runnable panel merges, expand the
 canonical full gate and inventory, observe genuine build/e2e/visual jobs pass and

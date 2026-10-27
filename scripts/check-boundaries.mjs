@@ -6,6 +6,10 @@ import ts from "typescript";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const productionPaths = [
+  "src/shared/config/language.ts",
+  "src/shared/i18n/index.ts",
+  "src/shared/i18n/date.ts",
+  "src/shared/lib/error.ts",
   "src/shared/api/token.ts",
   "src/shared/api/types.ts",
   "src/shared/contracts/index.ts",
@@ -18,6 +22,30 @@ const productionPaths = [
   "src/shared/lib/transform.ts",
   "src/shared/lib/color-contrast.ts",
 ];
+const runtimeImports = {
+  "src/shared/i18n/index.ts": ["i18next", "react-i18next"],
+  "src/shared/i18n/date.ts": [
+    "dayjs",
+    "jalaliday",
+    "dayjs/plugin/calendar",
+    ...["ar", "de", "en-gb", "es", "fr", "it", "pt", "ru", "tr"].map(
+      (code) => "dayjs/locale/" + code,
+    ),
+  ],
+};
+const runtimeDependencies = [
+  "dayjs",
+  "i18next",
+  "jalaliday",
+  "react",
+  "react-i18next",
+];
+const runtimePaths = new Set([
+  "src/shared/config/language.ts",
+  "src/shared/i18n/index.ts",
+  "src/shared/i18n/date.ts",
+  "src/shared/lib/error.ts",
+]);
 const publishedModules = (root) =>
   new Set(productionPaths.map((file) => path.join(root, file)));
 const isErasedTypeReference = (node) => {
@@ -83,8 +111,14 @@ export const boundaryViolation = ({
 }) => {
   if (!specifier)
     return "Use literal module paths so source boundaries can be checked";
-  if (!specifier.startsWith(".") && !specifier.startsWith("@/"))
-    return "Pure source imports must use published local production modules; packages and Node builtins are not allowed";
+  const relativeFile = path.relative(root, file).split(path.sep).join("/");
+  if (!specifier.startsWith(".") && !specifier.startsWith("@/")) {
+    const allowed = runtimeImports[relativeFile]?.includes(specifier);
+    const dependency = specifier.startsWith("dayjs/") ? "dayjs" : specifier;
+    const packageRoot = path.join(root, "node_modules", dependency) + path.sep;
+    if (allowed && resolved?.startsWith(packageRoot)) return undefined;
+    return "Pure source imports must use published local production modules; packages and Node builtins are not allowed except exact contained runtime-adapter dependencies";
+  }
 
   if (!resolved || !publishedModules(root).has(path.resolve(resolved)))
     return "Pure source imports must resolve to published production modules in this repository";
@@ -93,7 +127,12 @@ export const boundaryViolation = ({
   if (path.dirname(file) === contracts && path.dirname(resolved) !== contracts)
     return "Wire contracts must depend only on local pure contract modules";
   const catalogs = path.join(root, "src/shared/i18n") + path.sep;
-  if (file.startsWith(catalogs) && !resolved.startsWith(catalogs))
+  if (
+    file.startsWith(catalogs) &&
+    !runtimePaths.has(relativeFile) &&
+    (!resolved.startsWith(catalogs) ||
+      runtimePaths.has(path.relative(root, resolved).split(path.sep).join("/")))
+  )
     return "Catalog data must depend only on its published pure local modules";
   const data =
     file === path.join(catalogs, "locales.ts") ||
@@ -133,10 +172,16 @@ export const checkBoundaries = async (requestedRoot = repository) => {
   const violations = [];
   if (
     Object.hasOwn(manifest, "workspaces") ||
-    Object.keys(manifest.dependencies ?? {}).length > 0
+    Object.keys(manifest.dependencies ?? {}).some(
+      (dependency) => !runtimeDependencies.includes(dependency),
+    ) ||
+    Object.values(manifest.dependencies ?? {}).some(
+      (version) =>
+        typeof version !== "string" || !/^\^?\d+\.\d+\.\d+$/.test(version),
+    )
   )
     violations.push(
-      "The published pure phase must use one root package without runtime dependencies or workspaces",
+      "The published phase must use one root package with only declared registry runtime dependencies and no workspaces",
     );
 
   const entries = await readdir(root);

@@ -1,64 +1,60 @@
-# Kernel Admin catalog instructions
+# Kernel Admin runtime-localization instructions
 
 Read [README](README.md), [Contributing](CONTRIBUTING.md), the current
-[publication inventory](.github/bootstrap-policy.json) and the canonical
+[publication inventory](.github/bootstrap-policy.json) and canonical
 [validation manifest](.agents/validation.json) before changes.
 
-This standalone npm project's catalogs phase publishes framework-free admin
-primitives and ten complete flat translation catalogs, their local code registry
-and pure Persian calendar data. Keep these modules independent of another checkout,
-backend SDKs and UI initialization. The API owns authentication execution,
-database access and storage.
+This standalone npm project publishes framework-free admin primitives, ten
+complete flat catalogs and real local translation/date adapters. Keep source
+independent of another checkout, backend SDKs, npm workspaces and UI initialization.
+The separate API owns authentication execution, database access and storage.
 
-Read [localization](docs/localization.md) before changing catalogs. Keep one
-code-named catalog per registered language, root string messages, complete keys
-and i18next interpolation parity; do not add common objects or compatibility aliases.
-Leaf catalog files, locales.ts and dayjs/fa.ts may import only fully erased local
-types. Do not load fallback data through runtime imports/re-exports, dynamic imports
-or require. Only catalogs.ts may load the canonical local catalog objects at runtime.
-The code list selects catalogs only. The API owns active language, direction,
-calendar and names; future runtime adapters must consume that metadata without
-persisting a visitor language choice or inferring direction/calendar from a code.
-Runtime i18next/React/date adapters are not published in this phase.
+Read [localization](docs/localization.md). Keep one code-named catalog per language,
+110 complete root string messages and i18next interpolation parity; no common
+objects, compatibility aliases or runtime English fallback inside leaf data.
+Leaf catalogs, locales.ts and dayjs/fa.ts accept only fully erased local types.
+Only catalogs.ts loads the canonical catalog objects. Data cannot import adapters.
 
-The catalogs phase has `applicationReady: false`. Do not claim a working panel,
-production build, browser journey or visual check from these unit tests. A
-runnable phase must introduce the React/Vite application and its complete
-validation, preserving Ant Design, antd-style, React Router, Axios and directly
-typed component parameters without FC aliases.
+The runtime adapter owns i18next/react-i18next initialization with fixed Persian
+bootstrap fallback. Never read or persist a visitor language preference. The date
+adapter registers all ten real Day.js locales and Jalaliday; English uses en-gb.
+Code normalization selects a supported catalog only. The API remains authoritative
+for active language, direction, calendar and names. The future HTTP settings
+adapter must validate complete server metadata, without inferring direction or
+calendar from language codes. Only a super-administrator changes active language.
 
-Required checks follow the published phase: the catalogs phase requires `check`,
-`PR file limit`, `SonarQube Cloud analysis`, `SonarCloud Code Analysis` and `CodeRabbit`. Before
-any runnable panel merges, introduce real build/e2e/visual jobs, expand the full
-canonical gate, observe those jobs pass and add them to required checks. Do not
-substitute placeholder jobs or skipped checks for application evidence.
+The runtime-localization phase has applicationReady:false. It contains no runnable
+panel, HTTP integration, production build, browser journey or visual evidence.
+A runnable phase must introduce React/Vite and complete real validation, preserving
+Ant Design, antd-style, React Router, Axios and directly typed component parameters
+without FC aliases. Before a runnable panel merges, expand the canonical full gate,
+observe genuine build/e2e/visual jobs pass and add them to required checks.
 
-Run `npm run validate -- full` on the exact proposed snapshot before an
-authorized commit or PR handoff. Keep each PR at 100 or fewer GitHub changed-file
-entries, including deletions, renames and binaries. Preserve private state and
-never read real environment files or credentials. Commits, pushes, remote
-comments and merging require explicit authorization.
+Preserve token generation, login/logout invalidation and refresh semantics. Only
+the declared runtime-adapter modules may import their exact registry dependencies;
+pure contracts, catalogs and primitives stay isolated. Every production module
+belongs in measured coverage. Tests use synthetic state and actual installed
+translation/date dependencies, never real environment files or credentials.
 
-Initial publication is staged. Every PR runs all required checks for its published
-scope through the same canonical full command as local validation, regardless of
-changed paths. The runner rejects omitted, repeated or non-required entries in
-the full profile before executing commands. Focused profiles are development
-tools and cannot replace the PR gate; add real application checks as their source
-is published, before any runnable panel merge.
+Run npm run validate -- full on the exact proposed snapshot before every authorized
+commit or PR handoff. All nine required commands run on every PR regardless of
+changed paths. The runner rejects omitted, repeated or non-required full entries;
+focused profiles cannot replace the complete gate. Keep each PR at 100 or fewer
+GitHub changed-file entries, including deletions, renames and binaries.
 
-The semantic YAML guard rejects PR event filters, conditional/advisory validation,
-non-root commands and missing or reordered installation/full steps. Its current
-single-job policy rejects checks assigned elsewhere; extend that policy deliberately
-before introducing real multi-job application validation.
+The semantic YAML guard requires unconditional root installation then the canonical
+full command, with no PR filters or advisory validation. Its single-job policy must
+be deliberately extended before introducing multi-job application checks.
 
-Use native CI, CodeRabbit and SonarQube Cloud evidence for the current revision.
-CodeRabbit reviews are manual-only. Before a request, require every non-CodeRabbit
-required check for the published phase to pass for the latest head, including the
-scanner and actual Sonar quality gate, and verify zero open/unresolved issues of
-any severity in its complete applicable Sonar report, including existing code.
-Missing or stale evidence blocks requests; new commits invalidate preflight.
-A documented false positive still open at Sonar blocks requests too. Follow
-[Contributing](CONTRIBUTING.md#before-requesting-coderabbit) for authorization,
-quota and duplicate-request rules; exclude CodeRabbit's own check/approval only
-from preflight to avoid a cycle. Keep assistant guidance in English and maintained
-human documentation in English and Persian.
+Required native contexts remain check, PR file limit, SonarQube Cloud analysis,
+SonarCloud Code Analysis and CodeRabbit. Preserve expected App identities, strict
+up-to-date protection, approving review and resolved conversations. A skipped
+CodeRabbit status is not a substantive review. Before one manual review request,
+require all latest-head non-CodeRabbit required checks including scanner and actual
+Sonar gate to pass, and zero open/unresolved issues across every page/severity of
+the complete applicable Sonar report. New commits invalidate preflight. Follow
+Contributing for authorization, quota and no duplicate in-flight requests.
+
+Preserve private state; never read real environment files or secrets. Commits,
+pushes, remote messages and merging require explicit authorization. Keep assistant
+guidance English and maintained human documentation English/Persian.

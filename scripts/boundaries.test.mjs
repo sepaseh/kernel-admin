@@ -115,7 +115,7 @@ test("catalog data resolves only to its own published pure local modules", () =>
         path.join(root, "src/shared/i18n", runtime),
         catalog,
       ),
-      /published production modules/,
+      /Catalog data must depend only/,
     );
   for (const dependency of ["react", "i18next", "dayjs", "@kernel/i18n"])
     assert.match(
@@ -239,9 +239,9 @@ test("undeclared production and linked source are not hidden by an empty import 
   await assert.rejects(checkBoundaries(directory), /symbolic links/);
 });
 
-test("the exact current catalog phase has eighteen contained production modules", async () => {
+test("the exact current runtime-localization phase has twenty-two contained production modules", async () => {
   const result = await checkBoundaries();
-  assert.equal(result.files, 18);
+  assert.equal(result.files, 22);
   assert.deepEqual(result.violations, []);
 });
 
@@ -277,4 +277,46 @@ test("relative and linked checkout roots use the same canonical production bound
     (await checkBoundaries(linkedRoot)).violations.join("\n"),
     /published production modules/,
   );
+});
+
+test("runtime adapters may import only exact declared packages contained in this checkout", () => {
+  for (const [source, specifier, dependency] of [
+    ["src/shared/i18n/index.ts", "i18next", "i18next"],
+    ["src/shared/i18n/index.ts", "react-i18next", "react-i18next"],
+    ["src/shared/i18n/date.ts", "dayjs/locale/en-gb", "dayjs"],
+    ["src/shared/i18n/date.ts", "jalaliday", "jalaliday"],
+  ]) {
+    const adapter = path.join(root, source);
+    const target = path.join(root, "node_modules", dependency, "index.d.ts");
+    assert.equal(check(specifier, target, adapter), undefined);
+    assert.match(
+      check(
+        specifier,
+        path.resolve(
+          root,
+          "../another-checkout/node_modules",
+          dependency,
+          "index.d.ts",
+        ),
+        adapter,
+      ),
+      /not allowed/,
+    );
+    assert.match(check("node:fs", target, adapter), /not allowed/);
+    assert.match(check("dayjs/locale/xx", target, adapter), /not allowed/);
+  }
+});
+
+test("pure catalog and contract modules cannot depend on the published runtime adapters", () => {
+  const adapter = path.join(root, "src/shared/i18n/index.ts");
+  for (const source of [
+    "src/shared/i18n/catalogs.ts",
+    "src/shared/i18n/locales/fa.ts",
+    "src/shared/contracts/index.ts",
+  ]) {
+    assert.match(
+      check("../i18n/index", adapter, path.join(root, source)),
+      /(?:Catalog data|Wire contracts)/,
+    );
+  }
 });
