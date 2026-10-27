@@ -322,6 +322,34 @@ test("Sonar retains the legitimate same-repository fork condition without permit
     );
 });
 
+test("Sonar accepts complete expression wrappers with normalized whitespace", () => {
+  const actual = sonarWorkflow();
+  const condition = actual.jobs.analysis.if.replaceAll(" ", "\t\n ");
+  for (const value of [condition, `  \${{\t${condition}\n}}  `]) {
+    actual.jobs.analysis.if = value;
+    assert.doesNotThrow(() =>
+      inspectSonarWorkflow(stringify(actual), manifest()),
+    );
+  }
+});
+
+test("Sonar rejects incomplete wrappers, nested wrappers and long invalid conditions", () => {
+  const actual = sonarWorkflow();
+  const condition = actual.jobs.analysis.if;
+  for (const value of [
+    `\${{ ${condition}`,
+    `${condition} }}`,
+    `\${{ \${{ ${condition} }} }}`,
+    `\${{ ${condition}${" ".repeat(20000)}false }}`,
+  ]) {
+    actual.jobs.analysis.if = value;
+    assert.throws(
+      () => inspectSonarWorkflow(stringify(actual), manifest()),
+      /fork condition/,
+    );
+  }
+});
+
 test("Sonar requires each installation and full command exactly once, at root and without bypasses", () => {
   for (const command of [
     "npm ci",

@@ -150,6 +150,15 @@ export const inspectCi = (content, manifest) => {
 const sameRepositoryCondition =
   "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository";
 
+const normalizeCondition = (condition) => {
+  const trimmed = condition.trim();
+  const expression =
+    trimmed.startsWith("${{") && trimmed.endsWith("}}")
+      ? trimmed.slice(3, -2).trim()
+      : trimmed;
+  return expression.replace(/\s+/g, " ");
+};
+
 export const inspectSonarWorkflow = (content, manifest) => {
   const workflow = parseWorkflow(content);
   inspectPullRequestTrigger(workflow.on);
@@ -157,12 +166,7 @@ export const inspectSonarWorkflow = (content, manifest) => {
   if (!isRecord(job) || !Array.isArray(job.steps))
     throw new Error("Sonar must declare its analysis job and steps");
   const condition =
-    typeof job.if === "string"
-      ? job.if
-          .trim()
-          .replace(/^\$\{\{\s*|\s*\}\}$/g, "")
-          .replace(/\s+/g, " ")
-      : undefined;
+    typeof job.if === "string" ? normalizeCondition(job.if) : undefined;
   if (
     (Object.hasOwn(job, "if") && condition !== sameRepositoryCondition) ||
     Object.hasOwn(job, "needs") ||

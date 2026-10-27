@@ -313,18 +313,22 @@ const phaseOrder = [
 ];
 const supportsPhase = (phase, minimum) =>
   phaseOrder.indexOf(phase) >= phaseOrder.indexOf(minimum);
+const phaseSourceGroups = [
+  ["catalogs", catalogFiles],
+  ["runtime-localization", runtimeFiles],
+  ["http-lifecycle", httpFiles],
+  ["ui-foundation", uiFiles],
+  ["core-auth", coreAuthFiles],
+  ["business-screens", businessFiles],
+  ["storybook-verification", storybookFiles],
+];
 const publishedSource = (file, phase) =>
   phase !== "governance" &&
   (isFoundationSource(file) ||
-    (supportsPhase(phase, "catalogs") && catalogFiles.includes(file)) ||
-    (supportsPhase(phase, "runtime-localization") &&
-      runtimeFiles.includes(file)) ||
-    (supportsPhase(phase, "http-lifecycle") && httpFiles.includes(file)) ||
-    (supportsPhase(phase, "ui-foundation") && uiFiles.includes(file)) ||
-    (supportsPhase(phase, "core-auth") && coreAuthFiles.includes(file)) ||
-    (supportsPhase(phase, "business-screens") &&
-      businessFiles.includes(file)) ||
-    (phase === "storybook-verification" && storybookFiles.includes(file)));
+    phaseSourceGroups.some(
+      ([minimum, files]) =>
+        supportsPhase(phase, minimum) && files.includes(file),
+    ));
 
 export const validateBootstrapPolicy = (policy) => {
   if (
