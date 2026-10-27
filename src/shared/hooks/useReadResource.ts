@@ -1,4 +1,10 @@
-import { useCallback, useEffect } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 
 import { useReadRequest } from "./useReadRequest.ts";
 
@@ -8,19 +14,33 @@ export const useReadResource = <T>(
 ) => {
   const { cancel, data, error, key, loading, replace, run } =
     useReadRequest<T>();
+  const identity = useMemo(() => ({ enabled, load }), [enabled, load]);
+  const committed = useRef<typeof identity | undefined>(undefined);
   const reload = useCallback(
-    () => (enabled ? run(load, load) : Promise.resolve(undefined)),
-    [enabled, load, run],
+    () =>
+      enabled && committed.current === identity
+        ? run(load, load)
+        : Promise.resolve(undefined),
+    [enabled, identity, load, run],
   );
   const accept = useCallback(
-    (value: T) => replace(value, load),
-    [load, replace],
+    (value: T) => {
+      if (committed.current === identity) replace(value, load);
+    },
+    [identity, load, replace],
   );
+
+  useLayoutEffect(() => {
+    committed.current = identity;
+    return () => {
+      committed.current = undefined;
+      cancel();
+    };
+  }, [cancel, identity]);
 
   useEffect(() => {
     void reload();
-    return cancel;
-  }, [cancel, reload]);
+  }, [reload]);
 
   const current = key === load;
   return {

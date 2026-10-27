@@ -2,6 +2,7 @@ import { readdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import semver from "semver";
 import ts from "typescript";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
@@ -250,9 +251,8 @@ export const checkBoundaries = async (requestedRoot = repository) => {
     Object.values(manifest.devDependencies ?? {}).some(
       (version) =>
         typeof version !== "string" ||
-        /^(?:npm:|file:|link:|workspace:|git|https?:|\.|\/|[a-z]:[\\/])/i.test(
-          version,
-        ),
+        !version.trim() ||
+        semver.validRange(version) === null,
     )
   )
     violations.push(

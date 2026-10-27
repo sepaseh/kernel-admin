@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { CanceledError } from "axios";
+import { createElement, useLayoutEffect } from "react";
+import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useReadRequest } from "./useReadRequest.ts";
@@ -79,6 +81,110 @@ describe("read request lifecycle", () => {
     });
     expect(result.current.data).toBe("fresh success");
     expect(result.current.error).toBeUndefined();
+  });
+
+  it("ignores retained callbacks after another resource commits", async () => {
+    const first = deferred<string>();
+    const second = deferred<string>();
+    const older = vi.fn(() => first.promise);
+    const newer = vi.fn(() => second.promise);
+    const { result, rerender } = renderHook(
+      ({ load }) => useReadResource(load),
+      { initialProps: { load: older } },
+    );
+    const obsolete = result.current;
+    rerender({ load: newer });
+    let obsoleteReload!: Promise<string | undefined>;
+    act(() => {
+      obsoleteReload = obsolete.reload();
+      obsolete.replace("obsolete mutation");
+    });
+    expect(older).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      first.resolve("obsolete resource");
+      second.resolve("current resource");
+      await obsoleteReload;
+    });
+    expect(result.current.data).toBe("current resource");
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("invalidates an awaited read during commit before passive cleanup", async () => {
+    const first = deferred<string>();
+    const second = deferred<string>();
+    const committed = deferred<void>();
+    const older = vi.fn(() => first.promise);
+    const newer = vi.fn(() => second.promise);
+    let resource!: ReturnType<typeof useReadResource<string>>;
+    const Probe = ({ load }: { load: typeof older }) => {
+      const current = useReadResource(load);
+      useLayoutEffect(() => {
+        resource = current;
+        if (load === newer) {
+          first.resolve("obsolete value");
+          committed.resolve();
+        }
+      });
+      return null;
+    };
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    const environment = globalThis as typeof globalThis & {
+      IS_REACT_ACT_ENVIRONMENT?: boolean;
+    };
+    const previous = environment.IS_REACT_ACT_ENVIRONMENT;
+    try {
+      await act(async () => root.render(createElement(Probe, { load: older })));
+      let original!: Promise<string | undefined>;
+      act(() => {
+        original = resource.reload();
+      });
+      // Preserve the real concurrent commit/passive scheduling boundary.
+      environment.IS_REACT_ACT_ENVIRONMENT = false;
+      root.render(createElement(Probe, { load: newer }));
+      await committed.promise;
+      await expect(original).resolves.toBeUndefined();
+      environment.IS_REACT_ACT_ENVIRONMENT = previous;
+      await act(async () => second.resolve("current value"));
+      expect(resource.data).toBe("current value");
+    } finally {
+      environment.IS_REACT_ACT_ENVIRONMENT = previous;
+      await act(async () => root.unmount());
+    }
+  });
+
+  it("does not revive callbacks after disabling and enabling the same loader", async () => {
+    const requests: ReturnType<typeof deferred<string>>[] = [];
+    const load = vi.fn(() => {
+      const pending = deferred<string>();
+      requests.push(pending);
+      return pending.promise;
+    });
+    const { result, rerender, unmount } = renderHook(
+      ({ enabled }) => useReadResource(load, enabled),
+      { initialProps: { enabled: true } },
+    );
+    const obsolete = result.current;
+    rerender({ enabled: false });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.error).toBeUndefined();
+    expect(result.current.loading).toBe(false);
+    rerender({ enabled: true });
+    await act(async () => {
+      await obsolete.reload();
+      obsolete.replace("obsolete mutation");
+    });
+    expect(load).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      requests[0].resolve("disabled value");
+      requests[1].resolve("enabled value");
+    });
+    expect(result.current.data).toBe("enabled value");
+    const unmounted = result.current;
+    unmount();
+    await unmounted.reload();
+    unmounted.replace("unmounted value");
+    expect(load).toHaveBeenCalledTimes(2);
   });
 
   it("aborts pending reads on refetch/unmount and never returns an obsolete detail to its caller", async () => {

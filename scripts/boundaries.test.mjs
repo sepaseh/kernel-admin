@@ -405,6 +405,13 @@ test("registry aliases and local dependency protocols cannot escape the standalo
   const { directory, put } = await fixture(context);
   for (const version of [
     "npm:other@1.0.0",
+    "user/repo",
+    "github:user/repo",
+    "gitlab:user/repo",
+    "bitbucket:user/repo",
+    "ssh://git@example.test/source",
+    "latest",
+    "",
     "file:../source",
     "link:../source",
     "workspace:*",
@@ -426,5 +433,16 @@ test("registry aliases and local dependency protocols cannot escape the standalo
         /(?:registry|workspaces)/,
       );
     }
+  }
+});
+
+test("development tooling accepts valid registry semver ranges", async (context) => {
+  const { directory, put } = await fixture(context);
+  for (const version of ["7.8.5", "^7.8.5", "~6.0.3", ">=6 <8", "7.x"]) {
+    await put(
+      "package.json",
+      JSON.stringify({ devDependencies: { typescript: version } }),
+    );
+    assert.deepEqual((await checkBoundaries(directory)).violations, []);
   }
 });
