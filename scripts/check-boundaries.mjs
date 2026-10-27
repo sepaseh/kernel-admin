@@ -33,13 +33,13 @@ const runtimeImports = {
     ),
   ],
 };
-const runtimeDependencies = [
+const runtimeDependencies = new Set([
   "dayjs",
   "i18next",
   "jalaliday",
   "react",
   "react-i18next",
-];
+]);
 const runtimePaths = new Set([
   "src/shared/config/language.ts",
   "src/shared/i18n/index.ts",
@@ -173,7 +173,7 @@ export const checkBoundaries = async (requestedRoot = repository) => {
   if (
     Object.hasOwn(manifest, "workspaces") ||
     Object.keys(manifest.dependencies ?? {}).some(
-      (dependency) => !runtimeDependencies.includes(dependency),
+      (dependency) => !runtimeDependencies.has(dependency),
     ) ||
     Object.values(manifest.dependencies ?? {}).some(
       (version) =>

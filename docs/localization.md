@@ -27,7 +27,8 @@ own source; neither checkout is a runtime dependency.
 ## Translation initialization and authority
 
 [index.ts](../src/shared/i18n/index.ts) owns i18next/react-i18next initialization
-using the actual local catalogs and a fixed Persian bootstrap/fallback. It does
+using the actual local catalogs and a fixed Persian bootstrap/fallback. Module
+loading awaits initialization, so consumers receive an initialized engine. It does
 not inspect or persist browser language preferences. React is a runtime dependency
 of the translation plugin, but no screen is published. A missing key retains its
 identity and emits a diagnostic; fallback never excuses missing translations.

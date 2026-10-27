@@ -14,7 +14,7 @@ declare module "i18next" {
 
 const i18nInstance = i18n.use(initReactI18next);
 
-i18nInstance.init({
+await i18nInstance.init({
   debug: false,
   defaultNS: "translation",
   fallbackLng: defaultLanguage,

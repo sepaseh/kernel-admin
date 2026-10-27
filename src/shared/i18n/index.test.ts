@@ -14,7 +14,7 @@ it("bootstraps in Persian without reading or writing a visitor language", async 
   vi.stubGlobal("localStorage", storage);
   vi.resetModules();
   const { i18nInstance } = await import("./index");
-  await i18nInstance.init();
+  expect(i18nInstance.isInitialized).toBe(true);
   expect(i18nInstance.resolvedLanguage).toBe(defaultLanguage);
   expect(i18nInstance.t("login")).toBe(catalogs.fa.login);
   expect(storage.getItem).not.toHaveBeenCalled();
@@ -23,13 +23,16 @@ it("bootstraps in Persian without reading or writing a visitor language", async 
 
 it("registers every complete local catalog with the real translation engine", async () => {
   const { i18nInstance } = await import("./index");
-  await i18nInstance.init();
+  expect(i18nInstance.isInitialized).toBe(true);
   for (const code of localeCodes) {
     expect(i18nInstance.getResourceBundle(code, "translation")).toEqual(
       catalogs[code],
     );
-    expect(i18nInstance.t("login", { lng: code })).toBe(catalogs[code].login);
+    await i18nInstance.changeLanguage(code);
+    expect(i18nInstance.resolvedLanguage).toBe(code);
+    expect(i18nInstance.t("login")).toBe(catalogs[code].login);
   }
+  await i18nInstance.changeLanguage(defaultLanguage);
 });
 
 it("uses Persian fallback and reports missing keys without swallowing their identity", async () => {
@@ -44,4 +47,24 @@ it("uses Persian fallback and reports missing keys without swallowing their iden
   expect(warn).toHaveBeenCalledWith(
     "Missing translation key: syntheticMissingKey",
   );
+});
+
+it("rejects module loading when translation initialization fails", async () => {
+  const failure = new Error("Synthetic translation initialization failure");
+  vi.doMock("i18next", () => ({
+    default: {
+      use: () => ({
+        init: async () => {
+          throw failure;
+        },
+      }),
+    },
+  }));
+  vi.resetModules();
+  try {
+    await expect(import("./index")).rejects.toBe(failure);
+  } finally {
+    vi.doUnmock("i18next");
+    vi.resetModules();
+  }
 });
