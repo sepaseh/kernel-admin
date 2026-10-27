@@ -252,9 +252,9 @@ test("undeclared production and linked source are not hidden by an empty import 
   await assert.rejects(checkBoundaries(directory), /symbolic links/);
 });
 
-test("the exact current ui-foundation phase has sixty-eight contained production modules", async () => {
+test("the exact core-auth phase has ninety-three contained production modules", async () => {
   const result = await checkBoundaries();
-  assert.equal(result.files, 68);
+  assert.equal(result.files, 93);
   assert.deepEqual(result.violations, []);
 });
 
@@ -301,6 +301,10 @@ test("runtime adapters may import only exact declared packages contained in this
     ["src/shared/api/client.ts", "axios", "axios"],
     ["src/shared/hooks/useReadRequest.ts", "react", "react"],
     ["src/shared/ui/digits-input/DigitsInput.tsx", "react", "react"],
+    ["src/app/providers/core/Core.tsx", "dayjs", "dayjs"],
+    ["src/app/providers/antd/Antd.tsx", "antd/locale/fa_IR", "antd"],
+    ["src/features/login/styles.ts", "antd-style", "antd-style"],
+    ["src/layouts/default/Default.tsx", "lucide-react", "lucide-react"],
   ]) {
     const adapter = path.join(root, source);
     const target = path.join(root, "node_modules", dependency, "index.d.ts");
@@ -390,6 +394,44 @@ test("pure catalog and contract modules cannot depend on the published runtime a
       /(?:Catalog data|Wire contracts)/,
     );
   }
+});
+
+test("core adapters retain exact package and erased route-vocabulary ownership", () => {
+  const localeOwner = path.join(root, "src/app/providers/antd/Antd.tsx");
+  const locale = path.join(root, "node_modules/antd/locale/fa_IR.d.ts");
+  assert.equal(
+    check("antd/locale/fa_IR", locale, localeOwner, false, "antd"),
+    undefined,
+  );
+  for (const specifier of [
+    "antd/locale/xx_XX",
+    "antd/es/internal",
+    "dayjs/locale/xx",
+  ])
+    assert.match(
+      check(specifier, locale, localeOwner, false, "antd"),
+      /not allowed/,
+    );
+  const routeOwner = path.join(root, "src/app/config/routes.ts");
+  const i18next = path.join(root, "node_modules/i18next/index.d.ts");
+  assert.equal(
+    check("i18next", i18next, routeOwner, true, "i18next"),
+    undefined,
+  );
+  assert.match(
+    check("i18next", i18next, routeOwner, false, "i18next"),
+    /not allowed/,
+  );
+  assert.match(
+    check(
+      "antd/locale/fa_IR",
+      locale,
+      path.join(root, "src/app/providers/core/Core.tsx"),
+      false,
+      "antd",
+    ),
+    /not allowed/,
+  );
 });
 
 test("HTTP package ownership, type erasure and package identity fail closed", () => {

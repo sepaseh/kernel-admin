@@ -2,10 +2,10 @@
 
 [English](localization.md) · [فارسی](localization.fa.md)
 
-The [ui-foundation phase](bootstrap.md) publishes complete local catalogs
+The [core-auth phase](bootstrap.md) publishes complete local catalogs
 and real translation/date adapters. Tests exercise their installed dependencies
-in Node. applicationReady:false remains deliberate: no runnable panel, UI
-provider integration or browser journey is published; the HTTP settings adapter is included.
+in Node, with synthetic Core/Ant Design provider tests in isolated jsdom.
+applicationReady:false remains deliberate: the provider modules and HTTP settings adapter are published, while the application entry point, App/Routes composition and browser journeys remain future work.
 
 ## One complete catalog per language
 
@@ -30,7 +30,7 @@ own source; neither checkout is a runtime dependency.
 using the actual local catalogs and a fixed Persian bootstrap/fallback. Module
 loading awaits initialization, so consumers receive an initialized engine. It does
 not inspect or persist browser language preferences. React is a runtime dependency
-of the translation plugin, but no screen is published. A missing key retains its
+of the translation plugin. Published authentication forms consume its resources. A missing key retains its
 identity and emits a diagnostic; fallback never excuses missing translations.
 
 [language.ts](../src/shared/config/language.ts) normalizes registered code prefixes
@@ -39,8 +39,7 @@ or calendar table. The API owns active language, direction, calendar and both
 public/native names; only a super-administrator may change the active language.
 The [HTTP settings adapter](http-client.md) validates and preserves complete server
 metadata and localized errors. Missing/unsupported metadata fails without local
-direction/calendar inference. This phase does not implement a visitor chooser or
-provider/browser integration. Theme and compact
+direction/calendar inference. The [Core provider](core-auth.md) applies accepted server metadata to i18next and Day.js; the Ant Design provider selects its exact locale and mirrors the server direction/code to the document. This phase does not implement a visitor chooser or a browser journey. Theme and compact
 preferences are separate concerns.
 
 The [error helper](../src/shared/lib/error.ts) preserves actual Error messages and

@@ -160,22 +160,81 @@ const uiFiles = [
   "src/test/render.tsx",
   "src/test/setup.ts",
 ];
+const coreAuthFiles = [
+  "docs/admin-request-reliability.fa.md",
+  "docs/admin-request-reliability.md",
+  "docs/adr/0001-independent-runtimes.fa.md",
+  "docs/adr/0001-independent-runtimes.md",
+  "docs/adr/0003-single-active-language.fa.md",
+  "docs/adr/0003-single-active-language.md",
+  "docs/adr/0004-cookie-proxy-and-sessions.fa.md",
+  "docs/adr/0004-cookie-proxy-and-sessions.md",
+  "docs/adr/README.fa.md",
+  "docs/adr/README.md",
+  "docs/architecture.fa.md",
+  "docs/architecture.md",
+  "docs/core-auth.fa.md",
+  "docs/core-auth.md",
+  "docs/security/authentication-review.fa.md",
+  "docs/security/authentication-review.md",
+  "src/app/config/index.ts",
+  "src/app/config/routes.ts",
+  "src/app/contexts/Core.ts",
+  "src/app/contexts/index.ts",
+  "src/app/hooks/context.test.tsx",
+  "src/app/hooks/index.ts",
+  "src/app/hooks/useAntd.ts",
+  "src/app/hooks/useCore.ts",
+  "src/app/lib/access.test.ts",
+  "src/app/lib/access.ts",
+  "src/app/lib/index.ts",
+  "src/app/not-found/NotFound.tsx",
+  "src/app/providers/antd/Antd.test.tsx",
+  "src/app/providers/antd/Antd.tsx",
+  "src/app/providers/core/Core.test.tsx",
+  "src/app/providers/core/Core.tsx",
+  "src/app/providers/core/SettingsFeedback.tsx",
+  "src/app/providers/index.ts",
+  "src/features/forgot-pass/ForgotPass.test.tsx",
+  "src/features/forgot-pass/ForgotPass.tsx",
+  "src/features/forgot-pass/index.ts",
+  "src/features/login/Login.test.tsx",
+  "src/features/login/Login.tsx",
+  "src/features/login/index.ts",
+  "src/features/login/styles.test.ts",
+  "src/features/login/styles.ts",
+  "src/features/register/Register.test.tsx",
+  "src/features/register/Register.tsx",
+  "src/features/register/index.ts",
+  "src/layouts/auth/Auth.test.tsx",
+  "src/layouts/auth/Auth.tsx",
+  "src/layouts/auth/index.ts",
+  "src/layouts/default/Default.test.tsx",
+  "src/layouts/default/Default.tsx",
+  "src/layouts/default/index.ts",
+];
 const publishedSource = (file, phase) =>
   phase !== "governance" &&
   (isFoundationSource(file) ||
-    (phase === "ui-foundation" && uiFiles.includes(file)) ||
-    (["http-lifecycle", "ui-foundation"].includes(phase) &&
+    (phase === "core-auth" && coreAuthFiles.includes(file)) ||
+    (["ui-foundation", "core-auth"].includes(phase) &&
+      uiFiles.includes(file)) ||
+    (["http-lifecycle", "ui-foundation", "core-auth"].includes(phase) &&
       httpFiles.includes(file)) ||
     ([
       "catalogs",
       "runtime-localization",
       "http-lifecycle",
       "ui-foundation",
+      "core-auth",
     ].includes(phase) &&
       catalogFiles.includes(file)) ||
-    (["runtime-localization", "http-lifecycle", "ui-foundation"].includes(
-      phase,
-    ) &&
+    ([
+      "runtime-localization",
+      "http-lifecycle",
+      "ui-foundation",
+      "core-auth",
+    ].includes(phase) &&
       runtimeFiles.includes(file)));
 
 export const validateBootstrapPolicy = (policy) => {
@@ -188,6 +247,7 @@ export const validateBootstrapPolicy = (policy) => {
       "runtime-localization",
       "http-lifecycle",
       "ui-foundation",
+      "core-auth",
     ].includes(policy.phase) ||
     policy.applicationReady !== false ||
     policy.maximumChangedFiles !== 100 ||
@@ -207,6 +267,7 @@ export const validateBootstrapPolicy = (policy) => {
         file,
       ) ||
       file === "drizzle.config.ts" ||
+      file === "index.html" ||
       (file.startsWith("src/") && !publishedSource(file, policy.phase)) ||
       (policy.phase === "governance" &&
         /^package(?:-lock)?\.json$/.test(file)) ||
@@ -229,18 +290,23 @@ export const validateBootstrapPolicy = (policy) => {
       "runtime-localization",
       "http-lifecycle",
       "ui-foundation",
+      "core-auth",
     ].includes(policy.phase)
       ? catalogFiles
       : []),
-    ...(["runtime-localization", "http-lifecycle", "ui-foundation"].includes(
-      policy.phase,
-    )
+    ...([
+      "runtime-localization",
+      "http-lifecycle",
+      "ui-foundation",
+      "core-auth",
+    ].includes(policy.phase)
       ? runtimeFiles
       : []),
-    ...(["http-lifecycle", "ui-foundation"].includes(policy.phase)
+    ...(["http-lifecycle", "ui-foundation", "core-auth"].includes(policy.phase)
       ? httpFiles
       : []),
-    ...(policy.phase === "ui-foundation" ? uiFiles : []),
+    ...(["ui-foundation", "core-auth"].includes(policy.phase) ? uiFiles : []),
+    ...(policy.phase === "core-auth" ? coreAuthFiles : []),
   ];
   if (requiredFiles.some((file) => !files.has(file)))
     throw new Error(
@@ -326,6 +392,8 @@ export const inspectBootstrap = async (root) => {
     }),
   );
   const scopeByPhase = {
+    "core-auth":
+      "Published Core and Ant Design providers, typed access/navigation metadata, authentication forms and layouts with synthetic lifecycle tests; no application entry point, route composition, production build, browser journey or visual gate is published.",
     "ui-foundation":
       "Published Ant Design widgets, theme/preferences/observability foundations, real font/vector asset validation and synthetic HTTP/React tests; application composition, production build, browser journeys and visual validation remain unpublished.",
     "http-lifecycle":

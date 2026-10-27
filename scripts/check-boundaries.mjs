@@ -7,6 +7,31 @@ import ts from "typescript";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const productionPaths = [
+  "src/app/config/index.ts",
+  "src/app/config/routes.ts",
+  "src/app/contexts/Core.ts",
+  "src/app/contexts/index.ts",
+  "src/app/hooks/index.ts",
+  "src/app/hooks/useAntd.ts",
+  "src/app/hooks/useCore.ts",
+  "src/app/lib/access.ts",
+  "src/app/lib/index.ts",
+  "src/app/not-found/NotFound.tsx",
+  "src/app/providers/antd/Antd.tsx",
+  "src/app/providers/core/Core.tsx",
+  "src/app/providers/core/SettingsFeedback.tsx",
+  "src/app/providers/index.ts",
+  "src/features/forgot-pass/ForgotPass.tsx",
+  "src/features/forgot-pass/index.ts",
+  "src/features/login/Login.tsx",
+  "src/features/login/index.ts",
+  "src/features/login/styles.ts",
+  "src/features/register/Register.tsx",
+  "src/features/register/index.ts",
+  "src/layouts/auth/Auth.tsx",
+  "src/layouts/auth/index.ts",
+  "src/layouts/default/Default.tsx",
+  "src/layouts/default/index.ts",
   "src/shared/config/constants.ts",
   "src/shared/config/index.ts",
   "src/shared/config/theme.ts",
@@ -70,6 +95,58 @@ const productionPaths = [
   "src/shared/lib/color-contrast.ts",
 ];
 const runtimeImports = {
+  "src/app/contexts/Core.ts": ["react"],
+  "src/app/hooks/useAntd.ts": ["antd"],
+  "src/app/hooks/useCore.ts": ["react"],
+  "src/app/not-found/NotFound.tsx": ["antd", "react-i18next", "react-router"],
+  "src/app/providers/antd/Antd.tsx": [
+    "antd",
+    "antd/locale/ar_EG",
+    "antd/locale/de_DE",
+    "antd/locale/en_GB",
+    "antd/locale/es_ES",
+    "antd/locale/fa_IR",
+    "antd/locale/fr_FR",
+    "antd/locale/it_IT",
+    "antd/locale/pt_PT",
+    "antd/locale/ru_RU",
+    "antd/locale/tr_TR",
+    "react",
+  ],
+  "src/app/providers/core/Core.tsx": ["dayjs", "react"],
+  "src/features/forgot-pass/ForgotPass.tsx": [
+    "antd",
+    "axios",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/login/Login.tsx": [
+    "antd",
+    "axios",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/login/styles.ts": ["antd-style"],
+  "src/features/register/Register.tsx": [
+    "antd",
+    "axios",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/layouts/auth/Auth.tsx": ["antd-style", "react", "react-router"],
+  "src/layouts/default/Default.tsx": [
+    "antd",
+    "antd-style",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
   "src/shared/config/theme.ts": ["antd"],
   "src/shared/hooks/useGoBack.ts": ["react", "react-router"],
   "src/shared/lib/observability.ts": ["web-vitals"],
@@ -103,6 +180,13 @@ const runtimeImports = {
   ],
 };
 const typeImports = {
+  "src/app/config/routes.ts": ["i18next"],
+  "src/app/providers/antd/Antd.tsx": ["antd", "react"],
+  "src/app/providers/core/Core.tsx": ["react"],
+  "src/features/forgot-pass/ForgotPass.tsx": ["antd"],
+  "src/features/login/Login.tsx": ["antd"],
+  "src/features/register/Register.tsx": ["antd"],
+  "src/layouts/default/Default.tsx": ["antd"],
   "src/shared/config/theme.ts": ["antd"],
   "src/shared/hooks/useGoBack.ts": ["react-router"],
   "src/shared/lib/observability.ts": ["web-vitals"],
@@ -121,6 +205,8 @@ const wireImports = {
   ],
 };
 const runtimeDependencies = new Set([
+  "antd-style",
+  "lucide-react",
   "antd",
   "react-router",
   "web-vitals",
@@ -241,7 +327,11 @@ export const boundaryViolation = ({
     const allowed = (typeOnly ? typeImports : runtimeImports)[
       relativeFile
     ]?.includes(specifier);
-    const dependency = specifier.startsWith("dayjs/") ? "dayjs" : specifier;
+    const dependency = specifier.startsWith("dayjs/")
+      ? "dayjs"
+      : specifier.startsWith("antd/locale/")
+        ? "antd"
+        : specifier;
     const packageName =
       dependency === "react" && resolvedPackage === "@types/react"
         ? "@types/react"

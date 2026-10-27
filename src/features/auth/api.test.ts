@@ -36,6 +36,40 @@ beforeEach(() => {
 
 describe("authentication API", () => {
   it.each(["login", "register"] as const)(
+    "does not commit a %s reply when its caller cancels after transport fulfillment",
+    async (operation) => {
+      const controller = new AbortController();
+      let release!: (value: unknown) => void;
+      vi.mocked(apiClient.post).mockImplementationOnce(
+        () => new Promise((resolve) => (release = resolve)),
+      );
+      const pending =
+        operation === "login"
+          ? login(
+              { identifier: "ada", password: syntheticCredential },
+              controller.signal,
+            )
+          : register(
+              {
+                firstName: "Ada",
+                lastName: "Lovelace",
+                mobile: "09120000000",
+                otp: "123456",
+                password: syntheticCredential,
+              },
+              controller.signal,
+            );
+      release({ accessToken: "aborted-reply" });
+      controller.abort();
+
+      expect(isCancel(await pending.catch((error: unknown) => error))).toBe(
+        true,
+      );
+      expect(setAccessToken).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["login", "register"] as const)(
     "does not commit a %s reply after its transport completed but the session changed before the feature resumed",
     async (operation) => {
       let release!: (value: unknown) => void;
@@ -115,14 +149,21 @@ describe("authentication API", () => {
       currentPassword: currentCredential,
       newPassword: replacementCredential,
     });
-    expect(apiClient.post).toHaveBeenNthCalledWith(2, "/auth/forgot-password", {
-      mobile: "09120000000",
-      otp: "123456",
-      password: replacementCredential,
-    });
-    expect(apiClient.post).toHaveBeenNthCalledWith(3, "/auth/otp-request", {
-      mobile: "09120000000",
-      purpose: "login",
-    });
+    expect(apiClient.post).toHaveBeenNthCalledWith(
+      2,
+      "/auth/forgot-password",
+      {
+        mobile: "09120000000",
+        otp: "123456",
+        password: replacementCredential,
+      },
+      { signal: undefined },
+    );
+    expect(apiClient.post).toHaveBeenNthCalledWith(
+      3,
+      "/auth/otp-request",
+      { mobile: "09120000000", purpose: "login" },
+      { signal: undefined },
+    );
   });
 });

@@ -1,7 +1,13 @@
+import { isCancel } from "axios";
 import { http, HttpResponse } from "msw/http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { login, register } from "../../features/auth/api.ts";
+import {
+  forgotPassword,
+  login,
+  register,
+  requestOtp,
+} from "../../features/auth/api.ts";
 import { uploadFile } from "../../features/settings/components/logo-upload/api.ts";
 import { server } from "../../test/mocks/server.ts";
 import { i18nInstance } from "../i18n/index.ts";
@@ -104,6 +110,76 @@ describe("HTTP payload boundaries", () => {
 });
 
 describe("validated authentication replies", () => {
+  it.each(["login", "register", "otp-request", "forgot-password"] as const)(
+    "cancels a pending %s request without replacing the current session",
+    async (operation) => {
+      const controller = new AbortController();
+      let entered!: () => void;
+      const requestEntered = new Promise<void>(
+        (resolve) => (entered = resolve),
+      );
+      let release!: () => void;
+      const responseGate = new Promise<void>((resolve) => (release = resolve));
+      server.use(
+        http.post(`http://localhost/auth/${operation}`, async () => {
+          entered();
+          await responseGate;
+          return operation === "forgot-password"
+            ? new HttpResponse(null, { status: 204 })
+            : HttpResponse.json(
+                operation === "otp-request"
+                  ? { remaining_seconds: 30 }
+                  : { access_token: "late-auth-token" },
+              );
+        }),
+      );
+      setAccessToken("existing-session");
+      const version = getAccessTokenVersion();
+      const pending =
+        operation === "login"
+          ? login(
+              { identifier: "ada", password: "synthetic-test-credential" },
+              controller.signal,
+            )
+          : operation === "register"
+            ? register(
+                {
+                  firstName: "Ada",
+                  lastName: "Lovelace",
+                  mobile: "09120000000",
+                  otp: "123456",
+                  password: "synthetic-test-credential",
+                },
+                controller.signal,
+              )
+            : operation === "otp-request"
+              ? requestOtp(
+                  { mobile: "09120000000", purpose: "register" },
+                  controller.signal,
+                )
+              : forgotPassword(
+                  {
+                    mobile: "09120000000",
+                    otp: "123456",
+                    password: "synthetic-test-credential",
+                  },
+                  controller.signal,
+                );
+      const settled = pending.catch((error: unknown) => error);
+
+      try {
+        await requestEntered;
+        controller.abort();
+        release();
+        expect(isCancel(await settled)).toBe(true);
+        expect(getAccessToken()).toBe("existing-session");
+        expect(getAccessTokenVersion()).toBe(version);
+      } finally {
+        release();
+      }
+    },
+  );
+
   it.each([
     null,
     [],
