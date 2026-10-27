@@ -25,7 +25,7 @@ const identities = {
   [fontFile]:
     "4e3fa217d38fdafc1fea4414ceb58ca5e662cf0ab5fa735a8c8c20e8b42cad92",
   "src/assets/styles/index.css":
-    "6411a7e68b28658c1164171f3cb93c86de12b4e950c16f98f6a05b64c6cf5c36",
+    "1ab03b89ece5055a348fba8a7de303a1f0736daa50e11c7283a1ab59ced421b4",
   "src/assets/styles/vazirmatn.css":
     "30f5bf96cefb147568fd5ccf5ab6d16e86849f6f2af8dcb982a90b4fde782664",
   "public/logo.svg":
@@ -82,6 +82,62 @@ describe("published visual assets", () => {
     expect(global).toMatch(/font-family:\s*Vazirmatn, system-ui, sans-serif/);
     expect(global).toContain(":focus-visible");
     expect(global).toContain("prefers-reduced-motion: reduce");
+  });
+
+  it("scopes reduced motion across the document and portalled controls in app and Storybook roots", () => {
+    const style = document.createElement("style");
+    style.textContent = read("src/assets/styles/index.css").toString();
+    const mount = document.createElement("div");
+    mount.id = "root";
+    const portal = document.createElement("div");
+    portal.className = "ant-drawer";
+    const control = document.createElement("button");
+    portal.append(control);
+    document.head.append(style);
+    document.body.append(mount, portal);
+
+    try {
+      const media = Array.from(style.sheet!.cssRules).find(
+        (rule) => rule.type === CSSRule.MEDIA_RULE,
+      ) as CSSMediaRule;
+      expect(media.conditionText).toBe("(prefers-reduced-motion: reduce)");
+      const motion = media.cssRules[0] as CSSStyleRule;
+      for (const [property, value] of Object.entries({
+        "animation-duration": "0.01ms",
+        "animation-iteration-count": "1",
+        "scroll-behavior": "auto",
+        "transition-duration": "0.01ms",
+      })) {
+        expect(motion.style.getPropertyValue(property)).toBe(value);
+        expect(motion.style.getPropertyPriority(property)).toBe("");
+      }
+      expect(motion.selectorText).toContain("*::before");
+      expect(motion.selectorText).toContain("*::after");
+      expect(motion.selectorText).toContain(
+        "html:root:has(#root, #storybook-root)::before",
+      );
+      expect(motion.selectorText).toContain(
+        "html:root:has(#root, #storybook-root)::after",
+      );
+      for (const rootId of ["root", "storybook-root"]) {
+        mount.id = rootId;
+        const selected = Array.from(
+          document.querySelectorAll(motion.selectorText),
+        );
+        expect(selected).toEqual(
+          expect.arrayContaining([
+            document.documentElement,
+            mount,
+            portal,
+            control,
+          ]),
+        );
+      }
+    } finally {
+      style.remove();
+      mount.remove();
+      portal.remove();
+    }
   });
 
   it("parses both SVGs as self-contained vector images with no executable or remote references", () => {

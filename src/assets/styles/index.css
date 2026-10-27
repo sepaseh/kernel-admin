@@ -53,12 +53,16 @@ textarea {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+  /* Include document scrolling and Ant Design portals outside the app root. */
+  html:root:has(#root, #storybook-root),
+  html:root:has(#root, #storybook-root)::before,
+  html:root:has(#root, #storybook-root)::after,
+  html:root:has(#root, #storybook-root) *,
+  html:root:has(#root, #storybook-root) *::before,
+  html:root:has(#root, #storybook-root) *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
   }
 }

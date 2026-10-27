@@ -42,6 +42,11 @@ SVGs. The stylesheet retains visible keyboard focus and reduced-motion behavior.
 These checks do not prove browser loading or interpolation at every font weight;
 the real font-loading browser journey belongs to the later runnable panel gate.
 
+Reduced-motion rules require the admin `#root` or Storybook `#storybook-root`,
+include document scrolling and portals outside that root, and stay reactive to
+preference changes. Their root specificity overrides Ant Design's generated
+motion classes without `!important` declarations.
+
 The full [canonical manifest](../.agents/validation.json) remains mandatory on every
 PR. Coverage includes every published production module. React/jsdom tests cover
 widget actions and RTL feedback, theme contrast, local preferences and Router

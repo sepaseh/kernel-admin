@@ -9,11 +9,11 @@ export const useGoBack = (): ((to?: To, options?: NavigateOptions) => void) => {
   const goBack = useCallback(
     (to?: To, options?: NavigateOptions) => {
       if (state) {
-        navigate(-1);
+        void navigate(-1);
       } else if (to) {
-        navigate(to, options);
+        void navigate(to, options);
       } else {
-        navigate(pathname, { replace: true });
+        void navigate(pathname, { replace: true });
       }
     },
     [navigate, pathname, state],
