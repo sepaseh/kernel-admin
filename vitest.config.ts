@@ -9,6 +9,10 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       include: [
+        "src/shared/config/language.ts",
+        "src/shared/i18n/index.ts",
+        "src/shared/i18n/date.ts",
+        "src/shared/lib/error.ts",
         "src/shared/api/token.ts",
         "src/shared/contracts/index.ts",
         "src/shared/i18n/catalogs.ts",

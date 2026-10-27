@@ -2,8 +2,8 @@
 
 [English](README.md) · [فارسی](README.fa.md)
 
-Kernel Admin is a standalone TypeScript project. The current **catalogs**
-phase publishes pure localization data, admin primitives and their tests. `applicationReady` is
+Kernel Admin is a standalone TypeScript project. The current **runtime-localization**
+phase publishes local catalogs, real translation/date adapters, admin primitives and their tests. `applicationReady` is
 **false**: this snapshot does not provide a runnable management panel.
 
 ## Current scope
@@ -35,9 +35,14 @@ from 0 to 255 and alpha from 0 to 1; unsupported or malformed inputs throw
 black and white, preserving the chosen hue where possible. If neither path can
 meet every surface's target, it returns the best available shade on those paths.
 
-The toolchain has development dependencies and no runtime dependencies. This
-phase contains no React screens, Ant Design components, API client, server or
-browser fixtures or runtime i18next/date adapters. The separate API owns
+The runtime uses i18next and react-i18next with React, plus Day.js and Jalaliday.
+The translation adapter starts in Persian without reading or storing a visitor
+language. The date adapter registers nine vendor locales plus the local Persian
+locale, including English as `en-gb`, and supports explicit Gregorian/Jalali calendar selection.
+Code normalization only selects a supported catalog; it does not select direction
+or calendar. The translated error helper preserves real `Error` messages.
+This phase contains no React screens, Ant Design components, API client, server or
+browser fixtures. The separate API owns
 authentication, database and storage, plus active language, direction and calendar.
 
 ## Install and validate
@@ -57,7 +62,7 @@ synthetic values and require no environment file, running API or browser.
 
 The two test runs produce real `coverage/unit/lcov.info` and
 `coverage/governance/lcov.info` from this checkout. These reports cover the
-published catalogs, calendar data, primitives and repository tooling; they are not complete panel
+published catalogs, runtime adapters, calendar data, primitives and repository tooling; they are not complete panel
 coverage. Generated reports are not committed. See [Sonar setup](docs/sonarqube.md).
 
 ## Contribute
@@ -68,7 +73,7 @@ changed-file entries** and validate the exact proposed revision.
 
 Use native CI, CodeRabbit and SonarQube Cloud checks with
 [branch protection](docs/branch-protection.md). Configuration is not evidence of
-a completed hosted check. Catalog-phase protection requires its published CI and
+a completed hosted check. Runtime-localization protection requires its published CI and
 provider checks. Before any runnable panel merges, genuine build, end-to-end and
 visual jobs must pass and become required checks, and the canonical full gate
 must expand to cover the application.

@@ -314,3 +314,74 @@ test("generated output names cannot hide files or links", async (context) => {
   );
   await assert.rejects(inspectBootstrap(root), /ordinary root directory/);
 });
+
+const runtimeFiles = [
+  "src/shared/config/language.ts",
+  "src/shared/config/language.test.ts",
+  "src/shared/i18n/index.ts",
+  "src/shared/i18n/index.test.ts",
+  "src/shared/i18n/date.ts",
+  "src/shared/i18n/date.test.ts",
+  "src/shared/i18n/dayjs.test.ts",
+  "src/shared/lib/error.ts",
+  "src/shared/lib/error.test.ts",
+];
+const runtimePolicy = (overrides = {}) =>
+  catalogPolicy({
+    phase: "runtime-localization",
+    allowedFiles: [...foundationFiles, ...catalogFiles, ...runtimeFiles],
+    ...overrides,
+  });
+
+test("runtime-localization requires the complete adapters, catalogs and their tests", () => {
+  assert.equal(
+    validateBootstrapPolicy(runtimePolicy()).size,
+    foundationFiles.length + catalogFiles.length + runtimeFiles.length,
+  );
+  for (const missing of [...catalogFiles, ...runtimeFiles])
+    assert.throws(
+      () =>
+        validateBootstrapPolicy(
+          runtimePolicy({
+            allowedFiles: [
+              ...foundationFiles,
+              ...catalogFiles,
+              ...runtimeFiles,
+            ].filter((file) => file !== missing),
+          }),
+        ),
+      /mandatory/,
+    );
+  for (const file of [
+    "src/main.tsx",
+    "src/app/App.tsx",
+    "src/shared/api/client.ts",
+    "src/shared/i18n/unpublished.ts",
+  ])
+    assert.throws(() =>
+      validateBootstrapPolicy(
+        runtimePolicy({
+          allowedFiles: [
+            ...foundationFiles,
+            ...catalogFiles,
+            ...runtimeFiles,
+            file,
+          ],
+        }),
+      ),
+    );
+  assert.throws(() =>
+    validateBootstrapPolicy(runtimePolicy({ applicationReady: true })),
+  );
+});
+
+test("runtime-localization inspects its exact non-runnable inventory", async (context) => {
+  const { root } = await fixture(context, runtimePolicy());
+  const result = await inspectBootstrap(root);
+  assert.equal(result.phase, "runtime-localization");
+  assert.equal(result.applicationReady, false);
+  assert.equal(
+    result.files,
+    foundationFiles.length + catalogFiles.length + runtimeFiles.length,
+  );
+});

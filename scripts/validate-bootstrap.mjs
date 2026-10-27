@@ -51,15 +51,30 @@ const catalogFiles = [
     (code) => `src/shared/i18n/locales/${code}.ts`,
   ),
 ];
+const runtimeFiles = [
+  "src/shared/config/language.ts",
+  "src/shared/config/language.test.ts",
+  "src/shared/i18n/index.ts",
+  "src/shared/i18n/index.test.ts",
+  "src/shared/i18n/date.ts",
+  "src/shared/i18n/date.test.ts",
+  "src/shared/i18n/dayjs.test.ts",
+  "src/shared/lib/error.ts",
+  "src/shared/lib/error.test.ts",
+];
 const publishedSource = (file, phase) =>
   phase !== "governance" &&
   (isFoundationSource(file) ||
-    (phase === "catalogs" && catalogFiles.includes(file)));
+    (["catalogs", "runtime-localization"].includes(phase) &&
+      catalogFiles.includes(file)) ||
+    (phase === "runtime-localization" && runtimeFiles.includes(file)));
 
 export const validateBootstrapPolicy = (policy) => {
   if (
     policy?.schemaVersion !== 1 ||
-    !["governance", "foundation", "catalogs"].includes(policy.phase) ||
+    !["governance", "foundation", "catalogs", "runtime-localization"].includes(
+      policy.phase,
+    ) ||
     policy.applicationReady !== false ||
     policy.maximumChangedFiles !== 100 ||
     !Array.isArray(policy.allowedFiles) ||
@@ -95,7 +110,10 @@ export const validateBootstrapPolicy = (policy) => {
     ...(policy.phase === "governance"
       ? [".github/workflows/bootstrap.yml"]
       : foundationFiles),
-    ...(policy.phase === "catalogs" ? catalogFiles : []),
+    ...(["catalogs", "runtime-localization"].includes(policy.phase)
+      ? catalogFiles
+      : []),
+    ...(policy.phase === "runtime-localization" ? runtimeFiles : []),
   ];
   if (requiredFiles.some((file) => !files.has(file)))
     throw new Error(
@@ -181,6 +199,8 @@ export const inspectBootstrap = async (root) => {
     }),
   );
   const scopeByPhase = {
+    "runtime-localization":
+      "Published admin primitives, complete catalogs and real translation/date runtime adapters; UI, API integration and browser journeys are not published or validated.",
     governance:
       "Published governance files only; the admin application is not published or validated.",
     foundation:
