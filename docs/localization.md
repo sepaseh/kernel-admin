@@ -48,14 +48,15 @@ values. It does not trust a message property on an arbitrary object.
 
 ## Date registration
 
-[date.ts](../src/shared/i18n/date.ts) registers real Day.js locales for all ten
-codes and the Jalaliday plugin. English maps to the vendor name en-gb. The
+[date.ts](../src/shared/i18n/date.ts) registers nine vendor Day.js locales plus
+the local Persian locale and the Jalaliday plugin. English maps to the vendor name en-gb. The
 registration adds localized Persian-calendar month names without changing the
 active language or calendar. Callers explicitly choose the API-selected calendar;
 this module does not infer it from a code. Gregorian months and Jalali jmonths
 remain distinct in the pure Persian data.
 
-Actual-vendor tests verify all ten locale registrations, Gregorian/Jalali years,
+Tests with the actual libraries verify the nine vendor locales and local Persian
+locale, Gregorian/Jalali years,
 nonempty distinct month names and twelve unique Persian-calendar month names.
 Persian Gregorian September and Jalali Shahrivar labels are checked directly.
 No browser or operating-system locale is used to select the active language.

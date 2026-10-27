@@ -37,8 +37,8 @@ meet every surface's target, it returns the best available shade on those paths.
 
 The runtime uses i18next and react-i18next with React, plus Day.js and Jalaliday.
 The translation adapter starts in Persian without reading or storing a visitor
-language. The date adapter registers all ten real vendor locales, including
-English as `en-gb`, and supports explicit Gregorian/Jalali calendar selection.
+language. The date adapter registers nine vendor locales plus the local Persian
+locale, including English as `en-gb`, and supports explicit Gregorian/Jalali calendar selection.
 Code normalization only selects a supported catalog; it does not select direction
 or calendar. The translated error helper preserves real `Error` messages.
 This phase contains no React screens, Ant Design components, API client, server or

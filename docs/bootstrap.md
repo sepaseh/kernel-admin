@@ -7,7 +7,8 @@ The [publication policy](../.github/bootstrap-policy.json) declares the
 catalogs, their code registry, pure Persian calendar data and integrity tests,
 alongside token state, transport/profile contracts, HTTP key transforms and
 color-contrast helpers. The real i18next/react-i18next adapter initializes fixed Persian bootstrap
-resources, while Day.js/Jalaliday registers all ten vendor locales. Supported-code
+resources, while Day.js/Jalaliday registers nine vendor locales plus the local
+Persian locale. Supported-code
 normalization and translated error messages are also published. These adapters
 are tested against their real dependencies in Node. This scope is not a runnable panel.
 See [README](../README.md) for source ownership and
@@ -101,5 +102,5 @@ language/direction/calendar metadata, component tests, production build, browser
 accessibility, performance and visual
 evidence in coherent later work. Before any runnable panel merges, expand the
 canonical full gate and inventory, observe genuine build/e2e/visual jobs pass and
-add them to required checks. Passing this pure-data phase gate cannot
+add them to required checks. Passing this runtime-localization phase gate cannot
 establish those results in advance.
