@@ -80,6 +80,7 @@ export const pt = {
   requestRefreshFailed:
     "A atualização falhou. São apresentados os últimos dados carregados com sucesso.",
   requestTimeout: "O pedido excedeu o tempo limite. Tente novamente.",
+  requiredField: "Campo obrigatório",
   resendCode: "Reenviar código",
   reset: "Repor",
   resetPassword: "Repor palavra-passe",

@@ -1,5 +1,10 @@
 export const getState = <T>(key: string, initialValue: T): T => {
-  const value = localStorage.getItem(key);
+  let value: ReturnType<Storage["getItem"]>;
+  try {
+    value = localStorage.getItem(key);
+  } catch {
+    return initialValue;
+  }
   if (value === null) return initialValue;
 
   try {
@@ -15,5 +20,9 @@ export const setState = <T>(key: string, value: T): void => {
     throw new TypeError("State value is not JSON-serializable");
   }
 
-  localStorage.setItem(key, serialized);
+  try {
+    localStorage.setItem(key, serialized);
+  } catch (error) {
+    console.warn("Could not persist browser state.", error);
+  }
 };

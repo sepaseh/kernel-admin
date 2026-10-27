@@ -19,7 +19,7 @@ validation, local catalogs, real translation/date adapters and their tests. `app
 - [Contrast helpers](src/shared/lib/color-contrast.ts) calculate readable display
   colors without changing persisted theme choices.
 - [Catalogs](src/shared/i18n/catalogs.ts) register one complete flat object for
-  each of the ten [local codes](src/shared/i18n/locales.ts), with 110 root messages
+  each of the ten [local codes](src/shared/i18n/locales.ts), with 111 root messages
   per language. [Persian calendar data](src/shared/i18n/dayjs/fa.ts) stays separate
   from UI messages. Read [localization](docs/localization.md) for ownership and
   integrity checks.

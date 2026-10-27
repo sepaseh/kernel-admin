@@ -17,11 +17,18 @@ export const RequestFeedback = ({
   retry,
 }: RequestFeedbackProps) => {
   const { t } = useTranslation();
+  const handleRetry = async () => {
+    try {
+      await retry();
+    } catch {
+      // Keep the existing failure feedback and retry action available.
+    }
+  };
   if (!error) return null;
   return (
     <Alert
       action={
-        <Button loading={loading} onClick={() => void retry()}>
+        <Button loading={loading} onClick={() => void handleRetry()}>
           {t("retry")}
         </Button>
       }

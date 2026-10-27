@@ -16,6 +16,8 @@ only browser-storage keys. The API still owns active language, direction, calend
 and names; there is no visitor language preference.
 Preference getters validate stored values before using them: only dark/light and
 actual booleans are accepted, with safe defaults for malformed local data.
+Denied storage access also falls back safely. Failed preference writes warn and
+return without interrupting the caller; invalid serialization still throws.
 
 Components have explicit parameter types, with no FC aliases. Shared widgets own
 digits/OTP inputs, password confirmation, form drawers, request feedback, loading
@@ -23,6 +25,11 @@ and the React error boundary. Use the real Ant Design controls and semantic labe
 The route-back hook uses React Router; it does not define application routes.
 The digits input keeps controlled and uncontrolled display values numeric while
 preserving Ant Design change-event metadata for form consumers.
+An explicitly required OTP field has a localized accessible description, appended
+to existing help without applying unsupported `aria-required` to the group. Its
+real inputs, value handling and other accessibility metadata remain intact.
+Request feedback contains rejected or throwing retry callbacks while retaining
+the visible error and the retry action.
 The [request lifecycle](request-lifecycle.md) retains its reviewed committed-resource
 and session-generation guards.
 

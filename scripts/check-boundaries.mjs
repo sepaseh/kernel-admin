@@ -81,7 +81,7 @@ const runtimeImports = {
     "react-i18next",
   ],
   "src/shared/ui/form-drawer/FormDrawer.tsx": ["antd", "react-i18next"],
-  "src/shared/ui/otp-input/OtpInput.tsx": ["antd"],
+  "src/shared/ui/otp-input/OtpInput.tsx": ["antd", "react", "react-i18next"],
   "src/shared/ui/password-fields/PasswordFields.tsx": ["antd", "react-i18next"],
   "src/shared/ui/request-feedback/RequestFeedback.tsx": [
     "antd",

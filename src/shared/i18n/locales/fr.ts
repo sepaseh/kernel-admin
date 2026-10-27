@@ -80,6 +80,7 @@ export const fr = {
   requestRefreshFailed:
     "La mise à jour a échoué. Les dernières données chargées sont affichées.",
   requestTimeout: "Le délai de la requête est dépassé. Veuillez réessayer.",
+  requiredField: "Champ obligatoire",
   resendCode: "Renvoyer le code",
   reset: "Réinitialiser",
   resetPassword: "Réinitialiser le mot de passe",

@@ -78,6 +78,7 @@ export const tr = {
   requestRefreshFailed:
     "Yenileme başarısız oldu. Son başarıyla yüklenen veriler gösteriliyor.",
   requestTimeout: "İstek zaman aşımına uğradı. Lütfen tekrar deneyin.",
+  requiredField: "Zorunlu alan",
   resendCode: "Kodu yeniden gönder",
   reset: "Sıfırla",
   resetPassword: "Parolayı sıfırla",

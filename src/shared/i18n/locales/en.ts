@@ -77,6 +77,7 @@ export const en = {
   requestRefreshFailed:
     "Refresh failed. The last successfully loaded data is shown.",
   requestTimeout: "The request timed out. Please try again.",
+  requiredField: "Required field",
   resendCode: "Resend code",
   reset: "Reset",
   resetPassword: "Reset password",

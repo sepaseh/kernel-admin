@@ -77,6 +77,7 @@ export const fa = {
   requestRefreshFailed:
     "تازه‌سازی انجام نشد. آخرین داده‌های دریافت‌شده نمایش داده می‌شوند.",
   requestTimeout: "زمان انتظار درخواست به پایان رسید. دوباره تلاش کنید.",
+  requiredField: "فیلد الزامی",
   resendCode: "ارسال دوبارهٔ کد",
   reset: "بازنشانی",
   resetPassword: "بازنشانی رمز عبور",

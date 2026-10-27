@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getState, setState } from "./state";
 
@@ -7,9 +7,50 @@ beforeEach(() => {
   localStorage.clear();
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("storage state", () => {
   it("returns the initial value when the key is missing", () => {
     expect(getState("missing", { enabled: true })).toEqual({ enabled: true });
+  });
+
+  it("returns the fallback when access to local storage is denied", () => {
+    vi.spyOn(globalThis, "localStorage", "get").mockImplementation(() => {
+      throw new DOMException(
+        "Synthetic storage access denied",
+        "SecurityError",
+      );
+    });
+
+    expect(getState("theme", "light")).toBe("light");
+  });
+
+  it("returns the fallback when reading local storage is denied", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("Synthetic storage read denied", "SecurityError");
+    });
+
+    expect(getState("compact", false)).toBe(false);
+  });
+
+  it("warns and continues when the browser cannot persist a preference", () => {
+    const failure = new DOMException(
+      "Synthetic full storage",
+      "QuotaExceededError",
+    );
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw failure;
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    expect(() => setState("theme", "dark")).not.toThrow();
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      "Could not persist browser state.",
+      failure,
+    );
+    expect(localStorage.getItem("theme")).toBeNull();
   });
 
   it("returns invalid JSON as its raw string value", () => {

@@ -14,7 +14,7 @@ independent of another checkout, backend SDKs, npm workspaces and application in
 The separate API owns authentication execution, database access and storage.
 
 Read [localization](docs/localization.md). Keep one code-named catalog per language,
-110 complete root string messages and i18next interpolation parity; no common
+111 complete root string messages and i18next interpolation parity; no common
 objects, compatibility aliases or runtime English fallback inside leaf data.
 Leaf catalogs, locales.ts and dayjs/fa.ts accept only fully erased local types.
 Only catalogs.ts loads the canonical catalog objects. Data cannot import adapters.
