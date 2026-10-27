@@ -188,6 +188,7 @@ const coreAuthFiles = [
   "src/app/lib/access.test.ts",
   "src/app/lib/access.ts",
   "src/app/lib/index.ts",
+  "src/app/not-found/NotFound.test.tsx",
   "src/app/not-found/NotFound.tsx",
   "src/app/providers/antd/Antd.test.tsx",
   "src/app/providers/antd/Antd.tsx",

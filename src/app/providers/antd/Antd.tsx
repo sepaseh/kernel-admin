@@ -11,7 +11,7 @@ import pt from "antd/locale/pt_PT";
 import ru from "antd/locale/ru_RU";
 import tr from "antd/locale/tr_TR";
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useCore } from "@/app/hooks";
 import type { Language } from "@/shared/config";
@@ -36,10 +36,10 @@ const antdLocales = {
 
 export const AntdProvider = ({ children }: AntdProviderProps) => {
   const { compact, language, theme: currentTheme, themePalettes } = useCore();
-  const themeConfig = createThemeConfig(
-    currentTheme,
-    compact,
-    themePalettes?.[currentTheme],
+  const palette = themePalettes?.[currentTheme];
+  const themeConfig = useMemo(
+    () => createThemeConfig(currentTheme, compact, palette),
+    [currentTheme, compact, palette],
   );
   const { token } = themeConfig;
   const { code, direction } = language;

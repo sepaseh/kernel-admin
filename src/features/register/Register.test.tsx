@@ -136,6 +136,30 @@ describe("RegisterPage", () => {
     );
   });
 
+  it("submits with Enter once while registration is pending", async () => {
+    let resolve!: (value: Awaited<ReturnType<typeof register>>) => void;
+    vi.mocked(register).mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const { user } = renderPage();
+    await fillRegistration(user);
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(register).toHaveBeenCalledOnce());
+
+    await user.keyboard("{Enter}{Enter}");
+    expect(register).toHaveBeenCalledOnce();
+    expect(requestOtp).not.toHaveBeenCalled();
+    expect(vi.mocked(register).mock.calls[0][1]?.aborted).toBe(false);
+
+    await act(async () => {
+      resolve({ accessToken: "synthetic" });
+    });
+    await screen.findByRole("heading", { name: "Dashboard" });
+    expect(register).toHaveBeenCalledOnce();
+  });
+
   it("aborts registration when its page is left and ignores a late success", async () => {
     let resolve!: (value: Awaited<ReturnType<typeof register>>) => void;
     vi.mocked(register).mockReturnValueOnce(

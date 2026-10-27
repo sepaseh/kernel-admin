@@ -324,7 +324,12 @@ export const DefaultLayout = () => {
         title={false}
       >
         <nav aria-label={t("menu")}>
-          <Menu items={menuItems} mode="inline" selectedKeys={[currentRoute]} />
+          <Menu
+            items={menuItems}
+            mode="inline"
+            onClick={() => setOpen(false)}
+            selectedKeys={[currentRoute]}
+          />
         </nav>
       </Drawer>
     </>

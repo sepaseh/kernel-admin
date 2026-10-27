@@ -18,7 +18,7 @@ See [README](../README.md) for source ownership and
 [localization](localization.md) for catalog rules. [Contributing](../CONTRIBUTING.md)
 defines validation and review policy.
 
-The phase also publishes [UI foundation](ui-foundation.md): seven Ant Design widgets, theme/preferences/observability adapters, route-back behavior and six validated local assets. [Core and authentication](core-auth.md) adds Core/Ant Design providers, typed access/navigation metadata, authentication forms and layout modules. Its 220-file exact inventory contains 93 production modules; the independent PR delta remains limited to 100 files. No application entry point or App/Routes composition is published.
+The phase also publishes [UI foundation](ui-foundation.md): seven Ant Design widgets, theme/preferences/observability adapters, route-back behavior and six validated local assets. [Core and authentication](core-auth.md) adds Core/Ant Design providers, typed access/navigation metadata, authentication forms and layout modules. Its 223-file exact inventory contains 94 production modules; the independent PR delta remains limited to 100 files. No application entry point or App/Routes composition is published.
 
 ## Exact snapshot
 

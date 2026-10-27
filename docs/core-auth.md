@@ -40,6 +40,8 @@ The default layout loads the current account, displays loading/retry feedback an
 derives navigation from the account's permissions. Route action helpers use the
 same permission vocabulary and system-administrator rule. These checks control
 presentation; the separate API must authorize every protected operation.
+Selecting a mobile navigation item closes its drawer, including selection of the
+current route. The not-found page provides one keyboard-operable home button.
 
 Entering the authentication layout invalidates the previous client session.
 Logout shares an in-flight operation for the current token generation. The
@@ -61,6 +63,9 @@ Registration and password recovery share the domain-owned `useOtpRequest`
 lifecycle for validation, cancellation, mobile reset and countdown. The forms keep
 their own submit operations and explicitly adapt asynchronous submission to the
 form's void completion callback; no promise is mistaken for a synchronous result.
+Registration and password recovery use native submit buttons inside their forms,
+so Enter and button activation share validation and the duplicate-request guard.
+Requesting an OTP remains a separate button action.
 
 Login and registration also inspect cancellation after transport fulfillment and
 before storing an access token, alongside the existing session-generation guard.

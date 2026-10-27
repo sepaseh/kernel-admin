@@ -103,6 +103,7 @@ const renderLayout = () =>
       <Routes>
         <Route element={<DefaultLayout />} path="/">
           <Route index element={<h1>Dashboard content</h1>} />
+          <Route element={<h1>Users content</h1>} path="users" />
         </Route>
         <Route element={<h1>Authentication</h1>} path="/auth" />
       </Routes>
@@ -117,6 +118,7 @@ const renderLoadedLayout = async () => {
 
 beforeEach(() => {
   mocks.core.compact = false;
+  mocks.core.currentRoute = "root";
   mocks.core.theme = "light";
   mocks.core.user = mocks.account;
   vi.mocked(getAccount).mockResolvedValue(mocks.account);
@@ -124,6 +126,48 @@ beforeEach(() => {
 });
 
 describe("DefaultLayout", () => {
+  it.each(["pointer", "keyboard"])(
+    "closes the mobile drawer after %s navigation without remounting the layout",
+    async (interaction) => {
+      const { user } = await renderLoadedLayout();
+      await user.click(screen.getByRole("button", { name: "menu" }));
+      const drawer = await screen.findByRole("dialog");
+      await user.click(within(drawer).getByText("userManagement"));
+      const link = within(drawer).getByRole("link", { name: "users" });
+
+      if (interaction === "keyboard") {
+        link.focus();
+        await user.keyboard("{Enter}");
+      } else {
+        await user.click(link);
+      }
+
+      expect(
+        await screen.findByRole("heading", { name: "Users content" }),
+      ).toBeVisible();
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      expect(getAccount).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("closes the mobile drawer when selecting the current route", async () => {
+    const { user } = await renderLoadedLayout();
+    await user.click(screen.getByRole("button", { name: "menu" }));
+    const drawer = await screen.findByRole("dialog");
+
+    await user.click(within(drawer).getByRole("link", { name: "dashboard" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Dashboard content" }),
+    ).toBeVisible();
+    expect(getAccount).toHaveBeenCalledOnce();
+  });
+
   it("constrains the header and page content to the shared container", async () => {
     const { container } = await renderLoadedLayout();
     const headerContent = container.querySelector("header")?.firstElementChild;

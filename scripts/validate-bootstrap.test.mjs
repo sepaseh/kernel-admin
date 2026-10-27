@@ -472,9 +472,9 @@ test("core-auth preserves its complete prior closure, owners and tests without a
     ),
   );
   assert.equal(current.phase, "core-auth");
-  assert.equal(validateBootstrapPolicy(current).size, 222);
+  assert.equal(validateBootstrapPolicy(current).size, 223);
   const phaseFiles = current.allowedFiles.filter(isCoreAuthPhaseFile);
-  assert.equal(phaseFiles.length, 53);
+  assert.equal(phaseFiles.length, 54);
   for (const missing of phaseFiles)
     assert.throws(
       () =>
@@ -505,7 +505,7 @@ test("core-auth preserves its complete prior closure, owners and tests without a
   const { root } = await fixture(context, current);
   const result = await inspectBootstrap(root);
   assert.equal(result.phase, "core-auth");
-  assert.equal(result.files, 222);
+  assert.equal(result.files, 223);
   assert.equal(result.applicationReady, false);
   assert.match(result.scope, /no application entry point/);
 });

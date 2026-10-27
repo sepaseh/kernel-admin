@@ -151,6 +151,7 @@ export const RegisterPage = () => {
             </Form.Item>
             <Button
               disabled={Boolean(remainingSeconds)}
+              htmlType="button"
               loading={requestingOtp}
               onClick={handleOtpRequest}
               size="large"
@@ -160,16 +161,17 @@ export const RegisterPage = () => {
           </Flex>
         </Form.Item>
         <PasswordFields size="large" />
+        <Button
+          block
+          htmlType="submit"
+          loading={submitting}
+          size="large"
+          style={{ marginTop: 32 }}
+          type="primary"
+        >
+          {t("register")}
+        </Button>
       </Form>
-      <Button
-        block
-        loading={submitting}
-        onClick={() => form.submit()}
-        size="large"
-        type="primary"
-      >
-        {t("register")}
-      </Button>
       <Flex justify="center">
         <Link to={routeTree.auth.path}>{t("backToLogin")}</Link>
       </Flex>

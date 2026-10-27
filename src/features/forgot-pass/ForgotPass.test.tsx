@@ -37,6 +37,27 @@ beforeEach(async () => {
     .mockResolvedValue({ expiresIn: 120, remainingSeconds: 30 });
 });
 
+const fillReset = async (user: ReturnType<typeof render>["user"]) => {
+  await user.type(
+    screen.getByLabelText(i18nInstance.t("mobile")),
+    "09120000000",
+  );
+  await user.type(
+    within(
+      screen.getByRole("group", { name: i18nInstance.t("otp") }),
+    ).getAllByRole("textbox")[0],
+    "123456",
+  );
+  await user.type(
+    screen.getByLabelText(i18nInstance.t("newPassword"), { exact: true }),
+    "secret",
+  );
+  await user.type(
+    screen.getByLabelText(i18nInstance.t("confirmPassword")),
+    "secret",
+  );
+};
+
 describe("ForgotPassPage", () => {
   it("keeps invalid mobile validation local without sending an OTP request", async () => {
     const { user } = renderPage();
@@ -55,24 +76,7 @@ describe("ForgotPassPage", () => {
 
   it("submits a reset without confirmation data and returns to login", async () => {
     const { user } = renderPage();
-    await user.type(
-      screen.getByLabelText(i18nInstance.t("mobile")),
-      "09120000000",
-    );
-    await user.type(
-      within(
-        screen.getByRole("group", { name: i18nInstance.t("otp") }),
-      ).getAllByRole("textbox")[0],
-      "123456",
-    );
-    await user.type(
-      screen.getByLabelText(i18nInstance.t("newPassword"), { exact: true }),
-      "secret",
-    );
-    await user.type(
-      screen.getByLabelText(i18nInstance.t("confirmPassword")),
-      "secret",
-    );
+    await fillReset(user);
     await user.click(
       screen.getByRole("button", { name: i18nInstance.t("resetPassword") }),
     );
@@ -84,6 +88,30 @@ describe("ForgotPassPage", () => {
     expect(messages.success).toHaveBeenCalledWith(
       i18nInstance.t("passwordReset"),
     );
+  });
+
+  it("submits with Enter once while password reset is pending", async () => {
+    let resolve!: (value: Awaited<ReturnType<typeof forgotPassword>>) => void;
+    vi.mocked(forgotPassword).mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const { user } = renderPage();
+    await fillReset(user);
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(forgotPassword).toHaveBeenCalledOnce());
+
+    await user.keyboard("{Enter}{Enter}");
+    expect(forgotPassword).toHaveBeenCalledOnce();
+    expect(requestOtp).not.toHaveBeenCalled();
+    expect(vi.mocked(forgotPassword).mock.calls[0][1]?.aborted).toBe(false);
+
+    await act(async () => {
+      resolve(undefined);
+    });
+    await screen.findByRole("heading", { name: "Login" });
+    expect(forgotPassword).toHaveBeenCalledOnce();
   });
 
   it("aborts its OTP request on unmount without showing a late success", async () => {

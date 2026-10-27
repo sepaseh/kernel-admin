@@ -86,6 +86,57 @@ afterEach(() => {
 });
 
 describe("AntdProvider", () => {
+  it("retains the selected appearance across unrelated Core changes and updates an active palette", () => {
+    const light = {
+      colorBgBase: "#abcdef",
+      colorBgContainer: "#ffffff",
+      colorBorder: "#dddddd",
+      colorLink: "#123456",
+      colorPrimary: "#654321",
+      colorTextBase: "#112233",
+      colorTextDescription: "#445566",
+    };
+    const dark = { ...light, colorBgBase: "#101010" };
+    mocks.themePalettes = { dark, light };
+    const themes: unknown[] = [];
+    const ThemeConsumer = () => {
+      themes.push(useContext(ConfigProvider.ConfigContext).theme);
+      return <Consumer />;
+    };
+    const frame = () => (
+      <AntdProvider>
+        <ThemeConsumer />
+      </AntdProvider>
+    );
+    const styleWrites = vi.spyOn(document.body.style, "setProperty");
+    const focusWrites = () =>
+      styleWrites.mock.calls.filter(([name]) => name === "--admin-focus-color");
+    const { rerender } = render(frame());
+    const initialTheme = themes.at(-1);
+
+    expect(initialTheme).toBeDefined();
+    expect(focusWrites()).toHaveLength(1);
+    mocks.language = { ...mocks.language, code: "fa", direction: "rtl" };
+    rerender(frame());
+    expect(screen.getByLabelText("antd-locale")).toHaveTextContent("fa:rtl");
+    expect(themes.at(-1)).toBe(initialTheme);
+    expect(focusWrites()).toHaveLength(1);
+
+    mocks.themePalettes = { dark: { ...dark, colorBgBase: "#202020" }, light };
+    rerender(frame());
+    expect(themes.at(-1)).toBe(initialTheme);
+    expect(focusWrites()).toHaveLength(1);
+
+    mocks.themePalettes = {
+      dark,
+      light: { ...light, colorBgBase: "#fedcba" },
+    };
+    rerender(frame());
+    expect(themes.at(-1)).not.toBe(initialTheme);
+    expect(document.body).toHaveStyle({ backgroundColor: "#fedcba" });
+    expect(focusWrites()).toHaveLength(2);
+  });
+
   it("applies the configured palette for the active theme", () => {
     mocks.themePalettes = {
       dark: {
