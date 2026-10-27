@@ -2,7 +2,7 @@
 
 [English](CONTRIBUTING.md) · [فارسی](CONTRIBUTING.fa.md)
 
-The current [core-auth phase](docs/bootstrap.md) contains Core/Ant Design providers, authentication forms, layout modules, access/navigation metadata, HTTP feature adapters, request lifecycle hooks, complete server settings
+The current [business-screens phase](docs/bootstrap.md) contains Core/Ant Design providers, authentication forms, layout modules, access/navigation metadata, HTTP feature adapters, request lifecycle hooks, complete server settings
 validation, local translation/date adapters, primitives and repository tooling. Preserve its declared scope and independent
 project boundary.
 
@@ -15,7 +15,7 @@ Pure catalog objects, the code registry and Persian calendar data belong in
 catalogs complete and flat, with matching keys and interpolation. Runtime adapters own i18next/React translation initialization and Day.js/Jalaliday
 registration. Their real integration tests run in Node with synthetic storage.
 Read [HTTP ownership](docs/http-client.md) and [request lifecycle](docs/request-lifecycle.md).
-[UI foundation](docs/ui-foundation.md) owns the published widgets, theme engine, compact/theme-only preferences and assets. [Core and authentication](docs/core-auth.md) owns provider/form/layout behavior and access metadata. The application entry point and App/Routes composition remain future work.
+[UI foundation](docs/ui-foundation.md) owns the published widgets, theme engine, compact/theme-only preferences and assets. [Core and authentication](docs/core-auth.md) owns provider/form/layout behavior and access metadata. [Business screens](docs/business-screens.md) adds the guarded account/management/settings/calendar modules. The application entry point and App/Routes composition remain future work.
 Do not add source dependencies on another checkout, npm workspaces, local-package
 links or backend SDKs. Keep API behavior behind HTTP in the separate API project.
 

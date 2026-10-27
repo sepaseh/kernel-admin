@@ -117,3 +117,5 @@ Follow [branch protection](branch-protection.md) and the
 [published scope](bootstrap.md). See the
 [official scanner](https://github.com/SonarSource/sonarqube-scan-action) and
 [analysis-method documentation](https://docs.sonarsource.com/sonarqube-cloud/analyzing-source-code/automatic-analysis).
+
+[Business screen/form modules](business-screens.md) and the shared mutation guard are included in production analysis and measured coverage. Their React tests use synthetic jsdom; no Storybook/browser result is claimed.

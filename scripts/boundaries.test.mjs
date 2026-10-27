@@ -252,9 +252,9 @@ test("undeclared production and linked source are not hidden by an empty import 
   await assert.rejects(checkBoundaries(directory), /symbolic links/);
 });
 
-test("the exact core-auth phase has ninety-four contained production modules", async () => {
+test("the exact business-screens phase contains all measured production modules", async () => {
   const result = await checkBoundaries();
-  assert.equal(result.files, 94);
+  assert.equal(result.files, 118);
   assert.deepEqual(result.violations, []);
 });
 
@@ -501,6 +501,42 @@ test("the OTP lifecycle owner admits only its exact contained runtime and erased
   );
 });
 
+test("the mutation lifecycle owner admits only its exact contained React and Axios dependencies", () => {
+  const owner = path.join(root, "src/shared/hooks/useMutationRequest.ts");
+  for (const dependency of ["react", "axios"])
+    assert.equal(
+      check(
+        dependency,
+        path.join(root, "node_modules", dependency, "index.js"),
+        owner,
+        false,
+        dependency,
+      ),
+      undefined,
+    );
+  for (const dependency of ["antd", "react-dom", "axios/internal", "node:fs"])
+    assert.match(
+      check(
+        dependency,
+        path.join(root, "node_modules", dependency, "index.js"),
+        owner,
+        false,
+        dependency,
+      ),
+      /not allowed/,
+    );
+  assert.match(
+    check(
+      "react",
+      path.join(root, "node_modules", "alias", "index.js"),
+      owner,
+      false,
+      "react",
+    ),
+    /not allowed/,
+  );
+});
+
 test("feature wire vocabulary cannot acquire runtime imports or unrelated local types", () => {
   const settings = path.join(root, "src/features/settings/types.ts");
   const appearance = path.join(root, "src/shared/contracts/appearance.ts");
@@ -516,15 +552,20 @@ test("feature wire vocabulary cannot acquire runtime imports or unrelated local 
     check("../../shared/api/token.ts", file, settings, true),
     /exact erased/,
   );
-  for (const target of [
-    "src/test/http-setup.ts",
-    "src/vite-env.d.ts",
-    "src/features/users/Users.tsx",
-  ])
+  for (const target of ["src/test/http-setup.ts", "src/vite-env.d.ts"])
     assert.match(
       check("./target.ts", path.join(root, target), settings, true),
       /published production/,
     );
+  assert.match(
+    check(
+      "@/features/users/Users",
+      path.join(root, "src/features/users/Users.tsx"),
+      settings,
+      true,
+    ),
+    /exact erased/,
+  );
 });
 
 test("registry aliases and local dependency protocols cannot escape the standalone boundary", async (context) => {

@@ -2,7 +2,7 @@
 
 [English](README.md) · [فارسی](README.fa.md)
 
-Kernel Admin is a standalone TypeScript project. The current **core-auth**
+Kernel Admin is a standalone TypeScript project. The current **business-screens**
 phase adds Core/Ant Design providers, typed access/navigation metadata, authentication forms and layout modules to reusable widgets, the theme engine, compact/theme preferences, optional observability, self-hosted visual assets, HTTP/feature adapters, request lifecycle hooks and server-owned settings
 validation, local catalogs, real translation/date adapters and their tests. `applicationReady` is
 **false**: this snapshot does not provide a runnable management panel.
@@ -30,6 +30,7 @@ validation, local catalogs, real translation/date adapters and their tests. `app
   accepted data across refresh failures.
 - [Appearance vocabulary](src/shared/contracts/appearance.ts) owns Theme and seven
   palette fields without initializing Ant Design.
+- [Business screens](docs/business-screens.md) adds account, users, roles, settings and calendar modules with guarded mutations; the dashboard remains a layout frame.
 - [Core and authentication](docs/core-auth.md) defines provider lifecycles, server-owned settings, session-safe forms, access metadata and layout ownership.
 
 Key transforms rename plain-object keys and omit null object fields. Their result
@@ -85,7 +86,7 @@ changed-file entries** and validate the exact proposed revision.
 
 Use native CI, CodeRabbit and SonarQube Cloud checks with
 [branch protection](docs/branch-protection.md). Configuration is not evidence of
-a completed hosted check. Core-auth protection requires its published CI and
+a completed hosted check. Business-screens protection requires its published CI and
 provider checks. Before any runnable panel merges, genuine build, end-to-end and
 visual jobs must pass and become required checks, and the canonical full gate
 must expand to cover the application.

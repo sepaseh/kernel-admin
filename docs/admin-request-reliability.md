@@ -2,10 +2,10 @@
 
 [English](admin-request-reliability.md) · [فارسی](admin-request-reliability.fa.md)
 
-Scope updated: 27 October 2026. The non-runnable `core-auth` phase publishes
+Scope updated: 27 October 2026. The non-runnable `business-screens` phase publishes
 feature-owned HTTP adapters, request hooks, Core/Ant Design providers,
-authentication forms and layout modules. `applicationReady` remains false: no
-application entry point, App/Routes composition, business-page tables, build or
+authentication forms, business screens and layout modules. `applicationReady` remains false: no
+application entry point, App/Routes composition, build or
 browser journey is published. Small read hooks coordinate request lifetime; no
 query library, frontend database access or business-service duplication is introduced.
 
@@ -16,9 +16,10 @@ query library, frontend database access or business-service duplication is intro
   These are individual request deadlines, not a 15-second budget for an entire
   request/refresh/replay sequence. New longer operations need a deliberate policy.
 - A protected **401** with its original dispatch generation retains the existing
-  single refresh/single replay behavior within the same login session. Public
-  authentication and public settings failures do not refresh. A 401 without its
-  request config or originating generation is normalized without refreshing or
+  single refresh/single replay behavior within the same login session, including
+  eligible writes that have not been cancelled. Public authentication and public
+  GET/HEAD /settings failures do not refresh; PUT /settings is protected. A 401
+  without its request config or originating generation is normalized without refreshing or
   expiring the current login; current credentials cannot establish its owner.
   There is no automatic replay for network failures, timeouts, 429 or 5xx.
 - Concurrent readers within one session share one refresh. A cancelled reader
@@ -44,21 +45,21 @@ The published Core settings and default-layout account checks use these hooks.
 A changed loader discards its predecessor's data; reloading the same resource
 retains its last successful result. Synthetic loader tests cover reverse-order
 completion, obsolete work, unmount and development StrictMode cleanup. Users,
-roles, calendar and settings business screens are later work; their published
-HTTP adapters alone are not page integration evidence.
+roles, calendar and settings modules now consume these guarded reads; their real
+React/jsdom tests remain distinct from production API/browser integration.
 
 `shared/ui/request-feedback` distinguishes an initial failure from a refresh
 failure and offers retry. Core settings errors and account-check errors have
 visible feedback. The default layout hides protected children during its account
-check or a transient error. Later business screens must distinguish failed reads
+check or a transient error. Business screens distinguish failed reads
 from successful empty results and preserve accepted data after a refresh failure.
-Mutation errors remain feature-owned; these requirements do not claim that the
-unpublished business forms or tables have been tested.
+Mutation errors remain feature-owned. The shared mutation lifecycle and its
+record/session/permission guards are described in [business screens](business-screens.md).
 
 Core exposes `acceptSettings`: replacing its read snapshot invalidates older
 initial work before applying accepted language, logos and palettes. Its initial
-failure is visible with retry. A future settings editor must supply accepted,
-validated data and preserve this behavior; no settings page is published here.
+failure is visible with retry. The settings editor supplies accepted,
+validated data and preserves this behavior.
 Only theme/compact preferences are browser-persisted. Active language, direction,
 calendar and names remain API-owned, with fixed Persian bootstrap until accepted
 settings arrive; there is no visitor language selector.
@@ -91,6 +92,14 @@ These guards protect frontend state and request replay. Cancellation cannot undo
 an already committed server mutation or browser cookie side effect. API-side
 authentication, authorization, transaction and session-revocation rules remain
 authoritative and require separate API verification.
+
+For user creation and password reset, a successful API acknowledgement retains
+the generated password for an app-level notification within the initiating login
+generation. Consumer unmount, scope changes or cancellation do not discard this
+acknowledged password. A changed login generation suppresses the notification;
+normal obsolete form state, navigation and errors remain guarded. If the HTTP
+response is aborted or rejected, the server outcome is unknown and no confirmed
+password-change success is announced.
 
 A terminal client refresh failure expires local in-memory credentials and the
 admin UI session only; it does not itself revoke server sessions. Server-side

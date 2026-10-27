@@ -29,18 +29,25 @@ beforeEach(() => {
 
 describe("roles API", () => {
   it("creates, updates, and deletes roles", async () => {
+    const controller = new AbortController();
     const params = {
       name: "Operators",
       permissions: ["users.read"],
     } satisfies RoleRequest;
 
-    await createRole(params);
-    await updateRole("role-1", params);
-    await deleteRole("role-1");
+    await createRole(params, controller.signal);
+    await updateRole("role-1", params, controller.signal);
+    await deleteRole("role-1", controller.signal);
 
-    expect(apiClient.post).toHaveBeenCalledWith("/roles", params);
-    expect(apiClient.patch).toHaveBeenCalledWith("/roles/role-1", params);
-    expect(apiClient.del).toHaveBeenCalledWith("/roles/role-1");
+    expect(apiClient.post).toHaveBeenCalledWith("/roles", params, {
+      signal: controller.signal,
+    });
+    expect(apiClient.patch).toHaveBeenCalledWith("/roles/role-1", params, {
+      signal: controller.signal,
+    });
+    expect(apiClient.del).toHaveBeenCalledWith("/roles/role-1", {
+      signal: controller.signal,
+    });
   });
 
   it("loads role collections, details, and permissions", async () => {

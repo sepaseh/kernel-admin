@@ -203,4 +203,18 @@ describe("settings API", () => {
 
     expect(apiClient.put).toHaveBeenCalledWith("/settings", request);
   });
+
+  it("forwards optional mutation cancellation without changing the settings payload", async () => {
+    const controller = new AbortController();
+    const request = {
+      darkTheme: settings.darkTheme,
+      lightTheme: settings.lightTheme,
+    };
+    await expect(
+      updateApplicationSettings(request, controller.signal),
+    ).resolves.toEqual(settings);
+    expect(apiClient.put).toHaveBeenCalledWith("/settings", request, {
+      signal: controller.signal,
+    });
+  });
 });

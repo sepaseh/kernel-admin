@@ -33,12 +33,19 @@ describe("calendar API", () => {
   });
 
   it("creates and deletes a date", async () => {
-    await createCalendarDate("2026-09-15");
-    await deleteCalendarDate("2026-09-15");
+    const controller = new AbortController();
+    await createCalendarDate("2026-09-15", controller.signal);
+    await deleteCalendarDate("2026-09-15", controller.signal);
 
-    expect(apiClient.post).toHaveBeenCalledWith("/calendar", {
-      date: "2026-09-15",
+    expect(apiClient.post).toHaveBeenCalledWith(
+      "/calendar",
+      {
+        date: "2026-09-15",
+      },
+      { signal: controller.signal },
+    );
+    expect(apiClient.del).toHaveBeenCalledWith("/calendar/2026-09-15", {
+      signal: controller.signal,
     });
-    expect(apiClient.del).toHaveBeenCalledWith("/calendar/2026-09-15");
   });
 });

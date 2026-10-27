@@ -2,7 +2,7 @@
 
 [English](localization.md) · [فارسی](localization.fa.md)
 
-The [core-auth phase](bootstrap.md) publishes complete local catalogs
+The [business-screens phase](bootstrap.md) publishes complete local catalogs
 and real translation/date adapters. Tests exercise their installed dependencies
 in Node, with synthetic Core/Ant Design provider tests in isolated jsdom.
 applicationReady:false remains deliberate: the provider modules and HTTP settings adapter are published, while the application entry point, App/Routes composition and browser journeys remain future work.

@@ -23,34 +23,52 @@ beforeEach(() => {
 
 describe("user API helper contracts", () => {
   it("maps create, read, update, and delete operations", async () => {
-    await users.createUser({
-      firstName: "Ada",
-      lastName: "Lovelace",
-      mobile: "09120000000",
-      password: "secret",
-    });
-    expect(apiClient.post).toHaveBeenCalledWith("/users", {
-      firstName: "Ada",
-      lastName: "Lovelace",
-      mobile: "09120000000",
-      password: "secret",
-    });
+    const controller = new AbortController();
+    await users.createUser(
+      {
+        firstName: "Ada",
+        lastName: "Lovelace",
+        mobile: "09120000000",
+        password: "secret",
+      },
+      controller.signal,
+    );
+    expect(apiClient.post).toHaveBeenCalledWith(
+      "/users",
+      {
+        firstName: "Ada",
+        lastName: "Lovelace",
+        mobile: "09120000000",
+        password: "secret",
+      },
+      { signal: controller.signal },
+    );
     await users.fetchUser("user-1");
     expect(apiClient.get).toHaveBeenCalledWith("/users/user-1", {
       signal: undefined,
     });
-    await users.updateUser("user-1", {
-      firstName: "Augusta",
-      lastName: "Lovelace",
-      mobile: "09120000000",
+    await users.updateUser(
+      "user-1",
+      {
+        firstName: "Augusta",
+        lastName: "Lovelace",
+        mobile: "09120000000",
+      },
+      controller.signal,
+    );
+    expect(apiClient.patch).toHaveBeenCalledWith(
+      "/users/user-1",
+      {
+        firstName: "Augusta",
+        lastName: "Lovelace",
+        mobile: "09120000000",
+      },
+      { signal: controller.signal },
+    );
+    await users.deleteUser("user-1", controller.signal);
+    expect(apiClient.del).toHaveBeenCalledWith("/users/user-1", {
+      signal: controller.signal,
     });
-    expect(apiClient.patch).toHaveBeenCalledWith("/users/user-1", {
-      firstName: "Augusta",
-      lastName: "Lovelace",
-      mobile: "09120000000",
-    });
-    await users.deleteUser("user-1");
-    expect(apiClient.del).toHaveBeenCalledWith("/users/user-1");
   });
 
   it("forwards the caller's AbortSignal for user detail and filtered list reads", async () => {
@@ -73,10 +91,12 @@ describe("user API helper contracts", () => {
     [users.updateUserPassword, "/password", { password: "secret" }],
     [users.updateUserRoles, "/roles", { roleIds: ["role-1"] }],
   ])("maps PUT subresource operation", async (operation, suffix, params) => {
-    await operation("user-1", params as never);
+    const controller = new AbortController();
+    await operation("user-1", params as never, controller.signal);
     expect(apiClient.put).toHaveBeenCalledWith(
       `/users/user-1${suffix}`,
       params,
+      { signal: controller.signal },
     );
   });
 
@@ -84,10 +104,12 @@ describe("user API helper contracts", () => {
     [users.updateUserStatus, "/status", { status: "inactive" }],
     [users.updateUserSystemAdmin, "/system-admin", { isSystemAdmin: true }],
   ])("maps PATCH subresource operation", async (operation, suffix, params) => {
-    await operation("user-1", params as never);
+    const controller = new AbortController();
+    await operation("user-1", params as never, controller.signal);
     expect(apiClient.patch).toHaveBeenCalledWith(
       `/users/user-1${suffix}`,
       params,
+      { signal: controller.signal },
     );
   });
 });

@@ -16,27 +16,36 @@ export const getAccount = async (signal?: AbortSignal): Promise<Account> => {
 
 export const requestEmailVerification = async (
   params: EmailVerificationRequest,
+  signal?: AbortSignal,
 ): Promise<OtpRequestProps> => {
   return apiClient.post<OtpRequestProps>(
     `${basePath}/request-email-verification`,
     params,
+    { signal },
   );
 };
 
 export const updateProfile = async (
   params: UpdateProfileRequest,
+  signal?: AbortSignal,
 ): Promise<Account> => {
-  return apiClient.patch<Account>(`${basePath}/update-profile`, params);
+  return apiClient.patch<Account>(`${basePath}/update-profile`, params, {
+    signal,
+  });
 };
 
 export const updateUsername = async (
   params: UpdateUsernameRequest,
+  signal?: AbortSignal,
 ): Promise<Account> => {
-  return apiClient.post<Account>(`${basePath}/update-username`, params);
+  return apiClient.post<Account>(`${basePath}/update-username`, params, {
+    signal,
+  });
 };
 
 export const verifyEmail = async (
   params: VerifyEmailRequest,
+  signal?: AbortSignal,
 ): Promise<void> => {
-  return apiClient.post<void>(`${basePath}/verify-email`, params);
+  return apiClient.post<void>(`${basePath}/verify-email`, params, { signal });
 };
