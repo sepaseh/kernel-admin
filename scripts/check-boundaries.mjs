@@ -7,6 +7,32 @@ import ts from "typescript";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const productionPaths = [
+  "src/shared/config/constants.ts",
+  "src/shared/config/index.ts",
+  "src/shared/config/theme.ts",
+  "src/shared/hooks/index.ts",
+  "src/shared/hooks/useGoBack.ts",
+  "src/shared/lib/index.ts",
+  "src/shared/lib/observability.ts",
+  "src/shared/storage/compact.ts",
+  "src/shared/storage/hooks/useLocalStorageWatcher.ts",
+  "src/shared/storage/index.ts",
+  "src/shared/storage/state.ts",
+  "src/shared/storage/theme.ts",
+  "src/shared/ui/digits-input/DigitsInput.tsx",
+  "src/shared/ui/digits-input/index.ts",
+  "src/shared/ui/error-boundary/ErrorBoundary.tsx",
+  "src/shared/ui/error-boundary/index.ts",
+  "src/shared/ui/form-drawer/FormDrawer.tsx",
+  "src/shared/ui/form-drawer/index.ts",
+  "src/shared/ui/otp-input/OtpInput.tsx",
+  "src/shared/ui/otp-input/index.ts",
+  "src/shared/ui/password-fields/PasswordFields.tsx",
+  "src/shared/ui/password-fields/index.ts",
+  "src/shared/ui/request-feedback/RequestFeedback.tsx",
+  "src/shared/ui/request-feedback/index.ts",
+  "src/shared/ui/route-loading/RouteLoading.tsx",
+  "src/shared/ui/route-loading/index.ts",
   "src/shared/contracts/appearance.ts",
   "src/shared/api/client.ts",
   "src/shared/api/token-response.ts",
@@ -44,6 +70,24 @@ const productionPaths = [
   "src/shared/lib/color-contrast.ts",
 ];
 const runtimeImports = {
+  "src/shared/config/theme.ts": ["antd"],
+  "src/shared/hooks/useGoBack.ts": ["react", "react-router"],
+  "src/shared/lib/observability.ts": ["web-vitals"],
+  "src/shared/storage/hooks/useLocalStorageWatcher.ts": ["react"],
+  "src/shared/ui/digits-input/DigitsInput.tsx": ["antd", "react"],
+  "src/shared/ui/error-boundary/ErrorBoundary.tsx": [
+    "antd",
+    "react",
+    "react-i18next",
+  ],
+  "src/shared/ui/form-drawer/FormDrawer.tsx": ["antd", "react-i18next"],
+  "src/shared/ui/otp-input/OtpInput.tsx": ["antd", "react", "react-i18next"],
+  "src/shared/ui/password-fields/PasswordFields.tsx": ["antd", "react-i18next"],
+  "src/shared/ui/request-feedback/RequestFeedback.tsx": [
+    "antd",
+    "react-i18next",
+  ],
+  "src/shared/ui/route-loading/RouteLoading.tsx": ["antd", "react-i18next"],
   "src/features/auth/api.ts": ["axios"],
   "src/shared/api/client.ts": ["axios"],
   "src/shared/hooks/useReadRequest.ts": ["axios", "react"],
@@ -58,7 +102,14 @@ const runtimeImports = {
     ),
   ],
 };
-const typeImports = { "src/shared/api/client.ts": ["axios"] };
+const typeImports = {
+  "src/shared/config/theme.ts": ["antd"],
+  "src/shared/hooks/useGoBack.ts": ["react-router"],
+  "src/shared/lib/observability.ts": ["web-vitals"],
+  "src/shared/ui/digits-input/DigitsInput.tsx": ["antd"],
+  "src/shared/ui/otp-input/OtpInput.tsx": ["react"],
+  "src/shared/api/client.ts": ["axios"],
+};
 const wireImports = {
   "src/features/auth/types.ts": [],
   "src/features/account/types.ts": ["src/features/roles/types.ts"],
@@ -70,6 +121,9 @@ const wireImports = {
   ],
 };
 const runtimeDependencies = new Set([
+  "antd",
+  "react-router",
+  "web-vitals",
   "axios",
   "react-dom",
   "dayjs",
@@ -218,7 +272,7 @@ const sourceFiles = async (directory, testRoot) => {
         return filename === testRoot ? [] : sourceFiles(filename, testRoot);
 
       return entry.isFile() &&
-        entry.name.endsWith(".ts") &&
+        /\.tsx?$/.test(entry.name) &&
         !entry.name.endsWith(".d.ts") &&
         !/\.(?:test|spec)\./.test(entry.name)
         ? [filename]

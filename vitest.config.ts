@@ -1,17 +1,54 @@
+import { fileURLToPath } from "node:url";
+
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   envDir: false,
+  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   test: {
     clearMocks: true,
     environment: "node",
-    env: { VITE_API_BASE_URL: "http://localhost" },
-    setupFiles: ["./src/test/http-setup.ts"],
+    env: {
+      VITE_API_BASE_URL: "http://localhost",
+      VITE_OBSERVABILITY_URL: "",
+      VITE_RELEASE_ID: "synthetic-ui-foundation",
+    },
+    setupFiles: ["./src/test/http-setup.ts", "./src/test/setup.ts"],
     environmentOptions: { jsdom: { url: "http://localhost/" } },
-    include: ["src/**/*.test.ts", "scripts/run-audit.test.mjs"],
+    include: [
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+      "scripts/run-audit.test.mjs",
+    ],
     restoreMocks: true,
     coverage: {
       include: [
+        "src/shared/config/constants.ts",
+        "src/shared/config/index.ts",
+        "src/shared/config/theme.ts",
+        "src/shared/hooks/index.ts",
+        "src/shared/hooks/useGoBack.ts",
+        "src/shared/lib/index.ts",
+        "src/shared/lib/observability.ts",
+        "src/shared/storage/compact.ts",
+        "src/shared/storage/hooks/useLocalStorageWatcher.ts",
+        "src/shared/storage/index.ts",
+        "src/shared/storage/state.ts",
+        "src/shared/storage/theme.ts",
+        "src/shared/ui/digits-input/DigitsInput.tsx",
+        "src/shared/ui/digits-input/index.ts",
+        "src/shared/ui/error-boundary/ErrorBoundary.tsx",
+        "src/shared/ui/error-boundary/index.ts",
+        "src/shared/ui/form-drawer/FormDrawer.tsx",
+        "src/shared/ui/form-drawer/index.ts",
+        "src/shared/ui/otp-input/OtpInput.tsx",
+        "src/shared/ui/otp-input/index.ts",
+        "src/shared/ui/password-fields/PasswordFields.tsx",
+        "src/shared/ui/password-fields/index.ts",
+        "src/shared/ui/request-feedback/RequestFeedback.tsx",
+        "src/shared/ui/request-feedback/index.ts",
+        "src/shared/ui/route-loading/RouteLoading.tsx",
+        "src/shared/ui/route-loading/index.ts",
         "src/features/account/api.ts",
         "src/features/account/types.ts",
         "src/features/auth/api.ts",

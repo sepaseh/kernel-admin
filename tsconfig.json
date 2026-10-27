@@ -2,6 +2,8 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
+    "jsx": "react-jsx",
+    "paths": { "@/*": ["./src/*"] },
     "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "moduleDetection": "force",
@@ -16,5 +18,5 @@
     "target": "ES2023",
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "vitest.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vitest.config.ts"]
 }

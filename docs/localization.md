@@ -2,7 +2,7 @@
 
 [English](localization.md) · [فارسی](localization.fa.md)
 
-The [http-lifecycle phase](bootstrap.md) publishes complete local catalogs
+The [ui-foundation phase](bootstrap.md) publishes complete local catalogs
 and real translation/date adapters. Tests exercise their installed dependencies
 in Node. applicationReady:false remains deliberate: no runnable panel, UI
 provider integration or browser journey is published; the HTTP settings adapter is included.
@@ -11,7 +11,7 @@ provider integration or browser journey is published; the HTTP settings adapter 
 
 [src/shared/i18n/locales.ts](../src/shared/i18n/locales.ts) owns ten codes: ar, de,
 en, es, fa, fr, it, pt, ru and tr. Each has exactly one locales/<code>.ts object
-with 110 nonempty root string messages. [catalogs.ts](../src/shared/i18n/catalogs.ts)
+with 111 nonempty root string messages. [catalogs.ts](../src/shared/i18n/catalogs.ts)
 registers those same objects; do not copy them or add compatibility wrappers.
 Reuse semantic root keys, preserve i18next {{variable}} names and maintain genuine
 translations. No nested common object, common. prefix, split admin/common file,

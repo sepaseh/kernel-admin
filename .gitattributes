@@ -11,3 +11,7 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.sh text eol=lf
+*.svg text eol=lf
+
+# Keep the licensed font text byte-stable for asset-integrity checks on Windows.
+src/assets/fonts/vazirmatn/OFL.txt text eol=lf

@@ -80,6 +80,7 @@ export const it = {
   requestRefreshFailed:
     "Aggiornamento non riuscito. Sono visualizzati gli ultimi dati caricati correttamente.",
   requestTimeout: "La richiesta ha superato il tempo massimo. Riprova.",
+  requiredField: "Campo obbligatorio",
   resendCode: "Invia di nuovo il codice",
   reset: "Reimposta",
   resetPassword: "Reimposta password",

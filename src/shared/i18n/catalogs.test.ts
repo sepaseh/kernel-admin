@@ -126,7 +126,7 @@ test("all ten local admin catalogs contain complete nonempty keys and interpolat
   assert.equal(localeCodes.length, 10);
   assert.deepEqual(Object.keys(catalogs).sort(), [...localeCodes].sort());
   const english = flatCatalog(catalogs.en);
-  assert.equal(Object.keys(english).length, 110);
+  assert.equal(Object.keys(english).length, 111);
   for (const code of localeCodes)
     parity(english, flatCatalog(catalogs[code]), code);
 });
@@ -134,7 +134,13 @@ test("all ten local admin catalogs contain complete nonempty keys and interpolat
 test("reused UI meanings are root keys without a common object or aliases", () => {
   for (const code of localeCodes) {
     assert.equal(Object.hasOwn(catalogs[code], "common"), false);
-    for (const key of ["account", "login", "password", "networkError"] as const)
+    for (const key of [
+      "account",
+      "login",
+      "password",
+      "networkError",
+      "requiredField",
+    ] as const)
       assert.ok(catalogs[code][key].trim());
   }
 });

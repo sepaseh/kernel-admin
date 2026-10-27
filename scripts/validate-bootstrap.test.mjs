@@ -393,22 +393,25 @@ test("runtime-localization inspects its exact non-runnable inventory", async (co
   );
 });
 
-test("HTTP/lifecycle publication requires the complete independent closure without admitting UI or source links", async (context) => {
+test("UI foundation requires the complete previous HTTP closure and forbids application composition", async (context) => {
   const current = JSON.parse(
     await readFile(
       new URL("../.github/bootstrap-policy.json", import.meta.url),
       "utf8",
     ),
   );
-  assert.equal(current.phase, "http-lifecycle");
-  assert.equal(validateBootstrapPolicy(current).size, 118);
+  assert.equal(current.phase, "ui-foundation");
+  assert.equal(validateBootstrapPolicy(current).size, 169);
   const required = current.allowedFiles.filter(
     (file) =>
       (file.startsWith("src/") &&
         !runtimePolicy().allowedFiles.includes(file)) ||
-      /^docs\/(?:http-client|request-lifecycle)(?:\.fa)?\.md$/.test(file),
+      /^docs\/(?:http-client|request-lifecycle|ui-foundation)(?:\.fa)?\.md$/.test(
+        file,
+      ) ||
+      file.startsWith("public/"),
   );
-  assert.equal(required.length, 43);
+  assert.equal(required.length, 94);
   for (const missing of required)
     assert.throws(
       () =>
@@ -421,7 +424,7 @@ test("HTTP/lifecycle publication requires the complete independent closure witho
   for (const file of [
     "src/main.tsx",
     "src/app/Core.tsx",
-    "src/shared/config/theme.ts",
+    "src/shared/ui/unpublished.tsx",
     "src/features/users/Users.tsx",
     "src/shared/hooks/unpublished.ts",
     "src/shared/api/client.spec.ts",
@@ -440,8 +443,8 @@ test("HTTP/lifecycle publication requires the complete independent closure witho
   );
   const { root } = await fixture(context, current);
   const result = await inspectBootstrap(root);
-  assert.equal(result.phase, "http-lifecycle");
+  assert.equal(result.phase, "ui-foundation");
   assert.equal(result.applicationReady, false);
-  assert.match(result.scope, /synthetic HTTP and real hook tests/);
-  assert.equal(result.files, 118);
+  assert.match(result.scope, /synthetic HTTP\/React tests/);
+  assert.equal(result.files, 169);
 });

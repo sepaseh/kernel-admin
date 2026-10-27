@@ -82,6 +82,7 @@ export const de = {
     "Die Aktualisierung ist fehlgeschlagen. Die zuletzt erfolgreich geladenen Daten werden angezeigt.",
   requestTimeout:
     "Die Anfrage hat zu lange gedauert. Bitte versuchen Sie es erneut.",
+  requiredField: "Pflichtfeld",
   resendCode: "Code erneut senden",
   reset: "Zurücksetzen",
   resetPassword: "Passwort zurücksetzen",

@@ -77,6 +77,7 @@ export const ar = {
   requestLoadFailed: "تعذّر تحميل البيانات.",
   requestRefreshFailed: "تعذّر التحديث. تُعرض آخر بيانات تم تحميلها بنجاح.",
   requestTimeout: "انتهت مهلة الطلب. يُرجى المحاولة مرة أخرى.",
+  requiredField: "حقل إلزامي",
   resendCode: "إعادة إرسال الرمز",
   reset: "إعادة الضبط",
   resetPassword: "إعادة تعيين كلمة المرور",

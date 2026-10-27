@@ -2,14 +2,14 @@
 
 [English](localization.md) · [فارسی](localization.fa.md)
 
-[مرحلهٔ http-lifecycle](bootstrap.fa.md) کاتالوگ‌های کامل محلی و راه‌اندازهای
+[مرحلهٔ ui-foundation](bootstrap.fa.md) کاتالوگ‌های کامل محلی و راه‌اندازهای
 واقعی ترجمه و تاریخ را منتشر می‌کند. آزمون‌ها وابستگی‌های نصب‌شدهٔ واقعی را در Node
 اجرا می‌کنند. applicationReady:false آگاهانه حفظ می‌شود؛ پنل قابل اجرا، اتصال provider تنظیمات یا مسیر مرورگر در این مرحله منتشر نشده است؛ اتصال HTTP تنظیمات وجود دارد.
 
 ## یک کاتالوگ کامل برای هر زبان
 
 [src/shared/i18n/locales.ts](../src/shared/i18n/locales.ts) مالک ده کد ar، de، en، es،
-fa، fr، it، pt، ru و tr است. هرکدام دقیقاً یک شیء در locales/<code>.ts با ۱۱۰ پیام
+fa، fr، it، pt، ru و tr است. هرکدام دقیقاً یک شیء در locales/<code>.ts با ۱۱۱ پیام
 رشته‌ای غیرخالی در ریشه دارند. [catalogs.ts](../src/shared/i18n/catalogs.ts) همان اشیا
 را ثبت می‌کند؛ آن‌ها را کپی نکنید و پوشش سازگاری نسازید. کلیدهای معنایی ریشه را
 دوباره استفاده کنید، نام متغیرهای i18next مانند {{variable}} و ترجمه‌های واقعی را

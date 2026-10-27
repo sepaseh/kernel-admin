@@ -252,9 +252,9 @@ test("undeclared production and linked source are not hidden by an empty import 
   await assert.rejects(checkBoundaries(directory), /symbolic links/);
 });
 
-test("the exact current http-lifecycle phase has forty-two contained production modules", async () => {
+test("the exact current ui-foundation phase has sixty-eight contained production modules", async () => {
   const result = await checkBoundaries();
-  assert.equal(result.files, 42);
+  assert.equal(result.files, 68);
   assert.deepEqual(result.violations, []);
 });
 
@@ -300,6 +300,7 @@ test("runtime adapters may import only exact declared packages contained in this
     ["src/shared/i18n/date.ts", "jalaliday", "jalaliday"],
     ["src/shared/api/client.ts", "axios", "axios"],
     ["src/shared/hooks/useReadRequest.ts", "react", "react"],
+    ["src/shared/ui/digits-input/DigitsInput.tsx", "react", "react"],
   ]) {
     const adapter = path.join(root, source);
     const target = path.join(root, "node_modules", dependency, "index.d.ts");
@@ -323,6 +324,58 @@ test("runtime adapters may import only exact declared packages contained in this
     assert.match(check("node:fs", target, adapter), /not allowed/);
     assert.match(check("dayjs/locale/xx", target, adapter), /not allowed/);
   }
+});
+
+test("OTP accessibility owns only its exact React and translation runtime dependencies", () => {
+  const otp = path.join(root, "src/shared/ui/otp-input/OtpInput.tsx");
+  for (const dependency of ["antd", "react", "react-i18next"]) {
+    const target = path.join(root, "node_modules", dependency, "index.d.ts");
+    assert.equal(check(dependency, target, otp, false, dependency), undefined);
+  }
+  const reactTypes = path.join(root, "node_modules/@types/react/index.d.ts");
+  assert.equal(
+    check("react", reactTypes, otp, true, "@types/react"),
+    undefined,
+  );
+  assert.equal(
+    check("react", reactTypes, otp, false, "@types/react"),
+    undefined,
+  );
+  for (const dependency of [
+    "axios",
+    "i18next",
+    "react-dom",
+    "react-i18next/internal",
+  ]) {
+    assert.match(
+      check(
+        dependency,
+        path.join(root, "node_modules", dependency, "index.d.ts"),
+        otp,
+        false,
+        dependency,
+      ),
+      /not allowed/,
+    );
+  }
+  for (const owner of [
+    "src/shared/ui/form-drawer/FormDrawer.tsx",
+    "src/shared/ui/route-loading/RouteLoading.tsx",
+  ])
+    assert.match(
+      check("react", reactTypes, path.join(root, owner), false, "@types/react"),
+      /not allowed/,
+    );
+  assert.match(
+    check(
+      "react-i18next",
+      path.join(root, "node_modules/react-i18next/index.d.ts"),
+      path.join(root, "src/shared/ui/digits-input/DigitsInput.tsx"),
+      false,
+      "react-i18next",
+    ),
+    /not allowed/,
+  );
 });
 
 test("pure catalog and contract modules cannot depend on the published runtime adapters", () => {

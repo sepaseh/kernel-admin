@@ -81,6 +81,7 @@ export const es = {
     "No se pudieron actualizar los datos. Se muestran los últimos datos cargados correctamente.",
   requestTimeout:
     "La solicitud ha agotado el tiempo de espera. Inténtalo de nuevo.",
+  requiredField: "Campo obligatorio",
   resendCode: "Reenviar código",
   reset: "Restablecer",
   resetPassword: "Restablecer contraseña",
