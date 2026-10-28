@@ -35,3 +35,10 @@ Portable Node safety regressions run independently of optional Bash cases; Bash
 wrappers require Bash and Node. The post-edit formatter parses input with Node
 and fixes only the selected file through the project-local ESLint CLI.
 Hooks are neither runtime dependencies nor substitutes for the complete gate.
+
+The optional safety policy models literal Bash/sh/dash/zsh commands within its
+65,536-character and four-level nesting limits. Inline Git `-c` accepts only
+`color.ui` with literal `true`, `false`, `auto`, `always` or `never`; other keys,
+`GIT_CONFIG`/`GIT_CONFIG_*` setters through `export`, `declare`, `typeset`,
+`readonly` or `local`, plus `xargs` and `find` execution actions, are blocked. Arbitrary program behavior and host authorization remain outside this
+convenience guard.

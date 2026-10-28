@@ -413,17 +413,26 @@ const markdownIndent = (line, start = 0) => {
   }
   return { end, width };
 };
-const markdownQuote = (line) => {
+const markdownColumn = (line, end) => {
+  let column = 0;
+  for (let index = 0; index < end; index++)
+    column += line[index] === "\t" ? 4 - (column % 4) : 1;
+  return column;
+};
+const markdownQuote = (line, container) => {
   let start = 0,
     depth = 0;
+  const indents = [];
   while (start < line.length) {
     const indent = markdownIndent(line, start);
-    if (indent.width > 3 || line[indent.end] !== ">") break;
+    const allowed = depth === container?.depth ? container.base + 3 : 3;
+    if (indent.width > allowed || line[indent.end] !== ">") break;
+    indents.push(indent.width);
     depth++;
     start = indent.end + 1;
     if (line[start] === " " || line[start] === "\t") start++;
   }
-  return { text: line.slice(start), depth };
+  return { text: line.slice(start), depth, indents };
 };
 const markdownFence = (line, base = 0) => {
   const indent = markdownIndent(line);
@@ -455,7 +464,7 @@ const markdownContainer = (quote, state) => {
   if (list) {
     while (state.lists.length && state.lists.at(-1).marker >= indent.width)
       state.lists.pop();
-    const content = indent.width + list[0].length;
+    const content = markdownColumn(quote.text, indent.end + list[0].length);
     state.lists.push({ marker: indent.width, content });
     return {
       blank,
@@ -473,10 +482,14 @@ const markdownContainer = (quote, state) => {
     fenceBase: base,
   };
 };
+const insideListQuote = (quote, fence) =>
+  !fence.quoteContainer ||
+  quote.indents[fence.quoteContainer.depth] >= fence.quoteContainer.base;
 const insideMarkdownFence = (quote, fence) =>
   quote.text.trim() === "" ||
   (quote.depth >= fence.depth &&
-    markdownIndent(quote.text).width >= fence.base);
+    markdownIndent(quote.text).width >= fence.base &&
+    insideListQuote(quote, fence));
 const closesMarkdownFence = (quote, fence) => {
   const marker = markdownFence(quote.text, fence.base);
   return (
@@ -485,6 +498,23 @@ const closesMarkdownFence = (quote, fence) => {
     marker.length >= fence.length &&
     marker.suffix.trim() === ""
   );
+};
+const openingMarkdownFence = (quote, context) => {
+  const quoted = markdownQuote(context.fenceText);
+  const marker = markdownFence(
+    quoted.text,
+    quoted.depth ? 0 : context.fenceBase,
+  );
+  if (!marker || (marker.marker === "\x60" && marker.suffix.includes("\x60")))
+    return null;
+  return {
+    ...marker,
+    depth: quote.depth + quoted.depth,
+    base: quoted.depth ? 0 : context.base,
+    quoteContainer: quoted.depth
+      ? { depth: quote.depth, base: context.base }
+      : null,
+  };
 };
 const withoutMarkdownFences = (markdown) => {
   const state = {
@@ -497,19 +527,16 @@ const withoutMarkdownFences = (markdown) => {
   return markdown
     .split("\n")
     .map((line) => {
-      const quote = markdownQuote(line);
+      const quote = markdownQuote(line, state.fence?.quoteContainer);
       if (state.fence && insideMarkdownFence(quote, state.fence)) {
         if (closesMarkdownFence(quote, state.fence)) state.fence = null;
         return "";
       }
       state.fence = null;
       const context = markdownContainer(quote, state);
-      const marker = markdownFence(context.fenceText, context.fenceBase);
-      if (
-        marker &&
-        !(marker.marker === "\x60" && marker.suffix.includes("\x60"))
-      ) {
-        state.fence = { ...marker, depth: quote.depth, base: context.base };
+      const fence = openingMarkdownFence(quote, context);
+      if (fence) {
+        state.fence = fence;
         state.paragraph = false;
         return "";
       }
@@ -654,14 +681,37 @@ const unescapeMarkdownDestination = (destination) =>
       ? character
       : escape,
   );
+const markdownLabelClosings = (text) => {
+  const closings = new Uint8Array(text.length);
+  let cursor = 0,
+    depth = 0;
+  while (cursor < text.length) {
+    if (text[cursor] === "\\") {
+      cursor += 2;
+      continue;
+    }
+    if (text[cursor] === "[") depth++;
+    if (text[cursor] === "]" && depth > 0) {
+      closings[cursor] = 1;
+      depth--;
+    }
+    cursor++;
+  }
+  return closings;
+};
 export const markdownLinks = (markdown) => {
   const prose = markdownProse(markdown);
+  const labels = markdownLabelClosings(prose);
   const links = [],
     endings = new Map();
   let cursor = 0;
   while (cursor < prose.length) {
     const opening = prose.indexOf("](", cursor);
     if (opening === -1) break;
+    if (!labels[opening]) {
+      cursor = opening + 2;
+      continue;
+    }
     const start = skipMarkdownSpace(prose, opening + 2);
     const result = readMarkdownDestination(prose, start);
     const ending = result.destination

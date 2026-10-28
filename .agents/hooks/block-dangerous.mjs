@@ -184,11 +184,27 @@ const attachedGitValue = (option) => {
     separator < option.length - 1
   );
 };
+const safeGitColorValues = new Set([
+  "true",
+  "false",
+  "auto",
+  "always",
+  "never",
+]);
+const safeGitConfiguration = (value = "") => {
+  const separator = value.indexOf("=");
+  if (separator === -1) return false;
+
+  return (
+    value.slice(0, separator).toLowerCase() === "color.ui" &&
+    safeGitColorValues.has(value.slice(separator + 1).toLowerCase())
+  );
+};
 const gitOptionWidth = (tokens, index) => {
   const option = tokens[index].value;
   const configValue =
     option === "-c" ? tokens[index + 1]?.value : option.slice(2);
-  if (option.startsWith("-c") && /^alias\./i.test(configValue ?? "")) return 0;
+  if (option.startsWith("-c") && !safeGitConfiguration(configValue)) return 0;
 
   if (gitFlags.has(option)) return 1;
   if (gitValueOptions.has(option))
@@ -254,11 +270,15 @@ const inspectGit = (words) => {
   );
 };
 
-const assignment = (token) => /^[A-Za-z_]\w*=/.test(token.value);
+const assignment = (token) => /^[A-Za-z_]\w*\+?=/.test(token.value);
+const gitConfigurationVariable = (token) => {
+  const name = /^[A-Za-z_]\w*/.exec(token.value)?.[0];
+  return name === "GIT_CONFIG" || name?.startsWith("GIT_CONFIG_");
+};
 const executableWords = (words) => {
   let index = 0;
   while (index < words.length && assignment(words[index])) {
-    if (/^GIT_CONFIG[_=]/.test(words[index].value)) return null;
+    if (gitConfigurationVariable(words[index])) return null;
     index++;
   }
 
@@ -280,6 +300,49 @@ const exposesEnvironment = (name, words) =>
   name === "printenv" ||
   (name === "export" && exportOutput(words)) ||
   (outputNames.has(name) && words.some(secretVariable));
+const variableSetterNames = new Set([
+  "export",
+  "declare",
+  "typeset",
+  "readonly",
+  "local",
+]);
+const inspectVariableSetter = (words) =>
+  words
+    .slice(1)
+    .some(
+      (word) =>
+        gitConfigurationVariable(word) ||
+        (hasVariable(word) && !assignment(word)),
+    )
+    ? gitError
+    : null;
+const findExecutionActions = new Set(["-exec", "-execdir", "-ok", "-okdir"]);
+const findValuePredicates = new Set([
+  "-name",
+  "-iname",
+  "-path",
+  "-ipath",
+  "-wholename",
+  "-iwholename",
+  "-regex",
+  "-iregex",
+  "-type",
+  "-xtype",
+]);
+const inspectFind = (words) => {
+  if (words.some(hasVariable)) return shellError;
+
+  let cursor = 1;
+  while (cursor < words.length) {
+    const value = words[cursor].value;
+    if (findExecutionActions.has(value)) return shellError;
+    const width = findValuePredicates.has(value) ? 2 : 1;
+    if (cursor + width > words.length) return shellError;
+    cursor += width;
+  }
+  return null;
+};
 const secretOperands = (segment, name) => {
   if (segment.redirections.some(({ target }) => sensitivePath(target.value)))
     return true;
@@ -292,9 +355,11 @@ const shellNames = new Set([
   "bash",
   "sh",
   "dash",
+  "zsh",
   "bash.exe",
   "sh.exe",
   "dash.exe",
+  "zsh.exe",
 ]);
 const unsupportedShellNames = new Set([
   "eval",
@@ -336,6 +401,17 @@ const inspectWrapper = (segment, words, depth) => {
   if (!words[1] || words[1].value.startsWith("-")) return shellError;
   return inspectSegment({ ...segment, words: words.slice(1) }, depth + 1);
 };
+const inspectExecutable = (name, segment, words, depth) => {
+  if (name === "git" || name === "git.exe") return inspectGit(words);
+  if (shellNames.has(name)) return inspectShell(words, depth);
+  if (name === "env") return inspectEnv(segment, words, depth);
+  if (variableSetterNames.has(name)) return inspectVariableSetter(words);
+  if (name === "find" || name === "find.exe") return inspectFind(words);
+  if (unsupportedShellNames.has(name)) return shellError;
+  if (["command", "exec", "sudo"].includes(name))
+    return inspectWrapper(segment, words, depth);
+  return null;
+};
 const inspectSegment = (segment, depth) => {
   if (depth > 4) return shellError;
   const words = executableWords(segment.words);
@@ -346,13 +422,7 @@ const inspectSegment = (segment, depth) => {
   const name = commandName(words[0].value);
   if (secretOperands(segment, name)) return secretError;
   if (exposesEnvironment(name, words)) return environmentError;
-  if (name === "git" || name === "git.exe") return inspectGit(words);
-  if (shellNames.has(name)) return inspectShell(words, depth);
-  if (name === "env") return inspectEnv(segment, words, depth);
-  if (unsupportedShellNames.has(name)) return shellError;
-  if (["command", "exec", "sudo"].includes(name))
-    return inspectWrapper(segment, words, depth);
-  return null;
+  return inspectExecutable(name, segment, words, depth);
 };
 const inspectCommand = (command, depth = 0) => {
   if (command.length > 65_536 || depth > 4) return shellError;

@@ -94,7 +94,7 @@ test("Markdown scanning ignores empty or unfinished links and preserves later va
     ["owner.ts", "next.md"],
   );
   assert.deepEqual(markdownLinks("[nested](two](part)"), []);
-  assert.deepEqual(markdownLinks("]()](next.md)"), ["next.md"]);
+  assert.deepEqual(markdownLinks("]()](next.md)"), []);
   assert.deepEqual(markdownLinks("ordinary prose"), []);
 });
 
@@ -196,16 +196,74 @@ test("container fences and indented code leave later real prose links visible", 
   );
 });
 
+test("list tabs use visual columns before a fence and preserve outdented prose", () => {
+  for (const marker of ["~~~", String.fromCharCode(96).repeat(3)]) {
+    assert.deepEqual(
+      markdownLinks(
+        "- \t" + marker + "\n    [example](ignored.md)\n   [real](owner.ts)",
+      ),
+      ["owner.ts"],
+    );
+    assert.deepEqual(
+      markdownLinks(
+        "1.\t" + marker + "\n    [example](ignored.md)\n   [real](owner.ts)",
+      ),
+      ["owner.ts"],
+    );
+  }
+});
+
+test("list-prefixed quoted fences keep examples separate from later prose", () => {
+  for (const marker of ["~~~", String.fromCharCode(96).repeat(3)]) {
+    const close = marker + marker[0];
+    for (const example of [
+      "- > " + marker + "\n  > [example](ignored.md)\n  > " + close,
+      "> - > " + marker + "\n>   > [example](ignored.md)\n>   > " + close,
+      "- \t> " + marker + "\n\t> [example](ignored.md)\n\t> " + close,
+    ])
+      assert.deepEqual(
+        markdownLinks(
+          example + "\n\n[real](owner.ts)\n- parent\n    - [nested](test.ts)",
+        ),
+        ["owner.ts", "test.ts"],
+      );
+    assert.deepEqual(
+      markdownLinks(
+        "- > " + marker + "\n  > [example](ignored.md)\n> [real](owner.ts)",
+      ),
+      ["owner.ts"],
+    );
+  }
+});
+
+test("link extraction requires an unescaped balanced label and retains image labels", () => {
+  for (const text of [
+    "](missing.md)",
+    "\\[escaped](missing.md)",
+    "[escaped\\](missing.md)",
+  ])
+    assert.deepEqual(markdownLinks(text), [], text);
+  assert.deepEqual(
+    markdownLinks(
+      "[outer [nested]](owner.ts) ![image](asset.svg) [escaped \\[brackets\\]](test.ts)",
+    ),
+    ["owner.ts", "asset.svg", "test.ts"],
+  );
+  assert.deepEqual(markdownLinks("]() [later](next.md)"), ["next.md"]);
+});
+
 test("malformed Markdown delimiter runs finish within a real child-process deadline", () => {
   const moduleUrl = new URL("./check-guidance.mjs", import.meta.url).href;
   const script = `const { markdownLinks } = await import(${JSON.stringify(moduleUrl)});
 const malformed = "](".repeat(1_000_000);
 const unclosedParentheses = "](file(".repeat(200_000);
+const labeledUnclosedParentheses = "[bad](file(".repeat(200_000);
+const labeledOpenings = "[bad](".repeat(200_000);
 const unicodeFences = ["\\u2028", "\\u2029"].map(separator => String.fromCharCode(96).repeat(1_000_000) + separator);
-for (const input of [malformed, unclosedParentheses, ...unicodeFences])
+for (const input of [malformed, unclosedParentheses, labeledUnclosedParentheses, labeledOpenings, ...unicodeFences])
   if (markdownLinks(input).length !== 0) process.exitCode = 1;
 for (const marker of [String.fromCharCode(34), String.fromCharCode(39), "("]) {
-  const malformedTitles = ("](owner.ts " + marker + "unfinished ").repeat(50_000) + "[good](owner.ts)";
+  const malformedTitles = ("[bad](owner.ts " + marker + "unfinished ").repeat(50_000) + "[good](owner.ts)";
   const links = markdownLinks(malformedTitles);
   if (links.length !== 1 || links[0] !== "owner.ts") process.exitCode = 1;
 }`;

@@ -497,3 +497,167 @@ test("bare export and listing options are blocked while explicit declarations re
   ])
     assert.equal(inspectSafetyPayload({ command }), null, command);
 });
+
+test("inline Git configuration permits only explicit literal color settings", () => {
+  for (const configuration of [
+    "core.pager=git push --force origin feature",
+    "core.editor=git branch -d feature",
+    "core.sshCommand=synthetic-command",
+    "credential.helper=!synthetic-command",
+    "diff.external=synthetic-command",
+    "filter.synthetic.smudge=synthetic-command",
+    "core.hooksPath=synthetic",
+    "color.ui=unmodeled",
+    "color.ui",
+  ])
+    for (const option of ["-c ", "-c"])
+      assert.match(
+        inspectSafetyPayload({
+          command: `git ${option}'${configuration}' log`,
+        }),
+        /ambiguous git options/,
+        option + configuration,
+      );
+
+  for (const value of ["true", "false", "auto", "always", "never"])
+    for (const option of ["-c ", "-c"])
+      assert.equal(
+        inspectSafetyPayload({
+          command: `git ${option}color.ui=${value} status`,
+        }),
+        null,
+        option + value,
+      );
+});
+
+test("variable-setting builtin arguments cannot configure a later Git command", () => {
+  for (const builtin of [
+    "export",
+    "declare -x",
+    "typeset -x",
+    "readonly",
+    "local",
+  ])
+    for (const variable of [
+      "GIT_CONFIG_COUNT=1",
+      "GIT_CONFIG_COUNT+=1",
+      "GIT_CONFIG_PARAMETERS=synthetic",
+      "GIT_CONFIG",
+    ])
+      assert.match(
+        inspectSafetyPayload({
+          command: `${builtin} '${variable}'; git status --short`,
+        }),
+        /ambiguous git options/,
+        builtin + " " + variable,
+      );
+
+  for (const command of [
+    'export "$TASK_SETTING"; git status --short',
+    'declare -x "$TASK_NAME"=synthetic; git status --short',
+    "GIT_CONFIG_COUNT+=1 git status --short",
+  ])
+    assert.match(inspectSafetyPayload({ command }), /ambiguous git options/);
+
+  for (const command of [
+    "export TEST_MODE=synthetic; git status --short",
+    "declare -x TEST_MODE=synthetic && git status --short",
+    "typeset -x TEST_MODE=synthetic; git status --short",
+    "readonly TEST_MODE=synthetic",
+    "local TEST_MODE=synthetic",
+    "TEST_MODE+=synthetic git status --short",
+    "printf '%s' 'GIT_CONFIG_COUNT=1'",
+    "printf '%s' 'export GIT_CONFIG_COUNT=1; git status'",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("zsh literal command payloads retain nested safety checks and bounds", () => {
+  for (const command of [
+    "zsh -c 'git push --force origin feature'",
+    "/bin/zsh -lc 'git push origin main'",
+    "zsh.exe -c 'export GIT_CONFIG_COUNT=1; git status'",
+    "sh -c \"zsh -c 'git branch -d feature'\"",
+    'zsh -c "$SCRIPT"',
+  ])
+    assert.notEqual(inspectSafetyPayload({ command }), null, command);
+
+  for (const command of [
+    "zsh -c 'git status --short'",
+    "/bin/zsh -c 'printf synthetic'",
+    "zsh.exe -c 'git diff -- src/example.ts'",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+
+  let nested = "git status";
+  for (let index = 0; index < 6; index++)
+    nested = "zsh -c " + JSON.stringify(nested);
+  assert.notEqual(inspectSafetyPayload({ command: nested }), null);
+});
+
+test("find execution actions fail closed while nonexecuting searches remain usable", () => {
+  for (const action of ["-exec", "-execdir", "-ok", "-okdir"])
+    for (const executable of ["find", "/usr/bin/find", "find.exe"])
+      assert.match(
+        inspectSafetyPayload({
+          command: `${executable} . ${action} git push --force origin feature \\;`,
+        }),
+        /Unsupported or ambiguous shell/,
+        executable + " " + action,
+      );
+
+  for (const predicate of [
+    "-name",
+    "-iname",
+    "-path",
+    "-ipath",
+    "-wholename",
+    "-iwholename",
+    "-regex",
+    "-iregex",
+  ]) {
+    assert.equal(
+      inspectSafetyPayload({ command: `find . ${predicate} '-exec' -print` }),
+      null,
+      predicate,
+    );
+    assert.match(
+      inspectSafetyPayload({
+        command: `find . ${predicate} '-exec' -exec git push origin main \\;`,
+      }),
+      /Unsupported or ambiguous shell/,
+      predicate,
+    );
+  }
+  for (const command of [
+    "find docs -path '-ok' -print",
+    "find . -type f -print",
+    "find . -xtype f -print",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+
+  for (const command of [
+    "find . -name",
+    "find . -type",
+    'find . -name "$PATTERN" -print',
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Unsupported or ambiguous shell/,
+    );
+
+  assert.match(
+    inspectSafetyPayload({
+      command: 'find . "$ACTION" git push origin main \\;',
+    }),
+    /Unsupported or ambiguous shell/,
+  );
+
+  for (const command of [
+    "find . -name '*.ts' -print",
+    "/usr/bin/find docs -type f",
+    "find.exe docs -name '*.md'",
+    "printf '%s' 'find . -exec git push --force origin feature'",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
