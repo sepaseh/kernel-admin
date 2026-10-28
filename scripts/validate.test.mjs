@@ -39,8 +39,8 @@ test("the current full gate executes every published required check in declared 
   const required = manifest.checks.filter((check) => check.kind === "required");
   assert.equal(manifest.phase, publication.phase);
   assert.equal(manifest.applicationReady, publication.applicationReady);
-  assert.equal(manifest.phase, "storybook-verification");
-  assert.equal(required.length, 11);
+  assert.equal(manifest.phase, "assistant-guidance");
+  assert.equal(required.length, 12);
   assert.deepEqual(
     required.slice(-2).map(({ command, id }) => ({ command, id })),
     [
@@ -48,6 +48,16 @@ test("the current full gate executes every published required check in declared 
       { command: "npm run test:storybook", id: "storybook-browser" },
     ],
   );
+  assert.equal(
+    pkg.scripts["check:guidance"],
+    "node scripts/check-guidance.mjs",
+  );
+  for (const file of [
+    "scripts/guidance.test.mjs",
+    "scripts/ai-hooks.portable.test.mjs",
+    "scripts/ai-hooks.test.mjs",
+  ])
+    assert.ok(pkg.scripts["test:governance"].includes(file));
   assert.equal(
     pkg.scripts["build-storybook"],
     "storybook build --output-dir coverage/storybook-static",

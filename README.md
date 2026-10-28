@@ -2,8 +2,10 @@
 
 [English](README.md) · [فارسی](README.fa.md)
 
-Kernel Admin is a standalone TypeScript project. The current **storybook-verification**
-phase adds a static Storybook build and real Chromium interaction/accessibility
+The `assistant-guidance` publication also adds [local development guidance](docs/README.md), canonical English rules/skills, a machine task map and read-only evaluation procedures. Optional hooks and host adapters are not application dependencies or proof of automatic loading.
+
+Kernel Admin is a standalone TypeScript project. The current **assistant-guidance**
+phase retains the static Storybook build and real Chromium interaction/accessibility
 tests to the published providers, authentication/business forms, layouts, widgets,
 HTTP adapters and local translation/date infrastructure. `applicationReady` is
 **false**: the component workshop does not provide an assembled management panel.
@@ -70,10 +72,10 @@ npm run browser:install
 npm run validate -- full
 ```
 
-The [validation manifest](.agents/validation.json) owns all eleven required
+The [validation manifest](.agents/validation.json) owns all required
 current-phase checks: exact snapshot, semantic CI policy, dependency audit, source boundaries,
-types, lint, formatting, measured unit coverage, governance tests, `build-storybook`
-and `test:storybook`. The browser suite runs all registered stories in headless
+types, lint, formatting, measured unit coverage, governance tests, `build-storybook`,
+`test:storybook` and guidance consistency. The browser suite runs all registered stories in headless
 Chromium with interaction assertions and accessibility failures treated as errors.
 Tests use synthetic values and require no environment file or running API.
 
@@ -92,7 +94,7 @@ changed-file entries** and validate the exact proposed revision.
 
 Use native CI, CodeRabbit and SonarQube Cloud checks with
 [branch protection](docs/branch-protection.md). Configuration is not evidence of
-a completed hosted check. Storybook-verification protection requires its published CI and
+a completed hosted check. Assistant-guidance protection requires its published CI and
 provider checks. Before any runnable panel merges, genuine build, end-to-end and
 visual jobs must pass and become required checks, and the canonical full gate
 must expand to cover the application.

@@ -2,7 +2,9 @@
 
 [English](CONTRIBUTING.md) · [فارسی](CONTRIBUTING.fa.md)
 
-The current [storybook-verification phase](docs/bootstrap.md) adds a static component
+This phase also publishes [local guidance](.agents/README.md), [task navigation](docs/source-navigation.md) and read-only [comprehension procedures](docs/comprehension-evaluation.md). Human guides are English/Persian; active assistant instructions and prompts are English only. Their static consistency check joins the canonical full gate.
+
+The current [assistant-guidance phase](docs/bootstrap.md) retains a static component
 workshop and real Chromium interaction/accessibility tests to the published
 providers, forms, layouts, HTTP adapters and local translation/date infrastructure.
 It retains `applicationReady: false`. Preserve its declared scope and independent
@@ -64,9 +66,9 @@ checks belong to `check`. Future multi-job application validation requires an
 explicit policy and workflow transition, so a Windows visual check cannot silently
 enter this Linux-only command plan.
 
-The eleven required phase checks cover snapshot integrity, semantic CI policy, dependencies, boundaries,
-types, lint, formatting, measured unit tests, governance tests, `build-storybook`
-and `test:storybook`. Install Chromium with `npm run browser:install` before the
+The required phase checks cover snapshot integrity, semantic CI policy, dependencies, boundaries,
+types, lint, formatting, measured unit tests, governance tests, `build-storybook`,
+`test:storybook` and guidance consistency. Install Chromium with `npm run browser:install` before the
 full gate. All registered stories run in a real headless browser; `a11y.test: error`
 makes accessibility violations fail the browser suite. Follow [Storybook verification](docs/storybook-verification.md)
 for full module mocks, synthetic settings and unexpected-request enforcement. The selected
@@ -96,7 +98,7 @@ coverage and dependency directories out of commits.
 
 Follow [branch protection](docs/branch-protection.md). A successful skipped status
 is not a substantive review, and a scanner job is not the asynchronous Sonar
-quality gate. Required checks follow the published phase. The storybook-verification phase requires
+quality gate. Required checks follow the published phase. The assistant-guidance phase requires
 its CI and provider checks; it supplies no runnable panel. Before any runnable
 panel merges, introduce genuine build, end-to-end and visual jobs, observe them
 pass, add them to required checks and expand the canonical full gate. Do not use

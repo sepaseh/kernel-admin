@@ -1,9 +1,11 @@
-# Storybook verification phase
+# Assistant guidance publication phase
 
 [English](bootstrap.md) · [فارسی](bootstrap.fa.md)
 
+The `assistant-guidance` phase extends the workshop with canonical English assistant rules/skills, local hooks, task navigation and read-only evaluation procedures. Human explanations keep complete English/Persian companions. The [canonical manifest](../.agents/validation.json) adds guidance consistency without removing an inherited check.
+
 The [publication policy](../.github/bootstrap-policy.json) declares the
-**storybook-verification** phase with `applicationReady: false`. It contains ten complete flat
+**assistant-guidance** phase with `applicationReady: false`. It contains ten complete flat
 catalogs, their code registry, pure Persian calendar data and integrity tests,
 alongside token state, transport/profile contracts, HTTP key transforms and
 color-contrast helpers. The real i18next/react-i18next adapter initializes fixed Persian bootstrap
@@ -44,8 +46,8 @@ npm run validate -- full
 ```
 
 The [canonical manifest](../.agents/validation.json) defines the complete
-current-phase gate. Its eleven required checks cover the exact inventory, semantic CI policy, audit, source boundaries,
-types, lint, formatting, both measured test runs, `build-storybook` and `test:storybook`.
+current-phase gate. Its required checks cover the exact inventory, semantic CI policy, audit, source boundaries,
+types, lint, formatting, both measured test runs, `build-storybook`, `test:storybook` and guidance consistency.
 Unit tests use Node or isolated jsdom with environment-file discovery disabled.
 Storybook uses its dedicated Vite configuration, complete synthetic feature/client
 mocks and real headless Chromium. All registered stories run their play assertions
@@ -66,7 +68,7 @@ unconditional `npm ci`, then `npm run browser:install`, before one unconditional
 PR path/branch filters, omitted lifecycle events, conditional or advisory check
 execution, non-root working directories and shell overrides. Other conditional
 steps such as the PR-size guard or artifact upload do not make validation optional.
-The current policy keeps all eleven checks, including Storybook build/browser
+The current policy keeps all required checks, including Storybook build/browser
 verification, in `check`. Introduce job-aware validation and update this policy
 explicitly before adding separate application or Windows visual jobs.
 
@@ -102,7 +104,7 @@ a cycle. Require authorization, available quota and no in-flight duplicate. Foll
 
 ## Runnable panel readiness
 
-Storybook-verification protection requires the published CI and provider checks listed in
+Assistant-guidance protection requires the published CI and provider checks listed in
 [branch protection](branch-protection.md). Static workshop build and isolated component
 browser/a11y checks run within `check`; they are not a production panel build,
 complete application E2E journey or visual-regression job.
@@ -112,5 +114,5 @@ Introduce the actual React/Vite entry point and App/Routes composition, producti
 accessibility, performance and visual
 evidence in coherent later work. Before any runnable panel merges, expand the
 canonical full gate and inventory, observe genuine build/e2e/visual jobs pass and
-add them to required checks. Passing this storybook-verification phase gate cannot
+add them to required checks. Passing this assistant-guidance phase gate cannot
 establish those results in advance.

@@ -2,13 +2,15 @@
 
 [English](branch-protection.md) · [فارسی](branch-protection.fa.md)
 
+The current `assistant-guidance` phase retains the native provider contexts below. Guidance checking runs inside the existing canonical `check` job; an updated source policy does not prove that remote protection or provider execution succeeded.
+
 Use native GitHub CI, CodeRabbit and SonarQube Cloud checks. The merge policy
 requires current-head CI and provider results, at least one approving review and
 resolved conversations. Apply protection to administrators, dismiss stale
 approvals, require an up-to-date branch and prohibit force pushes and deletion.
 Repository administrators manage the actual remote settings.
 
-Required checks follow the published phase. Storybook-verification protection requires these
+Required checks follow the published phase. Assistant-guidance protection requires these
 five native contexts with their observed GitHub App identities:
 
 | Required context           | Provider       | App ID   |
@@ -37,9 +39,9 @@ may describe a skipped review. Automatic approval can satisfy the normal approva
 count after a clean completed review, but the native GitHub count also accepts
 other eligible reviewers; it does not enforce a particular bot's identity.
 
-The storybook-verification phase has `applicationReady: false`; its protection does not
+The assistant-guidance phase has `applicationReady: false`; its protection does not
 require full panel **build**, **e2e** or **visual** jobs that it does not supply.
-Its existing `check` context must run all eleven canonical commands, including the
+Its existing `check` context must run all canonical commands, including the
 real static Storybook build and Chromium play/accessibility suite. Those component
 checks do not establish complete application build/E2E or visual-regression evidence.
 Before any runnable panel merges, introduce genuine application jobs, expand the

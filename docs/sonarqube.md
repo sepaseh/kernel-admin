@@ -2,6 +2,8 @@
 
 [English](sonarqube.md) · [فارسی](sonarqube.fa.md)
 
+The `assistant-guidance` phase adds executable guidance tooling to the analyzed source and measured governance tests. Current-head provider evidence must still be inspected independently; documentation and local checks do not establish hosted analysis.
+
 The [workflow](../.github/workflows/sonar.yml) performs CI-based analysis for this
 repository. Configure and verify this repository independently; another
 project's successful integration does not establish this one's activation.
@@ -31,7 +33,7 @@ work to create a baseline.
 ## Scope and evidence
 
 [sonar-project.properties](../sonar-project.properties) analyzes published `src`,
-`scripts` and `.storybook`, classifies test files separately and imports two real reports:
+`scripts`, `.storybook` and executable `.agents/hooks`, classifies test files separately and imports two real reports:
 `coverage/unit/lcov.info` and `coverage/governance/lcov.info`. The workflow
 generates both from the same checked-out revision. They cover the published
 catalogs, real translation/date runtime adapters, pure Persian calendar data,
@@ -86,7 +88,7 @@ new commits invalidate preflight. Follow
 authorization, actual quota and no duplicate in-flight request for the same head.
 CodeRabbit's own check/approval is excluded only from preflight to avoid a cycle.
 
-Storybook-verification protection follows its published scope and requires the CI/provider
+Assistant-guidance protection follows its published scope and requires the CI/provider
 contexts in [branch protection](branch-protection.md). Before any runnable panel
 merges, real build/e2e/visual jobs must pass and become required checks, with the
 canonical full gate expanded. Phase alignment does not waive scanner execution,

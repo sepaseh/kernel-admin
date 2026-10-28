@@ -528,6 +528,7 @@ test("Sonar classifies stories and preview tooling as analyzed tests without exc
     "src",
     "scripts",
     ".storybook",
+    ".agents/hooks",
   ]);
   assert.deepEqual(properties["sonar.tests"].split(","), [
     "src",

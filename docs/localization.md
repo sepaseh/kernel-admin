@@ -2,7 +2,9 @@
 
 [English](localization.md) · [فارسی](localization.fa.md)
 
-The [storybook-verification phase](bootstrap.md) publishes complete local catalogs
+The current `assistant-guidance` phase retains the localization contract and its measured tests. Guidance checking supplements the [canonical gate](../.agents/validation.json); it does not change API authority or create a visitor language preference.
+
+The [assistant-guidance phase](bootstrap.md) publishes complete local catalogs
 and real translation/date adapters. Tests exercise their installed dependencies
 in Node, with synthetic Core/Ant Design provider tests in isolated jsdom.
 applicationReady:false remains deliberate: the provider modules and HTTP settings adapter are published alongside isolated Storybook browser checks, while the application entry point, App/Routes composition and complete application journeys remain future work.
@@ -79,7 +81,7 @@ checkout, while keeping contracts and data pure. Every new production module
 remains in measured coverage and source/security/duplication analysis; the existing
 ten literal language-data files alone retain their authorized CPD exception.
 
-Run npm ci, npm run browser:install, then npm run validate -- full. All eleven canonical checks run on every
+Run npm ci, npm run browser:install, then npm run validate -- full. All canonical checks run on every
 PR regardless of changed paths, with environment-file discovery disabled and real
 LCOV from this exact checkout. Required static Storybook build and real Chromium
 play/a11y checks add isolated component evidence; they do not replace those reports.

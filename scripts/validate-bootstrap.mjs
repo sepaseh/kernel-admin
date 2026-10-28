@@ -300,6 +300,71 @@ const storybookFiles = [
   "src/test/storybook/Transport.stories.tsx",
   "vitest.storybook.config.ts",
 ];
+const guidanceFiles = [
+  ".agents/README.md",
+  ".agents/evaluation/cases.json",
+  ".agents/evaluation/run-template.json",
+  ".agents/hooks/block-dangerous.mjs",
+  ".agents/hooks/block-dangerous.sh",
+  ".agents/hooks/post-edit-format.sh",
+  ".agents/hooks/quality-gate.sh",
+  ".agents/navigation.json",
+  ".agents/rules/admin.md",
+  ".agents/rules/api-collection.md",
+  ".agents/rules/branches.md",
+  ".agents/rules/code-quality.md",
+  ".agents/rules/code-review.md",
+  ".agents/rules/collection-quality.md",
+  ".agents/rules/commits.md",
+  ".agents/rules/git.md",
+  ".agents/rules/guidance.md",
+  ".agents/rules/imports.md",
+  ".agents/rules/issues.md",
+  ".agents/rules/localization.md",
+  ".agents/rules/ordering.md",
+  ".agents/rules/pull-requests.md",
+  ".agents/rules/react.md",
+  ".agents/rules/safety.md",
+  ".agents/rules/styling.md",
+  ".agents/rules/testing.md",
+  ".agents/rules/typescript.md",
+  ".agents/settings.json",
+  ".agents/skills/commit/SKILL.md",
+  ".agents/skills/create-issue/SKILL.md",
+  ".agents/skills/create-pr/SKILL.md",
+  ".agents/skills/design-ui/SKILL.md",
+  ".agents/skills/review-pr/SKILL.md",
+  ".agents/skills/start-issue/SKILL.md",
+  ".agents/skills/validate-change/SKILL.md",
+  ".claude/skills/design-ui/SKILL.md",
+  ".github/CODEOWNERS",
+  ".github/dependabot.yml",
+  "CLAUDE.md",
+  "DESIGN.fa.md",
+  "DESIGN.md",
+  "docs/README.fa.md",
+  "docs/README.md",
+  "docs/ai-code-understanding.fa.md",
+  "docs/ai-code-understanding.md",
+  "docs/change-workflow.fa.md",
+  "docs/change-workflow.md",
+  "docs/comprehension-evaluation.fa.md",
+  "docs/comprehension-evaluation.md",
+  "docs/feature-development.fa.md",
+  "docs/feature-development.md",
+  "docs/quality-attributes.fa.md",
+  "docs/quality-attributes.md",
+  "docs/source-navigation.fa.md",
+  "docs/source-navigation.md",
+  "docs/testing.fa.md",
+  "docs/testing.md",
+  "docs/validation.fa.md",
+  "docs/validation.md",
+  "scripts/ai-hooks.portable.test.mjs",
+  "scripts/ai-hooks.test.mjs",
+  "scripts/check-guidance.mjs",
+  "scripts/guidance.test.mjs",
+];
 const phaseOrder = [
   "governance",
   "foundation",
@@ -310,6 +375,7 @@ const phaseOrder = [
   "core-auth",
   "business-screens",
   "storybook-verification",
+  "assistant-guidance",
 ];
 const supportsPhase = (phase, minimum) =>
   phaseOrder.indexOf(phase) >= phaseOrder.indexOf(minimum);
@@ -324,7 +390,13 @@ const publishedSource = (file, phase) =>
     (supportsPhase(phase, "core-auth") && coreAuthFiles.includes(file)) ||
     (supportsPhase(phase, "business-screens") &&
       businessFiles.includes(file)) ||
-    (phase === "storybook-verification" && storybookFiles.includes(file)));
+    (supportsPhase(phase, "storybook-verification") &&
+      storybookFiles.includes(file)));
+
+const isGuidancePath = (file) =>
+  (file.startsWith(".agents/") && file !== ".agents/validation.json") ||
+  file.startsWith(".claude/") ||
+  guidanceFiles.includes(file);
 
 const isForbiddenPublicationPath = (file, phase) =>
   typeof file !== "string" ||
@@ -339,11 +411,30 @@ const isForbiddenPublicationPath = (file, phase) =>
   file === "index.html" ||
   file === "vite.config.ts" ||
   ((file.startsWith(".storybook/") || file === "vitest.storybook.config.ts") &&
-    (phase !== "storybook-verification" || !storybookFiles.includes(file))) ||
+    (!supportsPhase(phase, "storybook-verification") ||
+      !storybookFiles.includes(file))) ||
   (file.startsWith("src/") && !publishedSource(file, phase)) ||
   (phase === "governance" && /^package(?:-lock)?\.json$/.test(file)) ||
+  (isGuidancePath(file) &&
+    (!supportsPhase(phase, "assistant-guidance") ||
+      !guidanceFiles.includes(file))) ||
   /(?:^|\/)(?:\.env(?:\.|$)|settings\.local\.json$)/.test(file) ||
   /\.(?:pem|key|pfx|p12|sqlite|db)$/.test(file);
+
+const requiredFilesForPhase = (phase) => [
+  ...coreFiles,
+  ...(phase === "governance"
+    ? [".github/workflows/bootstrap.yml"]
+    : foundationFiles),
+  ...(supportsPhase(phase, "catalogs") ? catalogFiles : []),
+  ...(supportsPhase(phase, "runtime-localization") ? runtimeFiles : []),
+  ...(supportsPhase(phase, "http-lifecycle") ? httpFiles : []),
+  ...(supportsPhase(phase, "ui-foundation") ? uiFiles : []),
+  ...(supportsPhase(phase, "core-auth") ? coreAuthFiles : []),
+  ...(supportsPhase(phase, "business-screens") ? businessFiles : []),
+  ...(supportsPhase(phase, "storybook-verification") ? storybookFiles : []),
+  ...(supportsPhase(phase, "assistant-guidance") ? guidanceFiles : []),
+];
 
 export const validateBootstrapPolicy = (policy) => {
   if (
@@ -363,21 +454,7 @@ export const validateBootstrapPolicy = (policy) => {
       );
     files.add(file);
   }
-  const requiredFiles = [
-    ...coreFiles,
-    ...(policy.phase === "governance"
-      ? [".github/workflows/bootstrap.yml"]
-      : foundationFiles),
-    ...(supportsPhase(policy.phase, "catalogs") ? catalogFiles : []),
-    ...(supportsPhase(policy.phase, "runtime-localization")
-      ? runtimeFiles
-      : []),
-    ...(supportsPhase(policy.phase, "http-lifecycle") ? httpFiles : []),
-    ...(supportsPhase(policy.phase, "ui-foundation") ? uiFiles : []),
-    ...(supportsPhase(policy.phase, "core-auth") ? coreAuthFiles : []),
-    ...(supportsPhase(policy.phase, "business-screens") ? businessFiles : []),
-    ...(policy.phase === "storybook-verification" ? storybookFiles : []),
-  ];
+  const requiredFiles = requiredFilesForPhase(policy.phase);
   if (requiredFiles.some((file) => !files.has(file)))
     throw new Error(
       "The bootstrap policy cannot omit its mandatory guard files.",
@@ -462,6 +539,8 @@ export const inspectBootstrap = async (root) => {
     }),
   );
   const scopeByPhase = {
+    "assistant-guidance":
+      "Published assistant-neutral instructions, safe optional hooks, current-source navigation and static comprehension cases alongside the isolated Storybook workshop; no application entry point, assembled routes, production application build, external API journey or visual gate is published. Static inventory checks do not establish automatic host instruction loading or benchmark improvement.",
     "storybook-verification":
       "Published isolated Storybook build and real Chromium component interactions/accessibility with synthetic API fixtures; no application entry point, assembled routes, production application build, external API journey or visual gate is published.",
     "business-screens":

@@ -2,7 +2,9 @@
 
 [English](architecture.md) · [فارسی](architecture.fa.md)
 
-Scope updated: 27 October 2026. The published `storybook-verification` phase has
+The current `assistant-guidance` phase adds local rules, navigation and evaluation procedures to this ownership model. Those optional assistant capabilities do not become runtime dependencies or imply a completed host evaluation.
+
+Scope updated: 28 October 2026. The published `assistant-guidance` phase has
 `applicationReady: false`. It contains independent React source using Ant
 Design/antd-style, React Router and Axios, with Core/Ant Design providers,
 authentication forms, layout modules, business screen/form modules and typed navigation/access metadata. There

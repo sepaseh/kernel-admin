@@ -2,7 +2,9 @@
 
 [English](admin-request-reliability.md) · [فارسی](admin-request-reliability.fa.md)
 
-Scope updated: 27 October 2026. The non-runnable `storybook-verification` phase publishes
+This request-lifecycle guide applies to the inherited published modules in the non-runnable `assistant-guidance` phase. Guidance checking joins the [canonical full gate](../.agents/validation.json); the HTTP and session-generation contract below is unchanged.
+
+Scope updated: 28 October 2026. The non-runnable `assistant-guidance` phase publishes
 feature-owned HTTP adapters, request hooks, Core/Ant Design providers,
 authentication forms, business screens, layout modules and an isolated Storybook
 workshop with real Chromium component interactions and accessibility checks.
@@ -133,7 +135,7 @@ they do not establish an external API or complete application journey.
 
 Use the [canonical manifest](../.agents/validation.json) and run
 `npm run validate -- full` on the isolated exact proposed snapshot before an
-authorized commit or PR handoff. All eleven required checks remain mandatory,
+authorized commit or PR handoff. All required checks remain mandatory,
 including the genuine static Storybook build and Chromium story tests. Run
 `npm run browser:install` after `npm ci` and before the canonical full command.
 Vitest disables environment-file discovery and uses explicit synthetic values;

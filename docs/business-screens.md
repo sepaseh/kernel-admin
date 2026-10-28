@@ -2,6 +2,8 @@
 
 [English](business-screens.md) · [فارسی](business-screens.fa.md)
 
+These business modules remain published in the `assistant-guidance` phase. The [canonical full gate](../.agents/validation.json) now includes guidance consistency alongside the inherited synthetic component and browser checks; the panel remains non-runnable.
+
 The `business-screens` phase adds account, users, roles, settings, calendar and
 dashboard modules to the existing [Core/auth foundation](core-auth.md).
 `applicationReady: false` remains deliberate: these are independently tested
@@ -65,7 +67,7 @@ Calendar writes use the same lifecycle and preserve API date payloads and read r
 ## Verification boundary
 
 The exact inventory, production dependency ownership and measured coverage grow
-with these modules. All eleven canonical checks and existing thresholds remain
+with these modules. All canonical checks and existing thresholds remain
 required. Real React/Ant Design tests run in isolated jsdom; synthetic HTTP tests
 use fail-closed mocks. Test support stays independent of another checkout. The
 separate Storybook test project uses full synthetic API owner mocks and real

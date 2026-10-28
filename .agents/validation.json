@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "phase": "storybook-verification",
+  "phase": "assistant-guidance",
   "applicationReady": false,
   "checks": [
     {
@@ -13,7 +13,8 @@
         "ui-foundation",
         "core-auth",
         "business-screens",
-        "storybook-verification"
+        "storybook-verification",
+        "assistant-guidance"
       ]
     },
     {
@@ -26,8 +27,16 @@
         "ui-foundation",
         "core-auth",
         "business-screens",
-        "storybook-verification"
+        "storybook-verification",
+        "assistant-guidance"
       ]
+    },
+    {
+      "id": "guidance",
+      "command": "npm run check:guidance",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["assistant-guidance"]
     },
     {
       "id": "audit",
@@ -39,7 +48,8 @@
         "ui-foundation",
         "core-auth",
         "business-screens",
-        "storybook-verification"
+        "storybook-verification",
+        "assistant-guidance"
       ]
     },
     {
@@ -52,7 +62,8 @@
         "ui-foundation",
         "core-auth",
         "business-screens",
-        "storybook-verification"
+        "storybook-verification",
+        "assistant-guidance"
       ]
     },
     {
@@ -65,7 +76,8 @@
         "ui-foundation",
         "core-auth",
         "business-screens",
-        "storybook-verification"
+        "storybook-verification",
+        "assistant-guidance"
       ]
     },
     {
@@ -78,7 +90,8 @@
         "ui-foundation",
         "core-auth",
         "business-screens",
-        "storybook-verification"
+        "storybook-verification",
+        "assistant-guidance"
       ]
     },
     {
@@ -91,7 +104,8 @@
         "ui-foundation",
         "core-auth",
         "business-screens",
-        "storybook-verification"
+        "storybook-verification",
+        "assistant-guidance"
       ]
     },
     {
@@ -104,7 +118,8 @@
         "ui-foundation",
         "core-auth",
         "business-screens",
-        "storybook-verification"
+        "storybook-verification",
+        "assistant-guidance"
       ]
     },
     {
@@ -117,7 +132,8 @@
         "ui-foundation",
         "core-auth",
         "business-screens",
-        "storybook-verification"
+        "storybook-verification",
+        "assistant-guidance"
       ]
     },
     {
@@ -125,20 +141,28 @@
       "command": "npm run build-storybook",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["storybook-verification", "assistant-guidance"]
     },
     {
       "id": "storybook-browser",
       "command": "npm run test:storybook",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["storybook-verification", "assistant-guidance"]
+    },
+    {
+      "id": "guidance-tests",
+      "command": "npm run test:guidance",
+      "kind": "advisory",
+      "ciJobs": [],
+      "scopes": ["assistant-guidance"]
     }
   ],
   "profiles": {
     "full": [
       "snapshot",
       "ci-policy",
+      "guidance",
       "audit",
       "boundaries",
       "typecheck",
@@ -148,7 +172,8 @@
       "governance-coverage",
       "storybook-build",
       "storybook-browser"
-    ]
+    ],
+    "guidance": ["guidance", "guidance-tests"]
   },
   "externalWorkflows": [
     {
