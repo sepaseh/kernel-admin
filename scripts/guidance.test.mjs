@@ -373,6 +373,113 @@ test("HTML comments hide only commented links, including an unfinished comment",
   );
 });
 
+test("list padding keeps five-column residual indentation as code", () => {
+  for (const marker of ["-", "1.", "123456789."])
+    for (const padding of [" ", "  ", "   ", "    "])
+      assert.deepEqual(markdownLinks(marker + padding + "[real](owner.ts)"), [
+        "owner.ts",
+      ]);
+  for (const example of [
+    "-     [example](ignored.md)\n      [continued](ignored.md)",
+    "1.     [example](ignored.md)\n       [continued](ignored.md)",
+    "-\t  [example](ignored.md)",
+    "1.\t   [example](ignored.md)",
+    "> -     [example](ignored.md)\n>       [continued](ignored.md)",
+    "- parent\n  -     [example](ignored.md)",
+    "- paragraph\n-     [example](ignored.md)",
+    "intro\n-     [example](ignored.md)",
+  ])
+    for (const text of [example, example.replaceAll("\n", "\r\n")])
+      assert.deepEqual(markdownLinks(text + "\n\n[real](owner.ts)"), [
+        "owner.ts",
+      ]);
+});
+
+test("type-one raw HTML blocks use exact bounded starts and whole closing lines", () => {
+  for (const name of ["pre", "script", "style", "textarea"])
+    for (const example of [
+      "<" +
+        name +
+        ">\n[example](ignored.md)\n</" +
+        name +
+        "> [also](ignored.md)",
+      "<" + name.toUpperCase() + "\n\n[example](ignored.md)\n</STYLE>",
+      "<" + name + ">[example](ignored.md)</textarea> [also](ignored.md)",
+      "> <" + name + ">\n> [example](ignored.md)\n> </" + name + ">",
+      "- <" + name + ">\n  [example](ignored.md)\n  </" + name + ">",
+    ])
+      for (const text of [example, example.replaceAll("\n", "\r\n")])
+        assert.deepEqual(markdownLinks(text + "\n\n[real](owner.ts)"), [
+          "owner.ts",
+        ]);
+  assert.deepEqual(markdownLinks("<pre>\n[example](ignored.md)"), []);
+  assert.deepEqual(
+    markdownLinks(
+      "<pre>\n~~~\n<!--\n[example](ignored.md)\n</script>\n[real](owner.ts)",
+    ),
+    ["owner.ts"],
+  );
+  assert.deepEqual(
+    markdownLinks("<prex> [real](owner.ts) </prex>\n<pre/> [next](test.ts)"),
+    ["owner.ts", "test.ts"],
+  );
+});
+
+test("raw inline tag attributes are opaque without changing actual link destinations", () => {
+  for (const tag of [
+    '<a title="[example](ignored.md)">',
+    '<custom-tag title="greater > [example](ignored.md)">',
+    "<a title='[example](ignored.md)' data-x=one/>",
+    "<a title=[example](ignored.md)>",
+    '<a\n title="[example](ignored.md)">',
+    '<a title="first\n[example](ignored.md)">',
+    '<a flag data-x \n = "[example](ignored.md)">',
+    '<a flag data-x = \n "[example](ignored.md)">',
+  ])
+    for (const text of [tag, tag.replaceAll("\n", "\r\n")])
+      assert.deepEqual(markdownLinks("prefix " + text + " [real](owner.ts)"), [
+        "owner.ts",
+      ]);
+  for (const tag of [
+    '<a 1x="[broken](missing.md)">',
+    '<a title="[broken](missing.md)"data-x=one>',
+    '<a title="[broken](missing.md)" / >',
+  ])
+    assert.deepEqual(markdownLinks("prefix " + tag + " [real](owner.ts)"), [
+      "missing.md",
+      "owner.ts",
+    ]);
+  assert.deepEqual(
+    markdownLinks('[<b>x](c.md) [<b title="]">x](d.md) [a](<b c>)'),
+    ["c.md", "d.md", "b c"],
+  );
+  assert.deepEqual(
+    markdownLinks(
+      'prefix <a title="first\n\n[broken](missing.md)"> [real](owner.ts)',
+    ),
+    ["missing.md", "owner.ts"],
+  );
+  for (const example of [
+    '> <a\n> title="[example](ignored.md)">Help</a>',
+    '- > <a\n  > title="[example](ignored.md)">Help</a>',
+    '- \t> <a\n\t> title="[example](ignored.md)">Help</a>',
+  ])
+    for (const text of [example, example.replaceAll("\n", "\r\n")])
+      assert.deepEqual(markdownLinks(text + "\n\n[real](owner.ts)"), [
+        "owner.ts",
+      ]);
+});
+
+test("HTML attribute delimiters respect existing code and comment precedence", () => {
+  for (const text of [
+    'prefix <a title="`">Help</a> [real](owner.ts) `',
+    'prefix <a title="<!--">Help</a> [real](owner.ts)',
+    '`before <a title="`"> [real](owner.ts)',
+    '\\<a title="[broken](owner.ts)">',
+  ])
+    assert.deepEqual(markdownLinks(text), ["owner.ts"], text);
+});
+
 test("literal comment delimiters in code and escaped openers preserve real prose", () => {
   for (const text of [
     "`<!--` [real](owner.ts) `-->`",
@@ -454,6 +561,10 @@ const tick = String.fromCharCode(96);
 const lazyList = nestedLists + "\\n" + " ".repeat(1024) + tick + "[hidden](missing.md)" + "\\nlazy".repeat(100_000) + "\\nclosing" + tick + " [good](owner.ts)";
 const lazyLinks = markdownLinks(lazyList);
 if (lazyLinks.length !== 1 || lazyLinks[0] !== "owner.ts") process.exitCode = 1;
+for (const malformedTag of ["<a title='".repeat(100_000), "<a data=".repeat(100_000)]) {
+  const tagLinks = markdownLinks(malformedTag + " [good](owner.ts)");
+  if (tagLinks.length !== 1 || tagLinks[0] !== "owner.ts") process.exitCode = 1;
+}
 for (const marker of [String.fromCharCode(34), String.fromCharCode(39), "("]) {
   const malformedTitles = ("[bad](owner.ts " + marker + "unfinished ").repeat(50_000) + "[good](owner.ts)";
   const links = markdownLinks(malformedTitles);
@@ -808,6 +919,11 @@ test("unsafe existing destinations fail for safety while missing targets retain 
       "- > ~~~\n  > [example](ignored.md)\n>\n  > [unsafe](" +
         destination +
         ")\n",
+      "<pre>\n[example](ignored.md)\n</pre>\n[unsafe](" + destination + ")\n",
+      'prefix <a title="[example](ignored.md)"> [unsafe](' +
+        destination +
+        ")\n",
+      'prefix <a 1x="[unsafe](' + destination + ')">\n',
     ]) {
       await write("docs/source-navigation.md", text);
       assert.ok(

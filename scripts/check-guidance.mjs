@@ -434,7 +434,7 @@ const markdownQuote = (line, container) => {
     start = indent.end + 1;
     if (content[start] === " " || content[start] === "\t") start++;
   }
-  return { text: content.slice(start), depth, indents };
+  return { text: content.slice(start), depth, indents, prefix: start };
 };
 const markdownFence = (line, base = 0) => {
   const indent = markdownIndent(line);
@@ -485,16 +485,21 @@ const markdownListContext = (quote, indent, depth, list, state) => {
   while (state.lists.length && state.lists.at(-1).marker >= indent.width)
     state.lists.pop();
   const end = indent.end + list.prefix.length;
-  const content =
-    markdownColumn(quote.text, end) +
-    Number(list.prefix.length === list.marker.length);
+  const markerColumn = markdownColumn(
+    quote.text,
+    indent.end + list.marker.length,
+  );
+  const padding = markdownColumn(quote.text, end) - markerColumn;
+  const empty = markdownBlank(quote.text.slice(end));
+  const residual = padding > 4 && !empty ? padding - 1 : 0;
+  const content = markerColumn + (empty || residual ? 1 : padding);
   state.lists.push({ marker: indent.width, content, kind: list.kind });
   return {
     blank: false,
     listMarker: list.marker,
-    relativeIndent: 0,
+    relativeIndent: residual,
     base: content,
-    fenceText: quote.text.slice(end),
+    fenceText: " ".repeat(residual) + quote.text.slice(end),
     fenceBase: 0,
   };
 };
@@ -555,6 +560,10 @@ const markdownBlockContext = (quote, context) => {
   const quoted = markdownQuote(context.fenceText);
   return {
     text: quoted.text,
+    prefix:
+      quote.prefix +
+      Math.max(0, quote.text.length - context.fenceText.length) +
+      quoted.prefix,
     fenceBase: quoted.depth ? 0 : context.fenceBase,
     depth: quote.depth + quoted.depth,
     base: quoted.depth ? 0 : context.base,
@@ -574,6 +583,44 @@ const openingMarkdownFence = (context) => {
     quoteContainer: context.quoteContainer,
   };
 };
+const openingMarkdownRaw = (context) => {
+  const indent = markdownIndent(context.text);
+  return indent.width - context.fenceBase <= 3 &&
+    /^<(?:pre|script|style|textarea)(?=[ \t>]|$)/i.test(
+      context.text.slice(indent.end),
+    )
+    ? context
+    : null;
+};
+const closesMarkdownRaw = (line) =>
+  /<\/(?:pre|script|style|textarea)>/i.test(line);
+const insideMarkdownBlock = (line, quote, state) => {
+  const block = state.raw ?? state.fence;
+  if (!block) return false;
+  if (!insideMarkdownFence(quote, block)) {
+    state.raw = null;
+    state.fence = null;
+    return false;
+  }
+  const closing = state.raw
+    ? closesMarkdownRaw(line)
+    : closesMarkdownFence(quote, block);
+  if (closing) {
+    state.raw = null;
+    state.fence = null;
+  }
+  return true;
+};
+const beginMarkdownBlock = (context, line, state) => {
+  const { raw, fence } = context;
+  if (!raw && !fence) return false;
+  state.raw = raw && !closesMarkdownRaw(line) ? raw : null;
+  state.fence = fence;
+  state.inlineEnd = 0;
+  state.htmlEnd = 0;
+  state.paragraph = false;
+  return true;
+};
 const markdownNonParagraphBlock = (line, base, paragraph) => {
   const indent = markdownIndent(line);
   if (indent.width - base > 3) return false;
@@ -588,15 +635,18 @@ const markdownNonParagraphBlock = (line, base, paragraph) => {
 const markdownLineContext = (quote, state) => {
   const paragraph = state.paragraph;
   const depth = state.paragraphDepth ?? state.quoteDepth;
+  const quoteContainer = state.paragraphQuoteContainer;
   const context = markdownContainer(quote, state);
   const block = markdownBlockContext(quote, context);
   const startsQuote = block.depth > depth;
-  if (startsQuote) state.paragraph = false;
   const startsItem = context.listMarker !== null;
+  if (startsQuote || startsItem) state.paragraph = false;
   state.indented =
     context.relativeIndent >= 4 && (!state.paragraph || state.indented);
   const fence = openingMarkdownFence(block);
+  const raw = openingMarkdownRaw(block);
   const nonParagraph =
+    raw !== null ||
     markdownNonParagraphBlock(quote.text, context.base, paragraph) ||
     markdownNonParagraphBlock(block.text, block.fenceBase, paragraph) ||
     (startsItem && markdownBlank(block.text));
@@ -612,30 +662,44 @@ const markdownLineContext = (quote, state) => {
     !context.blank && !state.indented && !fence && !nonParagraph;
   state.paragraphDepth =
     paragraph && !barrier ? Math.max(depth, block.depth) : block.depth;
-  return { ...context, block, fence, barrier };
+  state.paragraphQuoteContainer = state.paragraph
+    ? (block.quoteContainer ?? (paragraph && !barrier ? quoteContainer : null))
+    : null;
+  return { ...context, block, fence, raw, barrier };
 };
 const markdownProse = (markdown) => {
+  const { barriers, grammar } = markdownCodeBarriers(markdown);
   const state = {
     fence: null,
+    raw: null,
     comment: null,
     inlineEnd: 0,
     lists: [],
     quoteDepth: 0,
     paragraph: false,
     paragraphDepth: 0,
+    paragraphQuoteContainer: null,
     indented: false,
+    htmlEnd: 0,
+    tags: new Map(),
+    tagEndings: markdownHtmlTagEndings(grammar, barriers),
   };
-  const codeEndings = markdownCodeEndings(markdown);
+  const codeEndings = markdownCodeEndings(markdown, barriers);
   let offset = 0;
-  return markdown
+  const text = markdown
     .split("\n")
     .map((line) => {
       const start = offset;
       offset += line.length + 1;
       const quote = markdownQuote(
         line,
-        state.fence?.quoteContainer ?? state.comment?.quoteContainer,
+        state.fence?.quoteContainer ??
+          state.raw?.quoteContainer ??
+          state.comment?.quoteContainer ??
+          state.paragraphQuoteContainer,
       );
+      if (insideMarkdownBlock(line, quote, state))
+        return " ".repeat(line.length);
       if (state.comment && !insideMarkdownFence(quote, state.comment))
         state.comment = null;
       if (state.comment) {
@@ -650,24 +714,15 @@ const markdownProse = (markdown) => {
           content.code || !markdownBlank(markdownQuote(content.text).text);
         return content.text;
       }
-      if (state.fence && insideMarkdownFence(quote, state.fence)) {
-        if (closesMarkdownFence(quote, state.fence)) state.fence = null;
-        return "";
-      }
-      state.fence = null;
       const context = markdownLineContext(quote, state);
-      const { block, fence } = context;
-      if (fence) {
-        state.fence = fence;
-        state.inlineEnd = 0;
-        state.paragraph = false;
-        return "";
-      }
+      const { block } = context;
+      if (beginMarkdownBlock(context, line, state))
+        return " ".repeat(line.length);
       if (context.blank) {
         state.paragraph = false;
-        return "";
+        return " ".repeat(line.length);
       }
-      if (state.indented) return "";
+      if (state.indented) return " ".repeat(line.length);
       const content = markdownInlineProse(
         line,
         start,
@@ -680,6 +735,7 @@ const markdownProse = (markdown) => {
       return content.text;
     })
     .join("\n");
+  return { text, tags: state.tags };
 };
 const escapedMarkdownMarker = (text, start) => {
   let cursor = start;
@@ -692,19 +748,24 @@ const markdownCodeBarriers = (text) => {
     quoteDepth: 0,
     paragraph: false,
     paragraphDepth: 0,
+    paragraphQuoteContainer: null,
     indented: false,
   };
-  const barriers = [];
+  const barriers = [],
+    grammar = [];
   let offset = 0;
   for (const line of text.split("\n")) {
-    const quote = markdownQuote(line);
+    const quote = markdownQuote(line, state.paragraphQuoteContainer);
     const context = markdownLineContext(quote, state);
     if (context.barrier) barriers.push(offset);
+    grammar.push(
+      " ".repeat(context.block.prefix) + line.slice(context.block.prefix),
+    );
     offset += line.length + 1;
   }
-  return barriers;
+  return { barriers, grammar: grammar.join("\n") };
 };
-const markdownCodeEndings = (text) => {
+const markdownCodeEndings = (text, barriers) => {
   const runs = [...text.matchAll(/`+/g)].map((match) => ({
     start: match.index,
     end: match.index + match[0].length,
@@ -713,7 +774,6 @@ const markdownCodeEndings = (text) => {
   }));
   const byLength = new Map(),
     endings = new Map();
-  const barriers = markdownCodeBarriers(text);
   let barrier = barriers.length - 1;
   for (let index = runs.length - 1; index >= 0; index--) {
     const run = runs[index];
@@ -726,6 +786,80 @@ const markdownCodeEndings = (text) => {
     byLength.set(run.length, run.end);
   }
   return endings;
+};
+const markdownHtmlSpace = (text, start, limit) => {
+  let cursor = start,
+    lines = 0;
+  while (cursor < limit) {
+    const character = text[cursor];
+    if (character === " " || character === "\t") cursor++;
+    else if (character === "\r" || character === "\n") {
+      if (++lines > 1) return -1;
+      cursor += character === "\r" && text[cursor + 1] === "\n" ? 2 : 1;
+    } else break;
+  }
+  return cursor;
+};
+const markdownHtmlName = (text, start, attribute = false) => {
+  const first = attribute ? /[A-Za-z_:]/ : /[A-Za-z]/;
+  const rest = attribute ? /[A-Za-z0-9_.:-]/ : /[A-Za-z0-9-]/;
+  if (!first.test(text[start] ?? "")) return start;
+  let cursor = start + 1;
+  while (cursor < text.length && rest.test(text[cursor])) cursor++;
+  return cursor;
+};
+const markdownHtmlValue = (text, start, limit, endings) => {
+  const quote = text[start];
+  if (quote === '"' || quote === "'") {
+    if (!endings.has(quote))
+      endings.set(quote, markdownDelimiterEnds(text, quote, false));
+    const end = endings.get(quote)[start + 1];
+    return end && end <= limit ? end : 0;
+  }
+  let cursor = start;
+  while (cursor < limit && !/[ \t\r\n"'=<>`]/.test(text[cursor])) cursor++;
+  return cursor > start ? cursor : 0;
+};
+const markdownHtmlAttribute = (text, start, limit, endings) => {
+  const name = markdownHtmlName(text, start, true);
+  if (name === start) return 0;
+  const space = markdownHtmlSpace(text, name, limit);
+  if (space === -1) return 0;
+  if (text[space] !== "=") return name;
+  const value = markdownHtmlSpace(text, space + 1, limit);
+  return value === -1 ? 0 : markdownHtmlValue(text, value, limit, endings);
+};
+const readMarkdownHtmlTag = (text, start, limit, endings) => {
+  let cursor = markdownHtmlName(text, start + 1);
+  if (cursor === start + 1) return 0;
+  while (cursor < limit) {
+    const space = markdownHtmlSpace(text, cursor, limit);
+    if (space === -1 || space >= limit) return 0;
+    if (text[space] === ">") return space + 1;
+    if (text[space] === "/" && text[space + 1] === ">" && space + 1 < limit)
+      return space + 2;
+    if (space === cursor) return 0;
+    cursor = markdownHtmlAttribute(text, space, limit, endings);
+    if (!cursor) return 0;
+  }
+  return 0;
+};
+const markdownHtmlTagEndings = (text, barriers) => {
+  const tags = new Map(),
+    endings = new Map();
+  let barrier = 0;
+  for (const match of text.matchAll(/<[A-Za-z]/g)) {
+    while (barrier < barriers.length && barriers[barrier] <= match.index)
+      barrier++;
+    const end = readMarkdownHtmlTag(
+      text,
+      match.index,
+      barriers[barrier] ?? text.length,
+      endings,
+    );
+    if (end) tags.set(match.index, end);
+  }
+  return tags;
 };
 const closesMarkdownInline = (marker, offset, state) => {
   const closes = state.comment
@@ -743,15 +877,23 @@ const openingMarkdownInline = (
   offset,
   codeEndings,
   container,
+  state,
 ) => {
-  const codeEnd = codeEndings.get(offset + marker.index);
+  const absolute = offset + marker.index;
+  if (state.htmlEnd > absolute) return null;
+  const tag = state.tagEndings.get(absolute);
+  if (tag && !escapedMarkdownMarker(line, marker.index)) {
+    state.tags.set(absolute, tag);
+    return { htmlEnd: tag };
+  }
+  const codeEnd = codeEndings.get(absolute);
   if (codeEnd) return { inlineEnd: codeEnd, comment: null };
   if (marker[0] === "<!--" && !escapedMarkdownMarker(line, marker.index))
     return { inlineEnd: 0, comment: container };
   return null;
 };
 const markdownInlineProse = (line, offset, state, codeEndings, container) => {
-  const markers = /<!---?>|<!--|-->|`+/g,
+  const markers = /<!---?>|<!--|-->|`+|</g,
     parts = [];
   let visible = 0,
     hidden = state.comment || state.inlineEnd > offset ? 0 : null,
@@ -772,9 +914,11 @@ const markdownInlineProse = (line, offset, state, codeEndings, container) => {
       offset,
       codeEndings,
       container,
+      state,
     );
     if (!opening) continue;
     Object.assign(state, opening);
+    if (opening.htmlEnd) continue;
     code ||= opening.inlineEnd > 0;
     parts.push(line.slice(visible, marker.index));
     hidden = marker.index;
@@ -831,11 +975,11 @@ const readMarkdownDestination = (text, start) => {
   };
 };
 // Index each delimiter once so malformed-title recovery never rescans a suffix.
-const markdownDelimiterEnds = (text, closing) => {
+const markdownDelimiterEnds = (text, closing, escaped = true) => {
   const ends = new Uint32Array(text.length + 1);
   let cursor = 0;
   while (cursor < text.length) {
-    if (text[cursor] === "\\") cursor += 2;
+    if (escaped && text[cursor] === "\\") cursor += 2;
     else {
       if (text[cursor] === closing) ends[cursor] = 1;
       cursor++;
@@ -874,11 +1018,16 @@ const unescapeMarkdownDestination = (destination) =>
       ? character
       : escape,
   );
-const markdownLabelClosings = (text) => {
+const markdownLabelClosings = (text, tags) => {
   const closings = new Uint8Array(text.length);
   let cursor = 0,
     depth = 0;
   while (cursor < text.length) {
+    const tag = tags.get(cursor);
+    if (tag) {
+      cursor = tag;
+      continue;
+    }
     if (text[cursor] === "\\") {
       cursor += 2;
       continue;
@@ -893,8 +1042,8 @@ const markdownLabelClosings = (text) => {
   return closings;
 };
 export const markdownLinks = (markdown) => {
-  const prose = markdownProse(markdown);
-  const labels = markdownLabelClosings(prose);
+  const { text: prose, tags } = markdownProse(markdown);
+  const labels = markdownLabelClosings(prose, tags);
   const links = [],
     endings = new Map();
   let cursor = 0;
