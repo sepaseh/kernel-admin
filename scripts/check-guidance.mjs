@@ -1059,24 +1059,19 @@ const unescapeMarkdownDestination = (destination) =>
   );
 const markdownLabelClosings = (text, tags) => {
   const closings = new Uint8Array(text.length);
-  let cursor = 0,
-    depth = 0;
-  while (cursor < text.length) {
-    const tag = tags.get(cursor);
+  const markers = /\\[\s\S]?|<|\[|\]/g;
+  let depth = 0;
+  for (let marker = markers.exec(text); marker; marker = markers.exec(text)) {
+    const tag = tags.get(marker.index);
     if (tag) {
-      cursor = tag;
+      markers.lastIndex = tag;
       continue;
     }
-    if (text[cursor] === "\\") {
-      cursor += 2;
-      continue;
-    }
-    if (text[cursor] === "[") depth++;
-    if (text[cursor] === "]" && depth > 0) {
-      closings[cursor] = 1;
+    if (marker[0] === "[") depth++;
+    if (marker[0] === "]" && depth > 0) {
+      closings[marker.index] = 1;
       depth--;
     }
-    cursor++;
   }
   return closings;
 };
