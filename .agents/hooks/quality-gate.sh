@@ -4,7 +4,7 @@
 
 PROJECT_DIR=${AI_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}
 
-if [ -z "$PROJECT_DIR" ]; then
+if [[ -z "$PROJECT_DIR" ]]; then
   exit 0
 fi
 
@@ -17,7 +17,7 @@ MODIFIED=$(
   } | grep -E '\.(ts|tsx)$' | sort -u || true
 )
 
-if [ -z "$MODIFIED" ]; then
+if [[ -z "$MODIFIED" ]]; then
   exit 0
 fi
 

@@ -119,6 +119,25 @@ test("guidance recognizes genuine canonical full execution without duplicating e
   assert.deepEqual(inspect(fixture()), []);
 });
 
+test("full membership comparison preserves the declared execution and settings order", () => {
+  const state = fixture();
+  state.manifest.checks.unshift({
+    id: "lint-check",
+    command: "npm run lint",
+    kind: "required",
+    ciJobs: ["check"],
+    scopes: ["all"],
+  });
+  state.manifest.profiles.full.push("lint-check");
+  state.settings.recommendedChecks.push("npm run lint");
+  assert.deepEqual(inspect(state), []);
+  assert.deepEqual(state.manifest.profiles.full, ["types", "lint-check"]);
+  assert.deepEqual(state.settings.recommendedChecks, [
+    "npm run typecheck",
+    "npm run lint",
+  ]);
+});
+
 test("guidance rejects omitted, repeated, unknown or advisory full entries", () => {
   for (const full of [[], ["types", "types"], ["ghost"], ["types", "lab"]]) {
     const state = fixture();
@@ -386,6 +405,28 @@ test("missing indexed paths, scripts and obsolete package containers fail valida
     "Obsolete project container",
   ])
     assert.ok(errors.includes(message), message);
+});
+
+test("parallel guidance inspection reports files and link failures in deterministic order", async (context) => {
+  const { root, write } = await createFixture(context);
+  await Promise.all([
+    write(
+      ".agents/rules/ordered.md",
+      "[first](missing-b.md) [second](missing-a.md)\n",
+    ),
+    write(".claude/skills/example/SKILL.md", "[third](missing-c.md)\n"),
+    write("docs/ordered.md", "[fourth](missing-d.md) [fifth](missing-e.md)\n"),
+  ]);
+  const first = await checkGuidance(root);
+  const second = await checkGuidance(root);
+  assert.deepEqual(first.errors, second.errors);
+  assert.deepEqual(first.errors, [
+    "Missing or unsafe guide link: .agents/rules/ordered.md: missing-b.md",
+    "Missing or unsafe guide link: .agents/rules/ordered.md: missing-a.md",
+    "Missing or unsafe guide link: .claude/skills/example/SKILL.md: missing-c.md",
+    "Missing or unsafe guide link: docs/ordered.md: missing-d.md",
+    "Missing or unsafe guide link: docs/ordered.md: missing-e.md",
+  ]);
 });
 
 test("symbolic documentation directories are rejected without reading target prose", async (context) => {

@@ -115,7 +115,11 @@ const checkProfiles = (manifest, checks) => {
   const required = manifest.checks
     .filter((check) => check?.kind === "required")
     .map((check) => check.id);
-  if (!isStrings(full) || !same([...full].sort(), required.sort()))
+  const compareIds = (left, right) => left.localeCompare(right);
+  if (
+    !isStrings(full) ||
+    !same([...full].sort(compareIds), required.sort(compareIds))
+  )
     errors.push(
       "Full profile must contain every required check and no advisory/manual checks",
     );
@@ -282,16 +286,18 @@ const collectReferences = (settings, navigation, evaluation, manifest) => [
   ...(manifest.externalWorkflows ?? []).map((entry) => entry.path),
 ];
 const findReferences = async (root, references) => {
-  const found = new Set();
-  for (const filename of new Set(references)) {
-    try {
-      await checkedPath(root, filename);
-      found.add(filename);
-    } catch {
-      /* Keep an owning-reference diagnostic without reading unsafe targets. */
-    }
-  }
-  return found;
+  const resolved = await Promise.all(
+    [...new Set(references)].map(async (filename) => {
+      try {
+        await checkedPath(root, filename);
+        return filename;
+      } catch {
+        // Keep an owning-reference diagnostic without reading unsafe targets.
+        return null;
+      }
+    }),
+  );
+  return new Set(resolved.filter((filename) => filename !== null));
 };
 const checkPackageScripts = (manifest, pkg) => {
   const errors = [];
@@ -308,42 +314,54 @@ const checkPackageScripts = (manifest, pkg) => {
   }
   return errors;
 };
-const walkMarkdown = async (root, directory, errors) => {
+const walkMarkdown = async (root, directory) => {
   let entries;
   try {
     entries = await readdir(await checkedPath(root, directory), {
       withFileTypes: true,
     });
   } catch (error) {
-    if (error.code !== "ENOENT") errors.push(error.message);
-    return [];
+    return {
+      files: [],
+      errors: error.code === "ENOENT" ? [] : [error.message],
+    };
   }
-  const files = [];
-  for (const entry of entries) {
-    const filename = path.posix.join(directory, entry.name);
-    if (entry.isSymbolicLink())
-      errors.push(`Symbolic guidance path: ${filename}`);
-    else if (entry.isDirectory())
-      files.push(...(await walkMarkdown(root, filename, errors)));
-    else if (entry.isFile() && entry.name.endsWith(".md")) files.push(filename);
-  }
-  return files;
-};
-const markdownInventory = async (root, errors) => {
-  const lists = await Promise.all(
-    [".agents", ".claude", "docs"].map((directory) =>
-      walkMarkdown(root, directory, errors),
-    ),
+  entries.sort((left, right) => left.name.localeCompare(right.name));
+  const inspected = await Promise.all(
+    entries.map((entry) => {
+      const filename = path.posix.join(directory, entry.name);
+      if (entry.isSymbolicLink())
+        return { files: [], errors: [`Symbolic guidance path: ${filename}`] };
+      if (entry.isDirectory()) return walkMarkdown(root, filename);
+      return {
+        files: entry.isFile() && entry.name.endsWith(".md") ? [filename] : [],
+        errors: [],
+      };
+    }),
   );
-  const source = (await walkMarkdown(root, "src", errors)).filter((filename) =>
+  return {
+    files: inspected.flatMap((entry) => entry.files),
+    errors: inspected.flatMap((entry) => entry.errors),
+  };
+};
+const markdownInventory = async (root) => {
+  const [trees, rootEntries] = await Promise.all([
+    Promise.all(
+      [".agents", ".claude", "docs", "src"].map((directory) =>
+        walkMarkdown(root, directory),
+      ),
+    ),
+    readdir(root),
+  ]);
+  const source = trees[3].files.filter((filename) =>
     /^AGENTS(?:\.fa)?\.md$/.test(path.posix.basename(filename)),
   );
-  const roots = (await readdir(root)).filter((filename) =>
-    filename.endsWith(".md"),
-  );
-  return [
+  const roots = rootEntries
+    .filter((filename) => filename.endsWith(".md"))
+    .sort((left, right) => left.localeCompare(right));
+  const files = [
     ...new Set([
-      ...lists.flat(),
+      ...trees.slice(0, 3).flatMap((entry) => entry.files),
       ...source,
       ...roots,
       "AGENTS.md",
@@ -355,6 +373,7 @@ const markdownInventory = async (root, errors) => {
       "docs/comprehension-evaluation.fa.md",
     ]),
   ];
+  return { files, errors: trees.flatMap((entry) => entry.errors) };
 };
 const inspectMarkdownLink = async (root, filename, link) => {
   if (/^(?:https?:|mailto:|codex:|#)/.test(link)) return [];
@@ -405,21 +424,26 @@ const inspectMarkdown = async (root, filename) => {
     .split("```")
     .filter((_, index) => index % 2 === 0)
     .join("");
-  for (const link of markdownLinks(prose))
-    errors.push(...(await inspectMarkdownLink(root, filename, link)));
-  return errors;
+  const links = await Promise.all(
+    markdownLinks(prose).map((link) =>
+      inspectMarkdownLink(root, filename, link),
+    ),
+  );
+  return [...errors, ...links.flat()];
 };
 const inspectObsoleteRoots = async (root) => {
-  const errors = [];
-  for (const name of ["apps", "packages"]) {
-    try {
-      await lstat(path.join(root, name));
-      errors.push(`Obsolete project container must be removed: ${name}`);
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-    }
-  }
-  return errors;
+  const inspected = await Promise.all(
+    ["apps", "packages"].map(async (name) => {
+      try {
+        await lstat(path.join(root, name));
+        return [`Obsolete project container must be removed: ${name}`];
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+        return [];
+      }
+    }),
+  );
+  return inspected.flat();
 };
 export const checkGuidance = async (directory = repository) => {
   const root = await realpath(directory);
@@ -466,15 +490,17 @@ export const checkGuidance = async (directory = repository) => {
     if (!found.has(filename))
       errors.push(`Guidance references missing/unsafe path: ${filename}`);
   errors.push(...checkPackageScripts(manifest, pkg));
-  const markdown = await markdownInventory(root, errors);
-  for (const filename of markdown)
-    errors.push(...(await inspectMarkdown(root, filename)));
+  const markdown = await markdownInventory(root);
+  const inspected = await Promise.all(
+    markdown.files.map((filename) => inspectMarkdown(root, filename)),
+  );
+  errors.push(...markdown.errors, ...inspected.flat());
   return {
     errors,
     checks: manifest.checks.length,
     tasks: navigation.tasks.length,
     cases: evaluation.cases.length,
-    markdownFiles: markdown.length,
+    markdownFiles: markdown.files.length,
   };
 };
 
