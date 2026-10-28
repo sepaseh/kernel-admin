@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "phase": "business-screens",
+  "phase": "storybook-verification",
   "applicationReady": false,
   "checks": [
     {
@@ -12,7 +12,8 @@
         "http-lifecycle",
         "ui-foundation",
         "core-auth",
-        "business-screens"
+        "business-screens",
+        "storybook-verification"
       ]
     },
     {
@@ -24,7 +25,8 @@
         "http-lifecycle",
         "ui-foundation",
         "core-auth",
-        "business-screens"
+        "business-screens",
+        "storybook-verification"
       ]
     },
     {
@@ -36,7 +38,8 @@
         "http-lifecycle",
         "ui-foundation",
         "core-auth",
-        "business-screens"
+        "business-screens",
+        "storybook-verification"
       ]
     },
     {
@@ -48,7 +51,8 @@
         "http-lifecycle",
         "ui-foundation",
         "core-auth",
-        "business-screens"
+        "business-screens",
+        "storybook-verification"
       ]
     },
     {
@@ -60,7 +64,8 @@
         "http-lifecycle",
         "ui-foundation",
         "core-auth",
-        "business-screens"
+        "business-screens",
+        "storybook-verification"
       ]
     },
     {
@@ -72,7 +77,8 @@
         "http-lifecycle",
         "ui-foundation",
         "core-auth",
-        "business-screens"
+        "business-screens",
+        "storybook-verification"
       ]
     },
     {
@@ -84,7 +90,8 @@
         "http-lifecycle",
         "ui-foundation",
         "core-auth",
-        "business-screens"
+        "business-screens",
+        "storybook-verification"
       ]
     },
     {
@@ -96,7 +103,8 @@
         "http-lifecycle",
         "ui-foundation",
         "core-auth",
-        "business-screens"
+        "business-screens",
+        "storybook-verification"
       ]
     },
     {
@@ -108,8 +116,23 @@
         "http-lifecycle",
         "ui-foundation",
         "core-auth",
-        "business-screens"
+        "business-screens",
+        "storybook-verification"
       ]
+    },
+    {
+      "id": "storybook-build",
+      "command": "npm run build-storybook",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["storybook-verification"]
+    },
+    {
+      "id": "storybook-browser",
+      "command": "npm run test:storybook",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["storybook-verification"]
     }
   ],
   "profiles": {
@@ -122,7 +145,9 @@
       "lint",
       "format",
       "unit-coverage",
-      "governance-coverage"
+      "governance-coverage",
+      "storybook-build",
+      "storybook-browser"
     ]
   },
   "externalWorkflows": [

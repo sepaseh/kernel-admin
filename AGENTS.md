@@ -1,4 +1,4 @@
-# Kernel Admin business-screens instructions
+# Kernel Admin Storybook verification instructions
 
 Read [README](README.md), [Contributing](CONTRIBUTING.md), the current
 [publication inventory](.github/bootstrap-policy.json) and canonical
@@ -30,10 +30,17 @@ direction or calendar from language codes. Preserve these runtime checks. Only a
 
 Read [Business screens](docs/business-screens.md) for account field ownership, guarded mutations, permission-aware forms and synthetic verification.
 
-The business-screens phase has applicationReady:false. It contains no application entry point, App/Routes composition or runnable
-panel, production build, browser journey or visual evidence. Synthetic Axios/MSW
-transport tests and real React provider/form/hook tests in isolated jsdom do not establish full
-server/browser integration.
+Read [Storybook verification](docs/storybook-verification.md) before editing stories or their
+configuration. The storybook-verification phase has applicationReady:false. It adds
+the static Storybook build and real Chromium play/accessibility checks for all
+registered stories. Full automocks cover every feature API owner and the shared
+client; synthetic fixtures reset before each story and unexpected client requests
+fail the browser suite. Never use spy passthrough or contact a real API. The toolbar
+selects explicit English/Persian server metadata fixtures, independently of theme
+and direction; this is test support, never a visitor language preference.
+There is no application entry point, App/Routes composition, production panel build,
+complete application E2E journey or visual-regression evidence. Synthetic Axios/MSW,
+jsdom and isolated Storybook tests do not establish full server/browser integration.
 A runnable phase must introduce React/Vite and complete real validation, preserving
 Ant Design, antd-style, React Router, Axios and directly typed component parameters
 without FC aliases. Before a runnable panel merges, expand the canonical full nineteen-check application gate,
@@ -50,14 +57,19 @@ belongs in measured coverage. Font assets must pass real WOFF2 cmap/axis/default
 translation/date/HTTP dependencies, fail-closed synthetic MSW responses and
 isolated React hook rendering, never real environment files or credentials.
 
-Run npm run validate -- full on the exact proposed snapshot before every authorized
-commit or PR handoff. All nine required commands run on every PR regardless of
+Install Chromium with npm run browser:install after npm ci. Run npm run validate -- full
+on the exact proposed snapshot before every authorized commit or PR handoff. All eleven
+required commands run on every PR regardless of
 changed paths. The runner rejects omitted, repeated or non-required full entries;
 focused profiles cannot replace the complete gate. Keep each PR at 100 or fewer
 GitHub changed-file entries, including deletions, renames and binaries.
 
-The semantic YAML guard requires unconditional root installation then the canonical
-full command, with no PR filters or advisory validation. Its single-job policy must
+The canonical inventory includes the existing nine checks plus build-storybook and
+test:storybook. Preserve unit thresholds of 69% lines, 68% statements, 59% functions
+and 54% branches. Accessibility violations are errors; do not disable an audit to
+make a story pass. Generated workshop output and browser results are not unit LCOV.
+The semantic YAML guard requires unconditional root dependency installation, Chromium
+installation, then the canonical full command, with no PR filters or advisory validation. Its single-job policy must
 be deliberately extended before introducing multi-job application checks.
 
 Required native contexts remain check, PR file limit, SonarQube Cloud analysis,

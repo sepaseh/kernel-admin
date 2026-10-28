@@ -2,8 +2,10 @@
 
 [English](CONTRIBUTING.md) · [فارسی](CONTRIBUTING.fa.md)
 
-The current [business-screens phase](docs/bootstrap.md) contains Core/Ant Design providers, authentication forms, layout modules, access/navigation metadata, HTTP feature adapters, request lifecycle hooks, complete server settings
-validation, local translation/date adapters, primitives and repository tooling. Preserve its declared scope and independent
+The current [storybook-verification phase](docs/bootstrap.md) adds a static component
+workshop and real Chromium interaction/accessibility tests to the published
+providers, forms, layouts, HTTP adapters and local translation/date infrastructure.
+It retains `applicationReady: false`. Preserve its declared scope and independent
 project boundary.
 
 ## Source ownership
@@ -35,6 +37,7 @@ bundled with that Node.js release.
 
 ```sh
 npm ci
+npm run browser:install
 npm run validate -- full
 ```
 
@@ -55,13 +58,18 @@ their source arrives, before merging a runnable panel.
 
 The required CI policy check parses YAML with unique keys. It rejects PR path,
 branch or lifecycle filters, conditional/advisory validation, non-root execution,
-shell overrides and missing or reordered installation/full steps. All current
+shell overrides and missing or reordered dependency installation, Chromium installation
+and canonical full steps. All current
 checks belong to `check`. Future multi-job application validation requires an
 explicit policy and workflow transition, so a Windows visual check cannot silently
 enter this Linux-only command plan.
 
-The nine required phase checks cover snapshot integrity, semantic CI policy, dependencies, boundaries,
-types, lint, formatting, measured unit tests and governance tests. The selected
+The eleven required phase checks cover snapshot integrity, semantic CI policy, dependencies, boundaries,
+types, lint, formatting, measured unit tests, governance tests, `build-storybook`
+and `test:storybook`. Install Chromium with `npm run browser:install` before the
+full gate. All registered stories run in a real headless browser; `a11y.test: error`
+makes accessibility violations fail the browser suite. Follow [Storybook verification](docs/storybook-verification.md)
+for full module mocks, synthetic settings and unexpected-request enforcement. The selected
 unit scope retains minimum coverage thresholds of 69% lines, 68% statements,
 59% functions and 54% branches. Do not reduce them to hide a failure or fabricate
 LCOV. Unit and governance reports must come from the same checked-out revision.
@@ -88,7 +96,7 @@ coverage and dependency directories out of commits.
 
 Follow [branch protection](docs/branch-protection.md). A successful skipped status
 is not a substantive review, and a scanner job is not the asynchronous Sonar
-quality gate. Required checks follow the published phase. The core-auth phase requires
+quality gate. Required checks follow the published phase. The storybook-verification phase requires
 its CI and provider checks; it supplies no runnable panel. Before any runnable
 panel merges, introduce genuine build, end-to-end and visual jobs, observe them
 pass, add them to required checks and expand the canonical full gate. Do not use

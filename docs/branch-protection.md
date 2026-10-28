@@ -8,7 +8,7 @@ resolved conversations. Apply protection to administrators, dismiss stale
 approvals, require an up-to-date branch and prohibit force pushes and deletion.
 Repository administrators manage the actual remote settings.
 
-Required checks follow the published phase. Core-auth protection requires these
+Required checks follow the published phase. Storybook-verification protection requires these
 five native contexts with their observed GitHub App identities:
 
 | Required context           | Provider       | App ID   |
@@ -37,8 +37,11 @@ may describe a skipped review. Automatic approval can satisfy the normal approva
 count after a clean completed review, but the native GitHub count also accepts
 other eligible reviewers; it does not enforce a particular bot's identity.
 
-The business-screens phase has `applicationReady: false`; its approved protection does not
+The storybook-verification phase has `applicationReady: false`; its protection does not
 require full panel **build**, **e2e** or **visual** jobs that it does not supply.
+Its existing `check` context must run all eleven canonical commands, including the
+real static Storybook build and Chromium play/accessibility suite. Those component
+checks do not establish complete application build/E2E or visual-regression evidence.
 Before any runnable panel merges, introduce genuine application jobs, expand the
 canonical full gate, observe their current-revision results pass and add all three
 contexts to required checks. Do not use placeholder jobs, successful skips or

@@ -2,11 +2,13 @@
 
 [English](admin-request-reliability.md) · [فارسی](admin-request-reliability.fa.md)
 
-Scope updated: 27 October 2026. The non-runnable `business-screens` phase publishes
+Scope updated: 27 October 2026. The non-runnable `storybook-verification` phase publishes
 feature-owned HTTP adapters, request hooks, Core/Ant Design providers,
-authentication forms, business screens and layout modules. `applicationReady` remains false: no
-application entry point, App/Routes composition, build or
-browser journey is published. Small read hooks coordinate request lifetime; no
+authentication forms, business screens, layout modules and an isolated Storybook
+workshop with real Chromium component interactions and accessibility checks.
+`applicationReady` remains false: no application entry point, assembled App/Routes,
+production application build, complete application E2E journey or visual gate is
+published. Small read hooks coordinate request lifetime; no
 query library, frontend database access or business-service duplication is introduced.
 
 ## Deadlines and retries
@@ -118,19 +120,26 @@ expiry and cancellation coverage remains.
 
 ## Verification and isolated checks
 
-Published tests use synthetic loaders, Core/layout/form fixtures and Axios/MSW
+Published unit tests use synthetic loaders, Core/layout/form fixtures and Axios/MSW
 to cover obsolete completion, cleanup/refetch, cancel-without-replacement, stale
 settings versus an accepted snapshot, StrictMode, initial-error retry, retained
 data after failed refresh, timeout recovery, shared refresh, login generations,
 auth abort and logout. They require no owner data or running service. The
 historical correction above is context, not a fresh full-application report.
+The separate [Storybook project](storybook-verification.md) fully replaces feature
+API owners and the shared HTTP client with synthetic mocks. Its real Chromium
+stories execute component play assertions and fail on accessibility violations;
+they do not establish an external API or complete application journey.
 
 Use the [canonical manifest](../.agents/validation.json) and run
 `npm run validate -- full` on the isolated exact proposed snapshot before an
-authorized commit or PR handoff. All nine required checks remain mandatory.
+authorized commit or PR handoff. All eleven required checks remain mandatory,
+including the genuine static Storybook build and Chromium story tests. Run
+`npm run browser:install` after `npm ci` and before the canonical full command.
 Vitest disables environment-file discovery and uses explicit synthetic values;
 do not read private state or reuse a developer API, credentials or production data.
-Production build, browser, accessibility, performance and visual evidence belong
-to the later runnable gate. See [publication policy](bootstrap.md),
+Production application build, complete application E2E, field performance and visual
+evidence belong to the later runnable gate with all nineteen genuine application
+checks. See [publication policy](bootstrap.md),
 [HTTP ownership](http-client.md), [request lifecycle](request-lifecycle.md) and
 [Core/auth ownership](core-auth.md).

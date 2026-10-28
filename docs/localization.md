@@ -2,10 +2,10 @@
 
 [English](localization.md) · [فارسی](localization.fa.md)
 
-The [business-screens phase](bootstrap.md) publishes complete local catalogs
+The [storybook-verification phase](bootstrap.md) publishes complete local catalogs
 and real translation/date adapters. Tests exercise their installed dependencies
 in Node, with synthetic Core/Ant Design provider tests in isolated jsdom.
-applicationReady:false remains deliberate: the provider modules and HTTP settings adapter are published, while the application entry point, App/Routes composition and browser journeys remain future work.
+applicationReady:false remains deliberate: the provider modules and HTTP settings adapter are published alongside isolated Storybook browser checks, while the application entry point, App/Routes composition and complete application journeys remain future work.
 
 ## One complete catalog per language
 
@@ -39,8 +39,16 @@ or calendar table. The API owns active language, direction, calendar and both
 public/native names; only a super-administrator may change the active language.
 The [HTTP settings adapter](http-client.md) validates and preserves complete server
 metadata and localized errors. Missing/unsupported metadata fails without local
-direction/calendar inference. The [Core provider](core-auth.md) applies accepted server metadata to i18next and Day.js; the Ant Design provider selects its exact locale and mirrors the server direction/code to the document. This phase does not implement a visitor chooser or a browser journey. Theme and compact
+direction/calendar inference. The [Core provider](core-auth.md) applies accepted server metadata to i18next and Day.js; the Ant Design provider selects its exact locale and mirrors the server direction/code to the document. This phase does not implement a visitor chooser or a complete application journey. Theme and compact
 preferences are separate concerns.
+
+[Storybook](storybook-verification.md) uses explicit synthetic English/Persian API
+metadata objects. Its test-only language toolbar selects a complete object, while
+direction and theme controls remain independent. It synchronizes the preview,
+StoryShell, document, Ant Design, i18next and Day.js; it does not persist a visitor
+language or infer production direction/calendar from a code. Translated play
+selectors use the active local engine. Both fixture languages retain all ten
+complete production catalogs and server authority.
 
 The [error helper](../src/shared/lib/error.ts) preserves actual Error messages and
 uses the active translation engine's unexpectedError message for other thrown
@@ -71,8 +79,10 @@ checkout, while keeping contracts and data pure. Every new production module
 remains in measured coverage and source/security/duplication analysis; the existing
 ten literal language-data files alone retain their authorized CPD exception.
 
-Run npm ci then npm run validate -- full. All nine canonical checks run on every
+Run npm ci, npm run browser:install, then npm run validate -- full. All eleven canonical checks run on every
 PR regardless of changed paths, with environment-file discovery disabled and real
-LCOV from this exact checkout. Follow [Sonar preflight](sonarqube.md). Component,
-provider integration, production build, browser, accessibility and visual evidence must
-join the canonical gate before any runnable panel merges.
+LCOV from this exact checkout. Required static Storybook build and real Chromium
+play/a11y checks add isolated component evidence; they do not replace those reports.
+Follow [Sonar preflight](sonarqube.md). Complete application integration, production
+build, E2E and visual evidence must join the full application gate before any runnable
+panel merges.

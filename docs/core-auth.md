@@ -84,11 +84,13 @@ checks that aborted login/registration cannot install tokens. Regression tests
 for the token race, late login navigation and invalid-mobile feedback fail
 against the preceding behavior.
 
-The canonical [nine-check phase gate](../.agents/validation.json) measures every
+The canonical [eleven-check phase gate](../.agents/validation.json) measures every
 published production module. It includes types, formatting, lint, dependency and
-boundary checks plus real unit/governance coverage. These tests establish the
-declared module behavior. They do not establish API integration, a production
-build, browser journeys, font loading or visual results. The later runnable
+boundary checks plus real unit/governance coverage. [Storybook verification](storybook-verification.md)
+adds a required static workshop build and real Chromium play/accessibility checks
+with complete synthetic API mocks. These tests establish the declared module behavior.
+They do not establish production API integration, a production panel build, complete
+application journeys, full font-loading coverage or visual-regression results. The later runnable
 publication must expand the full gate to all nineteen genuine application
 checks and observe its required build/browser/visual jobs pass before merge.
 

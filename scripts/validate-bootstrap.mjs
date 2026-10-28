@@ -261,6 +261,45 @@ const businessFiles = [
   "src/test/storybook/StoryShell.tsx",
   "src/test/storybook/fixtures.ts",
 ];
+const storybookFiles = [
+  ".storybook/PreviewFrame.tsx",
+  ".storybook/main.ts",
+  ".storybook/mocks.ts",
+  ".storybook/preview.tsx",
+  ".storybook/request-guard.ts",
+  ".storybook/request-guard.test.ts",
+  ".storybook/vite.config.ts",
+  ".storybook/vitest.setup.ts",
+  "docs/storybook-verification.fa.md",
+  "docs/storybook-verification.md",
+  "src/app/not-found/NotFound.stories.tsx",
+  "src/features/account/Account.stories.tsx",
+  "src/features/calendar/Calendar.stories.tsx",
+  "src/features/forgot-pass/ForgotPass.stories.tsx",
+  "src/features/login/Login.stories.tsx",
+  "src/features/register/Register.stories.tsx",
+  "src/features/roles/Roles.stories.tsx",
+  "src/features/roles/components/role-form/RoleForm.stories.tsx",
+  "src/features/settings/Settings.stories.tsx",
+  "src/features/settings/components/logo-upload/LogoUpload.stories.tsx",
+  "src/features/users/Users.stories.tsx",
+  "src/features/users/components/user-form/UserForm.stories.tsx",
+  "src/features/users/components/user-role-form/UserRoleForm.stories.tsx",
+  "src/layouts/auth/Auth.stories.tsx",
+  "src/layouts/default/Default.stories.tsx",
+  "src/shared/ui/digits-input/DigitsInput.stories.tsx",
+  "src/shared/ui/error-boundary/ErrorBoundary.stories.tsx",
+  "src/shared/ui/form-drawer/FormDrawer.stories.tsx",
+  "src/shared/ui/icon/Icon.stories.tsx",
+  "src/shared/ui/otp-input/OtpInput.stories.tsx",
+  "src/shared/ui/password-fields/PasswordFields.stories.tsx",
+  "src/shared/ui/route-loading/RouteLoading.stories.tsx",
+  "src/test/storybook/StoryAppearance.ts",
+  "src/test/storybook/StoryAppearance.stories.tsx",
+  "src/test/storybook/StoryShell.test.tsx",
+  "src/test/storybook/Transport.stories.tsx",
+  "vitest.storybook.config.ts",
+];
 const phaseOrder = [
   "governance",
   "foundation",
@@ -270,6 +309,7 @@ const phaseOrder = [
   "ui-foundation",
   "core-auth",
   "business-screens",
+  "storybook-verification",
 ];
 const supportsPhase = (phase, minimum) =>
   phaseOrder.indexOf(phase) >= phaseOrder.indexOf(minimum);
@@ -282,7 +322,28 @@ const publishedSource = (file, phase) =>
     (supportsPhase(phase, "http-lifecycle") && httpFiles.includes(file)) ||
     (supportsPhase(phase, "ui-foundation") && uiFiles.includes(file)) ||
     (supportsPhase(phase, "core-auth") && coreAuthFiles.includes(file)) ||
-    (phase === "business-screens" && businessFiles.includes(file)));
+    (supportsPhase(phase, "business-screens") &&
+      businessFiles.includes(file)) ||
+    (phase === "storybook-verification" && storybookFiles.includes(file)));
+
+const isForbiddenPublicationPath = (file, phase) =>
+  typeof file !== "string" ||
+  !file ||
+  file.includes("\\") ||
+  file.split("/").some((part) => !part || part === "." || part === "..") ||
+  /[*?[\]{}:\r\n]/.test(file) ||
+  /^(?:apps|packages|drizzle|collection|deploy|node_modules|server|coverage)(?:\/|$)/.test(
+    file,
+  ) ||
+  file === "drizzle.config.ts" ||
+  file === "index.html" ||
+  file === "vite.config.ts" ||
+  ((file.startsWith(".storybook/") || file === "vitest.storybook.config.ts") &&
+    (phase !== "storybook-verification" || !storybookFiles.includes(file))) ||
+  (file.startsWith("src/") && !publishedSource(file, phase)) ||
+  (phase === "governance" && /^package(?:-lock)?\.json$/.test(file)) ||
+  /(?:^|\/)(?:\.env(?:\.|$)|settings\.local\.json$)/.test(file) ||
+  /\.(?:pem|key|pfx|p12|sqlite|db)$/.test(file);
 
 export const validateBootstrapPolicy = (policy) => {
   if (
@@ -296,24 +357,7 @@ export const validateBootstrapPolicy = (policy) => {
     throw new Error("An explicit non-runnable publication phase is required.");
   const files = new Set();
   for (const file of policy.allowedFiles) {
-    if (
-      typeof file !== "string" ||
-      !file ||
-      file.includes("\\") ||
-      file.split("/").some((part) => !part || part === "." || part === "..") ||
-      /[*?[\]{}:\r\n]/.test(file) ||
-      /^(?:apps|packages|drizzle|collection|deploy|node_modules|server|coverage)(?:\/|$)/.test(
-        file,
-      ) ||
-      file === "drizzle.config.ts" ||
-      file === "index.html" ||
-      (file.startsWith("src/") && !publishedSource(file, policy.phase)) ||
-      (policy.phase === "governance" &&
-        /^package(?:-lock)?\.json$/.test(file)) ||
-      /(?:^|\/)(?:\.env(?:\.|$)|settings\.local\.json$)/.test(file) ||
-      /\.(?:pem|key|pfx|p12|sqlite|db)$/.test(file) ||
-      files.has(file)
-    )
+    if (isForbiddenPublicationPath(file, policy.phase) || files.has(file))
       throw new Error(
         "Publication files must be unique, exact paths within their declared phase.",
       );
@@ -331,7 +375,8 @@ export const validateBootstrapPolicy = (policy) => {
     ...(supportsPhase(policy.phase, "http-lifecycle") ? httpFiles : []),
     ...(supportsPhase(policy.phase, "ui-foundation") ? uiFiles : []),
     ...(supportsPhase(policy.phase, "core-auth") ? coreAuthFiles : []),
-    ...(policy.phase === "business-screens" ? businessFiles : []),
+    ...(supportsPhase(policy.phase, "business-screens") ? businessFiles : []),
+    ...(policy.phase === "storybook-verification" ? storybookFiles : []),
   ];
   if (requiredFiles.some((file) => !files.has(file)))
     throw new Error(
@@ -417,6 +462,8 @@ export const inspectBootstrap = async (root) => {
     }),
   );
   const scopeByPhase = {
+    "storybook-verification":
+      "Published isolated Storybook build and real Chromium component interactions/accessibility with synthetic API fixtures; no application entry point, assembled routes, production application build, external API journey or visual gate is published.",
     "business-screens":
       "Published business screen/form modules with guarded mutations and synthetic HTTP/React tests; no application entry point, assembled routes, production build, Storybook/browser journey or visual gate is published.",
     "core-auth":

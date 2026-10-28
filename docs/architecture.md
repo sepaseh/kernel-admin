@@ -2,13 +2,14 @@
 
 [English](architecture.md) · [فارسی](architecture.fa.md)
 
-Scope updated: 27 October 2026. The published `business-screens` phase has
+Scope updated: 27 October 2026. The published `storybook-verification` phase has
 `applicationReady: false`. It contains independent React source using Ant
 Design/antd-style, React Router and Axios, with Core/Ant Design providers,
 authentication forms, layout modules, business screen/form modules and typed navigation/access metadata. There
 is no application entry point, App/Routes composition,
-production build or browser journey. Module and synthetic jsdom tests do not
-establish a runnable React/Vite panel.
+production panel build or complete application browser journey. Isolated Storybook
+stories now have a real Chromium play/accessibility suite and static workshop build.
+Module, jsdom and component-workshop tests do not establish a runnable React/Vite panel.
 
 Each feature owns its published HTTP types, endpoints and helpers. Authentication
 forms call the auth owner; the default layout reads the account owner; the
@@ -25,6 +26,15 @@ Global theme/compact preferences, theme creation, request hooks and reusable UI
 remain shared. The app layer owns Core context/providers and navigation metadata;
 layouts own shell and account-check behavior. [Core and authentication](core-auth.md)
 describes these published owners and their limits.
+
+[Storybook verification](storybook-verification.md) is test infrastructure. Its
+dedicated Vite config disables environment-file loading and supplies synthetic
+configuration. Preview full automocks replace all feature API owners and the
+shared client; unexpected client calls fail closed. Synthetic Core/router/Ant
+Design providers isolate stories from application startup. Explicit English/Persian
+server metadata fixtures drive translation/calendar while independent direction
+and theme controls exercise appearance. None creates a production visitor language
+chooser or replaces server authorization.
 
 The independent API owns authentication execution, authorization, database,
 migrations and storage. The admin consumes it over HTTP; menus are convenience

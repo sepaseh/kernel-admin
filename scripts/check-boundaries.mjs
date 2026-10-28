@@ -508,6 +508,7 @@ const sourceFiles = async (directory, testRoot) => {
       return entry.isFile() &&
         /\.tsx?$/.test(entry.name) &&
         !entry.name.endsWith(".d.ts") &&
+        !entry.name.endsWith(".stories.tsx") &&
         !/\.(?:test|spec)\./.test(entry.name)
         ? [filename]
         : [];

@@ -1,8 +1,34 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { commandArguments, runProfile } from "./validate.mjs";
+
+test("Storybook uses its isolated synthetic Vite configuration without ambient files or process VITE variables", async () => {
+  const [{ default: vite }, { default: storybook }] = await Promise.all([
+    import("../.storybook/vite.config.ts"),
+    import("../.storybook/main.ts"),
+  ]);
+  assert.equal(vite.envDir, false);
+  assert.deepEqual(vite.envPrefix, []);
+  assert.equal(vite.publicDir, false);
+  assert.deepEqual(vite.define, {
+    "import.meta.env.VITE_API_BASE_URL": JSON.stringify("/__storybook_api__"),
+    "import.meta.env.VITE_OBSERVABILITY_URL": JSON.stringify(""),
+    "import.meta.env.VITE_RELEASE_ID": JSON.stringify("synthetic-storybook"),
+  });
+  assert.equal(
+    vite.resolve.alias["@"],
+    fileURLToPath(new URL("../src", import.meta.url)),
+  );
+  assert.equal(
+    storybook.core.builder.options.viteConfigPath,
+    fileURLToPath(new URL("../.storybook/vite.config.ts", import.meta.url)),
+  );
+  assert.deepEqual(storybook.staticDirs, ["../public"]);
+  assert.deepEqual(storybook.stories, ["../src/**/*.stories.@(ts|tsx)"]);
+});
 
 test("the current full gate executes every published required check in declared order", () => {
   const read = (file) =>
@@ -13,6 +39,27 @@ test("the current full gate executes every published required check in declared 
   const required = manifest.checks.filter((check) => check.kind === "required");
   assert.equal(manifest.phase, publication.phase);
   assert.equal(manifest.applicationReady, publication.applicationReady);
+  assert.equal(manifest.phase, "storybook-verification");
+  assert.equal(required.length, 11);
+  assert.deepEqual(
+    required.slice(-2).map(({ command, id }) => ({ command, id })),
+    [
+      { command: "npm run build-storybook", id: "storybook-build" },
+      { command: "npm run test:storybook", id: "storybook-browser" },
+    ],
+  );
+  assert.equal(
+    pkg.scripts["build-storybook"],
+    "storybook build --output-dir coverage/storybook-static",
+  );
+  assert.equal(
+    pkg.scripts["test:storybook"],
+    "vitest run --config vitest.storybook.config.ts",
+  );
+  assert.equal(
+    pkg.scripts["browser:install"],
+    "playwright install --with-deps chromium",
+  );
   assert.deepEqual(
     manifest.profiles.full,
     required.map((check) => check.id),
