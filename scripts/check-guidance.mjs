@@ -662,8 +662,9 @@ const markdownLineContext = (quote, state) => {
     !context.blank && !state.indented && !fence && !nonParagraph;
   state.paragraphDepth =
     paragraph && !barrier ? Math.max(depth, block.depth) : block.depth;
+  const continuedQuoteContainer = paragraph && !barrier ? quoteContainer : null;
   state.paragraphQuoteContainer = state.paragraph
-    ? (block.quoteContainer ?? (paragraph && !barrier ? quoteContainer : null))
+    ? (block.quoteContainer ?? continuedQuoteContainer)
     : null;
   return { ...context, block, fence, raw, barrier };
 };
