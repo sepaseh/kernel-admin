@@ -561,14 +561,30 @@ const tick = String.fromCharCode(96);
 const lazyList = nestedLists + "\\n" + " ".repeat(1024) + tick + "[hidden](missing.md)" + "\\nlazy".repeat(100_000) + "\\nclosing" + tick + " [good](owner.ts)";
 const lazyLinks = markdownLinks(lazyList);
 if (lazyLinks.length !== 1 || lazyLinks[0] !== "owner.ts") process.exitCode = 1;
-for (const malformedTag of ["<a title='".repeat(100_000), "<a data=".repeat(100_000)]) {
-  const tagLinks = markdownLinks(malformedTag + " [good](owner.ts)");
-  if (tagLinks.length !== 1 || tagLinks[0] !== "owner.ts") process.exitCode = 1;
-}
 for (const marker of [String.fromCharCode(34), String.fromCharCode(39), "("]) {
   const malformedTitles = ("[bad](owner.ts " + marker + "unfinished ").repeat(50_000) + "[good](owner.ts)";
   const links = markdownLinks(malformedTitles);
   if (links.length !== 1 || links[0] !== "owner.ts") process.exitCode = 1;
+}`;
+  const result = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", script],
+    {
+      encoding: "utf8",
+      timeout: 5_000,
+      windowsHide: true,
+    },
+  );
+  assert.equal(result.error, undefined, result.error?.message);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test("malformed raw HTML tags finish within a real child-process deadline", () => {
+  const moduleUrl = new URL("./check-guidance.mjs", import.meta.url).href;
+  const script = `const { markdownLinks } = await import(${JSON.stringify(moduleUrl)});
+for (const malformedTag of ["<a title='".repeat(100_000), "<a data=".repeat(100_000)]) {
+  const tagLinks = markdownLinks(malformedTag + " [good](owner.ts)");
+  if (tagLinks.length !== 1 || tagLinks[0] !== "owner.ts") process.exitCode = 1;
 }`;
   const result = spawnSync(
     process.execPath,
