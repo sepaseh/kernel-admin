@@ -258,7 +258,7 @@ const assignment = (token) => /^[A-Za-z_]\w*=/.test(token.value);
 const executableWords = (words) => {
   let index = 0;
   while (index < words.length && assignment(words[index])) {
-    if (/^GIT_CONFIG(?:_|=)/.test(words[index].value)) return null;
+    if (/^GIT_CONFIG[_=]/.test(words[index].value)) return null;
     index++;
   }
 
