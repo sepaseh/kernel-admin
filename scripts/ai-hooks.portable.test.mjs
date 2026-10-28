@@ -661,3 +661,65 @@ test("find execution actions fail closed while nonexecuting searches remain usab
   ])
     assert.equal(inspectSafetyPayload({ command }), null, command);
 });
+
+test("builtin delegation cannot hide configuration setters or other blocked builtins", () => {
+  for (const wrapper of [
+    "builtin",
+    "command builtin",
+    "builtin builtin",
+    "builtin command",
+  ])
+    for (const setter of [
+      "export",
+      "declare -x",
+      "typeset -x",
+      "readonly",
+      "local",
+    ])
+      assert.match(
+        inspectSafetyPayload({
+          command: `${wrapper} ${setter} GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.ship GIT_CONFIG_VALUE_0='!git push --force origin feature'; git ship`,
+        }),
+        /ambiguous git options/,
+        wrapper + " " + setter,
+      );
+
+  for (const command of [
+    "bash -c 'builtin export GIT_CONFIG_COUNT=1; git ship'",
+    "env TEST_MODE=synthetic builtin export GIT_CONFIG_COUNT=1; git ship",
+    "builtin eval 'git push --force origin feature'",
+    "builtin export -p",
+    'builtin printf "%s" "$ACCESS_KEY"',
+    "builtin -- export GIT_CONFIG_COUNT=1",
+    'builtin "$COMMAND"',
+    "builtin",
+  ])
+    assert.notEqual(inspectSafetyPayload({ command }), null, command);
+});
+
+test("safe builtin delegates remain usable within the existing wrapper depth limit", () => {
+  for (const command of [
+    "builtin export TEST_MODE=synthetic; git status --short",
+    "builtin declare -x TEST_MODE=synthetic",
+    "builtin typeset -x TEST_MODE=synthetic",
+    "builtin readonly TEST_MODE=synthetic",
+    "builtin local TEST_MODE=synthetic",
+    "builtin printf '%s' 'GIT_CONFIG_COUNT=1'",
+    "builtin printf '%s' 'export GIT_CONFIG_COUNT=1; git ship'",
+    "command builtin printf '%s' synthetic",
+    "bash -c 'builtin printf synthetic'",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+
+  for (const depth of [1, 2, 3, 4]) {
+    const command = "builtin ".repeat(depth) + "printf synthetic";
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+  }
+  for (const depth of [5, 6]) {
+    const command = "builtin ".repeat(depth) + "printf synthetic";
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Unsupported or ambiguous shell/,
+    );
+  }
+});

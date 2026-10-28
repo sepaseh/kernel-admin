@@ -408,7 +408,7 @@ const inspectExecutable = (name, segment, words, depth) => {
   if (variableSetterNames.has(name)) return inspectVariableSetter(words);
   if (name === "find" || name === "find.exe") return inspectFind(words);
   if (unsupportedShellNames.has(name)) return shellError;
-  if (["command", "exec", "sudo"].includes(name))
+  if (["builtin", "command", "exec", "sudo"].includes(name))
     return inspectWrapper(segment, words, depth);
   return null;
 };

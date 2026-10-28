@@ -486,7 +486,7 @@ const insideListQuote = (quote, fence) =>
   !fence.quoteContainer ||
   quote.indents[fence.quoteContainer.depth] >= fence.quoteContainer.base;
 const insideMarkdownFence = (quote, fence) =>
-  quote.text.trim() === "" ||
+  (quote.text.trim() === "" && quote.depth >= fence.depth) ||
   (quote.depth >= fence.depth &&
     markdownIndent(quote.text).width >= fence.base &&
     insideListQuote(quote, fence));
@@ -499,16 +499,11 @@ const closesMarkdownFence = (quote, fence) => {
     marker.suffix.trim() === ""
   );
 };
-const openingMarkdownFence = (quote, context) => {
+const markdownBlockContext = (quote, context) => {
   const quoted = markdownQuote(context.fenceText);
-  const marker = markdownFence(
-    quoted.text,
-    quoted.depth ? 0 : context.fenceBase,
-  );
-  if (!marker || (marker.marker === "\x60" && marker.suffix.includes("\x60")))
-    return null;
   return {
-    ...marker,
+    text: quoted.text,
+    fenceBase: quoted.depth ? 0 : context.fenceBase,
     depth: quote.depth + quoted.depth,
     base: quoted.depth ? 0 : context.base,
     quoteContainer: quoted.depth
@@ -516,27 +511,62 @@ const openingMarkdownFence = (quote, context) => {
       : null,
   };
 };
-const withoutMarkdownFences = (markdown) => {
+const openingMarkdownFence = (context) => {
+  const marker = markdownFence(context.text, context.fenceBase);
+  if (!marker || (marker.marker === "\x60" && marker.suffix.includes("\x60")))
+    return null;
+  return {
+    ...marker,
+    depth: context.depth,
+    base: context.base,
+    quoteContainer: context.quoteContainer,
+  };
+};
+const markdownProse = (markdown) => {
   const state = {
     fence: null,
+    comment: null,
+    inlineEnd: 0,
     lists: [],
     quoteDepth: 0,
     paragraph: false,
     indented: false,
   };
+  const codeEndings = markdownCodeEndings(markdown);
+  let offset = 0;
   return markdown
     .split("\n")
     .map((line) => {
-      const quote = markdownQuote(line, state.fence?.quoteContainer);
+      const start = offset;
+      offset += line.length + 1;
+      const quote = markdownQuote(
+        line,
+        state.fence?.quoteContainer ?? state.comment?.quoteContainer,
+      );
+      if (state.comment && !insideMarkdownFence(quote, state.comment))
+        state.comment = null;
+      if (state.comment) {
+        const prose = markdownInlineProse(
+          line,
+          start,
+          state,
+          codeEndings,
+          state.comment,
+        );
+        state.paragraph = markdownQuote(prose).text.trim() !== "";
+        return prose;
+      }
       if (state.fence && insideMarkdownFence(quote, state.fence)) {
         if (closesMarkdownFence(quote, state.fence)) state.fence = null;
         return "";
       }
       state.fence = null;
       const context = markdownContainer(quote, state);
-      const fence = openingMarkdownFence(quote, context);
+      const block = markdownBlockContext(quote, context);
+      const fence = openingMarkdownFence(block);
       if (fence) {
         state.fence = fence;
+        state.inlineEnd = 0;
         state.paragraph = false;
         return "";
       }
@@ -547,8 +577,9 @@ const withoutMarkdownFences = (markdown) => {
       state.indented =
         context.relativeIndent >= 4 && (!state.paragraph || state.indented);
       if (state.indented) return "";
-      state.paragraph = true;
-      return line;
+      const prose = markdownInlineProse(line, start, state, codeEndings, block);
+      state.paragraph = markdownQuote(prose).text.trim() !== "";
+      return prose;
     })
     .join("\n");
 };
@@ -557,38 +588,103 @@ const escapedMarkdownMarker = (text, start) => {
   while (cursor > 0 && text[cursor - 1] === "\\") cursor--;
   return (start - cursor) % 2 === 1;
 };
-const markdownCodeRuns = (text) => {
+const markdownCodeBarriers = (text) => {
+  const state = {
+    lists: [],
+    quoteDepth: 0,
+    paragraph: false,
+    indented: false,
+  };
+  const barriers = [];
+  let offset = 0;
+  for (const line of text.split("\n")) {
+    const quote = markdownQuote(line);
+    const context = markdownContainer(quote, state);
+    state.indented =
+      context.relativeIndent >= 4 && (!state.paragraph || state.indented);
+    const fence = openingMarkdownFence(markdownBlockContext(quote, context));
+    if (state.indented || fence) barriers.push(offset);
+    state.paragraph = !context.blank && !state.indented && !fence;
+    offset += line.length + 1;
+  }
+  return barriers;
+};
+const markdownCodeEndings = (text) => {
   const runs = [...text.matchAll(/`+/g)].map((match) => ({
     start: match.index,
     end: match.index + match[0].length,
     length: match[0].length,
     escaped: escapedMarkdownMarker(text, match.index),
   }));
-  const byLength = new Map();
+  const byLength = new Map(),
+    endings = new Map();
+  const barriers = markdownCodeBarriers(text);
+  let barrier = barriers.length - 1;
   for (let index = runs.length - 1; index >= 0; index--) {
     const run = runs[index];
-    run.next = byLength.get(run.length);
-    byLength.set(run.length, index);
+    while (barrier >= 0 && barriers[barrier] > run.start) {
+      byLength.clear();
+      barrier--;
+    }
+    const next = byLength.get(run.length);
+    if (!run.escaped && next !== undefined) endings.set(run.start, next);
+    byLength.set(run.length, run.end);
   }
-  return runs;
+  return endings;
 };
-const markdownProse = (markdown) => {
-  const text = withoutMarkdownFences(markdown);
-  const runs = markdownCodeRuns(text),
+const closesMarkdownInline = (marker, offset, state) => {
+  const closes = state.comment
+    ? marker[0].endsWith("-->")
+    : offset + marker.index + marker[0].length === state.inlineEnd;
+  if (closes) {
+    state.comment = null;
+    state.inlineEnd = 0;
+  }
+  return closes;
+};
+const openingMarkdownInline = (
+  line,
+  marker,
+  offset,
+  codeEndings,
+  container,
+) => {
+  const codeEnd = codeEndings.get(offset + marker.index);
+  if (codeEnd) return { inlineEnd: codeEnd, comment: null };
+  if (marker[0] === "<!--" && !escapedMarkdownMarker(line, marker.index))
+    return { inlineEnd: 0, comment: container };
+  return null;
+};
+const markdownInlineProse = (line, offset, state, codeEndings, container) => {
+  const markers = /<!---?>|<!--|-->|`+/g,
     parts = [];
-  let cursor = 0,
-    index = 0;
-  while (index < runs.length) {
-    const run = runs[index];
-    if (run.escaped || run.next === undefined) {
-      index++;
+  let visible = 0,
+    hidden = state.comment || state.inlineEnd > offset ? 0 : null;
+  for (const marker of line.matchAll(markers)) {
+    const end = marker.index + marker[0].length;
+    if (state.comment || state.inlineEnd > offset + marker.index) {
+      if (closesMarkdownInline(marker, offset, state)) {
+        parts.push(" ".repeat(end - hidden));
+        visible = end;
+        hidden = null;
+      }
       continue;
     }
-    parts.push(text.slice(cursor, run.start), " ");
-    cursor = runs[run.next].end;
-    index = run.next + 1;
+    const opening = openingMarkdownInline(
+      line,
+      marker,
+      offset,
+      codeEndings,
+      container,
+    );
+    if (!opening) continue;
+    Object.assign(state, opening);
+    parts.push(line.slice(visible, marker.index));
+    hidden = marker.index;
   }
-  parts.push(text.slice(cursor));
+  parts.push(
+    hidden === null ? line.slice(visible) : " ".repeat(line.length - hidden),
+  );
   return parts.join("");
 };
 const skipMarkdownSpace = (text, start) => {

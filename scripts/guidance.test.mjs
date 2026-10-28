@@ -236,6 +236,88 @@ test("list-prefixed quoted fences keep examples separate from later prose", () =
   }
 });
 
+test("quoted fences end on lower-depth blank lines while container blanks stay inside", () => {
+  for (const marker of ["~~~", String.fromCharCode(96).repeat(3)]) {
+    for (const example of [
+      "> " + marker + "\n> [example](ignored.md)\n\n> [real](owner.ts)",
+      "> > " + marker + "\n> > [example](ignored.md)\n>\n> > [real](owner.ts)",
+      "- > " + marker + "\n  > [example](ignored.md)\n\n> [real](owner.ts)",
+    ])
+      assert.deepEqual(markdownLinks(example), ["owner.ts"], example);
+    for (const example of [
+      "> " + marker + "\n>\n> [example](ignored.md)\n> " + marker,
+      "- " + marker + "\n\n  [example](ignored.md)\n  " + marker,
+      "- \t" + marker + "\n\t\n\t[example](ignored.md)\n\t" + marker,
+      marker + "\n\n[example](ignored.md)\n" + marker,
+    ])
+      assert.deepEqual(markdownLinks(example + "\n\n[real](owner.ts)"), [
+        "owner.ts",
+      ]);
+  }
+});
+
+test("HTML comments hide only commented links, including an unfinished comment", () => {
+  for (const text of [
+    "[before](owner.ts) <!-- [example](ignored.md) --> [after](test.ts)",
+    "[before](owner.ts)\n<!--\n[example](ignored.md)\n-->\n[after](test.ts)",
+    "[before](owner.ts) <!-- [first](ignored.md) --> <!-- [second](ignored.md) --> [after](test.ts)",
+    "[before](owner.ts) <!--> [after](test.ts)",
+    "[before](owner.ts) <!---> [after](test.ts)",
+    "[before](owner.ts) <!-- <!--> [after](test.ts)",
+    "[before](owner.ts) <!-- <!---> [after](test.ts)",
+  ])
+    assert.deepEqual(markdownLinks(text), ["owner.ts", "test.ts"], text);
+  assert.deepEqual(
+    markdownLinks("[before](owner.ts)\n<!-- [example](ignored.md)"),
+    ["owner.ts"],
+  );
+});
+
+test("literal comment delimiters in code and escaped openers preserve real prose", () => {
+  for (const text of [
+    "`<!--` [real](owner.ts) `-->`",
+    "``<!-- ` example`` [real](owner.ts)",
+    "`<!--\n-->` [real](owner.ts)",
+    "~~~\n<!--\n~~~\n[real](owner.ts)",
+    "```\n<!--\n```\n[real](owner.ts)",
+    "    <!--\n\n[real](owner.ts)",
+    "\\<!-- [real](owner.ts) -->",
+  ])
+    assert.deepEqual(markdownLinks(text), ["owner.ts"], text);
+});
+
+test("inline code cannot pair across a fence opening on a later line", () => {
+  const ticks = String.fromCharCode(96).repeat(3);
+  assert.deepEqual(
+    markdownLinks(
+      "paragraph " +
+        ticks +
+        " [real](owner.ts)\n" +
+        ticks +
+        "\n[example](ignored.md)\n" +
+        ticks,
+    ),
+    ["owner.ts"],
+  );
+});
+
+test("commented code markers cannot hide links after the comment closes", () => {
+  for (const marker of ["~~~", String.fromCharCode(96).repeat(3), "`", "``"])
+    assert.deepEqual(
+      markdownLinks(
+        "<!--\n" + marker + "\n[example](ignored.md)\n-->\n[real](owner.ts)",
+      ),
+      ["owner.ts"],
+      marker,
+    );
+  for (const text of [
+    "> <!--\n> [example](ignored.md)\n\n> [real](owner.ts)",
+    "- <!--\n  [example](ignored.md)\n\n[real](owner.ts)",
+    "<!--\n~~~\n-->\n`<!--` [real](owner.ts) `-->`",
+  ])
+    assert.deepEqual(markdownLinks(text), ["owner.ts"], text);
+});
+
 test("link extraction requires an unescaped balanced label and retains image labels", () => {
   for (const text of [
     "](missing.md)",
@@ -259,9 +341,13 @@ const malformed = "](".repeat(1_000_000);
 const unclosedParentheses = "](file(".repeat(200_000);
 const labeledUnclosedParentheses = "[bad](file(".repeat(200_000);
 const labeledOpenings = "[bad](".repeat(200_000);
+const unclosedComments = "<!--".repeat(200_000);
 const unicodeFences = ["\\u2028", "\\u2029"].map(separator => String.fromCharCode(96).repeat(1_000_000) + separator);
-for (const input of [malformed, unclosedParentheses, labeledUnclosedParentheses, labeledOpenings, ...unicodeFences])
+for (const input of [malformed, unclosedParentheses, labeledUnclosedParentheses, labeledOpenings, unclosedComments, ...unicodeFences])
   if (markdownLinks(input).length !== 0) process.exitCode = 1;
+const commentedMarkers = "<!--\\n" + ("~~~\\n" + String.fromCharCode(96) + "[bad](missing.md)" + String.fromCharCode(96) + "\\n").repeat(50_000) + "-->\\n[good](owner.ts)";
+const visible = markdownLinks(commentedMarkers);
+if (visible.length !== 1 || visible[0] !== "owner.ts") process.exitCode = 1;
 for (const marker of [String.fromCharCode(34), String.fromCharCode(39), "("]) {
   const malformedTitles = ("[bad](owner.ts " + marker + "unfinished ").repeat(50_000) + "[good](owner.ts)";
   const links = markdownLinks(malformedTitles);
