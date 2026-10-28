@@ -319,3 +319,181 @@ test("non-IFS whitespace cannot stall literal command scanning", () => {
     assert.equal(result.status, 0, result.stderr);
   }
 });
+
+test("extensionless credential paths are protected without reading any files", () => {
+  for (const file_path of [
+    "~/.aws/credentials",
+    "fixtures/credentials",
+    "C:\\Users\\synthetic\\.aws\\credentials",
+  ])
+    assert.match(inspectSafetyPayload({ file_path }), /secret or credential/);
+
+  for (const command of [
+    "cat ~/.aws/credentials",
+    "cat < fixtures/credentials",
+    "printf synthetic > fixtures/credentials",
+  ])
+    assert.match(inspectSafetyPayload({ command }), /secret or credential/);
+
+  for (const file_path of [
+    "docs/credentials-guide.md",
+    "fixtures/credentials-example",
+  ])
+    assert.equal(inspectSafetyPayload({ file_path }), null);
+});
+
+test("pushes require an explicit destination for HEAD and matching refspecs", () => {
+  for (const command of [
+    "git push origin HEAD",
+    "git push -u origin HEAD",
+    "git push origin :",
+    "git push --porcelain origin feature :",
+  ])
+    assert.notEqual(inspectSafetyPayload({ command }), null, command);
+
+  for (const command of [
+    "git push origin HEAD:feature",
+    "git push origin HEAD:refs/heads/feature",
+    "git push origin refs/heads/feature",
+    "git push origin feature",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("branch deletion flags include lowercase and real short-option clusters", () => {
+  for (const options of ["-d", "-vd", "-dv", "-rd", "-rD", "-vvD"])
+    assert.match(
+      inspectSafetyPayload({ command: `git branch ${options} feature` }),
+      /Dangerous git/,
+      options,
+    );
+
+  for (const options of ["--list", "-r", "-v", "-a", "feature-d"])
+    assert.equal(
+      inspectSafetyPayload({ command: `git branch ${options}` }),
+      null,
+      options,
+    );
+});
+
+test("inline Git aliases fail closed before an alias can hide its action", () => {
+  for (const command of [
+    "git -c 'alias.ship=!git push --force origin feature' ship",
+    "git -calias.ship='!git push --force origin feature' ship",
+    "git -c alias.ship=push ship origin main",
+    "git -c Alias.ship=status ship",
+    "git -c color.ui=false -calias.ship=push ship origin main",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /ambiguous git options/,
+      command,
+    );
+
+  for (const command of [
+    "git -c color.ui=false status --short",
+    "git -ccolor.ui=false diff -- src/example.ts",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("Git configuration assignments cannot disappear while finding the executable", () => {
+  for (const command of [
+    "GIT_CONFIG_COUNT=1 git status",
+    "TEST_MODE=synthetic GIT_CONFIG_PARAMETERS=synthetic git status",
+    "GIT_CONFIG=synthetic git status",
+    "env GIT_CONFIG_GLOBAL=synthetic git push origin feature",
+    "env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=alias.ship GIT_CONFIG_VALUE_0='!git push --force origin main' git ship",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /ambiguous git options/,
+      command,
+    );
+
+  for (const command of [
+    "TEST_MODE=synthetic git status",
+    "env TEST_MODE=synthetic node fixture.mjs",
+    "printf '%s' 'GIT_CONFIG_COUNT=1'",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("access-key expansions are blocked while literal variable names stay printable", () => {
+  for (const command of [
+    'printf "%s" "$ACCESS_KEY"',
+    'echo "${AWS_ACCESS_KEY_ID}"',
+    'printf "%s" "${storage_access_key}"',
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Environment variable exposure/,
+    );
+
+  for (const command of [
+    "printf '%s' '$ACCESS_KEY'",
+    "echo '${AWS_ACCESS_KEY_ID}'",
+    'printf "%s" "$PUBLIC_LABEL"',
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("dash literal command payloads use the same bounded checks as sh", () => {
+  for (const command of [
+    "dash -c 'git push --force origin feature'",
+    '/bin/dash -c "git push origin main"',
+    "dash.exe -c 'cat ~/.aws/credentials'",
+    "sh -c \"dash -c 'git branch -d feature'\"",
+  ])
+    assert.notEqual(inspectSafetyPayload({ command }), null, command);
+
+  for (const command of [
+    "dash -c 'git status --short'",
+    "/bin/dash -c 'printf synthetic'",
+    "dash.exe -c 'git diff -- src/example.ts'",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("xargs command construction fails closed without modeling its input", () => {
+  for (const command of [
+    "xargs git push --force origin feature",
+    "xargs.exe git push --force origin feature",
+    "printf '%s' synthetic | xargs git push origin main",
+    "xargs -I {} sh -c 'git branch -d {}'",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Unsupported or ambiguous shell/,
+    );
+
+  assert.equal(
+    inspectSafetyPayload({
+      command: "printf '%s' 'xargs git push origin main'",
+    }),
+    null,
+  );
+});
+
+test("bare export and listing options are blocked while explicit declarations remain usable", () => {
+  for (const command of [
+    "export",
+    "export > environment.txt",
+    "export --",
+    "export -n",
+    "export -np",
+    "export -pf TEST_MODE",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Environment variable exposure/,
+    );
+
+  for (const command of [
+    "export TEST_MODE=synthetic",
+    "export TEST_MODE",
+    "export -n TEST_MODE",
+    "export -- TEST_MODE=synthetic",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});

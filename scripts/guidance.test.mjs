@@ -146,6 +146,56 @@ test("Markdown code examples are ignored while prose links stay visible", () => 
   ]);
 });
 
+test("unclosed Markdown titles do not hide later valid links", () => {
+  for (const quote of ['"', "'", "("])
+    assert.deepEqual(
+      markdownLinks(
+        "[bad](owner.ts " + quote + "unfinished\n[good](missing.md)",
+      ),
+      ["missing.md"],
+    );
+  assert.deepEqual(
+    markdownLinks('[bad](owner.ts "unfinished [good](test.ts "A title")'),
+    ["test.ts"],
+  );
+  assert.deepEqual(
+    markdownLinks('[outer](<text [inner](owner.ts "good")> "unfinished'),
+    ["owner.ts"],
+  );
+});
+
+test("container fences and indented code leave later real prose links visible", () => {
+  const ticks = String.fromCharCode(96);
+  const forms = [
+    "> " +
+      ticks.repeat(3) +
+      "markdown\n> [example](missing.md)\n> " +
+      ticks.repeat(4),
+    "- item\n\n    " +
+      ticks.repeat(3) +
+      "markdown\n    [example](missing.md)\n    " +
+      ticks.repeat(4),
+    "    [example](missing.md)\n    continued code",
+    "    - [example](missing.md)",
+    ">     - [example](missing.md)",
+    "- item\n\n      - [example](missing.md)",
+    "> ~~~markdown\n> [example](missing.md)\n> ~~~~",
+  ];
+  for (const example of forms)
+    assert.deepEqual(markdownLinks(example + "\n\n[real](owner.ts)"), [
+      "owner.ts",
+    ]);
+  assert.deepEqual(markdownLinks("- parent\n    - [required](missing.md)"), [
+    "missing.md",
+  ]);
+  assert.deepEqual(
+    markdownLinks(
+      "> " + ticks.repeat(3) + "\n> [example](ignored.md)\n[real](owner.ts)",
+    ),
+    ["owner.ts"],
+  );
+});
+
 test("malformed Markdown delimiter runs finish within a real child-process deadline", () => {
   const moduleUrl = new URL("./check-guidance.mjs", import.meta.url).href;
   const script = `const { markdownLinks } = await import(${JSON.stringify(moduleUrl)});
@@ -153,7 +203,12 @@ const malformed = "](".repeat(1_000_000);
 const unclosedParentheses = "](file(".repeat(200_000);
 const unicodeFences = ["\\u2028", "\\u2029"].map(separator => String.fromCharCode(96).repeat(1_000_000) + separator);
 for (const input of [malformed, unclosedParentheses, ...unicodeFences])
-  if (markdownLinks(input).length !== 0) process.exitCode = 1;`;
+  if (markdownLinks(input).length !== 0) process.exitCode = 1;
+for (const marker of [String.fromCharCode(34), String.fromCharCode(39), "("]) {
+  const malformedTitles = ("](owner.ts " + marker + "unfinished ").repeat(50_000) + "[good](owner.ts)";
+  const links = markdownLinks(malformedTitles);
+  if (links.length !== 1 || links[0] !== "owner.ts") process.exitCode = 1;
+}`;
   const result = spawnSync(
     process.execPath,
     ["--input-type=module", "-e", script],
@@ -358,11 +413,13 @@ test("navigation rejects malformed schemas, duplicate tasks and empty source cri
 });
 
 const createFixture = async (context) => {
-  const root = await mkdtemp(path.join(tmpdir(), "kernel-guidance-test-"));
+  const container = await mkdtemp(path.join(tmpdir(), "kernel-guidance-test-"));
+  const root = path.join(container, "project");
+  await mkdir(root);
   context.after(async () => {
-    assert.equal(path.dirname(root), path.resolve(tmpdir()));
-    assert.ok(path.basename(root).startsWith("kernel-guidance-test-"));
-    await rm(root, { recursive: true, force: true });
+    assert.equal(path.dirname(container), path.resolve(tmpdir()));
+    assert.ok(path.basename(container).startsWith("kernel-guidance-test-"));
+    await rm(container, { recursive: true, force: true });
   });
   const write = async (filename, content) => {
     const target = path.join(root, filename);
@@ -398,7 +455,7 @@ const createFixture = async (context) => {
   ])
     for (const suffix of [".md", ".fa.md"])
       await write("docs/" + name + suffix, "# Guide\n");
-  return { root, write, json, state, navigation, evaluation };
+  return { root, container, write, json, state, navigation, evaluation };
 };
 
 test("current guidance paths, instruction entrypoints and canonical matrix agree", async () => {
@@ -444,7 +501,7 @@ test("host adapters are optional but existing links and English-only instruction
   }
 });
 
-test("maintained guides accept real titled and parenthesized targets while preserving unsafe-path failures", async (context) => {
+test("maintained guides accept real titled and parenthesized targets", async (context) => {
   const { root, write } = await createFixture(context);
   await write("docs/file(name).md", "# Synthetic target\n");
   await write("docs/file (name).md", "# Synthetic spaced target\n");
@@ -464,23 +521,53 @@ test("maintained guides accept real titled and parenthesized targets while prese
     ].join("\n"),
   );
   assert.deepEqual((await checkGuidance(root)).errors, []);
+});
+
+test("local query targets and case-insensitive external schemes resolve correctly", async (context) => {
+  const { root, write } = await createFixture(context);
+  await write("docs/guide.md", "# Synthetic target\n");
+  await write(
+    "docs/source-navigation.md",
+    [
+      "[query](guide.md?plain=1#section)",
+      "[fragment](guide.md#section?literal)",
+      "[https](HTTPS://example.test/guide)",
+      "[mail](Mailto:guide@example.invalid)",
+      "[host](Codex://example)",
+    ].join("\n"),
+  );
+  assert.deepEqual((await checkGuidance(root)).errors, []);
+});
+
+test("unsafe existing destinations fail for safety while missing targets retain missing diagnostics", async (context) => {
+  const { root, container, write } = await createFixture(context);
+  await write(".env.local", "SYNTHETIC_UNREAD_SECRET_FIXTURE\n");
+  await writeFile(
+    path.join(container, "outside.md"),
+    "# Synthetic owned outside target\n",
+  );
   for (const destination of [
     "../.env.local",
+    "../.env.local?plain=1",
     "../../outside.md",
-    "missing(name).md",
   ]) {
     await write(
       "docs/source-navigation.md",
-      "`[example](ignored.md)`\n~~~\n[example](ignored-too.md)\n~~~\n" +
-        `[unsafe](${destination} "A title")\n`,
+      '[bad](owner.ts "unfinished\n[unsafe](' + destination + ' "A title")\n',
     );
     assert.ok(
-      (await checkGuidance(root)).errors.some((error) =>
-        error.includes(`guide link: docs/source-navigation.md: ${destination}`),
+      (await checkGuidance(root)).errors.includes(
+        "Unsafe guide link: docs/source-navigation.md: " + destination,
       ),
       destination,
     );
   }
+  await write("docs/source-navigation.md", "[missing](missing(name).md)\n");
+  assert.ok(
+    (await checkGuidance(root)).errors.includes(
+      "Missing or unsafe guide link: docs/source-navigation.md: missing(name).md",
+    ),
+  );
 });
 
 test("missing indexed paths, scripts and obsolete package containers fail validation", async (context) => {

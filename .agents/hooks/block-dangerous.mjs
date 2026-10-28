@@ -20,6 +20,7 @@ const hasVariable = (token) => /\$[A-Za-z_{0-9?*@#!-]/.test(token.expansion);
 const sensitivePath = (value) =>
   /(?:^|[/\\])\.env(?:\.|$)/i.test(value) ||
   /\.(?:pem|p12|key)$/i.test(value) ||
+  /(?:^|[/\\])credentials$/i.test(value) ||
   /credentials\.|secret\.|keystore/i.test(value);
 const commandName = (value) =>
   path.posix.basename(value.replaceAll("\\", "/")).toLowerCase();
@@ -31,6 +32,10 @@ const forceOption = (value) =>
   value === "--force-with-lease" ||
   value.startsWith("--force-with-lease=") ||
   (shortFlags(value) && /[fF]/.test(value));
+const branchDeletionOption = (value) =>
+  value === "--delete" ||
+  value.startsWith("--delete=") ||
+  (shortFlags(value) && /[dD]/.test(value));
 
 const escapedPiece = (command, index, doubleQuoted = false) => {
   const next = command[index + 1];
@@ -181,6 +186,10 @@ const attachedGitValue = (option) => {
 };
 const gitOptionWidth = (tokens, index) => {
   const option = tokens[index].value;
+  const configValue =
+    option === "-c" ? tokens[index + 1]?.value : option.slice(2);
+  if (option.startsWith("-c") && /^alias\./i.test(configValue ?? "")) return 0;
+
   if (gitFlags.has(option)) return 1;
   if (gitValueOptions.has(option))
     return literalGitValue(tokens[index + 1]) ? 2 : 0;
@@ -217,7 +226,11 @@ const inspectPush = (args) => {
   if (args.some((value) => forceOption(value) || value.startsWith("+")))
     return dangerousGit;
   const operands = pushOperands(args);
-  if (!operands || operands.length < 2)
+  if (
+    !operands ||
+    operands.length < 2 ||
+    operands.slice(1).some((value) => value === "HEAD" || value === ":")
+  )
     return "Implicit or unsupported push destination blocked. Use an explicit remote and refspec.";
   if (operands.slice(1).some(protectedRef))
     return "Direct push to main/master blocked. Ask the user first.";
@@ -227,13 +240,7 @@ const inspectGitAction = (action, args) => {
   if (action === "push") return inspectPush(args);
   if (action === "reset" && args.includes("--hard")) return dangerousGit;
   if (action === "clean" && args.some(forceOption)) return dangerousGit;
-  if (
-    action === "branch" &&
-    args.some(
-      (value) =>
-        value === "-D" || value === "--delete" || value.startsWith("--delete="),
-    )
-  )
+  if (action === "branch" && args.some(branchDeletionOption))
     return dangerousGit;
   return null;
 };
@@ -250,17 +257,28 @@ const inspectGit = (words) => {
 const assignment = (token) => /^[A-Za-z_]\w*=/.test(token.value);
 const executableWords = (words) => {
   let index = 0;
-  while (index < words.length && assignment(words[index])) index++;
+  while (index < words.length && assignment(words[index])) {
+    if (/^GIT_CONFIG(?:_|=)/.test(words[index].value)) return null;
+    index++;
+  }
+
   return words.slice(index);
 };
 const outputNames = new Set(["echo", "printf"]);
 const secretVariable = (token) =>
   [...token.expansion.matchAll(/\$\{?([A-Za-z_]\w*)/g)].some((match) =>
-    /TOKEN|API_KEY|SECRET|PASSWORD|CREDENTIAL/i.test(match[1]),
+    /TOKEN|API_KEY|ACCESS_KEY|SECRET|PASSWORD|CREDENTIAL/i.test(match[1]),
   );
+const exportOutput = (words) => {
+  const args = words.slice(1);
+  return (
+    args.every((word) => word.value.startsWith("-")) ||
+    args.some((word) => shortFlags(word.value) && word.value.includes("p"))
+  );
+};
 const exposesEnvironment = (name, words) =>
   name === "printenv" ||
-  (name === "export" && words.some((word) => word.value === "-p")) ||
+  (name === "export" && exportOutput(words)) ||
   (outputNames.has(name) && words.some(secretVariable));
 const secretOperands = (segment, name) => {
   if (segment.redirections.some(({ target }) => sensitivePath(target.value)))
@@ -270,7 +288,14 @@ const secretOperands = (segment, name) => {
     segment.words.some((word) => sensitivePath(word.value))
   );
 };
-const shellNames = new Set(["bash", "sh", "bash.exe", "sh.exe"]);
+const shellNames = new Set([
+  "bash",
+  "sh",
+  "dash",
+  "bash.exe",
+  "sh.exe",
+  "dash.exe",
+]);
 const unsupportedShellNames = new Set([
   "eval",
   "source",
@@ -283,6 +308,8 @@ const unsupportedShellNames = new Set([
   "while",
   "case",
   "function",
+  "xargs",
+  "xargs.exe",
 ]);
 const shellPayload = (words) => {
   let index = 1;
@@ -299,6 +326,8 @@ const inspectShell = (words, depth) => {
 };
 const inspectEnv = (segment, words, depth) => {
   const program = executableWords(words.slice(1));
+  if (program === null) return gitError;
+
   if (!program.length || program[0].value.startsWith("-"))
     return environmentError;
   return inspectSegment({ ...segment, words: program }, depth + 1);
@@ -310,6 +339,8 @@ const inspectWrapper = (segment, words, depth) => {
 const inspectSegment = (segment, depth) => {
   if (depth > 4) return shellError;
   const words = executableWords(segment.words);
+  if (words === null) return gitError;
+
   if (!words.length) return secretOperands(segment, "") ? secretError : null;
   if (hasVariable(words[0])) return shellError;
   const name = commandName(words[0].value);

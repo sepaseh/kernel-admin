@@ -314,6 +314,7 @@ const qualityFixture = async (context) => {
     `const fs = require("node:fs");
 const name = process.argv[2];
 fs.appendFileSync("checks.log", name + "\\n");
+if (name === "lint" && fs.existsSync("fail-lint")) process.exit(1);
 if (name === "typecheck" && fs.existsSync("fail-typecheck")) process.exit(1);
 `,
   );
@@ -363,6 +364,19 @@ test(
       assert.equal(result.status, 0, result.stderr);
       assert.deepEqual(await checkedCommands(root), ["lint", "typecheck"]);
     }
+  },
+);
+
+test(
+  "quality hook stops before typecheck when lint fails",
+  optionalBash,
+  async (context) => {
+    const root = await qualityFixture(context);
+    await rm(path.join(root, "src/tracked.ts"));
+    await writeFile(path.join(root, "fail-lint"), "synthetic failure\n");
+    const result = runOptionalHook(root, "quality-gate.sh", "");
+    assert.equal(result.status, 2, result.stderr);
+    assert.deepEqual(await checkedCommands(root), ["lint"]);
   },
 );
 

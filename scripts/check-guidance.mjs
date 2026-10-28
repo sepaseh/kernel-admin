@@ -257,16 +257,25 @@ export const validateNavigation = (navigation, evaluation, checks, exists) => {
   return errors;
 };
 
+class UnsafeGuidancePathError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "UnsafeGuidancePathError";
+  }
+}
+
 const checkedPath = async (root, filename) => {
   if (!isSafeGuidancePath(filename))
-    throw new Error(`Unsafe guidance path: ${filename}`);
+    throw new UnsafeGuidancePathError(`Unsafe guidance path: ${filename}`);
   const target = path.resolve(root, filename);
   if ((await lstat(target)).isSymbolicLink())
-    throw new Error(`Symbolic guidance path: ${filename}`);
+    throw new UnsafeGuidancePathError(`Symbolic guidance path: ${filename}`);
   const actual = await realpath(target);
   const relative = path.relative(root, actual).replaceAll(path.sep, "/");
   if (relative && !isSafeGuidancePath(relative))
-    throw new Error(`Guidance path escapes safe source: ${filename}`);
+    throw new UnsafeGuidancePathError(
+      `Guidance path escapes safe source: ${filename}`,
+    );
   return target;
 };
 const readSource = async (root, filename) =>
@@ -376,49 +385,143 @@ const markdownInventory = async (root) => {
   return { files, errors: trees.flatMap((entry) => entry.errors) };
 };
 const inspectMarkdownLink = async (root, filename, link) => {
-  if (/^(?:https?:|mailto:|codex:|#)/.test(link)) return [];
+  if (/^(?:https?:|mailto:|codex:|#)/i.test(link)) return [];
   try {
-    const target = decodeURIComponent(link.split("#")[0].replace(/^<|>$/g, ""));
+    const target = decodeURIComponent(
+      link.split(/[?#]/)[0].replace(/^<|>$/g, ""),
+    );
     const relative =
       path
         .relative(root, path.resolve(root, path.dirname(filename), target))
         .replaceAll(path.sep, "/") || ".";
     await checkedPath(root, relative);
     return [];
-  } catch {
-    return [`Missing or unsafe guide link: ${filename}: ${link}`];
+  } catch (error) {
+    const reason =
+      error instanceof UnsafeGuidancePathError
+        ? "Unsafe guide link"
+        : "Missing or unsafe guide link";
+    return [reason + ": " + filename + ": " + link];
   }
 };
-const markdownFence = (line) => {
-  let start = 0;
-  while (line[start] === " ") start++;
-  if (start > 3) return null;
-  const marker = line[start];
-  if (marker !== "`" && marker !== "~") return null;
-  let end = start;
+const markdownIndent = (line, start = 0) => {
+  let end = start,
+    width = 0;
+  while (line[end] === " " || line[end] === "\t") {
+    width += line[end] === "\t" ? 4 - (width % 4) : 1;
+    end++;
+  }
+  return { end, width };
+};
+const markdownQuote = (line) => {
+  let start = 0,
+    depth = 0;
+  while (start < line.length) {
+    const indent = markdownIndent(line, start);
+    if (indent.width > 3 || line[indent.end] !== ">") break;
+    depth++;
+    start = indent.end + 1;
+    if (line[start] === " " || line[start] === "\t") start++;
+  }
+  return { text: line.slice(start), depth };
+};
+const markdownFence = (line, base = 0) => {
+  const indent = markdownIndent(line);
+  if (indent.width - base > 3) return null;
+  const marker = line[indent.end];
+  if (marker !== "\x60" && marker !== "~") return null;
+  let end = indent.end;
   while (line[end] === marker) end++;
-  if (end - start < 3) return null;
-  return { marker, length: end - start, suffix: line.slice(end) };
+  if (end - indent.end < 3) return null;
+  return { marker, length: end - indent.end, suffix: line.slice(end) };
+};
+const markdownContainer = (quote, state) => {
+  if (quote.depth !== state.quoteDepth) {
+    state.lists = [];
+    state.paragraph = false;
+    state.indented = false;
+  }
+  state.quoteDepth = quote.depth;
+  const indent = markdownIndent(quote.text);
+  const blank = quote.text.trim() === "";
+  if (!blank)
+    while (state.lists.length && indent.width < state.lists.at(-1).content)
+      state.lists.pop();
+  const base = state.lists.at(-1)?.content ?? 0;
+  const code = indent.width - base >= 4 && (!state.paragraph || state.indented);
+  const list = code
+    ? null
+    : /^([-+*]|\d{1,9}[.)])[ \t]+/.exec(quote.text.slice(indent.end));
+  if (list) {
+    while (state.lists.length && state.lists.at(-1).marker >= indent.width)
+      state.lists.pop();
+    const content = indent.width + list[0].length;
+    state.lists.push({ marker: indent.width, content });
+    return {
+      blank,
+      relativeIndent: 0,
+      base: content,
+      fenceText: quote.text.slice(indent.end + list[0].length),
+      fenceBase: 0,
+    };
+  }
+  return {
+    blank,
+    relativeIndent: indent.width - base,
+    base,
+    fenceText: quote.text,
+    fenceBase: base,
+  };
+};
+const insideMarkdownFence = (quote, fence) =>
+  quote.text.trim() === "" ||
+  (quote.depth >= fence.depth &&
+    markdownIndent(quote.text).width >= fence.base);
+const closesMarkdownFence = (quote, fence) => {
+  const marker = markdownFence(quote.text, fence.base);
+  return (
+    quote.depth === fence.depth &&
+    marker?.marker === fence.marker &&
+    marker.length >= fence.length &&
+    marker.suffix.trim() === ""
+  );
 };
 const withoutMarkdownFences = (markdown) => {
-  let fence = null;
+  const state = {
+    fence: null,
+    lists: [],
+    quoteDepth: 0,
+    paragraph: false,
+    indented: false,
+  };
   return markdown
     .split("\n")
     .map((line) => {
-      const marker = markdownFence(line);
-      if (fence) {
-        if (
-          marker?.marker === fence.marker &&
-          marker.length >= fence.length &&
-          marker.suffix.trim() === ""
-        )
-          fence = null;
+      const quote = markdownQuote(line);
+      if (state.fence && insideMarkdownFence(quote, state.fence)) {
+        if (closesMarkdownFence(quote, state.fence)) state.fence = null;
         return "";
       }
-      if (!marker || (marker.marker === "`" && marker.suffix.includes("`")))
-        return line;
-      fence = marker;
-      return "";
+      state.fence = null;
+      const context = markdownContainer(quote, state);
+      const marker = markdownFence(context.fenceText, context.fenceBase);
+      if (
+        marker &&
+        !(marker.marker === "\x60" && marker.suffix.includes("\x60"))
+      ) {
+        state.fence = { ...marker, depth: quote.depth, base: context.base };
+        state.paragraph = false;
+        return "";
+      }
+      if (context.blank) {
+        state.paragraph = false;
+        return "";
+      }
+      state.indented =
+        context.relativeIndent >= 4 && (!state.paragraph || state.indented);
+      if (state.indented) return "";
+      state.paragraph = true;
+      return line;
     })
     .join("\n");
 };
@@ -507,15 +610,43 @@ const readMarkdownDestination = (text, start) => {
     destination: result.closed ? text.slice(start + 1, result.end - 1) : null,
   };
 };
-const finishMarkdownLink = (text, start) => {
+// Index each delimiter once so malformed-title recovery never rescans a suffix.
+const markdownDelimiterEnds = (text, closing) => {
+  const ends = new Uint32Array(text.length + 1);
+  let cursor = 0;
+  while (cursor < text.length) {
+    if (text[cursor] === "\\") cursor += 2;
+    else {
+      if (text[cursor] === closing) ends[cursor] = 1;
+      cursor++;
+    }
+  }
+  let next = 0;
+  for (let index = text.length - 1; index >= 0; index--) {
+    if (ends[index]) next = index + 1;
+    ends[index] = next;
+  }
+  return ends;
+};
+const readMarkdownTitle = (text, start, closing, endings) => {
+  if (!endings.has(closing))
+    endings.set(closing, markdownDelimiterEnds(text, closing));
+  const end = endings.get(closing)[start];
+  return { end: end || text.length, closed: end !== 0 };
+};
+const finishMarkdownLink = (text, start, endings) => {
   const cursor = skipMarkdownSpace(text, start);
   if (text[cursor] === ")") return { end: cursor + 1, closed: true };
   const closing = { '"': '"', "'": "'", "(": ")" }[text[cursor]];
   if (!closing || cursor === start) return { end: cursor, closed: false };
-  const title = readMarkdownDelimiter(text, cursor + 1, closing);
-  if (!title.closed) return title;
+  const title = readMarkdownTitle(text, cursor + 1, closing, endings);
+  if (!title.closed) return { ...title, recover: true };
   const end = skipMarkdownSpace(text, title.end);
-  return { end: end + 1, closed: text[end] === ")" };
+  return {
+    end: end + 1,
+    closed: text[end] === ")",
+    recover: text[end] !== ")",
+  };
 };
 const unescapeMarkdownDestination = (destination) =>
   destination.replace(/\\(.)/g, (escape, character) =>
@@ -525,7 +656,8 @@ const unescapeMarkdownDestination = (destination) =>
   );
 export const markdownLinks = (markdown) => {
   const prose = markdownProse(markdown);
-  const links = [];
+  const links = [],
+    endings = new Map();
   let cursor = 0;
   while (cursor < prose.length) {
     const opening = prose.indexOf("](", cursor);
@@ -533,11 +665,11 @@ export const markdownLinks = (markdown) => {
     const start = skipMarkdownSpace(prose, opening + 2);
     const result = readMarkdownDestination(prose, start);
     const ending = result.destination
-      ? finishMarkdownLink(prose, result.end)
+      ? finishMarkdownLink(prose, result.end, endings)
       : { end: result.end, closed: false };
     if (ending.closed)
       links.push(unescapeMarkdownDestination(result.destination));
-    cursor = Math.max(opening + 2, ending.end);
+    cursor = ending.recover ? opening + 2 : Math.max(opening + 2, ending.end);
   }
   return links;
 };
