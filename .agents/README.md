@@ -32,5 +32,6 @@ checks do not register these files with every assistant or prove automatic loadi
 
 Optional Node/Bash hooks require a compatible host and explicit integration.
 Portable Node safety regressions run independently of optional Bash cases; Bash
-wrappers require Bash and Node, while the post-edit formatter also requires jq.
+wrappers require Bash and Node. The post-edit formatter parses input with Node
+and fixes only the selected file through the project-local ESLint CLI.
 Hooks are neither runtime dependencies nor substitutes for the complete gate.

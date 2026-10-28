@@ -670,6 +670,7 @@ test("assistant guidance retains the complete workshop and requires every declar
   assert.equal(additions.length, 63);
   for (const missing of [
     ...additions,
+    "AGENTS.md",
     ".storybook/vite.config.ts",
     "src/shared/api/client.ts",
     "src/app/providers/core/Core.tsx",
@@ -709,6 +710,19 @@ test("assistant guidance retains the complete workshop and requires every declar
   assert.equal(result.applicationReady, false);
   assert.match(result.scope, /assistant-neutral instructions/);
   assert.match(result.scope, /no application entry point/);
+});
+
+test("the assistant entrypoint requirement does not change historical phase inventories", async () => {
+  const current = await historicalStorybookPolicy();
+  assert.ok(current.allowedFiles.includes("AGENTS.md"));
+  const withoutEntryPoint = current.allowedFiles.filter(
+    (file) => file !== "AGENTS.md",
+  );
+  assert.equal(
+    validateBootstrapPolicy({ ...current, allowedFiles: withoutEntryPoint })
+      .size,
+    current.allowedFiles.length - 1,
+  );
 });
 
 test("guidance artifacts cannot be backported into earlier publication phases", async () => {

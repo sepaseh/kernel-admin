@@ -16,6 +16,7 @@ const run = (payload) =>
     input: typeof payload === "string" ? payload : JSON.stringify(payload),
     encoding: "utf8",
     windowsHide: true,
+    timeout: 5_000,
   });
 
 test("portable safety policy blocks dangerous git commands before exposure checks", () => {
@@ -94,15 +95,21 @@ test("unsupported, incomplete and ambiguously quoted Git global options fail clo
   for (const command of [
     "git --unknown status",
     "git -C ; git push --force origin feature",
-    'git -C "synthetic folder" push --force origin feature',
-    "git -c 'color.ui=false' reset --hard HEAD~1",
-    "git -C synthetic\\ folder push --force origin feature",
     "git -C $TASK_DIR push --force origin feature",
   ])
     assert.match(
       inspectSafetyPayload({ command }),
       /Unsupported or ambiguous git options/,
     );
+});
+
+test("literal quoted Git option values retain dangerous-action checks", () => {
+  for (const command of [
+    'git -C "synthetic folder" push --force origin feature',
+    "git -c 'color.ui=false' reset --hard HEAD~1",
+    "git -C synthetic\\ folder push --force origin feature",
+  ])
+    assert.match(inspectSafetyPayload({ command }), /Dangerous git/);
 });
 
 test("portable safety policy protects secret paths, environment output and production inputs", () => {
@@ -162,4 +169,153 @@ test("portable safety CLI preserves policy exit codes and diagnostics", () => {
   const malformed = run("not-json");
   assert.equal(malformed.status, 2);
   assert.match(malformed.stderr, /invalid JSON/);
+});
+
+test("force clusters, forced refspecs and implicit push destinations are rejected", () => {
+  for (const command of [
+    "git push -uf origin feature",
+    "git push -fu origin feature",
+    "git push origin +HEAD:feature",
+    "git push origin",
+    "git push upstream",
+    "git push",
+    "git push --all origin",
+  ])
+    assert.notEqual(inspectSafetyPayload({ command }), null, command);
+
+  for (const command of [
+    "git push -u origin feature",
+    "git push --dry-run origin HEAD:feature",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("Git arguments end at shell boundaries while later commands remain inspected", () => {
+  for (const separator of ["&&", ";", "|", "\n"]) {
+    assert.equal(
+      inspectSafetyPayload({
+        command: `git push origin feature ${separator} echo main`,
+      }),
+      null,
+    );
+    assert.notEqual(
+      inspectSafetyPayload({
+        command: `git push origin feature ${separator} git push --force origin feature`,
+      }),
+      null,
+    );
+  }
+  assert.equal(
+    inspectSafetyPayload({
+      command: "git push origin feature && cat docs/main",
+    }),
+    null,
+  );
+  assert.equal(
+    inspectSafetyPayload({
+      command: "printf '%s' 'git push --force origin main'",
+    }),
+    null,
+  );
+});
+
+test("literal nested shells and qualified Git executables retain safety checks", () => {
+  for (const command of [
+    "bash -c 'git push --force origin feature'",
+    'sh -c "git push --force origin feature"',
+    "bash -lc 'git push origin main'",
+    "/usr/bin/git push --force origin feature",
+    '"C:/Program Files/Git/cmd/git.exe" push -uf origin feature',
+  ])
+    assert.notEqual(inspectSafetyPayload({ command }), null, command);
+
+  for (const command of [
+    "bash -c 'git status --short'",
+    "sh -c 'printf synthetic'",
+    "/usr/bin/git status --short",
+    "cd ~/src/git && make",
+    "printf '%s' '/usr/bin/git push --force origin feature'",
+    'git -C "synthetic folder" status --short',
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("secret variable output and bare env redirection are rejected without exposing values", () => {
+  for (const command of [
+    "printf '%s\\n' \"$TOKEN\"",
+    "printf '%s' \"${API_KEY}\"",
+    "env > environment.txt",
+    "env >environment.txt",
+    "env>environment.txt",
+    "env 1>environment.txt",
+    "env >>environment.txt",
+    ">environment.txt env",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Environment variable exposure/,
+      command,
+    );
+
+  for (const command of [
+    "printf '%s' synthetic",
+    "printf '%s' '$TOKEN'",
+    "echo '$TOKEN'",
+    "env TEST_MODE=synthetic node fixture.mjs > fixture-output.txt",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("shell operands and redirection targets protect secret files with quote handling", () => {
+  for (const command of [
+    "sed -i 's/X=0/X=1/' .env",
+    "sed -i 's/X=0/X=1/' .env.local",
+    'cat ".env.local"',
+    "printf synthetic >.env",
+    "cat < .env",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /secret or credential/,
+      command,
+    );
+
+  for (const command of [
+    "cat docs/example.md",
+    "printf '%s' '.env is a protected filename'",
+    "printf synthetic > fixture-output.txt",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("uncertain shell syntax and excessive literal shell nesting fail closed", () => {
+  for (const command of [
+    "git -C 'unfinished status",
+    "git -C $TASK_DIR push --force origin feature",
+    'bash -c "$SCRIPT"',
+    "bash synthetic.sh",
+    "$(synthetic-command)",
+    "`synthetic-command`",
+    "cat <<EOF",
+    "$'git' push --force origin feature",
+    '$"git" push --force origin feature',
+    "command -p git push --force origin feature",
+    "sudo -u synthetic git push --force origin feature",
+    "env env env env env env git status",
+    "x".repeat(65_537),
+  ])
+    assert.notEqual(inspectSafetyPayload({ command }), null, command);
+
+  let command = "git status";
+  for (let index = 0; index < 6; index++)
+    command = "bash -c " + JSON.stringify(command);
+  assert.notEqual(inspectSafetyPayload({ command }), null);
+});
+
+test("non-IFS whitespace cannot stall literal command scanning", () => {
+  for (const whitespace of ["\f", "\v", "\u00a0", "\u2003"]) {
+    const result = run({ command: "synthetic" + whitespace + "argument" });
+    assert.equal(result.error, undefined, result.error?.message);
+    assert.equal(result.status, 0, result.stderr);
+  }
 });

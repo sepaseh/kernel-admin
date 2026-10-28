@@ -36,7 +36,7 @@ for a genuinely missing action boundary. This phase is `assistant-guidance` with
    or commit while a required check still fails or cannot run; report unresolved
    blockers without bypassing the gate.
 5. Stage only the files that belong to the requested change.
-6. Use a concise commit message with a first line under 72 characters.
+6. Use a concise commit message with a first line of 72 characters or fewer.
 
 ## Rules
 

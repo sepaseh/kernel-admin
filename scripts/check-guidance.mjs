@@ -389,17 +389,151 @@ const inspectMarkdownLink = async (root, filename, link) => {
     return [`Missing or unsafe guide link: ${filename}: ${link}`];
   }
 };
-export const markdownLinks = (prose) => {
+const markdownFence = (line) => {
+  let start = 0;
+  while (line[start] === " ") start++;
+  if (start > 3) return null;
+  const marker = line[start];
+  if (marker !== "`" && marker !== "~") return null;
+  let end = start;
+  while (line[end] === marker) end++;
+  if (end - start < 3) return null;
+  return { marker, length: end - start, suffix: line.slice(end) };
+};
+const withoutMarkdownFences = (markdown) => {
+  let fence = null;
+  return markdown
+    .split("\n")
+    .map((line) => {
+      const marker = markdownFence(line);
+      if (fence) {
+        if (
+          marker?.marker === fence.marker &&
+          marker.length >= fence.length &&
+          marker.suffix.trim() === ""
+        )
+          fence = null;
+        return "";
+      }
+      if (!marker || (marker.marker === "`" && marker.suffix.includes("`")))
+        return line;
+      fence = marker;
+      return "";
+    })
+    .join("\n");
+};
+const escapedMarkdownMarker = (text, start) => {
+  let cursor = start;
+  while (cursor > 0 && text[cursor - 1] === "\\") cursor--;
+  return (start - cursor) % 2 === 1;
+};
+const markdownCodeRuns = (text) => {
+  const runs = [...text.matchAll(/`+/g)].map((match) => ({
+    start: match.index,
+    end: match.index + match[0].length,
+    length: match[0].length,
+    escaped: escapedMarkdownMarker(text, match.index),
+  }));
+  const byLength = new Map();
+  for (let index = runs.length - 1; index >= 0; index--) {
+    const run = runs[index];
+    run.next = byLength.get(run.length);
+    byLength.set(run.length, index);
+  }
+  return runs;
+};
+const markdownProse = (markdown) => {
+  const text = withoutMarkdownFences(markdown);
+  const runs = markdownCodeRuns(text),
+    parts = [];
+  let cursor = 0;
+  for (let index = 0; index < runs.length; index++) {
+    const run = runs[index];
+    if (run.escaped || run.next === undefined) continue;
+    parts.push(text.slice(cursor, run.start), " ");
+    index = run.next;
+    cursor = runs[index].end;
+  }
+  parts.push(text.slice(cursor));
+  return parts.join("");
+};
+const skipMarkdownSpace = (text, start) => {
+  let cursor = start;
+  while (cursor < text.length && /\s/.test(text[cursor])) cursor++;
+  return cursor;
+};
+const readMarkdownDelimiter = (text, start, closing, forbidden = "") => {
+  let cursor = start;
+  while (cursor < text.length) {
+    const character = text[cursor];
+    if (character === "\\") {
+      cursor += 2;
+      continue;
+    }
+    if (character === closing) return { end: cursor + 1, closed: true };
+    if (forbidden.includes(character)) break;
+    cursor++;
+  }
+  return { end: cursor, closed: false };
+};
+const readBareMarkdownDestination = (text, start) => {
+  let cursor = start,
+    depth = 0;
+  while (cursor < text.length) {
+    const character = text[cursor];
+    if (character === "\\") {
+      cursor += 2;
+      continue;
+    }
+    if (/\s/.test(character) || (character === ")" && depth === 0)) break;
+    if (character === "(") depth++;
+    if (character === ")") depth--;
+    cursor++;
+  }
+  return {
+    end: cursor,
+    destination: depth === 0 ? text.slice(start, cursor) : null,
+  };
+};
+const readMarkdownDestination = (text, start) => {
+  if (text[start] !== "<") return readBareMarkdownDestination(text, start);
+  const result = readMarkdownDelimiter(text, start + 1, ">", "<\n\r");
+  return {
+    end: result.end,
+    destination: result.closed ? text.slice(start + 1, result.end - 1) : null,
+  };
+};
+const finishMarkdownLink = (text, start) => {
+  const cursor = skipMarkdownSpace(text, start);
+  if (text[cursor] === ")") return { end: cursor + 1, closed: true };
+  const closing = { '"': '"', "'": "'", "(": ")" }[text[cursor]];
+  if (!closing || cursor === start) return { end: cursor, closed: false };
+  const title = readMarkdownDelimiter(text, cursor + 1, closing);
+  if (!title.closed) return title;
+  const end = skipMarkdownSpace(text, title.end);
+  return { end: end + 1, closed: text[end] === ")" };
+};
+const unescapeMarkdownDestination = (destination) =>
+  destination.replace(/\\(.)/g, (escape, character) =>
+    "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~".includes(character)
+      ? character
+      : escape,
+  );
+export const markdownLinks = (markdown) => {
+  const prose = markdownProse(markdown);
   const links = [];
   let cursor = 0;
   while (cursor < prose.length) {
     const opening = prose.indexOf("](", cursor);
     if (opening === -1) break;
-    const start = opening + 2;
-    const closing = prose.indexOf(")", start);
-    if (closing === -1) break;
-    if (closing > start) links.push(prose.slice(start, closing));
-    cursor = closing + 1;
+    const start = skipMarkdownSpace(prose, opening + 2);
+    const result = readMarkdownDestination(prose, start);
+    const ending = result.destination
+      ? finishMarkdownLink(prose, result.end)
+      : { end: result.end, closed: false };
+    if (ending.closed)
+      links.push(unescapeMarkdownDestination(result.destination));
+    cursor = Math.max(opening + 2, ending.end);
   }
   return links;
 };
@@ -420,12 +554,8 @@ const inspectMarkdown = async (root, filename) => {
       `Missing or unsafe maintained guide: ${filename}: ${error.message}`,
     ];
   }
-  const prose = content
-    .split("```")
-    .filter((_, index) => index % 2 === 0)
-    .join("");
   const links = await Promise.all(
-    markdownLinks(prose).map((link) =>
+    markdownLinks(content).map((link) =>
       inspectMarkdownLink(root, filename, link),
     ),
   );

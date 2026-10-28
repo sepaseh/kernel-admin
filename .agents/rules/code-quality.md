@@ -17,7 +17,7 @@ unused-code/performance tooling are not published phase checks.
 
 ## Autofix workflow
 
-- Let ESLint handle import sorting and style object ordering.
+- Let ESLint handle import sorting. Check style-object property order directly, as described in [styling](styling.md).
 - Use `npm run lint:fix` when safe to auto-fix formatting/lint issues.
 - Never sort imports manually if ESLint can do it.
 - Do not introduce a formatter or new tooling unless the user asks.

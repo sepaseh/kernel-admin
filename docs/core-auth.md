@@ -86,7 +86,7 @@ checks that aborted login/registration cannot install tokens. Regression tests
 for the token race, late login navigation and invalid-mobile feedback fail
 against the preceding behavior.
 
-The canonical [complete canonical phase gate](../.agents/validation.json) measures every
+The canonical [complete phase gate](../.agents/validation.json) measures every
 published production module. It includes types, formatting, lint, dependency and
 boundary checks plus real unit/governance coverage. [Storybook verification](storybook-verification.md)
 adds a required static workshop build and real Chromium play/accessibility checks

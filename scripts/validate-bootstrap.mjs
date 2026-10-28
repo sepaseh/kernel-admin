@@ -434,6 +434,7 @@ const requiredFilesForPhase = (phase) => [
   ...(supportsPhase(phase, "business-screens") ? businessFiles : []),
   ...(supportsPhase(phase, "storybook-verification") ? storybookFiles : []),
   ...(supportsPhase(phase, "assistant-guidance") ? guidanceFiles : []),
+  ...(supportsPhase(phase, "assistant-guidance") ? ["AGENTS.md"] : []),
 ];
 
 export const validateBootstrapPolicy = (policy) => {

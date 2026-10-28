@@ -12,7 +12,7 @@ cd "$PROJECT_DIR" || exit 0
 
 MODIFIED=$(
   {
-    git diff --name-only --diff-filter=ACMR HEAD 2>/dev/null
+    git diff --name-only --no-renames HEAD 2>/dev/null
     git ls-files --others --exclude-standard 2>/dev/null
   } | grep -E '\.(ts|tsx)$' | sort -u || true
 )

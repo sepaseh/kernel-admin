@@ -88,20 +88,72 @@ const workflows = ({ ci, sonar }) => ({
 const inspect = (state) =>
   validateManifest(state.manifest, state.settings, workflows(state));
 
-test("Markdown scanning preserves consumed nonempty targets and ignores empty or unfinished links", () => {
+test("Markdown scanning ignores empty or unfinished links and preserves later valid targets", () => {
   assert.deepEqual(
-    markdownLinks("[one](owner.ts) []() [nested](two](part) [unfinished](tail"),
-    ["owner.ts", "two](part"],
+    markdownLinks("[one](owner.ts) []() [two](next.md) [unfinished](tail"),
+    ["owner.ts", "next.md"],
   );
+  assert.deepEqual(markdownLinks("[nested](two](part)"), []);
   assert.deepEqual(markdownLinks("]()](next.md)"), ["next.md"]);
   assert.deepEqual(markdownLinks("ordinary prose"), []);
+});
+
+test("Markdown destinations retain balanced or escaped parentheses and exclude optional titles", () => {
+  assert.deepEqual(
+    markdownLinks(
+      [
+        "[nested](docs/file(one(two)).md)",
+        "[escaped](docs/file\\(name\\).md)",
+        '[quoted](docs/file.md "A title (with parentheses)")',
+        "[single](docs/file.md 'A title')",
+        "[parenthesized](docs/file.md (A title))",
+        '[angle](<docs/file (name).md> "A title")',
+        "[external](https://example.test/file(name))",
+      ].join("\n"),
+    ),
+    [
+      "docs/file(one(two)).md",
+      "docs/file(name).md",
+      "docs/file.md",
+      "docs/file.md",
+      "docs/file.md",
+      "docs/file (name).md",
+      "https://example.test/file(name)",
+    ],
+  );
+});
+
+test("Markdown code examples are ignored while prose links stay visible", () => {
+  const markdown = [
+    "Inline `[example](missing-inline.md)` and ``[example](missing-double.md) ` ``.",
+    "~~~markdown",
+    "[example](missing-tilde.md)",
+    "~~~",
+    "````markdown",
+    "```",
+    "[example](missing-long-fence.md)",
+    "```",
+    "````",
+    "[real](owner.ts)",
+    "\\`[escaped-code-marker](test.ts)",
+    "]`example`(must-not-be-manufactured.md)",
+    "An unmatched ` marker preserves [real](../.env.local).",
+  ].join("\n");
+  assert.deepEqual(markdownLinks(markdown), [
+    "owner.ts",
+    "test.ts",
+    "../.env.local",
+  ]);
 });
 
 test("malformed Markdown delimiter runs finish within a real child-process deadline", () => {
   const moduleUrl = new URL("./check-guidance.mjs", import.meta.url).href;
   const script = `const { markdownLinks } = await import(${JSON.stringify(moduleUrl)});
 const malformed = "](".repeat(1_000_000);
-if (markdownLinks(malformed).length !== 0) process.exitCode = 1;`;
+const unclosedParentheses = "](file(".repeat(200_000);
+const unicodeFences = ["\\u2028", "\\u2029"].map(separator => String.fromCharCode(96).repeat(1_000_000) + separator);
+for (const input of [malformed, unclosedParentheses, ...unicodeFences])
+  if (markdownLinks(input).length !== 0) process.exitCode = 1;`;
   const result = spawnSync(
     process.execPath,
     ["--input-type=module", "-e", script],
@@ -389,6 +441,45 @@ test("host adapters are optional but existing links and English-only instruction
       ),
     );
     await rm(path.join(root, translated));
+  }
+});
+
+test("maintained guides accept real titled and parenthesized targets while preserving unsafe-path failures", async (context) => {
+  const { root, write } = await createFixture(context);
+  await write("docs/file(name).md", "# Synthetic target\n");
+  await write("docs/file (name).md", "# Synthetic spaced target\n");
+  await write(
+    "docs/source-navigation.md",
+    [
+      "[balanced](file(name).md)",
+      "[escaped](file\\(name\\).md)",
+      '[titled](file(name).md "A title")',
+      "[single](file(name).md 'A title')",
+      '[angle](<file (name).md> "A title")',
+      "`[example](missing-inline.md)`",
+      "~~~markdown",
+      "[example](missing-fenced.md)",
+      "~~~",
+      "[real](../owner.ts)",
+    ].join("\n"),
+  );
+  assert.deepEqual((await checkGuidance(root)).errors, []);
+  for (const destination of [
+    "../.env.local",
+    "../../outside.md",
+    "missing(name).md",
+  ]) {
+    await write(
+      "docs/source-navigation.md",
+      "`[example](ignored.md)`\n~~~\n[example](ignored-too.md)\n~~~\n" +
+        `[unsafe](${destination} "A title")\n`,
+    );
+    assert.ok(
+      (await checkGuidance(root)).errors.some((error) =>
+        error.includes(`guide link: docs/source-navigation.md: ${destination}`),
+      ),
+      destination,
+    );
   }
 });
 
