@@ -256,6 +256,106 @@ test("quoted fences end on lower-depth blank lines while container blanks stay i
   }
 });
 
+test("code-span paragraphs retain indented prose while standalone comments do not", () => {
+  for (const text of [
+    "`code`\n    [broken](missing.md)",
+    "``code ` example``\n\t[broken](missing.md)",
+    "`code` <!-- note -->\n    [broken](missing.md)",
+    "`multiline\ncode`\n    [broken](missing.md)",
+    "> `code`\n>     [broken](missing.md)",
+    "- `code`\n      [broken](missing.md)",
+  ])
+    for (const source of [text, text.replaceAll("\n", "\r\n")])
+      assert.deepEqual(markdownLinks(source), ["missing.md"], source);
+  for (const text of [
+    "<!-- note -->\n    [example](ignored.md)",
+    "<!-- note --> `code`\n    [example](ignored.md)",
+    "<!--\nnote\n-->\n    [example](ignored.md)",
+    "`code`\n\n    [example](ignored.md)",
+    "#\n    [example](ignored.md)",
+    "* * *\n    [example](ignored.md)",
+    "- - -\n    [example](ignored.md)",
+    "- parent\n  * * *\n      [example](ignored.md)",
+  ])
+    for (const source of [text, text.replaceAll("\n", "\r\n")])
+      assert.deepEqual(markdownLinks(source), [], source);
+});
+
+test("inline code pairing respects paragraph blocks and preserves lazy continuations", () => {
+  for (const text of [
+    "` [broken](missing.md)\n\nclosing`",
+    "` [broken](missing.md)\n> closing`",
+    "` [broken](missing.md)\n\n> closing`",
+    "- `[broken](missing.md)\n- closing`",
+    "` [broken](missing.md)\n1. closing`",
+    "1. `[broken](missing.md)\nlazy\n2. closing`",
+    "> 1. `[broken](missing.md)\nlazy\n> 2. closing`",
+    "1. `[broken](missing.md)\nlazy\n2.\nclosing`",
+    "` [broken](missing.md)\n# heading`",
+    "# heading `[broken](missing.md)\nclosing`",
+    "` [broken](missing.md)\n---\nclosing`",
+    "` [broken](missing.md)\n===\nclosing`",
+  ])
+    for (const source of [text, text.replaceAll("\n", "\r\n")])
+      assert.deepEqual(markdownLinks(source), ["missing.md"], source);
+  for (const text of [
+    "> `[example](ignored.md)\nclosing`",
+    "> > `[example](ignored.md)\n> closing`",
+    "> `[example](ignored.md)\nclosing\n> end`",
+    "- `[example](ignored.md)\n  closing`",
+    "- `[example](ignored.md)\nclosing`",
+    "` [example](ignored.md)\n2. closing`",
+    "` [example](ignored.md)\n2. continuation\n3. closing`",
+    "` [example](ignored.md)\n2. continuation\n2. closing`",
+    "` [example](ignored.md)\n#not-heading`",
+    "` [example](ignored.md)\n+\nclosing`",
+  ])
+    for (const source of [text, text.replaceAll("\n", "\r\n")])
+      assert.deepEqual(markdownLinks(source), [], source);
+});
+
+test("outdented blank quotes end list-contained fences and comments", () => {
+  for (const opener of ["~~~", String.fromCharCode(96).repeat(3), "<!--"]) {
+    const closer = opener === "<!--" ? "-->" : opener;
+    assert.deepEqual(
+      markdownLinks(
+        "- > " +
+          opener +
+          "\n  > [example](ignored.md)\n>\n  > [broken](missing.md)",
+      ),
+      ["missing.md"],
+      opener,
+    );
+    for (const text of [
+      "- > " + opener + "\n  >\n  > [example](ignored.md)\n  > " + closer,
+      "- \t> " + opener + "\n\t>\n\t> [example](ignored.md)\n\t> " + closer,
+    ])
+      assert.deepEqual(markdownLinks(text + "\n\n[real](owner.ts)"), [
+        "owner.ts",
+      ]);
+  }
+});
+
+test("paragraph boundaries distinguish ASCII blanks, CRLF and Unicode paragraph text", () => {
+  assert.deepEqual(
+    markdownLinks("`[example](ignored.md)\n\u00a0\n` [real](owner.ts)"),
+    ["owner.ts"],
+  );
+  for (const text of [
+    "`code`\r\n    [broken](missing.md)",
+    "` [broken](missing.md)\r\n\r\nclosing`",
+    "` [broken](missing.md)\r\n\r\n> closing`",
+    "- > ~~~\r\n  > [example](ignored.md)\r\n>\r\n  > [broken](missing.md)",
+  ])
+    assert.deepEqual(markdownLinks(text), ["missing.md"], text);
+  assert.deepEqual(
+    markdownLinks(
+      "~~~\r\n\r\n[example](ignored.md)\r\n~~~\r\n[real](owner.ts)",
+    ),
+    ["owner.ts"],
+  );
+});
+
 test("HTML comments hide only commented links, including an unfinished comment", () => {
   for (const text of [
     "[before](owner.ts) <!-- [example](ignored.md) --> [after](test.ts)",
@@ -342,12 +442,18 @@ const unclosedParentheses = "](file(".repeat(200_000);
 const labeledUnclosedParentheses = "[bad](file(".repeat(200_000);
 const labeledOpenings = "[bad](".repeat(200_000);
 const unclosedComments = "<!--".repeat(200_000);
+const thematicWhitespace = "- ".repeat(500_000);
 const unicodeFences = ["\\u2028", "\\u2029"].map(separator => String.fromCharCode(96).repeat(1_000_000) + separator);
-for (const input of [malformed, unclosedParentheses, labeledUnclosedParentheses, labeledOpenings, unclosedComments, ...unicodeFences])
+for (const input of [malformed, unclosedParentheses, labeledUnclosedParentheses, labeledOpenings, unclosedComments, thematicWhitespace, ...unicodeFences])
   if (markdownLinks(input).length !== 0) process.exitCode = 1;
 const commentedMarkers = "<!--\\n" + ("~~~\\n" + String.fromCharCode(96) + "[bad](missing.md)" + String.fromCharCode(96) + "\\n").repeat(50_000) + "-->\\n[good](owner.ts)";
 const visible = markdownLinks(commentedMarkers);
 if (visible.length !== 1 || visible[0] !== "owner.ts") process.exitCode = 1;
+const nestedLists = Array.from({length: 512}, (_, index) => " ".repeat(index * 2) + "- item").join("\\n");
+const tick = String.fromCharCode(96);
+const lazyList = nestedLists + "\\n" + " ".repeat(1024) + tick + "[hidden](missing.md)" + "\\nlazy".repeat(100_000) + "\\nclosing" + tick + " [good](owner.ts)";
+const lazyLinks = markdownLinks(lazyList);
+if (lazyLinks.length !== 1 || lazyLinks[0] !== "owner.ts") process.exitCode = 1;
 for (const marker of [String.fromCharCode(34), String.fromCharCode(39), "("]) {
   const malformedTitles = ("[bad](owner.ts " + marker + "unfinished ").repeat(50_000) + "[good](owner.ts)";
   const links = markdownLinks(malformedTitles);
@@ -695,16 +801,22 @@ test("unsafe existing destinations fail for safety while missing targets retain 
     "../.env.local?plain=1",
     "../../outside.md",
   ]) {
-    await write(
-      "docs/source-navigation.md",
+    for (const text of [
       '[bad](owner.ts "unfinished\n[unsafe](' + destination + ' "A title")\n',
-    );
-    assert.ok(
-      (await checkGuidance(root)).errors.includes(
-        "Unsafe guide link: docs/source-navigation.md: " + destination,
-      ),
-      destination,
-    );
+      "`code`\n    [unsafe](" + destination + ")\n",
+      "` [unsafe](" + destination + ")\n\n> closing`\n",
+      "- > ~~~\n  > [example](ignored.md)\n>\n  > [unsafe](" +
+        destination +
+        ")\n",
+    ]) {
+      await write("docs/source-navigation.md", text);
+      assert.ok(
+        (await checkGuidance(root)).errors.includes(
+          "Unsafe guide link: docs/source-navigation.md: " + destination,
+        ),
+        text,
+      );
+    }
   }
   await write("docs/source-navigation.md", "[missing](missing(name).md)\n");
   assert.ok(
