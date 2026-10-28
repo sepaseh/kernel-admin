@@ -2,7 +2,9 @@
 
 [English](storybook-verification.md) · [فارسی](storybook-verification.fa.md)
 
-The `storybook-verification` phase adds an isolated component workshop to the
+The current `assistant-guidance` publication inherits this workshop and adds guidance consistency to the [canonical full gate](../.agents/validation.json). The workshop remains isolated component evidence with `applicationReady: false`.
+
+The earlier `storybook-verification` phase introduced an isolated component workshop to the
 published UI, Core/authentication and business modules. `applicationReady: false`
 remains deliberate: there is no application entry point or assembled App/Routes
 tree. A static workshop build and component interactions in Chromium do not
@@ -64,10 +66,7 @@ npm run validate -- full
 dependencies. CI performs this installation after `npm ci` and before the
 unconditional canonical full gate in its existing `check` job.
 
-The [canonical manifest](../.agents/validation.json) contains eleven required
-checks: the previous nine snapshot, CI-policy, audit, boundaries, type, lint,
-formatting, unit-coverage and governance checks, plus `build-storybook` and
-`test:storybook`. The build produces real static output under
+The current [canonical manifest](../.agents/validation.json) retains the snapshot, CI-policy, audit, boundaries, type, lint, formatting, unit-coverage and governance checks, plus `build-storybook`, `test:storybook` and guidance consistency. The build produces real static output under
 `coverage/storybook-static`. The separate
 [browser project](../vitest.storybook.config.ts) runs all registered stories and
 their play assertions in real headless Chromium through Playwright.

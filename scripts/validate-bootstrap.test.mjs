@@ -62,6 +62,39 @@ const isStorybookPhaseFile = (file) =>
     file,
   );
 
+const isGuidancePhaseFile = (file) =>
+  (file.startsWith(".agents/") && file !== ".agents/validation.json") ||
+  file.startsWith(".claude/") ||
+  [
+    ".github/CODEOWNERS",
+    ".github/dependabot.yml",
+    "CLAUDE.md",
+    "DESIGN.md",
+    "DESIGN.fa.md",
+  ].includes(file) ||
+  /^docs\/(?:README|ai-code-understanding|change-workflow|comprehension-evaluation|feature-development|quality-attributes|source-navigation|testing|validation)(?:\.fa)?\.md$/.test(
+    file,
+  ) ||
+  /^scripts\/(?:ai-hooks(?:\.portable)?\.test|check-guidance|guidance\.test)\.mjs$/.test(
+    file,
+  );
+
+const historicalStorybookPolicy = async () => {
+  const latest = JSON.parse(
+    await readFile(
+      new URL("../.github/bootstrap-policy.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  return {
+    ...latest,
+    phase: "storybook-verification",
+    allowedFiles: latest.allowedFiles.filter(
+      (file) => !isGuidancePhaseFile(file),
+    ),
+  };
+};
+
 const foundationFiles = [
   ...coreFiles.filter((file) => file !== ".github/workflows/bootstrap.yml"),
   ".agents/validation.json",
@@ -422,12 +455,7 @@ test("runtime-localization inspects its exact non-runnable inventory", async (co
 });
 
 test("UI foundation requires the complete previous HTTP closure and forbids application composition", async (context) => {
-  const latest = JSON.parse(
-    await readFile(
-      new URL("../.github/bootstrap-policy.json", import.meta.url),
-      "utf8",
-    ),
-  );
+  const latest = await historicalStorybookPolicy();
   const current = {
     ...latest,
     phase: "ui-foundation",
@@ -488,12 +516,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
 });
 
 test("core-auth preserves its complete prior closure, owners and tests without a runnable entry", async (context) => {
-  const latest = JSON.parse(
-    await readFile(
-      new URL("../.github/bootstrap-policy.json", import.meta.url),
-      "utf8",
-    ),
-  );
+  const latest = await historicalStorybookPolicy();
   const current = {
     ...latest,
     phase: "core-auth",
@@ -541,12 +564,7 @@ test("core-auth preserves its complete prior closure, owners and tests without a
 });
 
 test("business screens require the complete prior closure and all guarded form modules without application or Storybook composition", async (context) => {
-  const latest = JSON.parse(
-    await readFile(
-      new URL("../.github/bootstrap-policy.json", import.meta.url),
-      "utf8",
-    ),
-  );
+  const latest = await historicalStorybookPolicy();
   const current = {
     ...latest,
     phase: "business-screens",
@@ -599,12 +617,7 @@ test("business screens require the complete prior closure and all guarded form m
 });
 
 test("Storybook verification requires every explicit story, isolated configuration and browser fixture without publishing an application", async (context) => {
-  const current = JSON.parse(
-    await readFile(
-      new URL("../.github/bootstrap-policy.json", import.meta.url),
-      "utf8",
-    ),
-  );
+  const current = await historicalStorybookPolicy();
   assert.equal(current.phase, "storybook-verification");
   const required = current.allowedFiles.filter(isStorybookPhaseFile);
   assert.equal(required.length, 37);
@@ -642,4 +655,91 @@ test("Storybook verification requires every explicit story, isolated configurati
   assert.equal(result.files, current.allowedFiles.length);
   assert.equal(result.applicationReady, false);
   assert.match(result.scope, /real Chromium component interactions/);
+});
+
+test("assistant guidance retains the complete workshop and requires every declared guidance artifact", async (context) => {
+  const current = JSON.parse(
+    await readFile(
+      new URL("../.github/bootstrap-policy.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.equal(current.phase, "assistant-guidance");
+  assert.equal(validateBootstrapPolicy(current).size, 366);
+  const additions = current.allowedFiles.filter(isGuidancePhaseFile);
+  assert.equal(additions.length, 63);
+  for (const missing of [
+    ...additions,
+    "AGENTS.md",
+    ".storybook/vite.config.ts",
+    "src/shared/api/client.ts",
+    "src/app/providers/core/Core.tsx",
+  ]) {
+    assert.throws(
+      () =>
+        validateBootstrapPolicy({
+          ...current,
+          allowedFiles: current.allowedFiles.filter((file) => file !== missing),
+        }),
+      /mandatory/,
+    );
+  }
+  for (const file of [
+    "index.html",
+    "src/main.tsx",
+    "src/app/App.tsx",
+    "src/app/Routes.tsx",
+    "vite.config.ts",
+    ".agents/hooks/unlisted.mjs",
+    ".claude/skills/unlisted/SKILL.md",
+    "server/data/live.sqlite",
+  ]) {
+    assert.throws(() =>
+      validateBootstrapPolicy({
+        ...current,
+        allowedFiles: [...current.allowedFiles, file],
+      }),
+    );
+  }
+  assert.throws(() =>
+    validateBootstrapPolicy({ ...current, applicationReady: true }),
+  );
+  const { root } = await fixture(context, current);
+  const result = await inspectBootstrap(root);
+  assert.equal(result.files, 366);
+  assert.equal(result.applicationReady, false);
+  assert.match(result.scope, /assistant-neutral instructions/);
+  assert.match(result.scope, /no application entry point/);
+});
+
+test("the assistant entrypoint requirement does not change historical phase inventories", async () => {
+  const current = await historicalStorybookPolicy();
+  assert.ok(current.allowedFiles.includes("AGENTS.md"));
+  const withoutEntryPoint = current.allowedFiles.filter(
+    (file) => file !== "AGENTS.md",
+  );
+  assert.equal(
+    validateBootstrapPolicy({ ...current, allowedFiles: withoutEntryPoint })
+      .size,
+    current.allowedFiles.length - 1,
+  );
+});
+
+test("guidance artifacts cannot be backported into earlier publication phases", async () => {
+  const current = await historicalStorybookPolicy();
+  for (const file of [
+    ".agents/settings.json",
+    ".agents/hooks/block-dangerous.mjs",
+    "CLAUDE.md",
+    "DESIGN.md",
+    "scripts/check-guidance.mjs",
+    "docs/source-navigation.md",
+  ]) {
+    assert.throws(() =>
+      validateBootstrapPolicy({
+        ...current,
+        allowedFiles: [...current.allowedFiles, file],
+      }),
+    );
+  }
 });

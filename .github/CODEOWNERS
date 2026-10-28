@@ -1,0 +1,10 @@
+# Suggested owners; remote review protection is separately configured.
+* @sepaseh
+/.github/ @sepaseh
+/.agents/ @sepaseh
+/contract/ @sepaseh
+/docs/security/ @sepaseh
+/deploy/ @sepaseh
+/package.json @sepaseh
+/package-lock.json @sepaseh
+/SECURITY.md @sepaseh

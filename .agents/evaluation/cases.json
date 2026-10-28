@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "admin-session-lifecycle",
+      "prompt": {
+        "en": "Without editing files, trace admin login, refresh, logout and session generations. Where are credentials stored and why does terminal client refresh failure not itself revoke server sessions? Give current source evidence and relevant checks."
+      },
+      "taskIds": ["auth-session"],
+      "evidence": [
+        "src/shared/api/client.ts",
+        "src/shared/api/token.ts",
+        "src/features/auth/api.ts",
+        "docs/adr/0004-cookie-proxy-and-sessions.md"
+      ],
+      "mustExplain": [
+        "Bearer credentials remain in memory.",
+        "Single-flight refresh and originating request generation protect new logins.",
+        "Terminal refresh failure clears client state; server revocation is an API responsibility."
+      ],
+      "mustNot": [
+        "Claim JWT rotation/reuse detection exists.",
+        "Read secrets or owner data.",
+        "Import or move API runtime into the admin."
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"]
+    },
+    {
+      "id": "shared-label",
+      "prompt": {
+        "en": "Without editing, plan a local admin UI label. Locate the one code-named catalog per language, its flat root keys, the local i18next adapter and integrity tests. Reuse an existing semantic key before adding one, remove duplicate aliases and preserve {{variable}} interpolation. Explain that API and website catalogs are independently owned."
+      },
+      "taskIds": ["shared-translation"],
+      "evidence": [
+        "src/shared/i18n/catalogs.ts",
+        "src/shared/i18n/locales/en.ts",
+        "src/shared/i18n/locales/fa.ts",
+        "src/shared/i18n/locales.ts",
+        "src/shared/i18n/catalogs.test.ts",
+        "src/shared/i18n/index.ts",
+        "src/app/providers/core/Core.tsx",
+        "src/app/providers/antd/Antd.tsx",
+        "src/features/settings/api.ts",
+        "src/features/calendar/Calendar.tsx"
+      ],
+      "mustExplain": [
+        "All translation source and the i18next adapter are local under src/shared/i18n.",
+        "Each locale has one code-named flat Record<string, string> catalog; messages use direct root keys without nested objects, common prefixes or duplicate aliases.",
+        "All ten languages require genuine nonempty keys and matching i18next placeholders.",
+        "API and website catalogs are independently owned; there is no shared package or required checkout.",
+        "Public API settings alone select the active language; fixed Persian bootstrap is not a remembered visitor preference, and only the system super-admin can change the global setting.",
+        "Core retains validated server direction/calendar/names alongside the normalized supported code. Ant Design/HTML and Day.js/Calendar consume that metadata; local maps only select vendor adapters. Invalid metadata is a settings error."
+      ],
+      "mustNot": [
+        "Reintroduce a shared translation package or source dependency on another repository.",
+        "Accept empty catalogs or English copies as translations.",
+        "Initialize engines in pure catalog data modules."
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"]
+    },
+    {
+      "id": "admin-read-and-session-generation",
+      "prompt": {
+        "en": "Without editing or running services, trace a cancelled/obsolete admin read and an old protected mutation receiving 401 after logout and a new login. Explain current generation guards across refresh, retry and logout, bounded timeout/error behavior and StrictMode cleanup; cite regression tests and explicitly identify any unguarded branch instead of assuming safety. State whether canceling one reader can abort the shared refresh needed by another reader."
+      },
+      "taskIds": ["admin-request-reliability"],
+      "evidence": [
+        "src/shared/hooks/useReadRequest.ts",
+        "src/shared/hooks/useReadResource.ts",
+        "src/shared/api/client.ts",
+        "src/shared/api/token.ts",
+        "src/features/auth/api.ts",
+        "src/layouts/default/Default.tsx",
+        "src/shared/hooks/useReadResource.test.ts",
+        "src/shared/api/client.test.ts",
+        "src/layouts/default/Default.test.tsx",
+        "src/features/auth/logout.test.ts"
+      ],
+      "mustExplain": [
+        "Read sequence/key/mount checks prevent stale commits even when an adapter ignores AbortSignal; cancellation settles busy state and StrictMode cleanup invalidates obsolete work.",
+        "A shared refresh must survive one reader cancelling, while original request/session generation remains bound across awaits, retry dispatch and terminal 401 handling.",
+        "Old operations must not replay a mutation as a newly logged-in account or clear that account after a delayed refresh failure/retried 401; identify source guards or report an actual missing branch. Public settings reads may survive a session change, but a public-read exemption must not exempt protected writes to the same path.",
+        "Logout completion and duplicate requests need generation/mounted-owner protection beyond the shared client's generation checks; examine the helper finally and layout continuation separately.",
+        "Default request and refresh bounds are 15 seconds per attempt and uploads have an explicit 60-second bound; transient timeout/network errors stay retryable without automatically clearing authentication, and cancellation is not a user error.",
+        "Transient read retry is manual and has no attempt budget; the protected-401 one-replay rule after a successful same-generation refresh is independent."
+      ],
+      "mustNot": [
+        "Claim AbortSignal alone protects adapters that ignore cancellation or un-signaled mutations.",
+        "Silently replay an old mutation under new credentials or treat a transient refresh timeout as definitive logout.",
+        "Claim overlapping logout is safe without inspecting both helper finalization and layout state.",
+        "Read actual credentials/state, mutate runtime source or execute a live auth service to answer the case."
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"]
+    },
+    {
+      "id": "admin-design-fit",
+      "prompt": {
+        "en": "Without editing files, starting services or publishing, plan a responsive redesign of this project's Users list and create drawer. Explain the deliverable/tools you would choose, the existing components, assets, theme and data/permission states you would reuse, how other languages and date direction/calendar behave, and how you would verify the result. Cite files you actually read and distinguish automatically supplied instructions from files opened manually."
+      },
+      "taskIds": ["ui-design"],
+      "evidence": [
+        "DESIGN.md",
+        ".agents/skills/design-ui/SKILL.md",
+        "src/shared/config/theme.ts",
+        "src/features/users/Users.tsx",
+        "src/features/users/components/user-form/UserForm.tsx",
+        "src/shared/ui/form-drawer/FormDrawer.tsx",
+        "src/shared/ui/request-feedback/RequestFeedback.tsx",
+        "src/app/providers/core/Core.tsx",
+        "src/app/providers/antd/Antd.tsx",
+        "src/features/settings/Settings.tsx",
+        ".storybook/preview.tsx",
+        "docs/storybook-verification.md",
+        ".storybook/vite.config.ts",
+        ".storybook/request-guard.test.ts"
+      ],
+      "mustExplain": [
+        "Repository implementation keeps React/Vite, Ant Design/antd-style, React Router, Axios and direct Lucide icons. Read actual theme/components/assets rather than adopting a generic tool starter or duplicating a token registry.",
+        "Reuse the Users and UserForm/FormDrawer recipes, token-based responsive shell, licensed self-hosted font and existing/API logos; retain feature ownership and request/session guards.",
+        "Cover relevant populated/empty/loading/error/retry/stale/submitting/validation and permission-limited states, keyboard/focus, narrow/desktop layouts, themes and long translated copy.",
+        "Ten complete flat catalogs provide messages; validated API metadata owns language/direction/calendar. Preview direction is a fixture, only super-admin changes global language, and ordinary settings editors retain appearance rights.",
+        "Concept/assets/Figma, runnable repository code and hosted prototypes are distinct deliverables. Choose only available tools and preserve task authorization; native design-system setup/font upload and Sites access/compatibility are separate host work.",
+        "Choose relevant checks from the existing manifest; recorded visual approval is not a fresh review, and link/inventory checks or a correct answer do not prove automatic host loading. Report actual loaded-file evidence and manual reads separately.",
+        "The assistant-guidance phase remains non-runnable. Static navigation/evaluation checks do not establish automatic host loading; real Chromium evidence is limited to isolated synthetic components."
+      ],
+      "mustNot": [
+        "Edit source, start services, install tools, upload private material or publish while answering this read-only case.",
+        "Replace the admin stack, invent a repository design protocol, add a user language selector or derive runtime direction/calendar from a local code map.",
+        "Claim a design artifact implements HTTP/permissions, overwrite reviewed baselines, or fabricate host setup, verification or automatic discovery evidence.",
+        "Claim that application entry/routes, production panel build, real API journeys, visual baselines or performance gates are already published and verified."
+      ],
+      "checks": [
+        "guidance",
+        "typecheck",
+        "lint",
+        "unit-coverage",
+        "storybook-build",
+        "storybook-browser"
+      ]
+    }
+  ],
+  "phase": "assistant-guidance",
+  "applicationReady": false
+}

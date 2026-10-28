@@ -1,0 +1,15 @@
+# مسیریابی منبع
+
+[English](source-navigation.md) · [فارسی](source-navigation.fa.md)
+
+انتشار فعلی `assistant-guidance` مقدار `applicationReady: false` را حفظ می‌کند. با [نقشهٔ ماشینی وظیفه](../.agents/navigation.json)، مالک، قرارداد، قاعده و بررسی فعلی را انتخاب کنید. خود مالک را بخوانید؛ نقشه، رفتار یا بارگذاری خودکار دستور را ثابت نمی‌کند.
+
+برای ماژول مدیریتی، از `src/app/config/routes.ts`، `src/app/lib/access.ts` و API، نوع، مؤلفه و تست در `src/features/<feature>` مالک شروع کنید. فرادادهٔ مسیر و چیدمان قابل استفادهٔ مجدد منتشر شده‌اند؛ ورودی برنامه و ترکیب App و Routes منتشر نشده‌اند. نسل انتقال و نشست و اتصال نیت درخواست در `src/shared/api` و `src/shared/hooks` هستند؛ [قابلیت اطمینان درخواست](admin-request-reliability.fa.md) را بخوانید. تست منتشرشدهٔ hook در `src/shared/hooks/useReadResource.test.ts` است.
+
+نوع مجوز در `src/features/roles/types.ts`، صفحه‌بندی و فیلتر URL در `src/features/users/types.ts` و `src/features/users/hooks` و تولید گذرواژه در `src/features/users/tools` هستند. ابزار بارگذاری لوگو و تست آن کنار `src/features/settings/components/logo-upload` قرار دارند. محدودیت مشترک نام پروفایل در `src/shared/contracts` و نوع انتقال در `src/shared/api/types.ts` می‌ماند.
+
+هر یک از ده فایل نام‌گرفته از کد زبان در `src/shared/i18n/locales` همان ۱۱۱ پیام کامل رشته‌ای ریشه را دارد. `catalogs.ts` آن اشیا را بارگذاری می‌کند؛ `index.ts` راه‌اندازی i18next با fallback فارسی را مالک است؛ `date.ts` زبان‌های Day.js، دادهٔ محلی `dayjs/fa.ts` و Jalaliday را ثبت می‌کند. کد کاتالوگ فقط آداپتور را انتخاب می‌کند. API مالک زبان فعال، جهت، تقویم و نام‌هاست: اعتبارسنجی پاسخ تنظیمات، بارگذاری Core، نگاشت AntdProvider و محافظ super-admin در Settings را دنبال کنید. ذخیره‌سازی مرورگر فقط ترجیحات پوسته و فشردگی را مالک است.
+
+برای کار بصری، [DESIGN](../DESIGN.fa.md)، [گردش کار طراحی](../.agents/skills/design-ui/SKILL.md)، `src/shared/config/theme.ts`، ابزارک موجود و نزدیک‌ترین `*.stories.tsx` را بخوانید. تنظیم مستقل `.storybook`، API قابلیت‌ها و کارخواه مشترک را کامل mock می‌کند. Chromium شاهد تعامل و دسترس‌پذیری مؤلفه است؛ E2E برنامه، قرارداد واقعی ارائه‌دهنده، مرجع تصویری بازبینی‌شده و استقرار کار بعدی هستند. مسیر منتشرنشدهٔ `e2e` یا `contract` مالک بررسی فعلی نیست.
+
+برای issue، شاخه، commit و PR، [گردش کار Git](../.agents/rules/git.md)، [قاعدهٔ شاخه](../.agents/rules/branches.md)، [skill ثبت تغییر](../.agents/skills/commit/SKILL.md) و [شروع issue](../.agents/skills/start-issue/SKILL.md) را به کار ببرید. [اعتبارسنجی](validation.fa.md)، [ADRها](adr/README.fa.md)، [ارزیابی](comprehension-evaluation.fa.md) و [نقشهٔ مستندات](README.fa.md) را بخوانید. API و وب‌سایت مستقل مالک پیاده‌سازی خود هستند؛ این checkout، HTTP سازگار را مصرف و کاتالوگ خود را مستقل نگهداری می‌کند.

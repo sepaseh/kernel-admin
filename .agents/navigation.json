@@ -1,0 +1,271 @@
+{
+  "schemaVersion": 1,
+  "tasks": [
+    {
+      "id": "admin-feature",
+      "when": "Change published admin screen, form, menu or permission-gated component behavior.",
+      "owners": [
+        "src/features/users",
+        "src/app/config/routes.ts",
+        "src/app/providers/core/Core.tsx"
+      ],
+      "contracts": [
+        "src/features/roles/types.ts",
+        "src/shared/contracts/index.ts",
+        ".agents/rules/react.md",
+        ".agents/rules/styling.md"
+      ],
+      "tests": [
+        "src/features/users/Users.test.tsx",
+        "src/test/integration/forms.test.tsx",
+        "src/features/users/Users.stories.tsx"
+      ],
+      "checks": [
+        "boundaries",
+        "typecheck",
+        "lint",
+        "unit-coverage",
+        "storybook-build",
+        "storybook-browser"
+      ],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "The current phase is non-runnable. Browser evidence is limited to isolated synthetic Storybook components; assembled application routes, real API journeys, production application build and visual/performance gates remain future work."
+    },
+    {
+      "id": "http-contract",
+      "when": "Change a request/response field, HTTP method, endpoint path or status.",
+      "owners": [
+        "src/features",
+        "src/shared/api",
+        "src/shared/contracts/index.ts"
+      ],
+      "contracts": [
+        "src/shared/api/types.ts",
+        "src/features/settings/types.ts",
+        "docs/http-client.md"
+      ],
+      "tests": [
+        "src/shared/api/client.test.ts",
+        "src/features/settings/api.test.ts",
+        "src/features/users/api.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Synthetic consumer/transport tests do not execute the separate API or a provider contract suite."
+    },
+    {
+      "id": "auth-session",
+      "when": "Trace login, refresh, logout, password changes or session cookie handling.",
+      "owners": [
+        "src/shared/api/client.ts",
+        "src/shared/api/token.ts",
+        "src/features/auth/api.ts"
+      ],
+      "contracts": [
+        "src/features/auth/types.ts",
+        "src/shared/api/types.ts",
+        "docs/adr/0004-cookie-proxy-and-sessions.md"
+      ],
+      "tests": [
+        "src/shared/api/client.test.ts",
+        "src/shared/api/token.test.ts",
+        "src/features/auth/logout.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Authentication execution and server-session revocation belong to the separate API; client token clearing is not server revocation."
+    },
+    {
+      "id": "active-language",
+      "when": "Trace validated API language code/direction/calendar/names, fixed bootstrap, vendor adapters, calendar display or super-admin language changes.",
+      "owners": [
+        "src/app/providers/core/Core.tsx",
+        "src/app/providers/antd/Antd.tsx",
+        "src/features/calendar/Calendar.tsx",
+        "src/shared/i18n/index.ts",
+        "src/features/settings/Settings.tsx",
+        "src/features/settings/api.ts",
+        "src/shared/i18n/date.ts"
+      ],
+      "contracts": [
+        "src/features/settings/types.ts",
+        "src/shared/i18n/locales.ts",
+        ".agents/rules/localization.md"
+      ],
+      "tests": [
+        "src/app/providers/core/Core.test.tsx",
+        "src/app/providers/antd/Antd.test.tsx",
+        "src/features/calendar/Calendar.test.tsx",
+        "src/features/settings/api.test.ts",
+        "src/shared/i18n/index.test.ts",
+        "src/features/settings/Settings.test.tsx",
+        "src/shared/i18n/date.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [
+        ".agents/rules/localization.md",
+        ".agents/rules/react.md",
+        ".agents/rules/imports.md"
+      ],
+      "limitations": "Validated API metadata owns active language, direction, calendar and names. Local code maps select catalogs/vendor adapters only; toolbar choices are synthetic fixtures."
+    },
+    {
+      "id": "shared-translation",
+      "when": "Reuse or add a semantic UI meaning in all ten complete flat local catalogs.",
+      "owners": [
+        "src/shared/i18n/catalogs.ts",
+        "src/shared/i18n/locales",
+        "src/shared/i18n/locales.ts"
+      ],
+      "contracts": [
+        "src/shared/i18n/locales.ts",
+        ".agents/rules/localization.md"
+      ],
+      "tests": [
+        "src/shared/i18n/catalogs.test.ts",
+        "src/shared/i18n/index.test.ts",
+        "src/shared/i18n/dayjs.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"],
+      "rules": [".agents/rules/localization.md", ".agents/rules/imports.md"],
+      "limitations": "Runtime fallback does not excuse a missing translation; API and website catalogs are independently owned."
+    },
+    {
+      "id": "deployment-recovery",
+      "when": "Plan future deployment/recovery work while preserving current publication boundaries.",
+      "owners": ["docs/bootstrap.md", "docs/architecture.md", "docs/README.md"],
+      "contracts": [
+        "docs/adr/0001-independent-runtimes.md",
+        "docs/branch-protection.md"
+      ],
+      "tests": ["scripts/validate-bootstrap.test.mjs"],
+      "checks": ["snapshot", "guidance", "format"],
+      "rules": [".agents/rules/safety.md", ".agents/rules/guidance.md"],
+      "limitations": "Deployment manifests, release packaging, production configuration and recovery verification are not yet published."
+    },
+    {
+      "id": "admin-request-reliability",
+      "when": "Change cancellation, obsolete-read handling, manual retry/error states, timeouts, shared refresh, generation guards or logout completion.",
+      "owners": [
+        "src/shared/hooks/useReadRequest.ts",
+        "src/shared/hooks/useReadResource.ts",
+        "src/shared/api/client.ts",
+        "src/shared/api/token.ts",
+        "src/features/auth/api.ts",
+        "src/app/providers/core/Core.tsx",
+        "src/layouts/default/Default.tsx",
+        "src/shared/ui/request-feedback/RequestFeedback.tsx"
+      ],
+      "contracts": [
+        "docs/admin-request-reliability.md",
+        "docs/admin-request-reliability.fa.md",
+        "docs/api-client.md"
+      ],
+      "tests": [
+        "src/shared/hooks/useReadResource.test.ts",
+        "src/shared/api/client.test.ts",
+        "src/layouts/default/Default.test.tsx",
+        "src/features/auth/logout.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Read retry is an explicit user action; one eligible protected-401 replay after successful same-generation refresh is a separate mechanism. Synthetic tests are not a real API/browser journey."
+    },
+    {
+      "id": "accessibility-visual",
+      "when": "Change component contrast, keyboard/focus behavior or responsive fixtures, and plan later visual-baseline verification.",
+      "owners": [
+        "src/shared/ui",
+        "src/shared/config/theme.ts",
+        ".storybook/preview.tsx"
+      ],
+      "contracts": [
+        "src/shared/contracts/appearance.ts",
+        "docs/storybook-verification.md",
+        "docs/ui-foundation.md"
+      ],
+      "tests": [
+        "src/shared/lib/color-contrast.test.ts",
+        "src/test/storybook/StoryShell.test.tsx",
+        "src/shared/ui/form-drawer/FormDrawer.stories.tsx"
+      ],
+      "checks": [
+        "typecheck",
+        "lint",
+        "unit-coverage",
+        "storybook-build",
+        "storybook-browser"
+      ],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "The current phase is non-runnable. Browser evidence is limited to isolated synthetic Storybook components; assembled application routes, real API journeys, production application build and visual/performance gates remain future work."
+    },
+    {
+      "id": "guidance",
+      "when": "Change assistant instructions, navigation, decision records, validation policy or evaluation cases.",
+      "owners": [
+        "AGENTS.md",
+        ".agents",
+        ".claude",
+        "CLAUDE.md",
+        "scripts/check-guidance.mjs"
+      ],
+      "contracts": [
+        ".agents/validation.json",
+        ".agents/settings.json",
+        ".agents/navigation.json",
+        "docs/validation.md"
+      ],
+      "tests": [
+        "scripts/guidance.test.mjs",
+        "scripts/ai-hooks.portable.test.mjs",
+        "scripts/ai-hooks.test.mjs",
+        "scripts/validate.test.mjs"
+      ],
+      "checks": ["guidance", "guidance-tests", "governance-coverage", "format"],
+      "rules": [
+        ".agents/rules/guidance.md",
+        ".agents/rules/git.md",
+        ".agents/rules/safety.md"
+      ],
+      "limitations": "Static inventory/link checks do not prove automatic host loading or improved assistant comprehension; optional Bash host prerequisites must be reported."
+    },
+    {
+      "id": "ui-design",
+      "when": "Design or refine published admin components and plan authorized handoffs using current tokens and owners.",
+      "owners": [
+        "DESIGN.md",
+        ".agents/skills/design-ui/SKILL.md",
+        "src/shared/config/theme.ts",
+        "src/layouts/default/Default.tsx",
+        "src/features/users/Users.tsx",
+        "src/shared/ui"
+      ],
+      "contracts": [
+        ".agents/rules/styling.md",
+        ".agents/rules/react.md",
+        ".agents/rules/localization.md"
+      ],
+      "tests": [
+        "src/test/storybook/StoryShell.test.tsx",
+        "src/features/users/Users.stories.tsx",
+        "src/features/users/components/user-form/UserForm.stories.tsx"
+      ],
+      "checks": [
+        "guidance",
+        "typecheck",
+        "lint",
+        "unit-coverage",
+        "storybook-build",
+        "storybook-browser"
+      ],
+      "rules": [
+        ".agents/rules/react.md",
+        ".agents/rules/styling.md",
+        ".agents/rules/localization.md"
+      ],
+      "limitations": "The current phase is non-runnable. Browser evidence is limited to isolated synthetic Storybook components; assembled application routes, real API journeys, production application build and visual/performance gates remain future work."
+    }
+  ],
+  "phase": "assistant-guidance",
+  "applicationReady": false
+}

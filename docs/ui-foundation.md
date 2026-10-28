@@ -2,6 +2,8 @@
 
 [English](ui-foundation.md) · [فارسی](ui-foundation.fa.md)
 
+The `assistant-guidance` publication retains this UI foundation and its measured module tests. The [current full gate](../.agents/validation.json) adds guidance consistency; that addition does not publish application composition or alter UI ownership.
+
 The `ui-foundation` phase publishes reusable Ant Design widgets, the theme adapter,
 compact/theme preferences, route-back behavior, optional error/performance reporting
 and local visual assets. Later publications add Core providers, business screens

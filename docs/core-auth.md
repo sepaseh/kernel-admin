@@ -2,6 +2,8 @@
 
 [English](core-auth.md) · [فارسی](core-auth.fa.md)
 
+The `assistant-guidance` phase retains these Core/form/layout modules and adds local development guidance. Follow the current [canonical full gate](../.agents/validation.json), including guidance consistency; no application entry or route composition is introduced.
+
 The `core-auth` publication adds Core/Ant Design providers, access and navigation
 metadata, login/registration/password recovery forms, and authentication/default
 layouts to the existing HTTP and UI foundations. It has
@@ -84,7 +86,7 @@ checks that aborted login/registration cannot install tokens. Regression tests
 for the token race, late login navigation and invalid-mobile feedback fail
 against the preceding behavior.
 
-The canonical [eleven-check phase gate](../.agents/validation.json) measures every
+The canonical [complete phase gate](../.agents/validation.json) measures every
 published production module. It includes types, formatting, lint, dependency and
 boundary checks plus real unit/governance coverage. [Storybook verification](storybook-verification.md)
 adds a required static workshop build and real Chromium play/accessibility checks

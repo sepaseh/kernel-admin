@@ -7,13 +7,7 @@ cannot reconstruct. They are not evidence that a production system is deployed.
 Current source/contracts and tests determine behavior; update consequences or
 add a superseding record when an accepted decision changes.
 
-Scope updated: 27 October 2026. These records apply to the non-runnable
-`core-auth` publication (`applicationReady: false`). Core providers,
-authentication forms, layouts and HTTP adapters are published; the application
-entry point, App/Routes composition, business-page UI, build and browser journeys
-are not. Original acceptance dates remain historical. API/website responsibilities
-describe ownership and integration requirements, not fresh verification of those
-independent repositories.
+Scope updated: 28 October 2026. The current `assistant-guidance` publication retains Core/providers, business modules, isolated Storybook verification and local development guidance, with `applicationReady: false`. Application entry, App/Routes composition, production panel build, complete application E2E and visual verification remain future work. Individual ADR acceptance dates and earlier publication descriptions are historical; the current source and canonical manifest determine active scope. API/website responsibilities describe ownership and integration requirements, not fresh verification of those independent repositories.
 
 | Record                                                                                    | Decision                                                  |
 | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- |
