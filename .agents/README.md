@@ -3,8 +3,8 @@
 Start with [root instructions](../AGENTS.md), [source navigation](../docs/source-navigation.md)
 and the rules indexed in [settings](settings.json). The current
 `assistant-guidance` phase retains `applicationReady: false`: it publishes
-instructions and verification tooling beside the existing isolated Storybook
-scope, without an application entry point or production deployment.
+instructions, verification tooling and finite operations/quality prerequisites beside
+the isolated Storybook scope, without an application entry point or production deployment.
 
 Change only authorized files and preserve unpublished local work. Existing user
 authorization and preferences in the current conversation remain valid; do not
@@ -42,3 +42,7 @@ The optional safety policy models literal Bash/sh/dash/zsh commands within its
 `GIT_CONFIG`/`GIT_CONFIG_*` setters through `export`, `declare`, `typeset`,
 `readonly` or `local`, plus `xargs` and `find` execution actions, are blocked. Arbitrary program behavior and host authorization remain outside this
 convenience guard.
+
+Read [deployment preparation](../docs/deployment.md), [performance policy](../docs/performance.md) and [visual provenance](../docs/visual-regression.md). Pure helper cases join existing measured unit/governance commands; full keeps twelve required checks. No operational npm alias or focused profile is introduced.
+
+The exact public example exceptions are `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example`, only as reviewed synthetic declared sources. Never use an existing local environment or private operator version as an example. Rendering, packaging, health and smoke CLIs may have filesystem/resource/network effects when called; imports and synthetic fixtures do not authorize real execution. Application build, external provider/E2E, real visual/Lighthouse/Docker and deployment checks remain future activation work. Historical image metadata does not establish a current approved baseline.

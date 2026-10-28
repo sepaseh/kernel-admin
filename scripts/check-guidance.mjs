@@ -12,6 +12,11 @@ const isStrings = (value) =>
   value.every((entry) => typeof entry === "string" && entry.trim());
 const duplicates = (values) => new Set(values).size !== values.length;
 const same = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const publicTemplates = new Set([
+  ".env.example",
+  "deploy/docker/.env.example",
+  "deploy/native/hosts.env.example",
+]);
 
 export const isSafeGuidancePath = (filename) => {
   if (typeof filename !== "string" || !filename.trim()) return false;
@@ -30,8 +35,8 @@ export const isSafeGuidancePath = (filename) => {
   )
     return false;
   return (
-    !/(?:^|\/)\.env(?:\.|$)/.test(normalized) ||
-    path.posix.basename(normalized) === ".env.example"
+    publicTemplates.has(normalized) ||
+    !/(?:^|\/)(?:[^/]*\.)?env(?:[./]|$)/i.test(normalized)
   );
 };
 
@@ -356,7 +361,7 @@ const walkMarkdown = async (root, directory) => {
 const markdownInventory = async (root) => {
   const [trees, rootEntries] = await Promise.all([
     Promise.all(
-      [".agents", ".claude", "docs", "src"].map((directory) =>
+      [".agents", ".claude", "docs", "src", "deploy"].map((directory) =>
         walkMarkdown(root, directory),
       ),
     ),
@@ -371,6 +376,7 @@ const markdownInventory = async (root) => {
   const files = [
     ...new Set([
       ...trees.slice(0, 3).flatMap((entry) => entry.files),
+      ...trees[4].files,
       ...source,
       ...roots,
       "AGENTS.md",
@@ -583,17 +589,28 @@ const openingMarkdownFence = (context) => {
     quoteContainer: context.quoteContainer,
   };
 };
+const markdownBlockTags = new Set(
+  "address article aside base basefont blockquote body caption center col colgroup dd details dialog dir div dl dt fieldset figcaption figure footer form frame frameset h1 h2 h3 h4 h5 h6 head header hr html iframe legend li link main menu menuitem nav noframes ol optgroup option p param search section summary table tbody td tfoot th thead title tr track ul".split(
+    " ",
+  ),
+);
 const openingMarkdownRaw = (context) => {
   const indent = markdownIndent(context.text);
-  return indent.width - context.fenceBase <= 3 &&
-    /^<(?:pre|script|style|textarea)(?=[ \t>]|$)/i.test(
-      context.text.slice(indent.end),
-    )
-    ? context
+  if (indent.width - context.fenceBase > 3) return null;
+  const text = context.text.slice(indent.end);
+  if (/^<(?:pre|script|style|textarea)(?=[ \t>]|$)/i.test(text))
+    return { ...context, termination: "tag" };
+  if (text.startsWith("<![CDATA[")) return { ...context, termination: "cdata" };
+  const tag = /^<\/?([A-Za-z][A-Za-z0-9]*)(?=[ \t>]|\/>|$)/.exec(text);
+  return tag && markdownBlockTags.has(tag[1].toLowerCase())
+    ? { ...context, termination: "blank" }
     : null;
 };
-const closesMarkdownRaw = (line) =>
-  /<\/(?:pre|script|style|textarea)>/i.test(line);
+const closesMarkdownRaw = (line, raw, text) => {
+  if (raw.termination === "blank") return markdownBlank(text);
+  if (raw.termination === "cdata") return line.includes("]]>");
+  return /<\/(?:pre|script|style|textarea)>/i.test(line);
+};
 const insideMarkdownBlock = (line, quote, state) => {
   const block = state.raw ?? state.fence;
   if (!block) return false;
@@ -603,7 +620,7 @@ const insideMarkdownBlock = (line, quote, state) => {
     return false;
   }
   const closing = state.raw
-    ? closesMarkdownRaw(line)
+    ? closesMarkdownRaw(line, block, quote.text)
     : closesMarkdownFence(quote, block);
   if (closing) {
     state.raw = null;
@@ -614,7 +631,8 @@ const insideMarkdownBlock = (line, quote, state) => {
 const beginMarkdownBlock = (context, line, state) => {
   const { raw, fence } = context;
   if (!raw && !fence) return false;
-  state.raw = raw && !closesMarkdownRaw(line) ? raw : null;
+  state.raw =
+    raw && !closesMarkdownRaw(line, raw, context.block.text) ? raw : null;
   state.fence = fence;
   state.inlineEnd = 0;
   state.htmlEnd = 0;
@@ -684,6 +702,7 @@ const markdownProse = (markdown) => {
     htmlEnd: 0,
     tags: new Map(),
     tagEndings: markdownHtmlTagEndings(grammar, barriers),
+    cdataEndings: markdownCdataEndings(grammar, barriers),
   };
   const codeEndings = markdownCodeEndings(markdown, barriers);
   let offset = 0;
@@ -712,7 +731,7 @@ const markdownProse = (markdown) => {
           state.comment,
         );
         state.paragraph =
-          content.code || !markdownBlank(markdownQuote(content.text).text);
+          content.hasInline || !markdownBlank(markdownQuote(content.text).text);
         return content.text;
       }
       const context = markdownLineContext(quote, state);
@@ -732,7 +751,7 @@ const markdownProse = (markdown) => {
         block,
       );
       state.paragraph &&=
-        content.code || !markdownBlank(markdownQuote(content.text).text);
+        content.hasInline || !markdownBlank(markdownQuote(content.text).text);
       return content.text;
     })
     .join("\n");
@@ -862,6 +881,22 @@ const markdownHtmlTagEndings = (text, barriers) => {
   }
   return tags;
 };
+const markdownCdataEndings = (text, barriers) => {
+  const tokens = [...text.matchAll(/<!\[CDATA\[|\]\]>/g)];
+  const endings = new Map();
+  let barrier = barriers.length - 1,
+    closing = 0;
+  for (let index = tokens.length - 1; index >= 0; index--) {
+    const token = tokens[index];
+    while (barrier >= 0 && barriers[barrier] > token.index) {
+      closing = 0;
+      barrier--;
+    }
+    if (token[0] === "]]>") closing = token.index + token[0].length;
+    else if (closing) endings.set(token.index, closing);
+  }
+  return endings;
+};
 const closesMarkdownInline = (marker, offset, state) => {
   const closes = state.comment
     ? marker[0].endsWith("-->")
@@ -887,6 +922,9 @@ const openingMarkdownInline = (
     state.tags.set(absolute, tag);
     return { htmlEnd: tag };
   }
+  const cdata = state.cdataEndings.get(absolute);
+  if (cdata && !escapedMarkdownMarker(line, marker.index))
+    return { inlineEnd: cdata, comment: null };
   const codeEnd = codeEndings.get(absolute);
   if (codeEnd) return { inlineEnd: codeEnd, comment: null };
   if (marker[0] === "<!--" && !escapedMarkdownMarker(line, marker.index))
@@ -894,11 +932,11 @@ const openingMarkdownInline = (
   return null;
 };
 const markdownInlineProse = (line, offset, state, codeEndings, container) => {
-  const markers = /<!---?>|<!--|-->|`+|</g,
+  const markers = /<!\[CDATA\[|\]\]>|<!---?>|<!--|-->|`+|</g,
     parts = [];
   let visible = 0,
     hidden = state.comment || state.inlineEnd > offset ? 0 : null,
-    code = state.inlineEnd > offset;
+    hasInline = state.inlineEnd > offset;
   for (const marker of line.matchAll(markers)) {
     const end = marker.index + marker[0].length;
     if (state.comment || state.inlineEnd > offset + marker.index) {
@@ -920,14 +958,14 @@ const markdownInlineProse = (line, offset, state, codeEndings, container) => {
     if (!opening) continue;
     Object.assign(state, opening);
     if (opening.htmlEnd) continue;
-    code ||= opening.inlineEnd > 0;
+    hasInline ||= opening.inlineEnd > 0;
     parts.push(line.slice(visible, marker.index));
     hidden = marker.index;
   }
   parts.push(
     hidden === null ? line.slice(visible) : " ".repeat(line.length - hidden),
   );
-  return { text: parts.join(""), code };
+  return { text: parts.join(""), hasInline };
 };
 const skipMarkdownSpace = (text, start) => {
   let cursor = start;

@@ -30,8 +30,12 @@ make a change pass.
   interaction when the affected behavior belongs in its browser scope.
 - Guidance, navigation or safety tooling: synthetic positive and negative
   governance fixtures that reject the actual bypass.
-- Complete application E2E, visual regression and deployment: future phase work;
-  no such commands or evidence are published in this phase.
+- Pure bundle/Lighthouse/production-input/target policies: synthetic unit cases in
+  existing measured coverage.
+- Rendering, release packaging and Docker resource/orchestration: disposable
+  synthetic governance cases, without launching real infrastructure.
+- Complete application E2E, current visual regression and real deployment:
+  future activation work; published prerequisites/history do not execute them.
 
 Use [request reliability](../../docs/admin-request-reliability.md),
 [Storybook verification](../../docs/storybook-verification.md) and
@@ -49,3 +53,7 @@ future application/deployment task introduces servers, containers or visual
 baselines, it must also provide genuine checks and targeted cleanup. Never read,
 move or reuse real `.env.local`, credentials, `server/data`, databases, uploads or
 another checkout's running service as a fixture.
+
+Read [component coverage](../../docs/component-coverage.md), [performance policy](../../docs/performance.md) and [test reliability](../../docs/test-reliability.md). The three public example exceptions contain reviewed synthetic values only; real/local environments and operator certificates remain unread. New prerequisite suites run once in existing unit/governance commands; no third full suite or operational profile is added.
+
+Keep existing stress corpora, assertions and bounded deadlines. Separate newly added behavior into another mandatory bounded child when appropriate rather than accumulating unrelated workload under a legacy deadline or weakening the guard. Historical Win32 assets and metadata are provenance, not a fresh screenshot pass. Real Docker/Chrome/preview/provider/staging checks require future source, explicit authorization, owned-resource cleanup and actual evidence.

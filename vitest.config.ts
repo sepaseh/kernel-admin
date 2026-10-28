@@ -1,10 +1,10 @@
-import { fileURLToPath } from "node:url";
-
 import { defineConfig } from "vitest/config";
+
+import { srcPath } from "./tooling/paths.ts";
 
 export default defineConfig({
   envDir: false,
-  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
+  resolve: { alias: { "@": srcPath } },
   test: {
     clearMocks: true,
     environment: "node",
@@ -20,6 +20,10 @@ export default defineConfig({
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
       "scripts/run-audit.test.mjs",
+      "scripts/check-bundle-size.test.mjs",
+      "scripts/run-lighthouse.test.mjs",
+      "scripts/validate-production-env.test.mjs",
+      "scripts/validate-workflow-targets.test.mjs",
     ],
     restoreMocks: true,
     coverage: {
@@ -143,6 +147,10 @@ export default defineConfig({
         "src/shared/ui/route-loading/RouteLoading.tsx",
         "src/shared/ui/route-loading/index.ts",
         "scripts/run-audit.mjs",
+        "scripts/check-bundle-size.mjs",
+        "scripts/lighthouse-policy.mjs",
+        "scripts/validate-production-env.mjs",
+        "scripts/validate-workflow-targets.mjs",
       ],
       provider: "v8",
       reporter: ["text", "json-summary", "lcov"],

@@ -79,6 +79,74 @@ const isGuidancePhaseFile = (file) =>
     file,
   );
 
+const operationsPrerequisiteFiles = [
+  ".dockerignore",
+  ".env.example",
+  ".release-please-manifest.json",
+  "SECURITY.fa.md",
+  "SECURITY.md",
+  "deploy/docker/.env.example",
+  "deploy/docker/Dockerfile",
+  "deploy/docker/README.fa.md",
+  "deploy/docker/README.md",
+  "deploy/docker/compose.yaml",
+  "deploy/docker/resources.mjs",
+  "deploy/docker/smoke.mjs",
+  "deploy/native/README.fa.md",
+  "deploy/native/README.md",
+  "deploy/native/hosts.env.example",
+  "deploy/native/nginx/admin.conf.template",
+  "deploy/native/nginx/bootstrap.conf.template",
+  "docs/accessibility.fa.md",
+  "docs/accessibility.md",
+  "docs/backup-restore.fa.md",
+  "docs/backup-restore.md",
+  "docs/component-coverage.fa.md",
+  "docs/component-coverage.md",
+  "docs/contract-testing.fa.md",
+  "docs/contract-testing.md",
+  "docs/deployment.fa.md",
+  "docs/deployment.md",
+  "docs/performance.fa.md",
+  "docs/performance.md",
+  "docs/release-operations.fa.md",
+  "docs/release-operations.md",
+  "docs/releasing.fa.md",
+  "docs/releasing.md",
+  "docs/security/reviews.fa.md",
+  "docs/security/reviews.md",
+  "docs/security/threat-model.fa.md",
+  "docs/security/threat-model.md",
+  "docs/staging.fa.md",
+  "docs/staging.md",
+  "docs/test-reliability.fa.md",
+  "docs/test-reliability.md",
+  "docs/visual-regression.fa.md",
+  "docs/visual-regression.md",
+  "e2e/visual/baselines/win32/admin-login-en-light.png",
+  "e2e/visual/baselines/win32/admin-login-fa-dark.png",
+  "e2e/visual/baselines/win32/admin-role-drawer-en-dark.png",
+  "e2e/visual/baselines/win32/admin-users-fa-light.png",
+  "e2e/visual/baselines/win32/metadata.json",
+  "release-please-config.json",
+  "scripts/check-bundle-size.mjs",
+  "scripts/check-bundle-size.test.mjs",
+  "scripts/deployment.test.mjs",
+  "scripts/docker-smoke-resources.test.mjs",
+  "scripts/healthcheck.mjs",
+  "scripts/lighthouse-policy.mjs",
+  "scripts/package-release.mjs",
+  "scripts/package-release.test.mjs",
+  "scripts/render-deployment.mjs",
+  "scripts/run-lighthouse.test.mjs",
+  "scripts/validate-deployment-env.mjs",
+  "scripts/validate-production-env.mjs",
+  "scripts/validate-production-env.test.mjs",
+  "scripts/validate-workflow-targets.mjs",
+  "scripts/validate-workflow-targets.test.mjs",
+  "tooling/paths.ts",
+];
+
 const historicalStorybookPolicy = async () => {
   const latest = JSON.parse(
     await readFile(
@@ -90,7 +158,9 @@ const historicalStorybookPolicy = async () => {
     ...latest,
     phase: "storybook-verification",
     allowedFiles: latest.allowedFiles.filter(
-      (file) => !isGuidancePhaseFile(file),
+      (file) =>
+        !isGuidancePhaseFile(file) &&
+        !operationsPrerequisiteFiles.includes(file),
     ),
   };
 };
@@ -665,7 +735,7 @@ test("assistant guidance retains the complete workshop and requires every declar
     ),
   );
   assert.equal(current.phase, "assistant-guidance");
-  assert.equal(validateBootstrapPolicy(current).size, 366);
+  assert.equal(validateBootstrapPolicy(current).size, 431);
   const additions = current.allowedFiles.filter(isGuidancePhaseFile);
   assert.equal(additions.length, 63);
   for (const missing of [
@@ -706,7 +776,7 @@ test("assistant guidance retains the complete workshop and requires every declar
   );
   const { root } = await fixture(context, current);
   const result = await inspectBootstrap(root);
-  assert.equal(result.files, 366);
+  assert.equal(result.files, 431);
   assert.equal(result.applicationReady, false);
   assert.match(result.scope, /assistant-neutral instructions/);
   assert.match(result.scope, /no application entry point/);
@@ -742,4 +812,71 @@ test("guidance artifacts cannot be backported into earlier publication phases", 
       }),
     );
   }
+});
+
+test("release and quality prerequisites require their complete finite closure in the current non-runnable phase", async () => {
+  const current = JSON.parse(
+    await readFile(
+      new URL("../.github/bootstrap-policy.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  assert.equal(operationsPrerequisiteFiles.length, 65);
+  for (const missing of operationsPrerequisiteFiles)
+    assert.throws(
+      () =>
+        validateBootstrapPolicy({
+          ...current,
+          allowedFiles: current.allowedFiles.filter((file) => file !== missing),
+        }),
+      /mandatory/,
+    );
+  for (const file of [
+    "deploy/native/api.env.example",
+    "deploy/docker/.env.production",
+    "deploy/docker/.ENV.EXAMPLE",
+    "env/production.json",
+    ".env.local",
+    "examples/example.env",
+    "deploy/native/live.pem",
+    "deploy/unlisted.mjs",
+    "e2e/visual.spec.ts",
+    "tooling/unlisted.ts",
+    "scripts/run-lighthouse.mjs",
+    "stryker.config.json",
+  ])
+    assert.throws(
+      () =>
+        validateBootstrapPolicy({
+          ...current,
+          allowedFiles: [...current.allowedFiles, file],
+        }),
+      /unique, exact paths/,
+    );
+  const historical = await historicalStorybookPolicy();
+  for (const file of operationsPrerequisiteFiles)
+    assert.throws(
+      () =>
+        validateBootstrapPolicy({
+          ...historical,
+          allowedFiles: [...historical.allowedFiles, file],
+        }),
+      /unique, exact paths/,
+    );
+});
+
+test("current prerequisites retain only the three synthetic public template names and reject ambient private files", async (context) => {
+  const current = JSON.parse(
+    await readFile(
+      new URL("../.github/bootstrap-policy.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const { root, put } = await fixture(context, current);
+  assert.equal((await inspectBootstrap(root)).files, 431);
+  await put(
+    "deploy/native/.env.local",
+    "synthetic forbidden contents must never be parsed",
+  );
+  await assert.rejects(inspectBootstrap(root), /Unexpected bootstrap path/);
 });

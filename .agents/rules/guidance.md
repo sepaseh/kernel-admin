@@ -11,7 +11,7 @@ entry points and hooks are not runtime dependencies or evidence of automatic loa
   database, storage and API-owned wire evidence stay in the separate API repository.
 - Published scope: `.github/bootstrap-policy.json`. The current
   `assistant-guidance` phase retains `applicationReady: false`; isolated Storybook
-  does not establish application initialization, full E2E, visual approval or deployment.
+  does not establish application initialization, full E2E, visual approval or deployment. Finite public operational prerequisites are published within the same identifier, not a runnable activation.
 - Validation commands/profiles: `.agents/validation.json`. Settings and documentation
   are links or checked projections, never separate complete gate definitions.
 - Task ownership: `.agents/navigation.json` and
@@ -61,3 +61,11 @@ Use synthetic disposable fixtures. Never read real environments, credentials,
 ignored databases or object stores for comprehension or test work. HTTP changes
 need compatibility review with the API owner; unrelated catalogs and source copies
 remain independently owned. Record verification date, source revision and scope.
+
+## Public preparation sources
+
+The declared inventory includes finite deployment/release helpers, pure quality policies, synthetic tests, complete human EN/FA procedures and historical visual assets. Classify them by actual capability: a helper source or fixture is not an executed deployment, real build, browser audit or current image approval. Keep absent future paths as plain code references rather than active Markdown links.
+
+Only explicitly declared, reviewed synthetic public examples at `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example` qualify for source admission. Do not generalize this to another environment filename or read a local private homonym. Real credentials, certificates and operator state remain outside guidance/source verification.
+
+Keep twelve required full checks and existing measured suite owners. No new operational command/profile is implied by prose. Read [deployment](../../docs/deployment.md), [test reliability](../../docs/test-reliability.md) and [visual history](../../docs/visual-regression.md); preserve actual source revisions and limits.

@@ -514,7 +514,7 @@ test("Sonar requires an exact immutable pin for its sole scanner", () => {
     );
 });
 
-test("Sonar classifies stories and preview tooling as analyzed tests without excluding production or weakening coverage and duplication", () => {
+test("Sonar analyzes deployment and shared tooling while classifying stories as tests without weakening source, coverage or duplication", () => {
   const properties = Object.fromEntries(
     read("sonar-project.properties")
       .split(/\r?\n/)
@@ -529,6 +529,8 @@ test("Sonar classifies stories and preview tooling as analyzed tests without exc
     "scripts",
     ".storybook",
     ".agents/hooks",
+    "deploy",
+    "tooling",
   ]);
   assert.deepEqual(properties["sonar.tests"].split(","), [
     "src",

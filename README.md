@@ -77,7 +77,7 @@ current-phase checks: exact snapshot, semantic CI policy, dependency audit, sour
 types, lint, formatting, measured unit coverage, governance tests, `build-storybook`,
 `test:storybook` and guidance consistency. The browser suite runs all registered stories in headless
 Chromium with interaction assertions and accessibility failures treated as errors.
-Tests use synthetic values and require no environment file or running API.
+Tests use synthetic values and require no operator environment file or running API.
 
 The two test runs produce real `coverage/unit/lcov.info` and
 `coverage/governance/lcov.info` from this checkout. These reports cover the
@@ -98,3 +98,11 @@ a completed hosted check. Assistant-guidance protection requires its published C
 provider checks. Before any runnable panel merges, genuine build, end-to-end and
 visual jobs must pass and become required checks, and the canonical full gate
 must expand to cover the application.
+
+## Operational and quality prerequisites
+
+This publication intentionally extends `assistant-guidance` with public configuration examples, deployment/release helpers, pure quality policies and complete [operational guides](docs/deployment.md). The exact [inventory](.github/bootstrap-policy.json) contains 431 maintained paths; the application remains non-runnable.
+
+New helper regressions join the existing measured unit/governance suites. They exercise explicit synthetic inputs and owned-resource failure handling; they do not start Docker/Chrome, build the panel or contact a deployed API. [Performance policy](docs/performance.md), [contract preparation](docs/contract-testing.md) and [security review](docs/security/reviews.md) describe their actual scope. The four Windows PNGs and metadata are [dated provenance](docs/visual-regression.md), not a fresh baseline approval.
+
+There is no new operational npm alias or focused profile. Use the existing canonical checks. Real environments, certificates, API data and operator state remain outside source verification; only the three explicitly declared synthetic public example paths are publishable. Future production build, application E2E, visual comparison, Lighthouse, mutation and deployment need genuine activation checks and explicit operational authorization.

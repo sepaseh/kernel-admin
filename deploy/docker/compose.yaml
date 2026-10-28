@@ -1,0 +1,27 @@
+services:
+  admin:
+    image: kernel-admin:${VITE_RELEASE_ID:?Immutable release required}
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:?Public API origin required}
+        VITE_APP_BASE_URL: ${VITE_APP_BASE_URL:-/}
+        VITE_RELEASE_ID: ${VITE_RELEASE_ID:?Immutable release required}
+        ADMIN_HOST: ${ADMIN_HOST:?Public admin hostname required}
+        PUBLIC_ASSET_ORIGIN: ${PUBLIC_ASSET_ORIGIN:-}
+        VITE_OBSERVABILITY_URL: ${VITE_OBSERVABILITY_URL:-}
+        HTTPS_PORT: ${HTTPS_PORT:-443}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./tls:/etc/kernel-admin/tls:ro
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    security_opt:
+      - no-new-privileges:true

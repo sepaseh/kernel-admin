@@ -365,6 +365,78 @@ const guidanceFiles = [
   "scripts/check-guidance.mjs",
   "scripts/guidance.test.mjs",
 ];
+const operationsPrerequisiteFiles = [
+  ".dockerignore",
+  ".env.example",
+  ".release-please-manifest.json",
+  "SECURITY.fa.md",
+  "SECURITY.md",
+  "deploy/docker/.env.example",
+  "deploy/docker/Dockerfile",
+  "deploy/docker/README.fa.md",
+  "deploy/docker/README.md",
+  "deploy/docker/compose.yaml",
+  "deploy/docker/resources.mjs",
+  "deploy/docker/smoke.mjs",
+  "deploy/native/README.fa.md",
+  "deploy/native/README.md",
+  "deploy/native/hosts.env.example",
+  "deploy/native/nginx/admin.conf.template",
+  "deploy/native/nginx/bootstrap.conf.template",
+  "docs/accessibility.fa.md",
+  "docs/accessibility.md",
+  "docs/backup-restore.fa.md",
+  "docs/backup-restore.md",
+  "docs/component-coverage.fa.md",
+  "docs/component-coverage.md",
+  "docs/contract-testing.fa.md",
+  "docs/contract-testing.md",
+  "docs/deployment.fa.md",
+  "docs/deployment.md",
+  "docs/performance.fa.md",
+  "docs/performance.md",
+  "docs/release-operations.fa.md",
+  "docs/release-operations.md",
+  "docs/releasing.fa.md",
+  "docs/releasing.md",
+  "docs/security/reviews.fa.md",
+  "docs/security/reviews.md",
+  "docs/security/threat-model.fa.md",
+  "docs/security/threat-model.md",
+  "docs/staging.fa.md",
+  "docs/staging.md",
+  "docs/test-reliability.fa.md",
+  "docs/test-reliability.md",
+  "docs/visual-regression.fa.md",
+  "docs/visual-regression.md",
+  "e2e/visual/baselines/win32/admin-login-en-light.png",
+  "e2e/visual/baselines/win32/admin-login-fa-dark.png",
+  "e2e/visual/baselines/win32/admin-role-drawer-en-dark.png",
+  "e2e/visual/baselines/win32/admin-users-fa-light.png",
+  "e2e/visual/baselines/win32/metadata.json",
+  "release-please-config.json",
+  "scripts/check-bundle-size.mjs",
+  "scripts/check-bundle-size.test.mjs",
+  "scripts/deployment.test.mjs",
+  "scripts/docker-smoke-resources.test.mjs",
+  "scripts/healthcheck.mjs",
+  "scripts/lighthouse-policy.mjs",
+  "scripts/package-release.mjs",
+  "scripts/package-release.test.mjs",
+  "scripts/render-deployment.mjs",
+  "scripts/run-lighthouse.test.mjs",
+  "scripts/validate-deployment-env.mjs",
+  "scripts/validate-production-env.mjs",
+  "scripts/validate-production-env.test.mjs",
+  "scripts/validate-workflow-targets.mjs",
+  "scripts/validate-workflow-targets.test.mjs",
+  "tooling/paths.ts",
+];
+const publicEnvironmentTemplates = [
+  ".env.example",
+  "deploy/docker/.env.example",
+  "deploy/native/hosts.env.example",
+];
 const phaseOrder = [
   "governance",
   "foundation",
@@ -404,9 +476,15 @@ const isForbiddenPublicationPath = (file, phase) =>
   file.includes("\\") ||
   file.split("/").some((part) => !part || part === "." || part === "..") ||
   /[*?[\]{}:\r\n]/.test(file) ||
-  /^(?:apps|packages|drizzle|collection|deploy|node_modules|server|coverage)(?:\/|$)/.test(
+  /^(?:apps|packages|drizzle|collection|node_modules|server|coverage)(?:\/|$)/.test(
     file,
   ) ||
+  (operationsPrerequisiteFiles.includes(file) &&
+    phase !== "assistant-guidance") ||
+  (/^(?:deploy|e2e|tooling)(?:\/|$)/.test(file) &&
+    !operationsPrerequisiteFiles.includes(file)) ||
+  file === "scripts/run-lighthouse.mjs" ||
+  file === "stryker.config.json" ||
   file === "drizzle.config.ts" ||
   file === "index.html" ||
   file === "vite.config.ts" ||
@@ -418,7 +496,11 @@ const isForbiddenPublicationPath = (file, phase) =>
   (isGuidancePath(file) &&
     (!supportsPhase(phase, "assistant-guidance") ||
       !guidanceFiles.includes(file))) ||
-  /(?:^|\/)(?:\.env(?:\.|$)|settings\.local\.json$)/.test(file) ||
+  (/(?:^|\/)(?:(?:[^/]*\.)?env(?:[./]|$)|settings\.local\.json$)/i.test(file) &&
+    !(
+      phase === "assistant-guidance" &&
+      publicEnvironmentTemplates.includes(file)
+    )) ||
   /\.(?:pem|key|pfx|p12|sqlite|db)$/.test(file);
 
 const requiredFilesForPhase = (phase) => [
@@ -434,7 +516,9 @@ const requiredFilesForPhase = (phase) => [
   ...(supportsPhase(phase, "business-screens") ? businessFiles : []),
   ...(supportsPhase(phase, "storybook-verification") ? storybookFiles : []),
   ...(supportsPhase(phase, "assistant-guidance") ? guidanceFiles : []),
-  ...(supportsPhase(phase, "assistant-guidance") ? ["AGENTS.md"] : []),
+  ...(supportsPhase(phase, "assistant-guidance")
+    ? ["AGENTS.md", ...operationsPrerequisiteFiles]
+    : []),
 ];
 
 export const validateBootstrapPolicy = (policy) => {
@@ -541,7 +625,7 @@ export const inspectBootstrap = async (root) => {
   );
   const scopeByPhase = {
     "assistant-guidance":
-      "Published assistant-neutral instructions, safe optional hooks, current-source navigation and static comprehension cases alongside the isolated Storybook workshop; no application entry point, assembled routes, production application build, external API journey or visual gate is published. Static inventory checks do not establish automatic host instruction loading or benchmark improvement.",
+      "Published assistant-neutral instructions, safe optional hooks, current-source navigation, static comprehension cases and finite release/quality prerequisites alongside the isolated Storybook workshop; no application entry point, assembled routes, production application build, external API journey or visual gate is published. Pure helper tests and public deployment templates do not execute deployment, release publication, Lighthouse, mutation testing or visual approval. Static inventory checks do not establish automatic host instruction loading or benchmark improvement.",
     "storybook-verification":
       "Published isolated Storybook build and real Chromium component interactions/accessibility with synthetic API fixtures; no application entry point, assembled routes, production application build, external API journey or visual gate is published.",
     "business-screens":

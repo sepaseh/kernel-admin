@@ -20,7 +20,7 @@
     "lint:fix": "eslint . --fix",
     "test": "npm run test:coverage && npm run test:governance",
     "test:coverage": "vitest run --coverage",
-    "test:governance": "node -e \"require('node:fs').mkdirSync('coverage/governance', { recursive: true })\" && node --experimental-test-coverage --test --test-reporter=spec --test-reporter=lcov --test-reporter-destination=stdout --test-reporter-destination=coverage/governance/lcov.info scripts/check-pr-size.test.mjs scripts/check-ci.test.mjs scripts/validate-bootstrap.test.mjs scripts/boundaries.test.mjs scripts/validate.test.mjs scripts/guidance.test.mjs scripts/ai-hooks.portable.test.mjs scripts/ai-hooks.test.mjs",
+    "test:governance": "node -e \"require('node:fs').mkdirSync('coverage/governance', { recursive: true })\" && node --experimental-test-coverage --test --test-reporter=spec --test-reporter=lcov --test-reporter-destination=stdout --test-reporter-destination=coverage/governance/lcov.info scripts/check-pr-size.test.mjs scripts/check-ci.test.mjs scripts/validate-bootstrap.test.mjs scripts/boundaries.test.mjs scripts/validate.test.mjs scripts/guidance.test.mjs scripts/ai-hooks.portable.test.mjs scripts/ai-hooks.test.mjs scripts/deployment.test.mjs scripts/docker-smoke-resources.test.mjs scripts/package-release.test.mjs",
     "test:guidance": "node --test scripts/guidance.test.mjs scripts/ai-hooks.portable.test.mjs scripts/ai-hooks.test.mjs",
     "test:storybook": "vitest run --config vitest.storybook.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",

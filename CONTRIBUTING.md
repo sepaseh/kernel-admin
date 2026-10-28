@@ -88,8 +88,7 @@ coverage and dependency directories out of commits.
 3. Use a Conventional Commit title and the existing
    [PR template](.github/PULL_REQUEST_TEMPLATE.md). State the phase, checked
    revision, executed checks and limitations.
-4. Commit, push, comment or merge only with explicit authorization. Keep
-   incomplete work in draft and preserve unrelated user changes.
+4. Commit, push, comment or merge only with explicit authorization. Publish authorized PRs Ready for review; keep incomplete work local until reviewable and preserve unrelated user changes.
 5. CodeRabbit reviews are manual-only. Complete the
    [request preflight](#before-requesting-coderabbit) before requesting one review
    within an authorized cycle; local validation alone is insufficient.
@@ -123,3 +122,11 @@ only from preflight to avoid a cycle; they remain merge requirements. Once the
 preflight passes and remote authorization exists, request one review, respecting
 actual quota and avoiding duplicate in-flight requests for the same head. Do not
 assume a quota reset time or retry repeatedly.
+
+## Preparatory tooling scope
+
+The inherited phase now includes finite release/deployment and quality prerequisites while retaining `applicationReady: false`. Keep exact public examples synthetic; never read a local real environment, key or operator state to prepare a source change. Use explicit in-memory values and disposable directories in helper tests.
+
+Bundle/Lighthouse policy and production/target-input tests join existing unit coverage; rendering, packaging and Docker lifecycle tests join existing governance coverage. Preserve all twelve full checks, their order, thresholds and genuine LCOV. No operational npm alias or new focused profile is introduced. Direct helper CLIs may write files or contact a target: their presence is not permission to execute them.
+
+Read [deployment](docs/deployment.md), [test reliability](docs/test-reliability.md) and [visual provenance](docs/visual-regression.md). Application build, real Docker/Chrome, provider/E2E/visual and deployed checks remain future activation work. Retained images and release configuration are not fresh approvals or executed releases.
