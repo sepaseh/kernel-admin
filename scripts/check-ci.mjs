@@ -193,11 +193,17 @@ export const inspectSonarWorkflow = (content, manifest) => {
   const scanners = job.steps.flatMap((step, index) =>
     isRecord(step) &&
     typeof step.uses === "string" &&
-    /^SonarSource\/sonarqube-scan-action@[a-f0-9]{40}$/.test(step.uses)
+    step.uses.startsWith("SonarSource/sonarqube-scan-action@")
       ? [{ index, step }]
       : [],
   );
-  if (scanners.length !== 1 || scanners[0].index <= fullIndex)
+  if (
+    scanners.length !== 1 ||
+    scanners[0].index <= fullIndex ||
+    !/^SonarSource\/sonarqube-scan-action@[a-f0-9]{40}$/.test(
+      scanners[0].step.uses,
+    )
+  )
     throw new Error(
       "Sonar must scan exactly once after the canonical full validation",
     );

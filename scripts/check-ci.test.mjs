@@ -275,6 +275,14 @@ const scannerStep = (value) =>
   value.jobs.analysis.steps.find((step) =>
     step.uses?.startsWith("SonarSource/sonarqube-scan-action@"),
   );
+const invalidScannerRefs = [
+  "latest",
+  "v6",
+  "",
+  "a".repeat(39),
+  "a".repeat(41),
+  "g".repeat(40),
+];
 
 test("the actual Sonar workflow validates the complete canonical profile before scanning", () => {
   assert.deepEqual(
@@ -469,6 +477,40 @@ test("Sonar prerequisites and the scan remain blocking, root-scoped and uncondit
     assert.throws(
       () => inspectSonarWorkflow(changedSonarWorkflow(change), manifest()),
       /unconditional|blocking|repository root|default shell|scan exactly once/,
+    );
+});
+
+test("Sonar counts extra scanners with invalid pins before and after full validation", () => {
+  for (const ref of invalidScannerRefs) {
+    for (const beforeFull of [true, false]) {
+      const content = changedSonarWorkflow((value) => {
+        const fullIndex = value.jobs.analysis.steps.findIndex(
+          (step) => step.run === "npm run validate -- full",
+        );
+        value.jobs.analysis.steps.splice(fullIndex + (beforeFull ? 0 : 1), 0, {
+          uses: `SonarSource/sonarqube-scan-action@${ref}`,
+        });
+      });
+      assert.throws(
+        () => inspectSonarWorkflow(content, manifest()),
+        /scan exactly once/,
+      );
+    }
+  }
+});
+
+test("Sonar requires an exact immutable pin for its sole scanner", () => {
+  for (const ref of invalidScannerRefs)
+    assert.throws(
+      () =>
+        inspectSonarWorkflow(
+          changedSonarWorkflow((value) => {
+            scannerStep(value).uses =
+              `SonarSource/sonarqube-scan-action@${ref}`;
+          }),
+          manifest(),
+        ),
+      /scan exactly once/,
     );
 });
 
