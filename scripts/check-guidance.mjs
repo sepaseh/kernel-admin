@@ -446,13 +446,17 @@ const markdownProse = (markdown) => {
   const text = withoutMarkdownFences(markdown);
   const runs = markdownCodeRuns(text),
     parts = [];
-  let cursor = 0;
-  for (let index = 0; index < runs.length; index++) {
+  let cursor = 0,
+    index = 0;
+  while (index < runs.length) {
     const run = runs[index];
-    if (run.escaped || run.next === undefined) continue;
+    if (run.escaped || run.next === undefined) {
+      index++;
+      continue;
+    }
     parts.push(text.slice(cursor, run.start), " ");
-    index = run.next;
-    cursor = runs[index].end;
+    cursor = runs[run.next].end;
+    index = run.next + 1;
   }
   parts.push(text.slice(cursor));
   return parts.join("");

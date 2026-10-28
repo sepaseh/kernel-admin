@@ -247,7 +247,7 @@ const inspectGit = (words) => {
   );
 };
 
-const assignment = (token) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(token.value);
+const assignment = (token) => /^[A-Za-z_]\w*=/.test(token.value);
 const executableWords = (words) => {
   let index = 0;
   while (index < words.length && assignment(words[index])) index++;
@@ -255,8 +255,8 @@ const executableWords = (words) => {
 };
 const outputNames = new Set(["echo", "printf"]);
 const secretVariable = (token) =>
-  [...token.expansion.matchAll(/\$\{?([A-Za-z_][A-Za-z0-9_]*)/g)].some(
-    (match) => /TOKEN|API_KEY|SECRET|PASSWORD|CREDENTIAL/i.test(match[1]),
+  [...token.expansion.matchAll(/\$\{?([A-Za-z_]\w*)/g)].some((match) =>
+    /TOKEN|API_KEY|SECRET|PASSWORD|CREDENTIAL/i.test(match[1]),
   );
 const exposesEnvironment = (name, words) =>
   name === "printenv" ||
