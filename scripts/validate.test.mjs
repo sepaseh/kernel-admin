@@ -5,6 +5,39 @@ import { fileURLToPath } from "node:url";
 
 import { commandArguments, runProfile } from "./validate.mjs";
 
+const applicationChecks = [
+  { id: "unused", command: "npm run check:unused" },
+  { id: "application-build", command: "npm run build" },
+  { id: "bundle", command: "npm run check:bundle" },
+  { id: "contract", command: "npm run test:contract" },
+  { id: "application-e2e", command: "npm run test:e2e" },
+  { id: "visual", command: "npm run test:visual" },
+  { id: "lighthouse", command: "npm run test:lighthouse" },
+];
+const historicalManifest = () => {
+  const manifest = JSON.parse(
+    readFileSync(
+      new URL("../.agents/validation.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const checks = manifest.checks.filter((check) =>
+    check.scopes.includes("assistant-guidance"),
+  );
+  return {
+    ...manifest,
+    phase: "assistant-guidance",
+    applicationReady: false,
+    checks,
+    profiles: {
+      ...manifest.profiles,
+      full: checks
+        .filter((check) => check.kind === "required")
+        .map((check) => check.id),
+    },
+  };
+};
+
 test("Storybook uses its isolated synthetic Vite configuration without ambient files or process VITE variables", async () => {
   const [{ default: vite }, { default: storybook }] = await Promise.all([
     import("../.storybook/vite.config.ts"),
@@ -39,14 +72,27 @@ test("the current full gate executes every published required check in declared 
   const required = manifest.checks.filter((check) => check.kind === "required");
   assert.equal(manifest.phase, publication.phase);
   assert.equal(manifest.applicationReady, publication.applicationReady);
-  assert.equal(manifest.phase, "assistant-guidance");
-  assert.equal(required.length, 12);
+  assert.ok(
+    ["assistant-guidance", "application-verification"].includes(manifest.phase),
+  );
+  const application = manifest.phase === "application-verification";
+  assert.equal(manifest.applicationReady, application);
+  assert.equal(required.length, application ? 19 : 12);
+  const inherited = historicalManifest().checks.filter(
+    (check) => check.kind === "required",
+  );
+  assert.equal(inherited.length, 12);
+  assert.deepEqual(required.slice(0, 12), inherited);
   assert.deepEqual(
-    required.slice(-2).map(({ command, id }) => ({ command, id })),
+    required.slice(10, 12).map(({ command, id }) => ({ command, id })),
     [
       { command: "npm run build-storybook", id: "storybook-build" },
       { command: "npm run test:storybook", id: "storybook-browser" },
     ],
+  );
+  assert.deepEqual(
+    required.slice(12).map(({ command, id }) => ({ command, id })),
+    application ? applicationChecks : [],
   );
   assert.equal(
     pkg.scripts["check:guidance"],
@@ -68,7 +114,9 @@ test("the current full gate executes every published required check in declared 
   );
   assert.equal(
     pkg.scripts["browser:install"],
-    "playwright install --with-deps chromium",
+    application
+      ? "playwright install --with-deps chromium firefox webkit"
+      : "playwright install --with-deps chromium",
   );
   assert.deepEqual(
     manifest.profiles.full,
@@ -90,6 +138,84 @@ test("the current full gate executes every published required check in declared 
   );
   assert.deepEqual(executed, commands.map(commandArguments));
 });
+test("the historical twelve-check fixture executes every inherited command without application checks", () => {
+  const manifest = historicalManifest();
+  const required = manifest.checks.filter((check) => check.kind === "required");
+  assert.equal(manifest.phase, "assistant-guidance");
+  assert.equal(manifest.applicationReady, false);
+  assert.equal(required.length, 12);
+  assert.deepEqual(
+    manifest.profiles.full,
+    required.map((check) => check.id),
+  );
+  assert.deepEqual(manifest.profiles.full.slice(10), [
+    "storybook-build",
+    "storybook-browser",
+  ]);
+  const executed = [];
+  assert.equal(
+    runProfile(manifest, "full", (args) => {
+      executed.push(args);
+      return 0;
+    }),
+    0,
+  );
+  assert.deepEqual(
+    executed,
+    required.map((check) => commandArguments(check.command)),
+  );
+});
+
+test("the future nineteen-check fixture retains the inherited gate and rejects every omitted application check before execution", () => {
+  const manifest = historicalManifest();
+  manifest.phase = "application-verification";
+  manifest.applicationReady = true;
+  manifest.checks.push(
+    ...applicationChecks.map((check) => ({ ...check, kind: "required" })),
+  );
+  manifest.profiles.full.push(...applicationChecks.map((check) => check.id));
+  assert.equal(
+    manifest.checks.filter((check) => check.kind === "required").length,
+    19,
+  );
+  assert.equal(manifest.profiles.full.length, 19);
+  assert.deepEqual(manifest.profiles.full.slice(10, 12), [
+    "storybook-build",
+    "storybook-browser",
+  ]);
+  assert.deepEqual(
+    manifest.profiles.full.slice(12),
+    applicationChecks.map((check) => check.id),
+  );
+  const executed = [];
+  assert.equal(
+    runProfile(manifest, "full", (args) => {
+      executed.push(args);
+      return 0;
+    }),
+    0,
+  );
+  assert.deepEqual(executed, [
+    ...historicalManifest()
+      .checks.filter((check) => check.kind === "required")
+      .map((check) => commandArguments(check.command)),
+    ...applicationChecks.map((check) => commandArguments(check.command)),
+  ]);
+  for (const missing of applicationChecks) {
+    const incomplete = structuredClone(manifest);
+    incomplete.profiles.full = incomplete.profiles.full.filter(
+      (id) => id !== missing.id,
+    );
+    const omittedExecution = [];
+    assert.throws(
+      () =>
+        runProfile(incomplete, "full", (args) => omittedExecution.push(args)),
+      /every required check exactly once/,
+    );
+    assert.deepEqual(omittedExecution, []);
+  }
+});
+
 test("validation runner preserves arguments without a shell", () => {
   assert.deepEqual(commandArguments("npm run test:e2e -- --project=chromium"), [
     "run",

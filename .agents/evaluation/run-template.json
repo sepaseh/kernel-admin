@@ -26,8 +26,8 @@
   "caseResults": [],
   "limitations": [
     "Template only; no assistant, index or benchmark result has been recorded.",
-    "Current browser evidence concerns isolated synthetic components; application journeys and visual/performance gates are not published."
+    "Populate publicationPhase and applicationReady from the publication policy for the recorded revision, and select checks from the canonical validation manifest. No runtime or executed verification is implied by this blank template."
   ],
-  "publicationPhase": "assistant-guidance",
-  "applicationReady": false
+  "publicationPhase": null,
+  "applicationReady": null
 }

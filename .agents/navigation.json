@@ -141,7 +141,7 @@
       "tests": ["scripts/validate-bootstrap.test.mjs"],
       "checks": ["snapshot", "guidance", "format"],
       "rules": [".agents/rules/safety.md", ".agents/rules/guidance.md"],
-      "limitations": "Deployment manifests, release packaging, production configuration and recovery verification are not yet published."
+      "limitations": "Published synthetic deployment and release helpers do not establish a production build, released artifact, deployed target or real recovery. Read the actual publication inventory and require explicit operational authorization."
     },
     {
       "id": "admin-request-reliability",
