@@ -527,6 +527,9 @@ describe("validated build metadata", () => {
           expect(path.relative(fixture.build, file).split(path.sep)[0]).toBe(
             "..",
           );
+          expect(path.dirname(path.dirname(path.dirname(file)))).toBe(
+            path.dirname(fixture.build),
+          );
           expect(file).not.toBe(output);
           expect(flags).toBe("wx");
           const handle = await open(file, flags);
@@ -761,6 +764,9 @@ describe("validated build metadata", () => {
               expect(
                 path.relative(fixture.build, file).split(path.sep)[0],
               ).toBe("..");
+              expect(path.dirname(path.dirname(path.dirname(file)))).toBe(
+                path.dirname(fixture.build),
+              );
               expect(flags).toBe("wx");
               const handle = await open(file, flags);
               return {
