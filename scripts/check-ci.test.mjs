@@ -1039,3 +1039,76 @@ test("true canonical mentions remain visible behind separators and cannot be hid
     );
   }
 });
+
+test("canonical CI and Sonar commands cannot be duplicated behind redirection", () => {
+  for (const [inspect, create, declared, job] of [
+    [inspectCi, prerequisiteCi, prerequisiteManifest, "check"],
+    [inspectCi, applicationCi, applicationManifest, "check"],
+    [inspectSonarWorkflow, sonarWorkflow, prerequisiteManifest, "analysis"],
+    [inspectSonarWorkflow, applicationSonar, applicationManifest, "analysis"],
+  ])
+    for (const command of [
+      "npm ci",
+      "npm run browser:install",
+      "npm run validate -- full",
+    ])
+      for (const redirect of [">output.log", ">>output.log", "<input.txt"]) {
+        const value = create();
+        value.jobs[job].steps.push({ run: `${command}${redirect}` });
+        assert.throws(
+          () => inspect(stringify(value), declared()),
+          /exactly once/,
+        );
+      }
+});
+
+test("application commands cannot be duplicated behind redirection", () => {
+  for (const [name, commands] of [
+    ["build", ["npm ci", "npm run build", "npm run check:bundle"]],
+    ["e2e", ["npm ci", "npm run browser:install", "npm run test:e2e"]],
+    ["visual", ["npm ci", "npm run browser:install", "npm run test:visual"]],
+  ])
+    for (const command of commands)
+      for (const redirect of [">output.log", ">>output.log", "<input.txt"]) {
+        const value = applicationCi();
+        value.jobs[name].steps.push({ run: `${command}${redirect}` });
+        assert.throws(
+          () => inspectCi(stringify(value), applicationManifest()),
+          /actual canonical commands exactly once/,
+        );
+      }
+});
+
+test("application checkout accepts only the omitted or explicit repository-root path", () => {
+  for (const name of ["build", "e2e", "visual"]) {
+    for (const checkoutPath of [undefined, "."]) {
+      const value = applicationCi();
+      const checkout = value.jobs[name].steps.find((step) =>
+        step.uses?.startsWith("actions/checkout@"),
+      );
+      checkout.with = { ...checkout.with, path: checkoutPath };
+      assert.deepEqual(inspectCi(stringify(value), applicationManifest()), {
+        requiredChecks: 19,
+      });
+    }
+    for (const checkoutPath of [
+      "other",
+      "nested/source",
+      "",
+      null,
+      false,
+      0,
+      "${{ github.workspace }}",
+    ]) {
+      const value = applicationCi();
+      const checkout = value.jobs[name].steps.find((step) =>
+        step.uses?.startsWith("actions/checkout@"),
+      );
+      checkout.with = { ...checkout.with, path: checkoutPath };
+      assert.throws(
+        () => inspectCi(stringify(value), applicationManifest()),
+        /checkout must use the repository root/,
+      );
+    }
+  }
+});

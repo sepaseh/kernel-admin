@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import {
+  link,
   lstat,
   mkdir,
   open,
@@ -25,8 +27,15 @@ export function createBuildMetadata(environment) {
   };
 }
 
-async function writeBuildMetadata(file, contents, openFile, removeFile) {
-  const handle = await openFile(file, "wx");
+async function writeBuildMetadata(
+  file,
+  contents,
+  openFile,
+  linkFile,
+  removeFile,
+) {
+  const temporary = path.join(path.dirname(file), `.build-${randomUUID()}.tmp`);
+  const handle = await openFile(temporary, "wx");
   const failures = [];
   try {
     await handle.writeFile(contents);
@@ -38,12 +47,19 @@ async function writeBuildMetadata(file, contents, openFile, removeFile) {
   } catch (error) {
     failures.push(error);
   }
-  if (failures.length) {
+  if (!failures.length) {
     try {
-      await removeFile(file);
+      await linkFile(temporary, file);
     } catch (error) {
       failures.push(error);
     }
+  }
+  try {
+    await removeFile(temporary);
+  } catch (error) {
+    failures.push(error);
+  }
+  if (failures.length) {
     if (failures.length > 1)
       throw new AggregateError(
         failures,
@@ -59,12 +75,14 @@ export async function stampAdminBuild({
   environment,
   buildDirectory = path.resolve("dist"),
   openFile = open,
+  linkFile = link,
   removeFile = unlink,
 }) {
   const metadata = createBuildMetadata(environment);
-  const build = await realpath(buildDirectory);
+  const requested = path.resolve(buildDirectory);
+  const build = await realpath(requested);
   if (
-    (await lstat(buildDirectory)).isSymbolicLink() ||
+    (await lstat(requested)).isSymbolicLink() ||
     !(await lstat(build)).isDirectory()
   )
     throw new Error("Build output must be an ordinary directory.");
@@ -87,6 +105,7 @@ export async function stampAdminBuild({
     path.join(directory, "build.json"),
     `${JSON.stringify(metadata, null, 2)}\n`,
     openFile,
+    linkFile,
     removeFile,
   );
   return metadata;

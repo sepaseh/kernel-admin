@@ -1,8 +1,11 @@
-import { EventEmitter } from "node:events";
+import { spawn } from "node:child_process";
+import { EventEmitter, once } from "node:events";
 import {
+  link,
   mkdir,
   mkdtemp,
   open,
+  readdir,
   readFile,
   rm,
   symlink,
@@ -510,6 +513,80 @@ const buildFixture = async () => {
 };
 
 describe("validated build metadata", () => {
+  it("publishes only a complete closed identity from its temporary sibling", async () => {
+    const fixture = await buildFixture();
+    const output = path.join(fixture.build, "_kernel/build.json");
+    const events = [];
+    let temporary;
+    try {
+      const metadata = await stampAdminBuild({
+        environment: publicBuildEnvironment,
+        buildDirectory: fixture.build,
+        openFile: async (file, flags) => {
+          temporary = file;
+          expect(path.dirname(file)).toBe(path.dirname(output));
+          expect(file).not.toBe(output);
+          expect(flags).toBe("wx");
+          const handle = await open(file, flags);
+          return {
+            writeFile: async (contents) => {
+              await handle.writeFile(contents);
+              await expect(readFile(output)).rejects.toMatchObject({
+                code: "ENOENT",
+              });
+              events.push("write");
+            },
+            close: async () => {
+              await handle.close();
+              events.push("close");
+            },
+          };
+        },
+        linkFile: async (source, target) => {
+          expect(source).toBe(temporary);
+          expect(target).toBe(output);
+          expect(events).toEqual(["write", "close"]);
+          expect(JSON.parse(await readFile(source, "utf8"))).toEqual(
+            createBuildMetadata(publicBuildEnvironment),
+          );
+          await link(source, target);
+          events.push("publish");
+        },
+      });
+      expect(events).toEqual(["write", "close", "publish"]);
+      expect(JSON.parse(await readFile(output, "utf8"))).toEqual(metadata);
+      expect(await readdir(path.dirname(output))).toEqual(["build.json"]);
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it.each(["", path.sep])(
+    "rejects a linked build directory with trailing separator %j",
+    async (separator) => {
+      const fixture = await buildFixture();
+      const alias = path.join(fixture.root, "build-link");
+      try {
+        await symlink(
+          fixture.build,
+          alias,
+          process.platform === "win32" ? "junction" : "dir",
+        );
+        await expect(
+          stampAdminBuild({
+            environment: publicBuildEnvironment,
+            buildDirectory: alias + separator,
+          }),
+        ).rejects.toThrow(/ordinary directory/);
+        await expect(
+          readFile(path.join(fixture.build, "_kernel/build.json")),
+        ).rejects.toMatchObject({ code: "ENOENT" });
+      } finally {
+        await fixture.cleanup();
+      }
+    },
+  );
+
   it("stamps the completed build with exactly the configured immutable identity", async () => {
     const fixture = await buildFixture();
     try {
@@ -543,6 +620,116 @@ describe("validated build metadata", () => {
         }),
       ).rejects.toMatchObject({ code: "EEXIST" });
       expect(await readFile(stampedFile)).toEqual(originalBytes);
+      expect(await readdir(path.dirname(stampedFile))).toEqual(["build.json"]);
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("keeps an interrupted partial write unpublished and permits a fresh retry", async () => {
+    const fixture = await buildFixture();
+    const output = path.join(fixture.build, "_kernel/build.json");
+    const code = `
+      import { open } from "node:fs/promises";
+      import { stampAdminBuild } from ${JSON.stringify(new URL("./stamp-admin-build.mjs", import.meta.url).href)};
+      const hold = setInterval(() => {}, 1000);
+      await stampAdminBuild({
+        environment: ${JSON.stringify(publicBuildEnvironment)},
+        buildDirectory: ${JSON.stringify(fixture.build)},
+        openFile: async (file, flags) => {
+          const handle = await open(file, flags);
+          return {
+            writeFile: async (contents) => {
+              const partial = contents.slice(0, 12);
+              await handle.writeFile(partial);
+              process.send({ temporary: file, partial });
+              await new Promise(() => {});
+            },
+            close: () => handle.close(),
+          };
+        },
+      });
+      clearInterval(hold);
+    `;
+    const child = spawn(
+      process.execPath,
+      ["--input-type=module", "--eval", code],
+      {
+        stdio: ["ignore", "ignore", "ignore", "ipc"],
+        windowsHide: true,
+      },
+    );
+    const exited = once(child, "exit");
+    try {
+      const [{ temporary, partial }] = await once(child, "message", {
+        signal: AbortSignal.timeout(3000),
+      });
+      expect(child.kill()).toBe(true);
+      await exited;
+      await expect(readFile(output)).rejects.toMatchObject({ code: "ENOENT" });
+      expect(await readFile(temporary, "utf8")).toBe(partial);
+      await expect(
+        stampAdminBuild({
+          environment: publicBuildEnvironment,
+          buildDirectory: fixture.build,
+        }),
+      ).resolves.toEqual(createBuildMetadata(publicBuildEnvironment));
+      expect(JSON.parse(await readFile(output, "utf8"))).toEqual(
+        createBuildMetadata(publicBuildEnvironment),
+      );
+      expect(await readFile(temporary, "utf8")).toBe(partial);
+    } finally {
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill();
+        await exited;
+      }
+      await fixture.cleanup();
+    }
+  });
+
+  it("preserves an identity that wins the publication race and cleans its temporary file", async () => {
+    const fixture = await buildFixture();
+    const output = path.join(fixture.build, "_kernel/build.json");
+    const winner = Buffer.from("concurrent immutable identity\r\n");
+    try {
+      await expect(
+        stampAdminBuild({
+          environment: publicBuildEnvironment,
+          buildDirectory: fixture.build,
+          linkFile: async (source, target) => {
+            await writeFile(target, winner, { flag: "wx" });
+            await link(source, target);
+          },
+        }),
+      ).rejects.toMatchObject({ code: "EEXIST" });
+      expect(await readFile(output)).toEqual(winner);
+      expect(await readdir(path.dirname(output))).toEqual(["build.json"]);
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("keeps the complete published identity when temporary cleanup fails", async () => {
+    const fixture = await buildFixture();
+    const output = path.join(fixture.build, "_kernel/build.json");
+    const cleanupFailure = new Error("synthetic temporary cleanup failure");
+    let temporary;
+    try {
+      await expect(
+        stampAdminBuild({
+          environment: publicBuildEnvironment,
+          buildDirectory: fixture.build,
+          removeFile: async (file) => {
+            temporary = file;
+            throw cleanupFailure;
+          },
+        }),
+      ).rejects.toBe(cleanupFailure);
+      expect(temporary).not.toBe(output);
+      expect(JSON.parse(await readFile(output, "utf8"))).toEqual(
+        createBuildMetadata(publicBuildEnvironment),
+      );
+      expect(await readFile(temporary)).toEqual(await readFile(output));
     } finally {
       await fixture.cleanup();
     }
@@ -555,6 +742,7 @@ describe("validated build metadata", () => {
       const failure = new Error(`synthetic ${stage} failure`);
       const events = [];
       const output = path.join(fixture.build, "_kernel/build.json");
+      let temporary;
       try {
         await expect(
           stampAdminBuild({
@@ -562,7 +750,9 @@ describe("validated build metadata", () => {
             buildDirectory: fixture.build,
             openFile: async (file, flags) => {
               events.push("open");
-              expect(file).toBe(output);
+              temporary = file;
+              expect(file).not.toBe(output);
+              expect(path.dirname(file)).toBe(path.dirname(output));
               expect(flags).toBe("wx");
               const handle = await open(file, flags);
               return {
@@ -582,12 +772,16 @@ describe("validated build metadata", () => {
             },
             removeFile: async (file) => {
               events.push("unlink");
+              expect(file).toBe(temporary);
               await unlink(file);
             },
           }),
         ).rejects.toBe(failure);
         expect(events).toEqual(["open", "write", "close", "unlink"]);
         await expect(readFile(output)).rejects.toMatchObject({
+          code: "ENOENT",
+        });
+        await expect(readFile(temporary)).rejects.toMatchObject({
           code: "ENOENT",
         });
         await expect(
@@ -628,6 +822,33 @@ describe("validated build metadata", () => {
     }
   });
 
+  it("does not remove a temporary path whose exclusive acquisition lost a race", async () => {
+    const fixture = await buildFixture();
+    const output = path.join(fixture.build, "_kernel/build.json");
+    const unowned = Buffer.from("another writer owns this temporary file\r\n");
+    const removeFile = vi.fn(unlink);
+    let temporary;
+    try {
+      await expect(
+        stampAdminBuild({
+          environment: publicBuildEnvironment,
+          buildDirectory: fixture.build,
+          openFile: async (file, flags) => {
+            temporary = file;
+            await writeFile(file, unowned, { flag: "wx" });
+            return open(file, flags);
+          },
+          removeFile,
+        }),
+      ).rejects.toMatchObject({ code: "EEXIST" });
+      expect(removeFile).not.toHaveBeenCalled();
+      expect(await readFile(temporary)).toEqual(unowned);
+      await expect(readFile(output)).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
   it("retains partial-write, handle-close and owned-file cleanup errors", async () => {
     const fixture = await buildFixture();
     const primary = new Error("synthetic partial write");
@@ -635,12 +856,14 @@ describe("validated build metadata", () => {
     const cleanupFailure = new Error("synthetic owned-file cleanup");
     const events = [];
     const output = path.join(fixture.build, "_kernel/build.json");
+    let temporary;
     try {
       await expect(
         stampAdminBuild({
           environment: publicBuildEnvironment,
           buildDirectory: fixture.build,
           openFile: async (file, flags) => {
+            temporary = file;
             const handle = await open(file, flags);
             return {
               writeFile: async () => {
@@ -665,7 +888,8 @@ describe("validated build metadata", () => {
         cause: primary,
       });
       expect(events).toEqual(["write", "close", "unlink"]);
-      expect(await readFile(output, "utf8")).toBe("partial");
+      expect(await readFile(temporary, "utf8")).toBe("partial");
+      await expect(readFile(output)).rejects.toMatchObject({ code: "ENOENT" });
     } finally {
       await fixture.cleanup();
     }
