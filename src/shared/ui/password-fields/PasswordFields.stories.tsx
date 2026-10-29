@@ -48,9 +48,11 @@ const meta = {
     await userEvent.type(password, "synthetic-password");
     await userEvent.type(confirmation, "different-password");
     await userEvent.click(canvas.getByRole("button", { name: "Validate" }));
-    await expect(
-      await canvas.findByText(i18nInstance.t("passwordMismatch")),
-    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        canvas.getByText(i18nInstance.t("passwordMismatch")),
+      ).toBeVisible(),
+    );
     await userEvent.clear(confirmation);
     await userEvent.type(confirmation, "synthetic-password");
     await userEvent.click(canvas.getByRole("button", { name: "Validate" }));
