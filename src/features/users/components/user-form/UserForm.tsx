@@ -96,13 +96,6 @@ export const UserForm = ({ data, onFinish }: UserFormProps) => {
     <FormDrawer
       afterOpenChange={(isOpen) => {
         if (isOpen) {
-          if (isUpdate) {
-            form.setFieldsValue({
-              firstName: data.firstName,
-              lastName: data.lastName,
-              mobile: data.mobile,
-            });
-          }
           form.focusField("firstName");
         } else {
           form.resetFields();

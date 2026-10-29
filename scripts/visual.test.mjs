@@ -4,9 +4,9 @@ import { EventEmitter } from "node:events";
 import {
   mkdir,
   mkdtemp,
-  readdir,
   readFile,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { createServer } from "node:net";
@@ -15,7 +15,11 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { runVisual, runVisualChild } from "./run-visual.mjs";
+import {
+  fingerprintVisualSources,
+  runVisual,
+  runVisualChild,
+} from "./run-visual.mjs";
 import {
   acquireVisualLock,
   assertReviewedVisualBaseline,
@@ -24,7 +28,117 @@ import {
   inspectVisualBrowser,
   markVisualBaselinePending,
   visualEnvironment,
+  visualSourceInputs,
 } from "./visual-environment.mjs";
+
+test("source provenance includes App, providers, fonts and capture inputs without reading private files", async () => {
+  const configuration = [
+    ".nvmrc",
+    "package.json",
+    "package-lock.json",
+    "index.html",
+    "vite.config.ts",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "playwright.visual.config.ts",
+    "scripts/run-visual.mjs",
+    "scripts/visual-environment.mjs",
+    "scripts/stamp-admin-build.mjs",
+    "scripts/validate-production-env.mjs",
+    "scripts/validate-deployment-env.mjs",
+  ];
+  const sourceFiles = [
+    "src/app/App.tsx",
+    "src/app/providers/antd/Antd.tsx",
+    "src/assets/fonts/example.woff2",
+    "src/shared/lib/dialog-focus.ts",
+    "public/logo.svg",
+    "e2e/shared/admin-fixtures.ts",
+  ];
+  const inventory = [
+    ...configuration,
+    ...sourceFiles,
+    "docs/README.md",
+    "e2e/visual/baselines/application/win32/metadata.json",
+  ];
+  assert.deepEqual(
+    visualSourceInputs(inventory),
+    [...configuration, ...sourceFiles].sort(),
+  );
+  for (const unsafe of [
+    "../private",
+    "src/../private",
+    "src\\private",
+    "/private",
+  ])
+    assert.throws(
+      () => visualSourceInputs([...inventory, unsafe]),
+      /safe unique/,
+    );
+  assert.throws(
+    () => visualSourceInputs([...inventory, inventory[0]]),
+    /safe unique/,
+  );
+  assert.throws(() => visualSourceInputs(sourceFiles), /missing/);
+  assert.throws(
+    () => visualSourceInputs([...inventory, "src/.env.local"]),
+    /environment files/,
+  );
+  const directory = await mkdtemp(path.join(tmpdir(), "kernel-visual-inputs-"));
+  try {
+    await mkdir(path.join(directory, ".github"));
+    await writeFile(
+      path.join(directory, ".github/bootstrap-policy.json"),
+      JSON.stringify({ allowedFiles: inventory }),
+    );
+    for (const file of [...configuration, ...sourceFiles]) {
+      await mkdir(path.dirname(path.join(directory, file)), {
+        recursive: true,
+      });
+      await writeFile(path.join(directory, file), `synthetic public ${file}`);
+    }
+    // Neither the private file nor the approved-image metadata needs to exist.
+    const initial = await fingerprintVisualSources(directory);
+    await writeFile(path.join(directory, "src/app/App.tsx"), "changed App");
+    const changedApp = await fingerprintVisualSources(directory);
+    assert.notEqual(changedApp.sourceFingerprint, initial.sourceFingerprint);
+    await writeFile(
+      path.join(directory, "src/assets/fonts/example.woff2"),
+      "changed font",
+    );
+    const changedFont = await fingerprintVisualSources(directory);
+    assert.notEqual(
+      changedFont.sourceFingerprint,
+      changedApp.sourceFingerprint,
+    );
+    assert.deepEqual(changedFont.sourceInputs, initial.sourceInputs);
+    const outside = path.join(directory, "outside");
+    await mkdir(outside);
+    await writeFile(
+      path.join(outside, "not-source.txt"),
+      "synthetic outside file",
+    );
+    await symlink(outside, path.join(directory, "src/redirect"), "junction");
+    await writeFile(
+      path.join(directory, ".github/bootstrap-policy.json"),
+      JSON.stringify({
+        allowedFiles: [...inventory, "src/redirect/not-source.txt"],
+      }),
+    );
+    await assert.rejects(
+      fingerprintVisualSources(directory),
+      /ordinary public file/,
+    );
+  } finally {
+    assert.equal(path.dirname(path.resolve(directory)), path.resolve(tmpdir()));
+    assert.equal(
+      path.basename(directory).startsWith("kernel-visual-inputs-"),
+      true,
+    );
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("a failed snapshot update leaves pending review and a metadata failure prevents capture", async () => {
   const directory = await mkdtemp(
@@ -549,27 +663,3 @@ test("repeated visual interrupts retain ownership until child close", async () =
   assert.equal(signals.listenerCount("SIGINT"), 0);
   assert.equal(signals.listenerCount("SIGTERM"), 0);
 });
-
-for (const filename of ["run-lighthouse.mjs", "run-visual.mjs"])
-  test(`${filename} rejects direct use until application CLI admission`, async (context) => {
-    const directory = await mkdtemp(
-      path.join(tmpdir(), "kernel-prep-cli-blocked-"),
-    );
-    context.after(() => rm(directory, { recursive: true, force: true }));
-    const child = spawnSync(
-      process.execPath,
-      [fileURLToPath(new URL(`./${filename}`, import.meta.url))],
-      {
-        cwd: directory,
-        encoding: "utf8",
-        windowsHide: true,
-        timeout: 10_000,
-      },
-    );
-    assert.equal(child.status, 1);
-    assert.match(
-      child.stderr,
-      /CLI integration is not published in this phase/,
-    );
-    assert.deepEqual(await readdir(directory), []);
-  });

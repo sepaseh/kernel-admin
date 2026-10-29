@@ -112,7 +112,10 @@
         ".storybook/preview.tsx",
         "docs/storybook-verification.md",
         ".storybook/vite.config.ts",
-        ".storybook/request-guard.test.ts"
+        ".storybook/request-guard.test.ts",
+        "src/app/App.tsx",
+        "src/app/Routes.tsx",
+        "e2e/visual/admin.spec.ts"
       ],
       "mustExplain": [
         "Repository implementation keeps React/Vite, Ant Design/antd-style, React Router, Axios and direct Lucide icons. Read actual theme/components/assets rather than adopting a generic tool starter or duplicating a token registry.",
@@ -121,13 +124,13 @@
         "Ten complete flat catalogs provide messages; validated API metadata owns language/direction/calendar. Preview direction is a fixture, only super-admin changes global language, and ordinary settings editors retain appearance rights.",
         "Concept/assets/Figma, runnable repository code and hosted prototypes are distinct deliverables. Choose only available tools and preserve task authorization; native design-system setup/font upload and Sites access/compatibility are separate host work.",
         "Choose relevant checks from the existing manifest; recorded visual approval is not a fresh review, and link/inventory checks or a correct answer do not prove automatic host loading. Report actual loaded-file evidence and manual reads separately.",
-        "The assistant-guidance phase remains non-runnable. Static navigation/evaluation checks do not establish automatic host loading; real Chromium evidence is limited to isolated synthetic components."
+        "The application-verification phase admits production build, application browser fixtures and visual/performance checks. Static navigation does not establish host loading, provider compatibility, visual human approval or deployment."
       ],
       "mustNot": [
         "Edit source, start services, install tools, upload private material or publish while answering this read-only case.",
         "Replace the admin stack, invent a repository design protocol, add a user language selector or derive runtime direction/calendar from a local code map.",
         "Claim a design artifact implements HTTP/permissions, overwrite reviewed baselines, or fabricate host setup, verification or automatic discovery evidence.",
-        "Claim that application entry/routes, production panel build, real API journeys, visual baselines or performance gates are already published and verified."
+        "Assume admitted application source or a local test proves API-provider compatibility, actual human visual approval, deployed performance or production readiness."
       ],
       "checks": [
         "guidance",
@@ -135,10 +138,13 @@
         "lint",
         "unit-coverage",
         "storybook-build",
-        "storybook-browser"
+        "storybook-browser",
+        "application-build",
+        "application-e2e",
+        "visual"
       ]
     }
   ],
-  "phase": "assistant-guidance",
-  "applicationReady": false
+  "phase": "application-verification",
+  "applicationReady": true
 }

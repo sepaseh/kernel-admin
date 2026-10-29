@@ -2,107 +2,16 @@
 
 [English](README.md) · [فارسی](README.fa.md)
 
-The `assistant-guidance` publication also adds [local development guidance](docs/README.md), canonical English rules/skills, a machine task map and read-only evaluation procedures. Optional hooks and host adapters are not application dependencies or proof of automatic loading.
+Kernel Admin is one standalone React/Vite application using Ant Design/antd-style, React Router and Axios. The application-verification phase admits the application entry, composed routes, local HTTP adapters, all ten complete catalogs and the genuine application gate. Read [the exact policy](.github/bootstrap-policy.json) and [canonical manifest](.agents/validation.json); a readiness declaration never substitutes for an actual current-revision run.
 
-Kernel Admin is a standalone TypeScript project. The current **assistant-guidance**
-phase retains the static Storybook build and real Chromium interaction/accessibility
-tests to the published providers, authentication/business forms, layouts, widgets,
-HTTP adapters and local translation/date infrastructure. `applicationReady` is
-**false**: the component workshop does not provide an assembled management panel.
+Application startup belongs to [src/main.tsx](src/main.tsx), [App](src/app/App.tsx) and [Routes](src/app/Routes.tsx). Features own their screens, HTTP types and endpoints. Shared HTTP/session owners remain in src/shared/api; local pure DTO vocabulary stays in src/shared/contracts. The separate API owns authentication execution, authorization, database/migrations and storage. No source dependency on another checkout, workspace, backend SDK or local package is introduced.
 
-## Current scope
+The API owns active language, direction, calendar and names. The admin retains fixed Persian bootstrap and explicit retry on missing settings. Only theme and compact mode are visitor preferences. All ten local catalogs remain complete with matching interpolation; changing the active language requires the API's super-admin authorization.
 
-- [Token state](src/shared/api/token.ts) stores the access token in memory and
-  distinguishes login/logout generations from credential refreshes.
-- [Transport types](src/shared/api/types.ts) and the
-  [shared profile limit](src/shared/contracts/index.ts) define small local
-  contracts.
-- [Key transforms](src/shared/lib/transform.ts) convert nested plain HTTP data
-  between camel case and snake case.
-- [Contrast helpers](src/shared/lib/color-contrast.ts) calculate readable display
-  colors without changing persisted theme choices.
-- [Catalogs](src/shared/i18n/catalogs.ts) register one complete flat object for
-  each of the ten [local codes](src/shared/i18n/locales.ts), with 111 root messages
-  per language. [Persian calendar data](src/shared/i18n/dayjs/fa.ts) stays separate
-  from UI messages. Read [localization](docs/localization.md) for ownership and
-  integrity checks.
+Use the Node release in [.nvmrc](.nvmrc) and its bundled npm. Run npm ci, npm run browser:install and npm run validate -- full in an isolated export of the exact proposed snapshot. Use only explicit synthetic public configuration for source tests; no real environment, key, database, upload or production service is needed. The manifest owns every command and its order.
 
-- [HTTP transport and feature owners](docs/http-client.md) preserve session generations,
-  validate token/settings replies and consume the independent API.
-- [Read lifecycle hooks](docs/request-lifecycle.md) cancel obsolete work and preserve
-  accepted data across refresh failures.
-- [Appearance vocabulary](src/shared/contracts/appearance.ts) owns Theme and seven
-  palette fields without initializing Ant Design.
-- [Business screens](docs/business-screens.md) adds account, users, roles, settings and calendar modules with guarded mutations; the dashboard remains a layout frame.
-- [Core and authentication](docs/core-auth.md) defines provider lifecycles, server-owned settings, session-safe forms, access metadata and layout ownership.
-- [Storybook verification](docs/storybook-verification.md) owns isolated component stories, complete synthetic API mocks, language/direction/theme controls and required browser checks.
+The full application profile preserves all inherited checks and adds unused-code analysis, production build, bundle budgets, consumer contracts, application browser journeys, visual comparison and Lighthouse. Browser fixtures are synthetic and fail on unexpected requests. Pact consumer tests do not verify the independent API provider. Visual comparison needs matching runtime/source provenance and actual human approval of fresh images; retained historical images are not current approval.
 
-Key transforms rename plain-object keys and omit null object fields. Their result
-is `unknown`; validate and narrow it to the expected HTTP contract before use.
-Non-plain values retain their runtime identity, but their types also require
-narrowing. The HTTP client explicitly asserts ordinary DTO shapes at its contract boundary;
-critical token and settings replies are runtime-validated. Key conversion never
-preserves or proves a generic input type.
+Authorized PRs are Ready for review and contain at most 100 actual changed-file entries. Commits, pushes, review requests, merges, remote protection changes and deployment retain explicit authorization boundaries. Publishing source or passing local checks does not establish a deployed service. Independent operator workflows remain deferred.
 
-Contrast helpers accept hex colors and comma-form `rgb()`/`rgba()` with channels
-from 0 to 255 and alpha from 0 to 1; unsupported or malformed inputs throw
-`TypeError`. The display adjustment checks every rounded shade along blends toward
-black and white, preserving the chosen hue where possible. If neither path can
-meet every surface's target, it returns the best available shade on those paths.
-
-The runtime uses i18next and react-i18next with React, plus Day.js and Jalaliday.
-The translation adapter starts in Persian without reading or storing a visitor
-language. The date adapter registers nine vendor locales plus the local Persian
-locale, including English as `en-gb`, and supports explicit Gregorian/Jalali calendar selection.
-Code normalization only selects a supported catalog; it does not select direction
-or calendar. The translated error helper preserves real `Error` messages.
-Read [UI foundation](docs/ui-foundation.md) for widget, asset and theme ownership.
-This phase contains real provider/form/layout/widget/hook tests with synthetic MSW/jsdom fixtures and isolated Storybook tests in Chromium.
-It has no application entry point, App/Routes composition or complete application browser journey. The separate API owns
-authentication, database and storage, plus active language, direction and calendar.
-
-## Install and validate
-
-Use the Node.js version in [`.nvmrc`](.nvmrc), within the supported range in
-[`package.json`](package.json), and the npm bundled with that Node.js release.
-
-```sh
-npm ci
-npm run browser:install
-npm run validate -- full
-```
-
-The [validation manifest](.agents/validation.json) owns all required
-current-phase checks: exact snapshot, semantic CI policy, dependency audit, source boundaries,
-types, lint, formatting, measured unit coverage, governance tests, `build-storybook`,
-`test:storybook` and guidance consistency. The browser suite runs all registered stories in headless
-Chromium with interaction assertions and accessibility failures treated as errors.
-Tests use synthetic values and require no operator environment file or running API.
-
-The two test runs produce real `coverage/unit/lcov.info` and
-`coverage/governance/lcov.info` from this checkout. These reports cover the
-published providers, forms, layouts, access metadata, widgets, theme/preferences/observability modules, HTTP modules, lifecycle hooks, catalogs, runtime adapters, calendar data,
-primitives and repository tooling; they are not complete panel
-coverage. Storybook build output and browser results do not replace these measured
-reports. Generated outputs are not committed. See [Sonar setup](docs/sonarqube.md).
-
-## Contribute
-
-Read [Contributing](CONTRIBUTING.md) and the
-[publication guide](docs/bootstrap.md). Keep each PR at **100 or fewer GitHub
-changed-file entries** and validate the exact proposed revision.
-
-Use native CI, CodeRabbit and SonarQube Cloud checks with
-[branch protection](docs/branch-protection.md). Configuration is not evidence of
-a completed hosted check. Assistant-guidance protection requires its published CI and
-provider checks. Before any runnable panel merges, genuine build, end-to-end and
-visual jobs must pass and become required checks, and the canonical full gate
-must expand to cover the application.
-
-## Operational and quality prerequisites
-
-This publication intentionally extends `assistant-guidance` with public configuration examples, deployment/release helpers, pure quality policies and complete [operational guides](docs/deployment.md). The exact [inventory](.github/bootstrap-policy.json) contains 436 maintained paths; the application remains non-runnable.
-
-New helper regressions join the existing measured unit/governance suites. They exercise explicit synthetic inputs and owned-resource failure handling; they do not start Docker/Chrome, build the panel or contact a deployed API. [Performance policy](docs/performance.md), [contract preparation](docs/contract-testing.md) and [security review](docs/security/reviews.md) describe their actual scope. The four Windows PNGs and metadata are [dated provenance](docs/visual-regression.md), not a fresh baseline approval.
-
-There is no new operational npm alias or focused profile. Use the existing canonical checks. Real environments, certificates, API data and operator state remain outside source verification; only the three explicitly declared synthetic public example paths are publishable. Future production build, application E2E, visual comparison, Lighthouse, mutation and deployment need genuine activation checks and explicit operational authorization.
+Start with [Contributing](CONTRIBUTING.md), [assistant guidance](.agents/README.md), [task navigation](docs/source-navigation.md), [architecture](docs/architecture.md), [validation](docs/validation.md) and [the documentation map](docs/README.md). Deployment, target verification and API-provider compatibility need their own authorization and genuine evidence.

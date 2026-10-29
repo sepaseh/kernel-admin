@@ -169,15 +169,22 @@ export const RolesPage = () => {
           retry={() => detailTarget && handleUpdate(detailTarget)}
         />
         {(!list.error || list.data) && (
-          <Table<Role>
-            columns={tableColumns}
-            dataSource={data}
-            loading={loading}
-            pagination={false}
-            rowKey="id"
-            scroll={{ x: token.screenMD }}
-            size="small"
-          />
+          <div
+            aria-label={t("roles")}
+            role="region"
+            style={{ overflowX: "auto" }}
+            tabIndex={0}
+          >
+            <Table<Role>
+              columns={tableColumns}
+              dataSource={data}
+              loading={loading}
+              pagination={false}
+              rowKey="id"
+              size="small"
+              styles={{ content: { minWidth: token.screenMD } }}
+            />
+          </div>
         )}
       </div>
       {canCreate && (

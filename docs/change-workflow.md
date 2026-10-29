@@ -2,9 +2,7 @@
 
 [English](change-workflow.md) · [فارسی](change-workflow.fa.md)
 
-Use this handoff for a feature, defect or operational change. The current
-`assistant-guidance` phase remains non-runnable; published operational prerequisites do not
-authorize deployment or establish a runnable build. This procedure adds no AI runtime and requires no
+Use this handoff for a feature, defect or operational change. The application-verification phase admits runnable composition and its complete checks. Publishing source does not authorize deployment, provider traffic or operational workflows. This procedure adds no AI runtime and requires no
 particular assistant. Keep the filled record with the issue,
 PR or local task evidence; creating remote issues or sending messages requires
 the owner's authorization.
@@ -57,4 +55,4 @@ tests and unexecuted manual checks separately. Review failures using
 hosted CI, production recovery or an assistant benchmark from source inspection.
 Commit, push and production access retain their existing authorization boundaries.
 
-For preparatory operations changes, trace the public-input validator, renderer/package/resource owner and their synthetic tests. Record owned-resource cleanup on setup, operation, cancellation and cleanup failure. Keep the public example whitelist exact and real operator data unread. [Published procedures](deployment.md) remain conditional on future runnable activation and explicit target authorization; a pure-helper pass cannot satisfy a real release or restore acceptance scenario.
+For preparatory operations changes, trace the public-input validator, renderer/package/resource owner and their synthetic tests. Record owned-resource cleanup on setup, operation, cancellation and cleanup failure. Keep the public example whitelist exact and real operator data unread. [Published procedures](deployment.md) require their admitted source, exact current-revision verification and explicit target authorization; a pure-helper pass cannot satisfy a real release or restore acceptance scenario.

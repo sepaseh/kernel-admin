@@ -11,9 +11,8 @@ Run the smallest check that covers the files you changed, then broaden before ha
 
 Select current commands from [the manifest](../validation.json). For guidance-only
 iteration, use `npm run validate -- guidance` and check formatting. The focused
-profile cannot replace the twelve-check full gate on the exact final snapshot
-before an authorized commit, push or PR handoff. A production panel build and
-unused-code/performance tooling are not published phase checks.
+profile cannot replace the complete canonical full gate on the exact final snapshot
+before an authorized commit, push or PR handoff. The admitted full profile also owns production build, unused-code and genuine performance verification.
 
 ## Autofix workflow
 
@@ -75,5 +74,5 @@ Write self-documenting code. Add comments only for:
 ## No unused code
 
 - Remove unused files, exports, dependencies, translations, and routes.
-- Review unused code with the published type, lint and boundary checks. A dedicated
-  unused-code command is future work; do not claim it ran in this phase.
+- Review unused code with the published type, lint, boundary and admitted unused-code
+  checks. Report actual execution from the complete application manifest.

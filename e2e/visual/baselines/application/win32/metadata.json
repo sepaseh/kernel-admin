@@ -1,0 +1,34 @@
+{
+  "platform": "win32",
+  "arch": "x64",
+  "osRelease": "10.0.26200",
+  "node": "v24.18.0",
+  "playwright": "1.64.1",
+  "browser": "bundled-chromium",
+  "browserVersion": "156.0.8078.4",
+  "sourceFingerprint": "df359906c52ebbddb721711cc16d262c94f74bd725303c834aec4c1170430941",
+  "sourceInputs": [
+    "package-lock.json",
+    "playwright.visual.config.ts",
+    "e2e/visual/admin.spec.ts",
+    "e2e/visual/readiness.ts",
+    "e2e/fixtures.ts",
+    "e2e/shared/admin-fixtures.ts",
+    "src/layouts/auth/Auth.tsx",
+    "src/layouts/default/Default.tsx",
+    "src/shared/config/theme.ts",
+    "src/features/login/Login.tsx",
+    "src/features/login/styles.ts",
+    "src/features/forgot-pass/ForgotPass.tsx",
+    "src/features/register/Register.tsx",
+    "src/features/roles/Roles.tsx",
+    "src/features/roles/components/role-form/RoleForm.tsx",
+    "src/features/users/Users.tsx"
+  ],
+  "generatedAt": "2026-10-29T14:45:14.663Z",
+  "review": {
+    "status": "pending",
+    "reviewer": null,
+    "reviewedAt": null
+  }
+}

@@ -2,55 +2,22 @@
 
 [English](branch-protection.md) · [فارسی](branch-protection.fa.md)
 
-The current `assistant-guidance` phase retains the native provider contexts below. Guidance checking runs inside the existing canonical `check` job; an updated source policy does not prove that remote protection or provider execution succeeded.
+The application-verification source admits real native build, e2e and visual jobs in addition to all inherited checks. Source configuration is not proof that remote protection is installed or that those jobs ran. Before any runnable merge, obtain authorization for the required remote phase transition, observe the current-head jobs actually pass and verify the live settings.
 
-Use native GitHub CI, CodeRabbit and SonarQube Cloud checks. The merge policy
-requires current-head CI and provider results, at least one approving review and
-resolved conversations. Apply protection to administrators, dismiss stale
-approvals, require an up-to-date branch and prohibit force pushes and deletion.
-Repository administrators manage the actual remote settings.
+The inherited native contexts and their observed provider identities remain:
 
-Required checks follow the published phase. Assistant-guidance protection requires these
-five native contexts with their observed GitHub App identities:
+| Context                  | Provider       | App ID |
+| ------------------------ | -------------- | ------ |
+| check                    | GitHub Actions | 15368  |
+| PR file limit            | GitHub Actions | 15368  |
+| SonarQube Cloud analysis | GitHub Actions | 15368  |
+| SonarCloud Code Analysis | SonarCloud     | 12526  |
+| CodeRabbit               | CodeRabbit     | 347564 |
 
-| Required context           | Provider       | App ID   |
-| -------------------------- | -------------- | -------- |
-| `check`                    | GitHub Actions | `15368`  |
-| `PR file limit`            | GitHub Actions | `15368`  |
-| `SonarQube Cloud analysis` | GitHub Actions | `15368`  |
-| `SonarCloud Code Analysis` | SonarCloud     | `12526`  |
-| `CodeRabbit`               | CodeRabbit     | `347564` |
+The target application merge policy also requires native build, e2e and visual contexts from GitHub Actions App 15368 after genuine matching-platform execution is observed. Preserve at least one approving review, resolved conversations, administrator enforcement, stale-approval dismissal, strict up-to-date checks, linear history and prohibitions on force push/deletion. Do not silently change remote settings or use placeholder/skipped jobs.
 
-Verify the actual remote settings and current-head results; adding a workflow or
-documenting a context does not install protection. Preserve the approval count,
-administrator enforcement, stale-approval dismissal, conversation resolution,
-strict up-to-date checks, linear history and force-push/deletion prohibitions
-when applying an authorized phase transition.
+Every check job executes the complete canonical [full profile](../.agents/validation.json), including the real application build, browser/visual and performance checks. Dedicated application jobs add separately required evidence. Browser fixtures are synthetic and are not API-provider verification. Visual checks require exact runtime/source provenance and actual human approval of every fresh baseline image; historical assets cannot establish that approval.
 
-CodeRabbit automatic review is disabled. Request a manual review only after the
-[latest-head preflight](../CONTRIBUTING.md#before-requesting-coderabbit): all required
-non-CodeRabbit checks, scanner and actual Sonar quality gate pass, and the complete
-applicable Sonar report has zero open/unresolved issues of any severity, including
-existing code. Missing or stale evidence and open documented false positives block
-requests; new commits invalidate preflight. Exclude CodeRabbit's own check/approval
-only to avoid a cycle. Require authorization, actual quota and no in-flight duplicate.
-Inspect substantive findings and approval: a successful progress status
-may describe a skipped review. Automatic approval can satisfy the normal approval
-count after a clean completed review, but the native GitHub count also accepts
-other eligible reviewers; it does not enforce a particular bot's identity.
+CodeRabbit automatic review remains disabled. Before one authorized manual request, apply [the latest-head preflight](../CONTRIBUTING.md#before-requesting-coderabbit): every non-CodeRabbit protected check, scanner execution and same-head asynchronous Sonar quality gate must pass, and every page of the complete report must contain zero unresolved issues across all severities and existing/new code. Missing, pending, failed, skipped or stale evidence blocks the request. New commits invalidate preflight. An open documented false positive still blocks it; use a real fix/fresh analysis or authorized provider classification, never weaker checks.
 
-The assistant-guidance phase has `applicationReady: false`; its protection does not
-require full panel **build**, **e2e** or **visual** jobs that it does not supply.
-Its existing `check` context must run all canonical commands, including the
-real static Storybook build and Chromium play/accessibility suite. Those component
-checks do not establish complete application build/E2E or visual-regression evidence.
-Before any runnable panel merges, introduce genuine application jobs, expand the
-canonical full gate, observe their current-revision results pass and add all three
-contexts to required checks. Do not use placeholder jobs, successful skips or
-unpublished source to establish readiness. Any protection change requires
-authorization and verification against actual hosted results.
-
-Require the actual asynchronous Sonar quality gate as well as scanner execution.
-Missing, failed, pending, skipped or quota-limited evidence must not be presented
-as completed review. Read [Sonar setup](sonarqube.md) and
-[Contributing](../CONTRIBUTING.md) before reporting merge readiness.
+Respect actual allowance and avoid duplicate accepted/in-flight review requests. Verify substantive processing and approval, not a skipped success or quota reply. CodeRabbit is excluded only from preflight to avoid a cycle and remains a merge requirement. Native approval count permits other eligible reviewers; do not claim it enforces one bot identity. Scanner execution is separate from the actual provider quality gate. Read [Sonar](sonarqube.md), [Contributing](../CONTRIBUTING.md) and [validation](validation.md).

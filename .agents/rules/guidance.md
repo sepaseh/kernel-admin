@@ -9,9 +9,7 @@ entry points and hooks are not runtime dependencies or evidence of automatic loa
 - Runtime ownership and behavior: current source, feature HTTP DTOs, synthetic
   consumer tests and executable boundary policies. Backend routes, authentication,
   database, storage and API-owned wire evidence stay in the separate API repository.
-- Published scope: `.github/bootstrap-policy.json`. The current
-  `assistant-guidance` phase retains `applicationReady: false`; isolated Storybook
-  does not establish application initialization, full E2E, visual approval or deployment. Finite public operational prerequisites are published within the same identifier, not a runnable activation.
+- Published scope: `.github/bootstrap-policy.json`. The application-verification phase admits the assembled standalone panel and its complete gate. Source admission does not establish current visual approval, API-provider compatibility or deployment. Historical assets remain history.
 - Validation commands/profiles: `.agents/validation.json`. Settings and documentation
   are links or checked projections, never separate complete gate definitions.
 - Task ownership: `.agents/navigation.json` and
@@ -40,8 +38,7 @@ living navigation, and verified lines in actual review evidence.
 
 The guidance checker validates safe paths, links, indexes and command projection.
 Guidance/safety regressions run inside the existing governance coverage suite. The
-focused guidance profile includes an advisory regression command; the required full
-profile includes twelve checks without duplicating that suite. Optional Node/Bash
+focused guidance profile includes an advisory regression command; the required full profile includes every application check without duplicating that suite. Optional Node/Bash
 hooks need compatible host support; they cannot replace the complete gate.
 
 Static checks cannot prove assistant discovery, semantic completeness, aesthetic
@@ -68,4 +65,4 @@ The declared inventory includes finite deployment/release helpers, pure quality 
 
 Only explicitly declared, reviewed synthetic public examples at `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example` qualify for source admission. Do not generalize this to another environment filename or read a local private homonym. Real credentials, certificates and operator state remain outside guidance/source verification.
 
-Keep twelve required full checks and existing measured suite owners. No new operational command/profile is implied by prose. Read [deployment](../../docs/deployment.md), [test reliability](../../docs/test-reliability.md) and [visual history](../../docs/visual-regression.md); preserve actual source revisions and limits.
+Preserve all inherited full checks and measured suite owners while admitting the complete application gate. Commands and profiles are admitted by the manifest, never by prose. Read [deployment](../../docs/deployment.md), [test reliability](../../docs/test-reliability.md) and [visual history](../../docs/visual-regression.md); preserve actual source revisions and limits.

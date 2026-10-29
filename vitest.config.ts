@@ -28,6 +28,8 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       include: [
+        "src/app/App.tsx",
+        "src/app/Routes.tsx",
         "src/app/config/index.ts",
         "src/app/config/routes.ts",
         "src/app/contexts/Core.ts",
@@ -90,6 +92,7 @@ export default defineConfig({
         "src/layouts/auth/index.ts",
         "src/layouts/default/Default.tsx",
         "src/layouts/default/index.ts",
+        "src/main.tsx",
         "src/shared/api/client.ts",
         "src/shared/api/config.ts",
         "src/shared/api/index.ts",
@@ -149,8 +152,6 @@ export default defineConfig({
         "scripts/run-audit.mjs",
         "scripts/check-bundle-size.mjs",
         "scripts/lighthouse-policy.mjs",
-        "scripts/run-lighthouse.mjs",
-        "scripts/stamp-admin-build.mjs",
         "scripts/validate-production-env.mjs",
         "scripts/validate-workflow-targets.mjs",
       ],

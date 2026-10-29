@@ -1,27 +1,29 @@
 name: CI
-
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    types: [opened, synchronize, reopened, edited, ready_for_review]
-
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+      - ready_for_review
 permissions:
   contents: read
   pull-requests: read
-
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: windows-2025
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -33,3 +35,49 @@ jobs:
       - run: npm ci
       - run: npm run browser:install
       - run: npm run validate -- full
+  build:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run check:bundle
+  e2e:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run browser:install
+      - run: npm run test:e2e
+  visual:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run browser:install
+      - run: npm run test:visual
+env:
+  KERNEL_SYNTHETIC_ENV: "1"
+  STORYBOOK_DISABLE_TELEMETRY: "1"
+  VITE_API_BASE_URL: https://api.example.com
+  VITE_APP_BASE_URL: /
+  VITE_OBSERVABILITY_URL: ""
+  VITE_RELEASE_ID: application-verification
