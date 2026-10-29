@@ -91,11 +91,11 @@ export const validateSmokeTargets = (env) => {
 export const validateDastTarget = (env) => {
   const target = parseTarget("DAST_TARGET", env.DAST_TARGET);
   const allowedHost = parseConfiguredHostname(
-    "STAGING_ALLOWED_APP_HOST",
+    "DAST_ALLOWED_HOST",
     env.DAST_ALLOWED_HOST,
   );
   const productionHost = parseConfiguredHostname(
-    "PRODUCTION_HOST",
+    "DAST_PRODUCTION_HOST",
     env.DAST_PRODUCTION_HOST,
   );
   if (target.hostname.toLowerCase() !== allowedHost) {

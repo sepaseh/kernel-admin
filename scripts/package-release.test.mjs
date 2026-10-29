@@ -98,6 +98,10 @@ test("excludes credentials and refuses a stale build identity", async () => {
       "synthetic private fixture",
     );
     await writeFile(path.join(build, "private.key"), "synthetic key");
+    await writeFile(
+      path.join(build, "assets/private.key"),
+      "synthetic nested key",
+    );
     await assert.rejects(
       packageRelease({ repositoryRoot: root, releaseId: "other" }),
       /differs/,
@@ -111,6 +115,19 @@ test("excludes credentials and refuses a stale build identity", async () => {
         (name) => name.startsWith(".env") || name.endsWith(".key"),
       ),
       false,
+    );
+    assert.equal(
+      (await readdir(path.join(output.directory, "public/assets"))).includes(
+        "private.key",
+      ),
+      false,
+    );
+    assert.equal(
+      await readFile(
+        path.join(output.directory, "public/assets/app-hash.js"),
+        "utf8",
+      ),
+      "export default 1;",
     );
     for (const releaseId of ["../escape", "bad/id", "a..b", ""])
       await assert.rejects(

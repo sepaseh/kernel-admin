@@ -18,7 +18,7 @@ export const createLighthouseUrl = (appBasePath = "/") => {
 
 export const evaluateLighthouseReport = (lhr) => {
   const failures = [];
-  const performanceScore = lhr.categories.performance.score;
+  const performanceScore = lhr?.categories?.performance?.score;
   if (
     !Number.isFinite(performanceScore) ||
     performanceScore < 0 ||
@@ -29,10 +29,10 @@ export const evaluateLighthouseReport = (lhr) => {
     );
   else if (performanceScore < minimumPerformanceScore)
     failures.push(
-      `performance score ${Math.round(performanceScore * 100)} (minimum ${minimumPerformanceScore * 100})`,
+      `performance score ${(performanceScore * 100).toFixed(2)} (minimum ${(minimumPerformanceScore * 100).toFixed(2)})`,
     );
   for (const [auditId, maximum] of Object.entries(lighthouseThresholds)) {
-    const value = lhr.audits[auditId]?.numericValue;
+    const value = lhr?.audits?.[auditId]?.numericValue;
     const available = Number.isFinite(value) && value >= 0;
     if (!available || value > maximum)
       failures.push(

@@ -45,7 +45,37 @@ describe("Lighthouse advisory", () => {
         }),
       ),
     ).toThrow(
-      /performance score 60.*first-contentful-paint 6001\.00.*largest-contentful-paint 6501\.00/s,
+      /performance score 59\.90 \(minimum 60\.00\).*first-contentful-paint 6001\.00.*largest-contentful-paint 6501\.00/s,
+    );
+  });
+
+  it("keeps the successful score rounded to a whole percentage", () => {
+    expect(evaluateLighthouseReport(createReport({ score: 0.604 }))).toBe(60);
+    expect(evaluateLighthouseReport(createReport({ score: 0.606 }))).toBe(61);
+  });
+
+  it.each([
+    ["missing report", undefined],
+    ["null report", null],
+    ["missing categories", { audits: createReport().audits }],
+    ["null categories", { ...createReport(), categories: null }],
+    ["missing performance", { ...createReport(), categories: {} }],
+    [
+      "null performance",
+      { ...createReport(), categories: { performance: null } },
+    ],
+  ])("reports an unavailable performance score for %s", (_, report) => {
+    expect(() => evaluateLighthouseReport(report)).toThrow(
+      "performance score unavailable (expected a finite number between 0 and 1)",
+    );
+  });
+
+  it.each([
+    ["missing audits", { categories: createReport().categories }],
+    ["null audits", { ...createReport(), audits: null }],
+  ])("reports every required metric as unavailable for %s", (_, report) => {
+    expect(() => evaluateLighthouseReport(report)).toThrow(
+      /Lighthouse advisory thresholds exceeded:\n.*cumulative-layout-shift unavailable.*first-contentful-paint unavailable.*interactive unavailable.*largest-contentful-paint unavailable.*total-blocking-time unavailable/s,
     );
   });
 

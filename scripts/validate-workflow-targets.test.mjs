@@ -101,4 +101,30 @@ describe("workflow target validation", () => {
       }),
     ).toThrow("must not target the production host");
   });
+
+  it.each([undefined, "", " staging.example.com", "staging.example.com:443"])(
+    "identifies the DAST allowlist variable when its value is invalid: %s",
+    (host) => {
+      expect(() =>
+        validateDastTarget({
+          DAST_ALLOWED_HOST: host,
+          DAST_PRODUCTION_HOST: "example.com",
+          DAST_TARGET: "http://staging.example.com",
+        }),
+      ).toThrow(/^DAST_ALLOWED_HOST must /);
+    },
+  );
+
+  it.each([undefined, "", " example.com", "example.com:443"])(
+    "identifies the DAST production variable when its value is invalid: %s",
+    (host) => {
+      expect(() =>
+        validateDastTarget({
+          DAST_ALLOWED_HOST: "staging.example.com",
+          DAST_PRODUCTION_HOST: host,
+          DAST_TARGET: "http://staging.example.com",
+        }),
+      ).toThrow(/^DAST_PRODUCTION_HOST must /);
+    },
+  );
 });

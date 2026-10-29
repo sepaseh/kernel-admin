@@ -11,19 +11,24 @@ import {
 
 export function renderDeploymentTemplate(template, environment) {
   const values = { HTTPS_PORT: "443", ...environment };
+  const host =
+    typeof values.ADMIN_HOST === "string"
+      ? values.ADMIN_HOST.toLowerCase()
+      : "";
   if (
-    !/^(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(
-      values.ADMIN_HOST ?? "",
-    ) ||
-    values.ADMIN_HOST.split(".").some(
-      (label) =>
-        !label ||
-        label.length > 63 ||
-        label.startsWith("-") ||
-        label.endsWith("-"),
-    )
+    !/^(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(host) ||
+    host
+      .split(".")
+      .some(
+        (label) =>
+          !label ||
+          label.length > 63 ||
+          label.startsWith("-") ||
+          label.endsWith("-"),
+      )
   )
     throw new Error("ADMIN_HOST must be a bare DNS hostname.");
+  values.ADMIN_HOST = host;
   validateOrigin(values.VITE_API_BASE_URL);
   validateBasePath(values.VITE_APP_BASE_URL);
   validateReleaseId(values.VITE_RELEASE_ID);
