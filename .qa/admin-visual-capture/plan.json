@@ -1,0 +1,38 @@
+{
+  "status": "AUTHORIZED_BOUNDED_QA",
+  "mode": "capture",
+  "repository": "sepaseh/kernel-admin",
+  "branch": "codex/admin-visual-qa-20261029",
+  "productTree": "899f7121d7a10a0482979e3c23ee55f14a71b259",
+  "initialProductTree": "899f7121d7a10a0482979e3c23ee55f14a71b259",
+  "baseCommit": "d7e84a22d848c1b605e7b1a34afb4968e4f73cc9",
+  "transportAuthorization": {
+    "scope": "bounded two-phase QA transport after merging PR16 and reconciling actual main",
+    "basis": "Root recorded the user's latest merge-first, reconcile-from-main, then-create-PR instruction as authorization for the proposed bounded QA sequence.",
+    "separateHumanImageApprovalRequired": true
+  },
+  "productFiles": 471,
+  "changedFiles": 98,
+  "sourceFingerprint": "532457f25918ee9b74f5a7ec65a081b6c91b24bf2729cb813e2ffcdc355e2eed",
+  "sourceInputs": 253,
+  "node": "v24.18.0",
+  "playwright": "1.64.1",
+  "expectedBundledChromium": "156.0.8078.4",
+  "approval": null,
+  "helpers": [
+    ".github/workflows/admin-visual-capture-qa.yml",
+    ".qa/admin-visual-capture/admin.capture.spec.ts",
+    ".qa/admin-visual-capture/capture-pending.ts",
+    ".qa/admin-visual-capture/capture.mjs",
+    ".qa/admin-visual-capture/plan.json",
+    ".qa/admin-visual-capture/playwright.capture.config.ts"
+  ],
+  "images": [
+    "admin-login-en-light.png",
+    "admin-login-fa-dark.png",
+    "admin-role-drawer-en-dark.png",
+    "admin-users-fa-light.png",
+    "admin-forgot-password-en-light.png",
+    "admin-register-en-light.png"
+  ]
+}
