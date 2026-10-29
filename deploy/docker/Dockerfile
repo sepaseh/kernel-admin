@@ -49,8 +49,8 @@ ENV ADMIN_HOST=${ADMIN_HOST} \
     VITE_RELEASE_ID=${VITE_RELEASE_ID}
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl openssl \
-    && rm -rf /var/lib/apt/lists/*
-RUN printf '%s\n' \
+    && rm -rf /var/lib/apt/lists/* \
+    && printf '%s\n' \
     'worker_processes auto;' \
     'pid /tmp/nginx.pid;' \
     'error_log /dev/stderr notice;' \
