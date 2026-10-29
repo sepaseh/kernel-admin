@@ -1,0 +1,99 @@
+{
+  "status": "AUTHORIZED_BOUNDED_QA",
+  "mode": "verify",
+  "repository": "sepaseh/kernel-admin",
+  "branch": "codex/admin-visual-qa-20261029",
+  "productTree": "c716e37c6ddd6cac78b921b9037857f25b34f58b",
+  "initialProductTree": "899f7121d7a10a0482979e3c23ee55f14a71b259",
+  "baseCommit": "d7e84a22d848c1b605e7b1a34afb4968e4f73cc9",
+  "transportAuthorization": {
+    "scope": "bounded two-phase QA transport after merging PR16 and reconciling actual main",
+    "basis": "Root recorded the user's latest merge-first, reconcile-from-main, then-create-PR instruction as authorization for the proposed bounded QA sequence.",
+    "separateHumanImageApprovalRequired": true
+  },
+  "productFiles": 471,
+  "changedFiles": 100,
+  "sourceFingerprint": "532457f25918ee9b74f5a7ec65a081b6c91b24bf2729cb813e2ffcdc355e2eed",
+  "sourceInputs": 253,
+  "node": "v24.18.0",
+  "playwright": "1.64.1",
+  "expectedBundledChromium": "156.0.8078.4",
+  "approval": {
+    "approvedAllSix": true,
+    "reviewer": "Human user in kernel-admin Codex conversation",
+    "reviewedAt": "2026-10-29T19:42:48.000Z",
+    "evidence": "Explicit human reply to question call_0d818d8448d44e09ae46a0a93337d4b4 after all six actual CI images were displayed: هر شش تصویر را تأیید می‌کنم؛ ادامه بده",
+    "captureCommit": "2348367edd25eb764658b62bc5ab128def4dc029",
+    "captureRunId": "40941200316",
+    "captureRunAttempt": "1",
+    "captureArtifactId": "12926878247",
+    "captureArtifactDigest": "sha256:1e36ed4ed6339c819e2a733e4da60372d0dc4fe6dbd95c56618c5bde234909c2",
+    "capturedMetadataSha256": "7d78af3a3b71dba696c1cfc09754e1c2127cb835afa70afb02673a1c23765c2d",
+    "approvedMetadataSha256": "2aa2c36029d6dde97d10f6c7b9122a76ddbf4673f7c320ae9c94498c0c787430",
+    "images": {
+      "admin-login-en-light.png": "354cc63a12c80cc3ec6661f90846aa7290aaefe30dc1d2396bbc55f6306f628d",
+      "admin-login-fa-dark.png": "fe38c953835818e36435678d289516cfc070b51b3999aa40a39a47ee3bbf4b3a",
+      "admin-role-drawer-en-dark.png": "8bc79b0fd697a27511ad9985957e4a4314407f64d9116c0b4a6027d55a031d63",
+      "admin-users-fa-light.png": "8d7cf6023be6645e6d34b6a0e7abc6f4f25b51a98113597bfe9a93d519b58b79",
+      "admin-forgot-password-en-light.png": "9910dbdb4b64c88286864e4ab0b7e31cbaf9e125dde5f77cf1fa592a29e7fd65",
+      "admin-register-en-light.png": "016d83ad110583706ecf403df267cc73d667eb054c8075b192aa6a4212bd3f0e"
+    },
+    "questionId": "call_0d818d8448d44e09ae46a0a93337d4b4",
+    "actualHumanReply": "هر شش تصویر را تأیید می‌کنم؛ ادامه بده",
+    "observedAtUtc": "2026-10-29T19:42:48.000Z",
+    "reviewedAtBasis": "UTC observed immediately after explicit human response",
+    "inspection": "capture-run-40941200316/inspection-v2/inspection.json",
+    "allSixDisplayedInConversation": true,
+    "fullGatePassed": false,
+    "publicationReady": false
+  },
+  "helpers": [
+    ".github/workflows/admin-visual-capture-qa.yml",
+    ".qa/admin-visual-capture/admin.capture.spec.ts",
+    ".qa/admin-visual-capture/capture-pending.ts",
+    ".qa/admin-visual-capture/capture.mjs",
+    ".qa/admin-visual-capture/plan.json",
+    ".qa/admin-visual-capture/playwright.capture.config.ts"
+  ],
+  "images": [
+    "admin-login-en-light.png",
+    "admin-login-fa-dark.png",
+    "admin-role-drawer-en-dark.png",
+    "admin-users-fa-light.png",
+    "admin-forgot-password-en-light.png",
+    "admin-register-en-light.png"
+  ],
+  "repair": {
+    "failedQaCommit": "0a6bce9cab23f8f99b21a1217b7c234927ea1fd5",
+    "failedProductCommit": "04c35d27f8922d009bf8b87f4f47a280bc262fa4",
+    "failedProductTree": "00c2b2a9a52bdcdb7f8d52bf7a25564cfcbdca8c",
+    "failedRunId": "40943400376",
+    "failedRunAttempt": "1",
+    "originalCaptureCommit": "2348367edd25eb764658b62bc5ab128def4dc029",
+    "originalProductCommit": "c4cec0fe4960ac89d1b9f89c29c4b551f9902041",
+    "baseCommit": "d7e84a22d848c1b605e7b1a34afb4968e4f73cc9",
+    "repairedProductTree": "c716e37c6ddd6cac78b921b9037857f25b34f58b",
+    "files": [
+      {
+        "path": "docs/testing.fa.md",
+        "beforeSha256": "460537c368e85aaf05df33ab43850a5238de4466167ba7ad25fa693eb96f59ee",
+        "afterSha256": "e66ac049d22d861ab1b667d179b99cd7a4d7d49df97c0f02bd50f2f1bed1432d"
+      },
+      {
+        "path": "docs/testing.md",
+        "beforeSha256": "51fbd3c01785a4cbc27b1698773a43cc3dc8b28db24a836926ba4105c9fe4fc2",
+        "afterSha256": "1f175943674faa443f88bbb5372f31c9fb556c301ca684797ebe04496968eebd"
+      },
+      {
+        "path": "scripts/package-release.test.mjs",
+        "beforeSha256": "91bb4f192c418ca90dccd21d8ebe57af7b4bc266555ae4b8c12e9cbf655d1523",
+        "afterSha256": "9970b4a58b565b88c95894cb5956e8d75a4efb24923a7fded76e52ebdb5215bd"
+      },
+      {
+        "path": "scripts/run-lighthouse.test.mjs",
+        "beforeSha256": "8d9ca81c741d31691dab19bd0e0fdce4a76552ff2e753a6d75deb4b1a0a39b09",
+        "afterSha256": "0ac75e61e9f1d9d2746ca35983f8b9028e34c0c660a08c004eb01e0289513885"
+      }
+    ]
+  }
+}
