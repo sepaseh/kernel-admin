@@ -365,7 +365,7 @@ const guidanceFiles = [
   "scripts/check-guidance.mjs",
   "scripts/guidance.test.mjs",
 ];
-const operationsPrerequisiteFiles = [
+const operationsPrerequisiteFiles = new Set([
   ".dockerignore",
   ".env.example",
   ".release-please-manifest.json",
@@ -431,12 +431,12 @@ const operationsPrerequisiteFiles = [
   "scripts/validate-workflow-targets.mjs",
   "scripts/validate-workflow-targets.test.mjs",
   "tooling/paths.ts",
-];
-const publicEnvironmentTemplates = [
+]);
+const publicEnvironmentTemplates = new Set([
   ".env.example",
   "deploy/docker/.env.example",
   "deploy/native/hosts.env.example",
-];
+]);
 const phaseOrder = [
   "governance",
   "foundation",
@@ -479,10 +479,9 @@ const isForbiddenPublicationPath = (file, phase) =>
   /^(?:apps|packages|drizzle|collection|node_modules|server|coverage)(?:\/|$)/.test(
     file,
   ) ||
-  (operationsPrerequisiteFiles.includes(file) &&
-    phase !== "assistant-guidance") ||
+  (operationsPrerequisiteFiles.has(file) && phase !== "assistant-guidance") ||
   (/^(?:deploy|e2e|tooling)(?:\/|$)/.test(file) &&
-    !operationsPrerequisiteFiles.includes(file)) ||
+    !operationsPrerequisiteFiles.has(file)) ||
   file === "scripts/run-lighthouse.mjs" ||
   file === "stryker.config.json" ||
   file === "drizzle.config.ts" ||
@@ -498,8 +497,7 @@ const isForbiddenPublicationPath = (file, phase) =>
       !guidanceFiles.includes(file))) ||
   (/(?:^|\/)(?:(?:[^/]*\.)?env(?:[./]|$)|settings\.local\.json$)/i.test(file) &&
     !(
-      phase === "assistant-guidance" &&
-      publicEnvironmentTemplates.includes(file)
+      phase === "assistant-guidance" && publicEnvironmentTemplates.has(file)
     )) ||
   /\.(?:pem|key|pfx|p12|sqlite|db)$/.test(file);
 

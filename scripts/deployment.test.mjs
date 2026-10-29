@@ -1,7 +1,20 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+
+import { parse as parseYaml } from "yaml";
 
 import { checkHealth } from "./healthcheck.mjs";
 import { renderDeploymentTemplate } from "./render-deployment.mjs";
@@ -113,8 +126,119 @@ test("readiness requires real HTML and matching immutable release, rejects redir
     await assert.rejects(checkHealth(`${origin}/invalid`), /not ready/);
     await assert.rejects(checkHealth(`${origin}/redirect`));
     await assert.rejects(checkHealth("file:///not-a-target"));
+    await assert.rejects(checkHealth(null));
   } finally {
     await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("renderer CLI confines relative inputs and exclusive output to its ordinary working tree", async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), "kernel-admin-renderer-"),
+  );
+  const root = path.join(directory, "workspace");
+  const outside = path.join(directory, "outside");
+  const renderer = fileURLToPath(
+    new URL("./render-deployment.mjs", import.meta.url),
+  );
+  const execute = (patch = {}) =>
+    spawnSync(
+      process.execPath,
+      [
+        renderer,
+        "--template",
+        patch.template ?? "input/admin.conf.template",
+        "--config-file",
+        patch.environment ?? "input/public.env",
+        "--output",
+        patch.output ?? "output/admin.conf",
+      ],
+      { cwd: root, encoding: "utf8" },
+    );
+  try {
+    await mkdir(path.join(root, "input"), { recursive: true });
+    await mkdir(outside);
+    await writeFile(
+      path.join(root, "input/admin.conf.template"),
+      "server_name ${ADMIN_HOST};",
+    );
+    const publicConfiguration = Object.entries(environment)
+      .map(([name, value]) => `${name}=${value}`)
+      .join("\n");
+    await writeFile(path.join(root, "input/public.env"), publicConfiguration);
+    await writeFile(path.join(outside, "public.env"), publicConfiguration);
+    await writeFile(
+      path.join(outside, "admin.conf.template"),
+      "server_name ${ADMIN_HOST};",
+    );
+    await writeFile(path.join(outside, "existing.conf"), "outside sentinel");
+
+    const result = execute();
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      await readFile(path.join(root, "output/admin.conf"), "utf8"),
+      "server_name admin.example.com;",
+    );
+    assert.notEqual(
+      execute().status,
+      0,
+      "existing output must never be overwritten",
+    );
+    let attempt = 0;
+    const outsideNames = {
+      template: "admin.conf.template",
+      environment: "public.env",
+      output: "new-output.conf",
+    };
+    for (const field of ["template", "environment", "output"])
+      for (const value of [
+        `../outside/${outsideNames[field]}`,
+        path.join(outside, outsideNames[field]),
+        "input/../existing.conf",
+        "input\\existing.conf",
+        "NUL",
+        "input//admin.conf",
+      ]) {
+        const rejection = execute({
+          output: `output/rejected-${attempt++}.conf`,
+          [field]: value,
+        });
+        assert.notEqual(rejection.status, 0, `${field}: ${value}`);
+        assert.match(rejection.stderr, /Renderer paths/);
+      }
+    await assert.rejects(readFile(path.join(outside, "new-output.conf")), {
+      code: "ENOENT",
+    });
+    assert.equal(
+      await readFile(path.join(outside, "existing.conf"), "utf8"),
+      "outside sentinel",
+    );
+
+    await symlink(
+      outside,
+      path.join(root, "linked"),
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    for (const field of ["template", "environment", "output"]) {
+      const rejection = execute({
+        output: `output/rejected-${attempt++}.conf`,
+        [field]: `linked/${outsideNames[field]}`,
+      });
+      assert.notEqual(rejection.status, 0, `linked ${field}`);
+      assert.match(rejection.stderr, /Renderer paths/);
+    }
+    await assert.rejects(readFile(path.join(outside, "new-output.conf")), {
+      code: "ENOENT",
+    });
+    assert.equal(
+      await readFile(path.join(outside, "existing.conf"), "utf8"),
+      "outside sentinel",
+    );
+  } finally {
+    assert.equal(path.dirname(path.resolve(directory)), path.resolve(tmpdir()));
+    assert.ok(path.basename(directory).startsWith("kernel-admin-renderer-"));
+    await rm(directory, { recursive: true, force: true });
   }
 });
 
@@ -140,9 +264,21 @@ test("Docker packaging uses standalone admin source with certificate mounts", as
   assert.ok(docker.includes("COPY src ./src"));
   assert.ok(docker.includes("COPY public ./public"));
   assert.ok(docker.includes("/app/releases/${VITE_RELEASE_ID}/public/"));
-  assert.ok(docker.includes("npm ci"));
+  assert.ok(docker.includes("npm ci --ignore-scripts"));
   assert.ok(docker.includes("validate-deployment-env.mjs"));
   assert.ok(docker.includes("--cacert"));
   assert.ok(compose.includes("./tls:/etc/kernel-admin/tls:ro"));
-  assert.ok(compose.includes("read_only: true"));
+  assert.match(docker, /^USER nginx$/m);
+  assert.match(docker, /^EXPOSE 8080 8443$/m);
+  assert.match(docker, /pid \/tmp\/nginx\.pid;/);
+  for (const temporary of ["client_body", "proxy", "fastcgi", "uwsgi", "scgi"])
+    assert.match(docker, new RegExp(`${temporary}_temp_path /tmp/`));
+  const service = parseYaml(compose).services.admin;
+  assert.equal(service.read_only, true);
+  assert.deepEqual(service.ports, [
+    "${HTTP_PORT:-80}:8080",
+    "${HTTPS_PORT:-443}:8443",
+  ]);
+  assert.deepEqual(service.tmpfs, ["/tmp"]);
+  assert.deepEqual(service.cap_drop, ["ALL"]);
 });

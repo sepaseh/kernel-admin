@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button, Form } from "antd";
 import type { ComponentProps } from "react";
 import { useState } from "react";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { i18nInstance } from "@/shared/i18n";
 
@@ -55,6 +55,12 @@ const meta = {
     await userEvent.type(confirmation, "synthetic-password");
     await userEvent.click(canvas.getByRole("button", { name: "Validate" }));
     await expect(await canvas.findByText("Validated")).toBeVisible();
+    // Cleared Ant Design errors remain mounted until their exit motion ends.
+    await waitFor(() =>
+      expect(
+        canvasElement.querySelector(".ant-form-item-explain-error"),
+      ).not.toBeInTheDocument(),
+    );
   },
   render: (args) => <PasswordFieldsStory {...args} />,
   title: "Shared UI/PasswordFields",

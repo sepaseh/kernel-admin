@@ -48,6 +48,7 @@ async function fixture(options = {}) {
     container: !!options.preexistingContainer,
   };
   const attempts = [];
+  let healthAttempts = 0;
   const docker = async (args, { signal } = {}) => {
     attempts.push(args.join(" "));
     signal?.throwIfAborted();
@@ -112,8 +113,13 @@ async function fixture(options = {}) {
       return "aabbccddeeff";
     }
     if (args[0] === "port") return options.port ?? "127.0.0.1:49153\r\n";
-    if (args[0] === "inspect")
-      return options.unhealthy ? "starting\n" : "healthy\n";
+    if (args[0] === "inspect") {
+      healthAttempts++;
+      return options.unhealthy ||
+        healthAttempts <= (options.startupHealthFailures ?? 0)
+        ? "starting\n"
+        : "healthy\n";
+    }
     if (args[0] === "logs") {
       if (options.logFailure) throw new Error("Synthetic diagnostic failure");
       return "Synthetic container logs";
@@ -349,14 +355,34 @@ const orchestrationFixture = async (options = {}) => {
 };
 
 test("synthetic Docker orchestration awaits the mapped port and checks its owned fixture", async () => {
-  const fixtureValue = await orchestrationFixture({ startupFailures: 1 });
+  const fixtureValue = await orchestrationFixture({
+    startupFailures: 1,
+    startupHealthFailures: 2,
+  });
   await fixtureValue.run();
   assert.deepEqual(fixtureValue.state, {
     builder: false,
     image: false,
     container: false,
   });
-  assert.deepEqual(fixtureValue.waits, [500]);
+  assert.deepEqual(fixtureValue.waits, [500, 1000, 1000]);
+  const certificateGenerator = fixtureValue.attempts.find((attempt) =>
+    attempt.startsWith("run --rm --user 0:0 --read-only"),
+  );
+  assert.ok(
+    certificateGenerator.includes("chown nginx:nginx /tls/privkey.pem"),
+  );
+  assert.ok(certificateGenerator.includes("chmod 640 /tls/privkey.pem"));
+  assert.ok(certificateGenerator.includes("chmod 644 /tls/fullchain.pem"));
+  const serving = fixtureValue.attempts.find((attempt) =>
+    attempt.startsWith("run -d"),
+  );
+  assert.ok(serving.includes("--read-only --tmpfs /tmp --cap-drop ALL"));
+  assert.ok(serving.includes("127.0.0.1::8443"));
+  assert.equal(serving.includes("--user 0"), false);
+  assert.ok(
+    fixtureValue.attempts.includes(`port ${fixtureValue.identity} 8443/tcp`),
+  );
   assert.ok(
     fixtureValue.requests.some(
       ({ servername }) => servername === "unknown.test",
@@ -408,6 +434,19 @@ for (const [option, message] of [
   test(`synthetic Docker ${option} preserves its failure and cleans every owned resource`, async () => {
     const fixtureValue = await orchestrationFixture({ [option]: true });
     await assert.rejects(fixtureValue.run(), message);
+    if (option === "unhealthy") {
+      assert.equal(fixtureValue.waits.length, 44);
+      assert.equal(
+        fixtureValue.attempts.filter((attempt) =>
+          attempt.startsWith("inspect "),
+        ).length,
+        45,
+      );
+    }
+    if (option === "documentUnavailable") {
+      assert.equal(fixtureValue.waits.length, 59);
+      assert.equal(fixtureValue.requests.length, 60);
+    }
     assert.deepEqual(fixtureValue.state, {
       builder: false,
       image: false,

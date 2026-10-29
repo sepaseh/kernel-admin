@@ -123,19 +123,18 @@ export const createTlsRequest =
       );
     });
 
-const waitForDocument = async ({ request, signal, wait }) => {
+const waitForDocument = async ({ request, signal, wait }, attempts = 60) => {
+  signal.throwIfAborted();
   let document;
-  for (let attempt = 0; attempt < 60; attempt++) {
-    signal.throwIfAborted();
-    try {
-      document = await request("/console/auth/register");
-      if (document.status === 200) break;
-    } catch {
-      // The owned fixture may still be starting; abort is checked by wait.
-    }
-    await wait(500, signal);
+  try {
+    document = await request("/console/auth/register");
+  } catch {
+    // The owned fixture may still be starting; abort is checked by wait.
   }
-  return document;
+  if (document?.status === 200 || attempts === 1) return document;
+
+  await wait(500, signal);
+  return waitForDocument({ request, signal, wait }, attempts - 1);
 };
 
 const verifyFixtureResponses = async ({ request, identity, signal, wait }) => {
@@ -168,24 +167,26 @@ const verifyFixtureResponses = async ({ request, identity, signal, wait }) => {
   assert.equal((await request("/console/.env.local")).status, 404);
 };
 
-const waitForContainerHealth = async ({ docker, identity, signal, wait }) => {
-  for (let attempt = 0; attempt < 45; attempt++) {
-    signal.throwIfAborted();
-    if (
-      (
-        await docker([
-          "inspect",
-          "--format",
-          "{{.State.Health.Status}}",
-          identity,
-        ])
-      ).trim() === "healthy"
-    )
-      return;
-    if (attempt === 44)
-      throw new Error("Container readiness never became healthy.");
-    await wait(1000, signal);
-  }
+const waitForContainerHealth = async (
+  { docker, identity, signal, wait },
+  attempts = 45,
+) => {
+  signal.throwIfAborted();
+  const status = await docker([
+    "inspect",
+    "--format",
+    "{{.State.Health.Status}}",
+    identity,
+  ]);
+  if (status.trim() === "healthy") return;
+  if (attempts === 1)
+    throw new Error("Container readiness never became healthy.");
+
+  await wait(1000, signal);
+  return waitForContainerHealth(
+    { docker, identity, signal, wait },
+    attempts - 1,
+  );
 };
 
 export async function runDockerSmoke({
@@ -229,6 +230,11 @@ export async function runDockerSmoke({
         await docker([
           "run",
           "--rm",
+          "--user",
+          "0:0",
+          "--read-only",
+          "--security-opt",
+          "no-new-privileges=true",
           "--name",
           `${identity}-tls`,
           "--label",
@@ -236,23 +242,15 @@ export async function runDockerSmoke({
           "--mount",
           `type=bind,source=${directory},target=/tls`,
           "--entrypoint",
-          "openssl",
+          "sh",
           image,
-          "req",
-          "-x509",
-          "-newkey",
-          "rsa:2048",
-          "-nodes",
-          "-days",
-          "1",
-          "-subj",
-          "/CN=admin.test",
-          "-addext",
-          "subjectAltName=DNS:admin.test",
-          "-keyout",
-          "/tls/privkey.pem",
-          "-out",
-          "/tls/fullchain.pem",
+          "-c",
+          "openssl req -x509 -newkey rsa:2048 -nodes -days 1 " +
+            "-subj /CN=admin.test -addext subjectAltName=DNS:admin.test " +
+            "-keyout /tls/privkey.pem -out /tls/fullchain.pem " +
+            "&& chown nginx:nginx /tls/privkey.pem " +
+            "&& chmod 640 /tls/privkey.pem " +
+            "&& chmod 644 /tls/fullchain.pem && chmod 755 /tls",
         ]);
         await docker([
           "run",
@@ -263,22 +261,20 @@ export async function runDockerSmoke({
           `kernel.task=${identity}`,
           "--read-only",
           "--tmpfs",
-          "/var/cache/nginx",
-          "--tmpfs",
-          "/var/run",
-          "--tmpfs",
           "/tmp",
+          "--cap-drop",
+          "ALL",
           "--security-opt",
           "no-new-privileges=true",
           "-p",
-          "127.0.0.1::443",
+          "127.0.0.1::8443",
           "--mount",
           `type=bind,source=${directory},target=/etc/kernel-admin/tls,readonly`,
           image,
         ]);
         started = true;
         const port = parseMappedPort(
-          await docker(["port", identity, "443/tcp"]),
+          await docker(["port", identity, "8443/tcp"]),
         );
         const certificate = await readCertificate(
           path.join(directory, "fullchain.pem"),

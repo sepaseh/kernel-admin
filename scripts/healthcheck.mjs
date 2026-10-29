@@ -1,10 +1,7 @@
 import { fileURLToPath } from "node:url";
 
-export async function checkHealth(
-  target = "http://127.0.0.1/",
-  expectedRelease,
-) {
-  const url = new URL(target);
+export async function checkHealth(target, expectedRelease) {
+  const url = new URL(target === undefined ? "http://127.0.0.1/" : target);
   if (
     !["http:", "https:"].includes(url.protocol) ||
     url.username ||

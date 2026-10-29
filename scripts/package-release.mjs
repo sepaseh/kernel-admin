@@ -37,9 +37,16 @@ async function copyAssets(source, target) {
     throw new Error("Release assets cannot contain symbolic links.");
   if (information.isDirectory()) {
     await mkdir(target, { recursive: true });
-    for (const entry of (await readdir(source)).sort())
-      if (!excluded(entry))
-        await copyAssets(path.join(source, entry), path.join(target, entry));
+    const entries = (await readdir(source))
+      .filter((entry) => !excluded(entry))
+      .sort((left, right) => left.localeCompare(right, "en"));
+    const results = await Promise.allSettled(
+      entries.map((entry) =>
+        copyAssets(path.join(source, entry), path.join(target, entry)),
+      ),
+    );
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure) throw failure.reason;
   } else if (information.isFile())
     await copyFile(source, target, constants.COPYFILE_EXCL);
   else throw new Error("Unsupported release asset.");

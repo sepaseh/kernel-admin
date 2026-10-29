@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs, parseEnv } from "node:util";
@@ -70,23 +70,75 @@ export function renderDeploymentTemplate(template, environment) {
   });
 }
 
+async function resolveRendererPath(root, supplied, output = false) {
+  const segments = supplied.split("/");
+  if (
+    !segments.every(
+      (segment) =>
+        /^[A-Za-z0-9_.-]+$/.test(segment) &&
+        segment !== "." &&
+        segment !== ".." &&
+        !segment.endsWith(".") &&
+        !/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(segment),
+    )
+  )
+    throw new Error(
+      "Renderer paths must be safe relative paths beneath the working directory.",
+    );
+
+  const filename = path.resolve(root, ...segments);
+  const boundary = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  if (!filename.startsWith(boundary))
+    throw new Error(
+      "Renderer paths must remain beneath the working directory.",
+    );
+
+  await Promise.all(
+    segments.map(async (_, index) => {
+      const entry = path.join(root, ...segments.slice(0, index + 1));
+      try {
+        const information = await lstat(entry);
+        if (
+          information.isSymbolicLink() ||
+          (index < segments.length - 1 && !information.isDirectory()) ||
+          (index === segments.length - 1 && !information.isFile())
+        )
+          throw new Error(
+            "Renderer paths cannot use symbolic links or non-file inputs.",
+          );
+      } catch (error) {
+        if (!output || error.code !== "ENOENT") throw error;
+      }
+    }),
+  );
+  return filename;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     const { values } = parseArgs({
       options: {
         template: { type: "string" },
-        "env-file": { type: "string" },
+        "config-file": { type: "string" },
         output: { type: "string" },
       },
     });
-    if (!values.template || !values["env-file"] || !values.output)
-      throw new Error("Use --template PATH --env-file PATH --output PATH.");
+    if (!values.template || !values["config-file"] || !values.output)
+      throw new Error(
+        "Use --template RELATIVE_PATH --config-file RELATIVE_PATH --output RELATIVE_PATH.",
+      );
+    const root = await realpath(process.cwd());
+    const [template, environment, output] = await Promise.all([
+      resolveRendererPath(root, values.template),
+      resolveRendererPath(root, values["config-file"]),
+      resolveRendererPath(root, values.output, true),
+    ]);
     const rendered = renderDeploymentTemplate(
-      await readFile(values.template, "utf8"),
-      parseEnv(await readFile(values["env-file"], "utf8")),
+      await readFile(template, "utf8"),
+      parseEnv(await readFile(environment, "utf8")),
     );
-    await mkdir(path.dirname(path.resolve(values.output)), { recursive: true });
-    await writeFile(values.output, rendered, { flag: "wx" });
+    await mkdir(path.dirname(output), { recursive: true });
+    await writeFile(output, rendered, { flag: "wx" });
     console.info("Admin Nginx configuration rendered.");
   } catch (error) {
     console.error(error.message);
