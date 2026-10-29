@@ -425,6 +425,85 @@ test("type-one raw HTML blocks use exact bounded starts and whole closing lines"
   );
 });
 
+test("type-six raw HTML blocks end on container blanks rather than closing tags", () => {
+  for (const example of [
+    "<div>\n[example](ignored.md)\n</div>\n[also](ignored.md)",
+    "<DIV class=x>\n[example](ignored.md)",
+    "</table>\n[example](ignored.md)",
+    "<section/> [example](ignored.md)",
+    "<div>\n\u00a0\n[example](ignored.md)",
+    "> <div>\n> [example](ignored.md)\n>\n> [real](owner.ts)",
+    "- <div>\n  [example](ignored.md)\n\n  [real](owner.ts)",
+  ])
+    for (const source of [example, example.replaceAll("\n", "\r\n")])
+      assert.deepEqual(
+        markdownLinks(
+          source.includes("[real]") ? source : source + "\n\n[real](owner.ts)",
+        ),
+        ["owner.ts"],
+        source,
+      );
+  for (const name of ["address", "div", "h1", "search", "table", "ul"])
+    assert.deepEqual(markdownLinks("<" + name + "\n[example](ignored.md)"), []);
+  for (const source of [
+    "<divide> [real](owner.ts)",
+    "prefix <div> [real](owner.ts)",
+    "\\<div>\n[real](owner.ts)",
+    "    <div>\n\n[real](owner.ts)",
+    "<pre>\n\n[example](ignored.md)\n</pre>\n[real](owner.ts)",
+    "> <div>\n> [example](ignored.md)\n[real](owner.ts)",
+  ])
+    assert.deepEqual(markdownLinks(source), ["owner.ts"], source);
+});
+
+test("complete inline CDATA is literal while incomplete or escaped openers preserve prose", () => {
+  for (const source of [
+    "prefix <![CDATA[[example](ignored.md)]]> [real](owner.ts)",
+    "prefix <![CDATA[first\n[example](ignored.md)]]> [real](owner.ts)",
+    "prefix <![CDATA[<!-- `[example](ignored.md)]]> [real](owner.ts)",
+    "[<![CDATA[[example](ignored.md)]]>label](owner.ts)",
+    "prefix <![CDATA[[example](ignored.md)]]> [real](owner.ts) ]]>",
+    "> prefix <![CDATA[first\n> [example](ignored.md)]]> [real](owner.ts)",
+    "- prefix <![CDATA[first\n  [example](ignored.md)]]> [real](owner.ts)",
+    "prefix <![CDATA[first\nlast]]>\n    [real](owner.ts)",
+  ])
+    for (const text of [source, source.replaceAll("\n", "\r\n")])
+      assert.deepEqual(markdownLinks(text), ["owner.ts"], text);
+  for (const source of [
+    "prefix <![CDATA[ [real](owner.ts)",
+    "prefix <![cdata[[real](owner.ts)]]>",
+    "prefix \\<![CDATA[[real](owner.ts)]]>",
+    "`<![CDATA[` [real](owner.ts) `]]>`",
+    'prefix <a title="<![CDATA["> [real](owner.ts)',
+    "prefix <![CDATA[first\n\n[real](owner.ts)]]>",
+    "prefix <![CDATA[first\n> [real](owner.ts)]]>",
+    "prefix <![CDATA[first\n~~~\n~~~\n[real](owner.ts)]]>",
+  ])
+    assert.deepEqual(markdownLinks(source), ["owner.ts"], source);
+  assert.deepEqual(
+    markdownLinks("prefix <![CDATA[code]]>\n    [real](owner.ts)"),
+    ["owner.ts"],
+  );
+});
+
+test("block CDATA persists to EOF or its first closing line within its container", () => {
+  for (const source of [
+    "<![CDATA[\n[example](ignored.md)",
+    "<![CDATA[\n\n<!--\n~~~\n[example](ignored.md)",
+    "<![CDATA[code]]>\n    [example](ignored.md)",
+  ])
+    assert.deepEqual(markdownLinks(source), [], source);
+  for (const source of [
+    "<![CDATA[\n[example](ignored.md)\n]]> [also](ignored.md)\n[real](owner.ts)",
+    "<![CDATA[[example](ignored.md)]]> [also](ignored.md)\n[real](owner.ts)",
+    "> <![CDATA[\n> [example](ignored.md)\n\n[real](owner.ts)",
+    "- > <![CDATA[\n  > [example](ignored.md)\n>\n  > [real](owner.ts)",
+    "- <![CDATA[\n  [example](ignored.md)\n[real](owner.ts)",
+  ])
+    for (const text of [source, source.replaceAll("\n", "\r\n")])
+      assert.deepEqual(markdownLinks(text), ["owner.ts"], text);
+});
+
 test("raw inline tag attributes are opaque without changing actual link destinations", () => {
   for (const tag of [
     '<a title="[example](ignored.md)">',
@@ -585,6 +664,26 @@ test("malformed raw HTML tags finish within a real child-process deadline", () =
 for (const malformedTag of ["<a title='".repeat(100_000), "<a data=".repeat(100_000)]) {
   const tagLinks = markdownLinks(malformedTag + " [good](owner.ts)");
   if (tagLinks.length !== 1 || tagLinks[0] !== "owner.ts") process.exitCode = 1;
+}`;
+  const result = spawnSync(
+    process.execPath,
+    ["--input-type=module", "-e", script],
+    {
+      encoding: "utf8",
+      timeout: 5_000,
+      windowsHide: true,
+    },
+  );
+  assert.equal(result.error, undefined, result.error?.message);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test("CDATA opener runs finish within a separate real child-process deadline", () => {
+  const moduleUrl = new URL("./check-guidance.mjs", import.meta.url).href;
+  const script = `const { markdownLinks } = await import(${JSON.stringify(moduleUrl)});
+for (const text of ["prefix " + "<![CDATA[".repeat(100_000), "prefix " + "<![CDATA[".repeat(100_000) + "]]>", "prefix " + "]] >".repeat(100_000)]) {
+  const links = markdownLinks(text + " [real](owner.ts)");
+  if (links.length !== 1 || links[0] !== "owner.ts") process.exitCode = 1;
 }`;
   const result = spawnSync(
     process.execPath,
@@ -916,6 +1015,77 @@ test("local query targets and case-insensitive external schemes resolve correctl
   assert.deepEqual((await checkGuidance(root)).errors, []);
 });
 
+test("only the three reviewed public environment templates are valid guide targets", async (context) => {
+  const { root, write } = await createFixture(context);
+  for (const filename of [
+    ".env.example",
+    "deploy/docker/.env.example",
+    "deploy/native/hosts.env.example",
+  ]) {
+    await write(filename, "SYNTHETIC_PUBLIC_TEMPLATE=true\n");
+    await write(
+      "docs/source-navigation.md",
+      "[template](../" + filename + ")\n",
+    );
+    assert.deepEqual((await checkGuidance(root)).errors, [], filename);
+  }
+  for (const filename of [
+    "docs/.env.example",
+    "docs/.env.local.md",
+    "deploy/native/api.env.example",
+    "deploy/native/hosts.env.example.md",
+    "deploy/native/hosts.env.local",
+    "deploy/native/HOSTS.ENV.EXAMPLE",
+    "deploy/docker/.env.example.backup",
+    "deploy/docker/.env/README.md",
+  ]) {
+    await write(filename, "[sentinel](unread-target.md)\n");
+    await write(
+      "docs/source-navigation.md",
+      "[private](../" + filename + ")\n",
+    );
+    const errors = (await checkGuidance(root)).errors;
+    assert.ok(
+      errors.includes(
+        "Unsafe guide link: docs/source-navigation.md: ../" + filename,
+      ),
+      filename,
+    );
+    assert.ok(
+      !errors.some((error) => error.includes("unread-target.md")),
+      filename,
+    );
+  }
+});
+
+test("public deployment Markdown joins maintained links without following symbolic targets", async (context) => {
+  const { root, write } = await createFixture(context);
+  await write(
+    "deploy/docker/README.md",
+    "[فارسی](README.fa.md) [owner](../../owner.ts)\n",
+  );
+  await write(
+    "deploy/docker/README.fa.md",
+    "[English](README.md) [owner](../../owner.ts)\n",
+  );
+  assert.deepEqual((await checkGuidance(root)).errors, []);
+  await write("deploy/docker/README.fa.md", "[broken](missing.md)\n");
+  assert.ok(
+    (await checkGuidance(root)).errors.includes(
+      "Missing or unsafe guide link: deploy/docker/README.fa.md: missing.md",
+    ),
+  );
+  await write("server/data/never-read.md", "[sentinel](unread-target.md)\n");
+  await symlink(
+    path.join(root, "server/data"),
+    path.join(root, "deploy/alias"),
+    "junction",
+  );
+  const errors = (await checkGuidance(root)).errors.join("\n");
+  assert.match(errors, /Symbolic guidance path: deploy\/alias/);
+  assert.ok(!errors.includes("unread-target.md"));
+});
+
 test("unsafe existing destinations fail for safety while missing targets retain missing diagnostics", async (context) => {
   const { root, container, write } = await createFixture(context);
   await write(".env.local", "SYNTHETIC_UNREAD_SECRET_FIXTURE\n");
@@ -940,6 +1110,10 @@ test("unsafe existing destinations fail for safety while missing targets retain 
         destination +
         ")\n",
       'prefix <a 1x="[unsafe](' + destination + ')">\n',
+      "<div>\n[example](ignored.md)\n</div>\n\n[unsafe](" + destination + ")\n",
+      "prefix <![CDATA[[example](ignored.md)]]> [unsafe](" +
+        destination +
+        ")\n",
     ]) {
       await write("docs/source-navigation.md", text);
       assert.ok(
@@ -1044,6 +1218,11 @@ test("guidance indexes reject traversal, private state, credentials and generate
     "C:/private/key",
     ".env.local",
     "src/.env.production",
+    "docs/.env.example",
+    "deploy/native/api.env.example",
+    "deploy/native/hosts.env.local",
+    "deploy/native/HOSTS.ENV.EXAMPLE",
+    "deploy/docker/.env.example.backup",
     "server/data/test.sqlite",
     "node_modules/pkg/index.js",
     ".git/config",
@@ -1059,8 +1238,9 @@ test("guidance indexes reject traversal, private state, credentials and generate
   for (const value of [
     "src/index.ts",
     "src/contracts/index.ts",
+    ".env.example",
     "deploy/docker/.env.example",
-    "deploy/native/api.env.example",
+    "deploy/native/hosts.env.example",
   ])
     assert.equal(isSafeGuidancePath(value), true, value);
 });

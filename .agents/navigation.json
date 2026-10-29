@@ -264,6 +264,51 @@
         ".agents/rules/localization.md"
       ],
       "limitations": "The current phase is non-runnable. Browser evidence is limited to isolated synthetic Storybook components; assembled application routes, real API journeys, production application build and visual/performance gates remain future work."
+    },
+    {
+      "id": "release-quality-prerequisites",
+      "when": "Change pure release packaging, deployment rendering, environment validation or quality report policy without activating the application.",
+      "owners": [
+        "scripts/package-release.mjs",
+        "scripts/render-deployment.mjs",
+        "scripts/validate-deployment-env.mjs",
+        "scripts/validate-production-env.mjs",
+        "scripts/check-bundle-size.mjs",
+        "scripts/lighthouse-policy.mjs",
+        "scripts/validate-workflow-targets.mjs",
+        "deploy/docker/smoke.mjs",
+        "deploy/docker/resources.mjs",
+        "tooling/paths.ts"
+      ],
+      "contracts": [
+        ".github/bootstrap-policy.json",
+        "docs/release-operations.md",
+        "docs/deployment.md",
+        "docs/performance.md"
+      ],
+      "tests": [
+        "scripts/package-release.test.mjs",
+        "scripts/deployment.test.mjs",
+        "scripts/docker-smoke-resources.test.mjs",
+        "scripts/check-bundle-size.test.mjs",
+        "scripts/run-lighthouse.test.mjs",
+        "scripts/validate-production-env.test.mjs",
+        "scripts/validate-workflow-targets.test.mjs"
+      ],
+      "checks": [
+        "snapshot",
+        "guidance",
+        "typecheck",
+        "lint",
+        "unit-coverage",
+        "governance-coverage"
+      ],
+      "rules": [
+        ".agents/rules/testing.md",
+        ".agents/rules/guidance.md",
+        ".agents/rules/safety.md"
+      ],
+      "limitations": "This phase remains non-runnable. Pure synthetic tests do not execute a production build, deployment, release publication, Lighthouse, mutation testing or current visual approval. Dated Windows images are historical inputs."
     }
   ],
   "phase": "assistant-guidance",

@@ -35,4 +35,25 @@
 - [حفاظت شاخه](branch-protection.fa.md) · [English](branch-protection.md)
 - [SonarQube Cloud](sonarqube.fa.md) · [English](sonarqube.md)
 
-ترکیب برنامه، ساخت production، مسیر قرارداد و ارائه‌دهنده، E2E برنامه، مرجع بصری، بودجهٔ کارایی و راهنمای استقرار و بازیابی به انتشارهای بعدی تعلق دارند. منبع محلی منتشرنشده یا بایگانی QA تاریخ‌دار آن‌ها شاهد بررسی مرحلهٔ فعلی نیست.
+راهنمای پیش‌نیازهای محدودِ زیر اکنون منتشر شده است؛ ترکیب واقعی برنامه، ساخت production، مسیر provider و E2E، مقایسهٔ تصویر، Lighthouse و اجرای استقرار همچنان کار آینده‌اند. بایگانی محلی و فرادادهٔ تاریخی تصویر، شاهد تازهٔ بررسی نیستند.
+
+## پیش‌نیازهای منتشرشده و عملیات آینده
+
+- [آماده‌سازی استقرار](deployment.fa.md) · [English](deployment.md)
+- [پیش‌نیاز Docker](../deploy/docker/README.fa.md) · [English](../deploy/docker/README.md)
+- [پیش‌نیاز میزبانی بومی](../deploy/native/README.fa.md) · [English](../deploy/native/README.md)
+- [آماده‌سازی نسخه](releasing.fa.md) · [English](releasing.md)
+- [عملیات نسخه](release-operations.fa.md) · [English](release-operations.md)
+- [بازیابی artifact](backup-restore.fa.md) · [English](backup-restore.md)
+- [آماده‌سازی بررسی مقصد](staging.fa.md) · [English](staging.md)
+- [پوشش کامپوننت](component-coverage.fa.md) · [English](component-coverage.md)
+- [دسترس‌پذیری](accessibility.fa.md) · [English](accessibility.md)
+- [دامنهٔ قرارداد مصرف‌کننده](contract-testing.fa.md) · [English](contract-testing.md)
+- [سیاست کارایی](performance.fa.md) · [English](performance.md)
+- [سابقهٔ تصویر](visual-regression.fa.md) · [English](visual-regression.md)
+- [پایداری آزمون](test-reliability.fa.md) · [English](test-reliability.md)
+- [سیاست امنیت](../SECURITY.fa.md) · [English](../SECURITY.md)
+- [مدل تهدید](security/threat-model.fa.md) · [English](security/threat-model.md)
+- [ثبت بازبینی امنیت](security/reviews.fa.md) · [English](security/reviews.md)
+
+این منابع مرحلهٔ غیرقابل‌اجرای موجود را گسترش می‌دهند. نمونهٔ عمومی و آزمون ساختگی ابزار موجود است؛ از آن‌ها اجرای استقرار اپراتور، ساخت production یا بررسی واقعی بیرونی نتیجه نمی‌گیریم.

@@ -20,4 +20,12 @@ The optional safety hook models literal Bash/sh/dash/zsh commands with a 65,536-
 
 Storybook uses its isolated Vite configuration, disables environment-file and ambient VITE discovery, fully replaces feature APIs and the shared client, and runs real Chromium play/accessibility assertions with violations treated as errors. No environment file or real API is required. Generated output stays under `coverage` and is never committed. Preserve production coverage scope and thresholds; browser output is not unit LCOV.
 
-Application entry, App/Routes composition, production build, Pact/provider journeys, application E2E, visual comparison, performance budgets and deployment fixtures remain future work. Their genuine checks must join the full application gate before a runnable panel merges. Do not use synthetic application flags for unpublished configurations. Read [testing](testing.md), [Contributing](../CONTRIBUTING.md) and [comprehension evaluation](comprehension-evaluation.md).
+Application entry, App/Routes composition, production build, Pact/provider journeys, application E2E, visual comparison, actual performance measurement and real deployment execution remain future work. Published pure budgets and synthetic operational fixtures are preparatory checks. Their genuine checks must join the full application gate before a runnable panel merges. Do not use synthetic application flags for unpublished configurations. Read [testing](testing.md), [Contributing](../CONTRIBUTING.md) and [comprehension evaluation](comprehension-evaluation.md).
+
+## Finite prerequisite extension
+
+The inventory now includes 431 maintained files in the same non-runnable phase. Twelve required full entries and thirteen registered definitions retain their command ownership/order. No operational npm aliases or new focused profile are introduced. Pure helper unit cases and synthetic rendering/packaging/Docker lifecycle cases join the two existing coverage commands without duplicate full-suite execution.
+
+The exact public-template exceptions are `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example`, containing reviewed synthetic values. Do not read arbitrary local environments to validate source. Some helper CLIs load selected files, write outputs or make network requests; use pure APIs with explicit synthetic fixtures during tests and require authorization for real operation.
+
+Only the exact-tree run and its actual results can establish local readiness. Historical Win32 metadata, release configuration, policy evaluation or a rendered fixture does not establish a production artifact, deployed TLS, current visual review or real Lighthouse result.

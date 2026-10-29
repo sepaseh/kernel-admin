@@ -1,0 +1,130 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  parseConfiguredHostname,
+  parseTarget,
+  validateDastTarget,
+  validateSmokeTargets,
+  validateStagingTargets,
+} from "./validate-workflow-targets.mjs";
+
+const staging = {
+  STAGING_ALLOWED_API_HOST: "api.staging.example.com",
+  STAGING_ALLOWED_APP_HOST: "staging.example.com",
+  STAGING_API_HEALTH_URL: "http://api.staging.example.com/health",
+  STAGING_BASE_URL: "http://staging.example.com/app/",
+};
+
+describe("workflow target validation", () => {
+  it("normalizes canonical hostnames", () => {
+    expect(parseConfiguredHostname("HOST", "EXAMPLE.COM")).toBe("example.com");
+  });
+
+  it.each([
+    " example.com",
+    "example.com:443",
+    "http://example.com",
+    "-bad.example",
+  ])("rejects invalid configured hostname %s", (host) =>
+    expect(() => parseConfiguredHostname("HOST", host)).toThrow(),
+  );
+
+  it.each(["http://user:pass@example.com"])("rejects unsafe target %s", (url) =>
+    expect(() => parseTarget("TARGET", url)).toThrow(),
+  );
+
+  it.each([
+    "ftp://example.com",
+    "file:///synthetic",
+    "javascript:alert(1)",
+    "data:text/plain,synthetic",
+  ])("rejects non-HTTP workflow target %s", (url) =>
+    expect(() => parseTarget("TARGET", url)).toThrow(/HTTP\(S\)/),
+  );
+
+  it("accepts staging targets on the configured hosts", () => {
+    expect(() => validateStagingTargets(staging)).not.toThrow();
+  });
+
+  it("rejects a staging host mismatch", () => {
+    expect(() =>
+      validateStagingTargets({
+        ...staging,
+        STAGING_BASE_URL: "http://other.example.com",
+      }),
+    ).toThrow("not explicitly allowed");
+  });
+
+  it("requires matching immutable smoke deployment IDs", () => {
+    const smoke = {
+      SMOKE_ALLOWED_API_HOST: staging.STAGING_ALLOWED_API_HOST,
+      SMOKE_ALLOWED_APP_HOST: staging.STAGING_ALLOWED_APP_HOST,
+      SMOKE_API_HEALTH_URL: staging.STAGING_API_HEALTH_URL,
+      SMOKE_BASE_URL: staging.STAGING_BASE_URL,
+      SMOKE_DEPLOYMENT_ID: "candidate",
+      SMOKE_EXPECTED_DEPLOYMENT_ID: "expected",
+    };
+    expect(() => validateSmokeTargets(smoke)).toThrow("expected deployment");
+    expect(() =>
+      validateSmokeTargets({
+        ...smoke,
+        SMOKE_EXPECTED_DEPLOYMENT_ID: "candidate",
+      }),
+    ).not.toThrow();
+  });
+
+  it("reports smoke variable names when a smoke host is not allowed", () => {
+    expect(() =>
+      validateSmokeTargets({
+        SMOKE_ALLOWED_API_HOST: staging.STAGING_ALLOWED_API_HOST,
+        SMOKE_ALLOWED_APP_HOST: staging.STAGING_ALLOWED_APP_HOST,
+        SMOKE_API_HEALTH_URL: staging.STAGING_API_HEALTH_URL,
+        SMOKE_BASE_URL: "http://other.example.com",
+        SMOKE_DEPLOYMENT_ID: "candidate",
+        SMOKE_EXPECTED_DEPLOYMENT_ID: "candidate",
+      }),
+    ).toThrow("SMOKE_BASE_URL host is not explicitly allowed");
+  });
+
+  it("allows authorized staging DAST and blocks production", () => {
+    const env = {
+      DAST_ALLOWED_HOST: "staging.example.com",
+      DAST_PRODUCTION_HOST: "example.com",
+      DAST_TARGET: "http://staging.example.com",
+    };
+    expect(() => validateDastTarget(env)).not.toThrow();
+    expect(() =>
+      validateDastTarget({
+        ...env,
+        DAST_ALLOWED_HOST: "example.com",
+        DAST_TARGET: "http://example.com",
+      }),
+    ).toThrow("must not target the production host");
+  });
+
+  it.each([undefined, "", " staging.example.com", "staging.example.com:443"])(
+    "identifies the DAST allowlist variable when its value is invalid: %s",
+    (host) => {
+      expect(() =>
+        validateDastTarget({
+          DAST_ALLOWED_HOST: host,
+          DAST_PRODUCTION_HOST: "example.com",
+          DAST_TARGET: "http://staging.example.com",
+        }),
+      ).toThrow(/^DAST_ALLOWED_HOST must /);
+    },
+  );
+
+  it.each([undefined, "", " example.com", "example.com:443"])(
+    "identifies the DAST production variable when its value is invalid: %s",
+    (host) => {
+      expect(() =>
+        validateDastTarget({
+          DAST_ALLOWED_HOST: "staging.example.com",
+          DAST_PRODUCTION_HOST: host,
+          DAST_TARGET: "http://staging.example.com",
+        }),
+      ).toThrow(/^DAST_PRODUCTION_HOST must /);
+    },
+  );
+});
