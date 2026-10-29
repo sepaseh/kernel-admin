@@ -6,6 +6,8 @@ Use [the canonical manifest](../.agents/validation.json) and [validation policy]
 
 Unit tests cover pure utilities, catalog/runtime adapters, HTTP/session generations, providers/forms, composed route access and failure boundaries. Both unit and governance coverage are genuinely measured; keep their existing thresholds and every inherited stress corpus, assertion and deadline. A failure is repaired, never hidden by skipping a required check, narrowing inputs or increasing a budget.
 
+Build-metadata and release-packaging fixtures resolve the temporary parent before creating an owned directory. Their alias regressions preserve exact artifact ownership and cleanup assertions when Windows exposes the same directory through short and long path names; alternate spellings do not permit escaping the owned directory.
+
 Storybook keeps complete API/client mocks, synthetic server-owned language/direction/calendar metadata, disabled ambient VITE/environment discovery and blocking accessibility audits. Application Playwright fixtures exercise composed routing, authentication and management flows with synthetic HTTP replies and fail-closed unexpected requests. Tests must own every process, port and temporary directory they create, and clean up setup, cancellation and failure paths.
 
 Pact verifies the admin consumer contract; no live API provider is contacted or verified. The production build and bundle budget validate actual emitted assets. Lighthouse measures the synthetic authentication page using the owned built preview and browser. Static schemas, a rendered fixture or a successful skipped status cannot substitute for these executed checks.
