@@ -3,6 +3,9 @@ import { fileURLToPath } from "node:url";
 import { validateBasePath } from "./validate-deployment-env.mjs";
 
 export async function checkHealth(target, expectedRelease, basePath) {
+  if (expectedRelease === "")
+    throw new Error("Expected release must not be empty.");
+
   const url = new URL(target === undefined ? "http://127.0.0.1/" : target);
   if (
     !["http:", "https:"].includes(url.protocol) ||

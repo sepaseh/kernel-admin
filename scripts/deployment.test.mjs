@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import {
   mkdir,
   mkdtemp,
@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 import { parse as parseYaml } from "yaml";
 
@@ -251,6 +252,61 @@ test("readiness binds deep routes to an explicit same-origin application base be
     await checkHealth();
     await assert.rejects(checkHealth(null));
     assert.deepEqual(defaults, ["http://127.0.0.1/"]);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("readiness rejects an explicitly empty release in the function and CLI before any request", async () => {
+  const requests = [];
+  const server = createServer((request, response) => {
+    requests.push(request.url);
+    if (request.url === "/console/_kernel/release") {
+      response.setHeader("Content-Type", "application/json");
+      response.end(JSON.stringify({ release: "synthetic-v1" }));
+      return;
+    }
+    response.setHeader("Content-Type", "text/html");
+    response.end("<html>synthetic readiness</html>");
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const target = `http://127.0.0.1:${server.address().port}/console/`;
+    const directError = await checkHealth(target, "").then(
+      () => undefined,
+      (error) => error,
+    );
+    const cliError = await promisify(execFile)(
+      process.execPath,
+      [
+        fileURLToPath(new URL("./healthcheck.mjs", import.meta.url)),
+        target,
+        "",
+      ],
+      { windowsHide: true },
+    ).then(
+      () => undefined,
+      (error) => error,
+    );
+    assert.deepEqual(
+      requests,
+      [],
+      "neither empty release call may make a readiness request",
+    );
+    assert.match(
+      directError?.message ?? "",
+      /Expected release must not be empty/,
+    );
+    assert.equal(cliError?.code, 1);
+    assert.match(cliError.stderr, /Admin readiness check failed/);
+
+    await checkHealth(target);
+    await checkHealth(target, "synthetic-v1");
+    assert.deepEqual(requests, [
+      "/console/",
+      "/console/",
+      "/console/_kernel/release",
+    ]);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }

@@ -54,6 +54,12 @@ describe("Lighthouse advisory", () => {
     expect(evaluateLighthouseReport(createReport({ score: 0.606 }))).toBe(61);
   });
 
+  it("rejects a below-threshold score even when its diagnostic rounds to the minimum", () => {
+    expect(() =>
+      evaluateLighthouseReport(createReport({ score: 0.59999 })),
+    ).toThrow("performance score 60.00 (minimum 60.00)");
+  });
+
   it.each([
     ["missing report", undefined],
     ["null report", null],
