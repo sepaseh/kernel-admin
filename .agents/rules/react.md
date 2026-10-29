@@ -6,21 +6,21 @@ These Ant Design, i18next, icon and React Router conventions apply to this stand
 
 - Keep one exported React component per `.tsx` file when practical.
 - When a function component receives props, define them as a named `type` and
-  annotate the input parameter directly, including a destructured parameter.
-  Do not use `FC`, `React.FC`, `FunctionComponent` or `React.FunctionComponent`.
-  Let TypeScript infer the return type; components without props do not need a
-  dummy props type or parameter.
+  annotate the named component as `FC<Props>`, importing `FC` with a type-only
+  import. Components without props do not need a dummy props type or parameter.
 - Put reusable UI pieces in `src/shared/ui`.
 - Keep route-level screens in their owning `src/features/<feature>` directory.
 - Keep feature-specific forms beside the owning feature.
 - Do not define React components inside another component render body.
 
 ```tsx
+import type { FC } from "react";
+
 type UserCardProps = {
   name: string;
 };
 
-export const UserCard = ({ name }: UserCardProps) => <div>{name}</div>;
+export const UserCard: FC<UserCardProps> = ({ name }) => <div>{name}</div>;
 ```
 
 ## State and hooks
@@ -144,7 +144,9 @@ All user-visible text should go through `react-i18next`.
 - Define route keys and paths in `src/app/config/routes.ts`.
 - Update `src/app/config/routes.ts` when route access metadata changes. Keep access
   decisions in the pure policy functions under `src/app/lib`.
-- These are published metadata and policies, not complete App/Routes composition.
-  The `assistant-guidance` phase keeps `applicationReady: false`; an application
-  entry point, real E2E, production build and visual evidence belong to a later
-  deliberately validated phase.
+- Check [the publication policy](../../.github/bootstrap-policy.json) before
+  assuming an application entry point or App/Routes composition is admitted.
+  While `applicationReady` is false, metadata and component tests cannot establish
+  a runnable application. Activation requires the admitted composition and genuine
+  build, application browser and reviewed visual checks in the
+  [canonical full gate](../validation.json).

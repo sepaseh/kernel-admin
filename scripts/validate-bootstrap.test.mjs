@@ -138,12 +138,17 @@ const operationsPrerequisiteFiles = [
   "scripts/package-release.mjs",
   "scripts/package-release.test.mjs",
   "scripts/render-deployment.mjs",
+  "scripts/run-lighthouse.mjs",
   "scripts/run-lighthouse.test.mjs",
+  "scripts/run-visual.mjs",
+  "scripts/stamp-admin-build.mjs",
   "scripts/validate-deployment-env.mjs",
   "scripts/validate-production-env.mjs",
   "scripts/validate-production-env.test.mjs",
   "scripts/validate-workflow-targets.mjs",
   "scripts/validate-workflow-targets.test.mjs",
+  "scripts/visual-environment.mjs",
+  "scripts/visual.test.mjs",
   "tooling/paths.ts",
 ];
 
@@ -735,7 +740,7 @@ test("assistant guidance retains the complete workshop and requires every declar
     ),
   );
   assert.equal(current.phase, "assistant-guidance");
-  assert.equal(validateBootstrapPolicy(current).size, 431);
+  assert.equal(validateBootstrapPolicy(current).size, 436);
   const additions = current.allowedFiles.filter(isGuidancePhaseFile);
   assert.equal(additions.length, 63);
   for (const missing of [
@@ -776,7 +781,7 @@ test("assistant guidance retains the complete workshop and requires every declar
   );
   const { root } = await fixture(context, current);
   const result = await inspectBootstrap(root);
-  assert.equal(result.files, 431);
+  assert.equal(result.files, 436);
   assert.equal(result.applicationReady, false);
   assert.match(result.scope, /assistant-neutral instructions/);
   assert.match(result.scope, /no application entry point/);
@@ -821,7 +826,7 @@ test("release and quality prerequisites require their complete finite closure in
       "utf8",
     ),
   );
-  assert.equal(operationsPrerequisiteFiles.length, 65);
+  assert.equal(operationsPrerequisiteFiles.length, 70);
   for (const missing of operationsPrerequisiteFiles)
     assert.throws(
       () =>
@@ -842,7 +847,7 @@ test("release and quality prerequisites require their complete finite closure in
     "deploy/unlisted.mjs",
     "e2e/visual.spec.ts",
     "tooling/unlisted.ts",
-    "scripts/run-lighthouse.mjs",
+    "scripts/run-lighthouse-unlisted.mjs",
     "stryker.config.json",
   ])
     assert.throws(
@@ -873,7 +878,7 @@ test("current prerequisites retain only the three synthetic public template name
     ),
   );
   const { root, put } = await fixture(context, current);
-  assert.equal((await inspectBootstrap(root)).files, 431);
+  assert.equal((await inspectBootstrap(root)).files, 436);
   await put(
     "deploy/native/.env.local",
     "synthetic forbidden contents must never be parsed",

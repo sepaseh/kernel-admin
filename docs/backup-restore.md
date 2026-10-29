@@ -2,7 +2,7 @@
 
 [English](backup-restore.md) · [فارسی](backup-restore.fa.md)
 
-This is a future operator procedure, not an executed restore report. The current non-runnable phase publishes packaging/recovery prerequisites and synthetic tests only.
+This is an operator procedure, not an executed restore report. Read admitted packaging/build capabilities and `applicationReady` from [the publication policy](../.github/bootstrap-policy.json), and required checks from [the manifest](../.agents/validation.json). While readiness is false, prerequisite fixtures cannot establish a recoverable production artifact; even a runnable declaration does not authorize reading backups or operating a target.
 
 After authorized activation, retain immutable public artifacts, release manifests, public build configuration and rendered-configuration provenance. Keep certificates and keys under a separate secure operator backup policy, outside Git and public release archives. Record revision, artifact hash, release ID, base path and API compatibility so recovery selects the original artifact rather than rebuilding different bytes under its old identity.
 

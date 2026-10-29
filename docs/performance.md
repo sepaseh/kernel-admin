@@ -4,7 +4,9 @@
 
 The published [bundle evaluator](../scripts/check-bundle-size.mjs) retains JavaScript budgets of 450,000 bytes per chunk and 1,900,000 bytes total. Synthetic asset inputs exercise its decisions. There is no production panel build in this phase, so these tests do not establish a current application bundle size; Storybook assets are a different output.
 
-The [pure Lighthouse policy](../scripts/lighthouse-policy.mjs) holds thresholds, report evaluation and target construction without launching a preview or Chrome. Its policy tests run in existing unit coverage. The real Lighthouse runner, optional browser tools and application preview are deferred; no Lighthouse npm command or report is claimed here. Future integration must test launch/audit/write failures and clean every owned process while preserving errors.
+The [pure Lighthouse policy](../scripts/lighthouse-policy.mjs) holds thresholds, report evaluation and target construction without launching a preview or Chrome. Its policy tests run in existing unit coverage. The import-safe [runner](../scripts/run-lighthouse.mjs) reuses that policy and exposes injected lifecycle tests for startup, audit, output and cleanup failures. Importing it starts no process. Actual application preview, Chrome and Lighthouse execution remain deferred; no Lighthouse npm command or measured application report is claimed here.
+
+This phase publishes the injected lifecycle API. Direct browser/performance CLI invocation fails clearly until the application, its dependencies and configuration are admitted. Startup, interruption, report-write completion and owned-resource cleanup are exercised with synthetic drivers; application integration requires the later real gate.
 
 Published observability adapters and tests describe scoped event/privacy behavior, not collected field performance. Do not infer traffic, availability, user percentiles or an active collector from adapter source. Real reporting requires an explicitly configured authorized service and its own privacy, retention and aggregation policy.
 

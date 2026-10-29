@@ -424,12 +424,17 @@ const operationsPrerequisiteFiles = new Set([
   "scripts/package-release.mjs",
   "scripts/package-release.test.mjs",
   "scripts/render-deployment.mjs",
+  "scripts/run-lighthouse.mjs",
   "scripts/run-lighthouse.test.mjs",
+  "scripts/run-visual.mjs",
+  "scripts/stamp-admin-build.mjs",
   "scripts/validate-deployment-env.mjs",
   "scripts/validate-production-env.mjs",
   "scripts/validate-production-env.test.mjs",
   "scripts/validate-workflow-targets.mjs",
   "scripts/validate-workflow-targets.test.mjs",
+  "scripts/visual-environment.mjs",
+  "scripts/visual.test.mjs",
   "tooling/paths.ts",
 ]);
 const publicEnvironmentTemplates = new Set([
@@ -480,9 +485,12 @@ const isForbiddenPublicationPath = (file, phase) =>
     file,
   ) ||
   (operationsPrerequisiteFiles.has(file) && phase !== "assistant-guidance") ||
+  (/^scripts\/(?:run-(?:lighthouse|visual)|stamp-admin-build|visual)(?:[.-].*)?\.mjs$/.test(
+    file,
+  ) &&
+    !operationsPrerequisiteFiles.has(file)) ||
   (/^(?:deploy|e2e|tooling)(?:\/|$)/.test(file) &&
     !operationsPrerequisiteFiles.has(file)) ||
-  file === "scripts/run-lighthouse.mjs" ||
   file === "stryker.config.json" ||
   file === "drizzle.config.ts" ||
   file === "index.html" ||
@@ -623,7 +631,7 @@ export const inspectBootstrap = async (root) => {
   );
   const scopeByPhase = {
     "assistant-guidance":
-      "Published assistant-neutral instructions, safe optional hooks, current-source navigation, static comprehension cases and finite release/quality prerequisites alongside the isolated Storybook workshop; no application entry point, assembled routes, production application build, external API journey or visual gate is published. Pure helper tests and public deployment templates do not execute deployment, release publication, Lighthouse, mutation testing or visual approval. Static inventory checks do not establish automatic host instruction loading or benchmark improvement.",
+      "Published assistant-neutral instructions, safe optional hooks, current-source navigation, static comprehension cases and finite release/quality prerequisites alongside the isolated Storybook workshop; no application entry point, assembled routes, production application build, external API journey or visual gate is published. Import-safe verification runners, pure helper tests and public deployment templates do not execute deployment, release publication, Lighthouse, mutation testing or visual approval. Static inventory checks do not establish automatic host instruction loading or benchmark improvement.",
     "storybook-verification":
       "Published isolated Storybook build and real Chromium component interactions/accessibility with synthetic API fixtures; no application entry point, assembled routes, production application build, external API journey or visual gate is published.",
     "business-screens":

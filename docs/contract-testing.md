@@ -1,4 +1,4 @@
-# HTTP contracts and future provider verification
+# HTTP contracts and provider evidence
 
 [English](contract-testing.md) · [فارسی](contract-testing.fa.md)
 
@@ -6,6 +6,6 @@ Current consumer evidence is in feature API/type owners, shared transport tests 
 
 The independent API owns endpoint execution, authorization, authentication, storage, database/migrations and its Bruno collection. Admin catalogs remain local; validated API settings own language, direction, calendar and names. A successful mock consumer test is not proof that a real provider implements the contract. Coordinate incompatible wire changes and rollout with the API owner.
 
-Pact tooling, its provider process and `contract/api.contract.test.ts` are deferred rather than published verification owners. No contract npm command or Pact dependency is added here. Future activation must reconcile consumer identity and current HTTP semantics, use isolated synthetic data, add genuine consumer/provider checks and record actual provider evidence. Never use a real account or production target as a fixture.
+Use [the publication policy](../.github/bootstrap-policy.json) and [validation manifest](../.agents/validation.json) to determine whether Pact dependencies, `contract/api.contract.test.ts` and a contract command are admitted. When they are admitted, use the `kernel-admin` consumer identity, current HTTP semantics and an exclusively owned local mock server with synthetic data. That genuine consumer test remains distinct from separately authorized verification against the API provider. While `applicationReady` is false, consumer fixtures alone cannot establish a runnable application. Never use a real account or production target as a fixture.
 
 Run the relevant existing unit/type checks and the [canonical full gate](validation.md). These checks remain scoped to published source. See [HTTP ownership](http-client.md) and [request reliability](admin-request-reliability.md).
