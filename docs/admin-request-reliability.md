@@ -2,16 +2,9 @@
 
 [English](admin-request-reliability.md) · [فارسی](admin-request-reliability.fa.md)
 
-This request-lifecycle guide applies to the inherited published modules in the non-runnable `assistant-guidance` phase. Guidance checking joins the [canonical full gate](../.agents/validation.json); the HTTP and session-generation contract below is unchanged.
+This guide owns the HTTP and session-generation contract used by feature adapters, request hooks, Core/Ant Design providers, forms, screens and layouts. Small read hooks coordinate lifetime; no query library, frontend database access or duplicate business service is introduced.
 
-Scope updated: 28 October 2026. The non-runnable `assistant-guidance` phase publishes
-feature-owned HTTP adapters, request hooks, Core/Ant Design providers,
-authentication forms, business screens, layout modules and an isolated Storybook
-workshop with real Chromium component interactions and accessibility checks.
-`applicationReady` remains false: no application entry point, assembled App/Routes,
-production application build, complete application E2E journey or visual gate is
-published. Small read hooks coordinate request lifetime; no
-query library, frontend database access or business-service duplication is introduced.
+Read the actual phase and admitted entry/composition from the [publication policy](../.github/bootstrap-policy.json), and required checks from the [canonical full gate](../.agents/validation.json). Isolated component interactions do not establish an application journey. Runnable verification must preserve these request guards and add genuine application evidence; it does not verify the independent API provider.
 
 ## Deadlines and retries
 

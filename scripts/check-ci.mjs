@@ -105,14 +105,15 @@ const inspectCommandStep = (step) => {
 };
 
 const canonicalCommands = [
-  { command: "npm ci", mention: /(?:^|[\s;&|])npm\s+ci(?=$|[\s;&|<>])/ },
+  { command: "npm ci", mention: /(?:^|[\s;&|<>()])npm\s+ci(?=$|[\s;&|<>()])/ },
   {
     command: "npm run browser:install",
-    mention: /(?:^|[\s;&|])npm\s+run\s+browser:install(?=$|[\s;&|<>])/,
+    mention: /(?:^|[\s;&|<>()])npm\s+run\s+browser:install(?=$|[\s;&|<>()])/,
   },
   {
     command: "npm run validate -- full",
-    mention: /(?:^|[\s;&|])npm\s+run\s+validate\s+--\s+full(?=$|[\s;&|<>])/,
+    mention:
+      /(?:^|[\s;&|<>()])npm\s+run\s+validate\s+--\s+full(?=$|[\s;&|<>()])/,
   },
 ];
 
@@ -232,6 +233,8 @@ const inspectApplicationSetup = (steps, installationIndex) => {
       step.with.path !== "."
     )
       throw new Error("Application checkout must use the repository root");
+    if (action === "checkout" && Object.hasOwn(step.with ?? {}, "ref"))
+      throw new Error("Application checkout must not select a ref");
     if (
       action === "setup-node" &&
       (step.with?.["node-version-file"] !== ".nvmrc" ||
@@ -270,7 +273,7 @@ const inspectApplicationJob = (workflow, definition) => {
   const positions = commands.map((command) => {
     const commandPattern = command.replaceAll(" ", String.raw`\s+`);
     const mention = new RegExp(
-      String.raw`(?:^|[\s;&|])${commandPattern}(?=$|[\s;&|<>])`,
+      String.raw`(?:^|[\s;&|<>()])${commandPattern}(?=$|[\s;&|<>()])`,
     );
     const matches = job.steps.flatMap((step, index) =>
       isRecord(step) && typeof step.run === "string" && mention.test(step.run)

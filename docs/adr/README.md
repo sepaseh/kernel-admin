@@ -7,7 +7,7 @@ cannot reconstruct. They are not evidence that a production system is deployed.
 Current source/contracts and tests determine behavior; update consequences or
 add a superseding record when an accepted decision changes.
 
-Scope updated: 28 October 2026. The current `assistant-guidance` publication retains Core/providers, business modules, isolated Storybook verification and local development guidance, with `applicationReady: false`. Application entry, App/Routes composition, production panel build, complete application E2E and visual verification remain future work. Individual ADR acceptance dates and earlier publication descriptions are historical; the current source and canonical manifest determine active scope. API/website responsibilities describe ownership and integration requirements, not fresh verification of those independent repositories.
+Current phase, admitted composition and readiness are declared by [the publication policy](../../.github/bootstrap-policy.json); [the manifest](../../.agents/validation.json) owns required evidence. A false readiness flag retains module/workshop scope; runnable admission needs genuine application checks and human-reviewed visual provenance. Earlier ADR dates and publication descriptions remain historical. API/website boundaries describe ownership and compatibility requirements, not fresh verification of those independent repositories.
 
 | Record                                                                                    | Decision                                                  |
 | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- |

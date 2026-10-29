@@ -2,15 +2,9 @@
 
 [English](ui-foundation.md) · [فارسی](ui-foundation.fa.md)
 
-The `assistant-guidance` publication retains this UI foundation and its measured module tests. The [current full gate](../.agents/validation.json) adds guidance consistency; that addition does not publish application composition or alter UI ownership.
+This foundation owns reusable Ant Design widgets, theme and compact preferences, route-back behavior, local assets and optional error/performance adapters. Core providers, business modules and isolated Storybook build/browser checks build on these owners.
 
-The `ui-foundation` phase publishes reusable Ant Design widgets, the theme adapter,
-compact/theme preferences, route-back behavior, optional error/performance reporting
-and local visual assets. Later publications add Core providers, business screens
-and [Storybook verification](storybook-verification.md), including static workshop
-build and real Chromium play/accessibility checks. The application entry point and
-App/Routes composition remain future work. `applicationReady` remains false; see the
-[publication gate](bootstrap.md).
+Read the [publication policy](../.github/bootstrap-policy.json) for the current phase, admitted composition and `applicationReady`, and the [full gate](../.agents/validation.json) for required evidence. While readiness is false, module and workshop tests do not establish a runnable panel. Application admission requires genuine build, browser and human-reviewed visual checks; UI ownership stays unchanged.
 
 The [appearance contract](../src/shared/contracts/appearance.ts) alone owns Theme,
 the seven palette fields and derived wire types. The Ant Design adapter consumes
@@ -23,7 +17,7 @@ actual booleans are accepted, with safe defaults for malformed local data.
 Denied storage access also falls back safely. Failed preference writes warn and
 return without interrupting the caller; invalid serialization still throws.
 
-Components have explicit parameter types, with no FC aliases. Shared widgets own
+Components use named props types and named `FC<Props>` annotations with type-only React imports. Shared widgets own
 digits/OTP inputs, password confirmation, form drawers, request feedback, loading
 and the React error boundary. Use the real Ant Design controls and semantic labels.
 The route-back hook uses React Router; it does not define application routes.
