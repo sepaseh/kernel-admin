@@ -19,8 +19,11 @@ Keep facts, inferences and unresolved access limits distinct.
 
 Existing explicit user authorization and preferences in the conversation remain
 valid. Complete the authorized work without requesting approval again; ask only
-for a genuinely missing action boundary. This phase is `assistant-guidance` with
-`applicationReady: false`; use its published checks and disclose future work.
+for a genuinely missing action boundary. Read the actual phase, `applicationReady`
+and admitted files from [the publication policy](../../.github/bootstrap-policy.json),
+and required checks from [the manifest](../validation.json). A false readiness flag
+does not authorize application activation; a true flag still needs genuine
+current-revision evidence. Disclose capabilities and checks that remain unpublished.
 
 ## Before committing
 

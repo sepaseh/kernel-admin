@@ -12,9 +12,10 @@ direction metadata. Only theme and compact mode are browser preferences.
 
 Prefer Ant Design component props before custom styles. Keep inline `style` or
 Ant Design `styles` for local layout, and shared global styling in
-`src/assets/styles/index.css`. The phase has no `index.html` or production
-application entry point; introducing them requires the runnable phase and its
-real application checks.
+`src/assets/styles/index.css`. Read [the publication policy](../../.github/bootstrap-policy.json)
+for admitted entry/build sources and `applicationReady`, and [the manifest](../validation.json)
+for required checks. While readiness is false, a component change cannot establish
+application activation. Introducing an entry point requires its genuine application checks.
 
 Keep table delete triggers visually neutral; apply danger treatment to the
 confirmation button. Preserve translated accessible names, visible focus,

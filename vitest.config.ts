@@ -149,6 +149,8 @@ export default defineConfig({
         "scripts/run-audit.mjs",
         "scripts/check-bundle-size.mjs",
         "scripts/lighthouse-policy.mjs",
+        "scripts/run-lighthouse.mjs",
+        "scripts/stamp-admin-build.mjs",
         "scripts/validate-production-env.mjs",
         "scripts/validate-workflow-targets.mjs",
       ],

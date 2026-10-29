@@ -1,5 +1,6 @@
 .git
 .agents
+server
 node_modules
 **/node_modules
 **/dist

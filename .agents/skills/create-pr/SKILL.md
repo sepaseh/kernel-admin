@@ -14,9 +14,13 @@ for the final gate.
    Preserve unrelated and unpublished work; a local draft is not remote publication.
 2. Review the complete base-to-head diff and keep at most 100 GitHub changed-file
    entries, including additions, deletions, renames and binaries.
-3. Run the canonical full profile on the exact proposed snapshot. Record the
-   `assistant-guidance` phase, revision/tree and actual checks; retain
-   `applicationReady: false` and disclose unpublished application capabilities.
+3. Read the declared phase, `applicationReady` and exact admitted inventory from
+   [the publication policy](../../../.github/bootstrap-policy.json). Run the
+   [canonical full profile](../../validation.json) on the exact proposed snapshot
+   and record the declaration, revision/tree and actual checks. Retain false
+   readiness until authorized application admission and its complete genuine gate
+   have passed; never change the declaration to bypass checks. Disclose unpublished
+   capabilities and unavailable evidence.
 4. Use a Conventional Commit title and the existing PR template. Explain the
    concrete problem, resulting behavior, verification and limitations.
 5. Apply authorization and preferences already provided in the conversation. An

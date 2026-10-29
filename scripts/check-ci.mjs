@@ -8,6 +8,48 @@ const repository = fileURLToPath(new URL("../", import.meta.url));
 const isRecord = (value) =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
+const applicationJobs = [
+  {
+    name: "build",
+    browser: false,
+    checks: [
+      { id: "application-build", command: "npm run build" },
+      { id: "bundle", command: "npm run check:bundle" },
+    ],
+  },
+  {
+    name: "e2e",
+    browser: true,
+    checks: [{ id: "application-e2e", command: "npm run test:e2e" }],
+  },
+  {
+    name: "visual",
+    browser: true,
+    checks: [{ id: "visual", command: "npm run test:visual" }],
+  },
+];
+const applicationRequiredChecks = [
+  ["snapshot", "npm run check:snapshot"],
+  ["ci-policy", "npm run check:ci"],
+  ["guidance", "npm run check:guidance"],
+  ["audit", "npm run audit"],
+  ["boundaries", "npm run check:boundaries"],
+  ["typecheck", "npm run typecheck"],
+  ["lint", "npm run lint"],
+  ["format", "npm run format:check"],
+  ["unit-coverage", "npm run test:coverage"],
+  ["governance-coverage", "npm run test:governance"],
+  ["storybook-build", "npm run build-storybook"],
+  ["storybook-browser", "npm run test:storybook"],
+  ["unused", "npm run check:unused"],
+  ["application-build", "npm run build"],
+  ["bundle", "npm run check:bundle"],
+  ["contract", "npm run test:contract"],
+  ["application-e2e", "npm run test:e2e"],
+  ["visual", "npm run test:visual"],
+  ["lighthouse", "npm run test:lighthouse"],
+];
+
 const inspectPullRequestTrigger = (events) => {
   if (typeof events === "string" || Array.isArray(events)) {
     const names = Array.isArray(events) ? events : [events];
@@ -119,15 +161,112 @@ const inspectCheckOwnership = (manifest) => {
   if (!Array.isArray(ids) || !ids.length || !Array.isArray(manifest.checks))
     throw new Error("The canonical full validation profile is required");
   const checks = new Map(manifest.checks.map((check) => [check.id, check]));
+  const application = manifest.applicationReady === true;
+  if (
+    application &&
+    (manifest.phase !== "application-verification" ||
+      ids.length !== applicationRequiredChecks.length ||
+      new Set(ids).size !== ids.length ||
+      checks.size !== manifest.checks.length ||
+      manifest.checks.filter((check) => check.kind === "required").length !==
+        applicationRequiredChecks.length ||
+      applicationRequiredChecks.some(
+        ([id, command], index) =>
+          ids[index] !== id ||
+          checks.get(id)?.kind !== "required" ||
+          checks.get(id)?.command !== command,
+      ))
+  )
+    throw new Error(
+      "The application-verification phase needs all nineteen exact required checks without duplicate or unknown entries",
+    );
+  const additionalOwners = new Map(
+    applicationJobs.flatMap((job) =>
+      job.checks.map((check) => [check.id, job.name]),
+    ),
+  );
   if (
     ids.some((id) => {
       const jobs = checks.get(id)?.ciJobs;
-      return !Array.isArray(jobs) || jobs.length !== 1 || jobs[0] !== "check";
+      const owner = application ? additionalOwners.get(id) : undefined;
+      const expected = owner ? ["check", owner] : ["check"];
+      return (
+        !Array.isArray(jobs) ||
+        jobs.length !== expected.length ||
+        jobs.some((job, index) => job !== expected[index])
+      );
     })
   )
     throw new Error(
-      "Every current full-profile check must belong only to check; multiple jobs need a deliberate policy transition",
+      "Full-profile ownership requires its deliberate phase policy transition",
     );
+};
+
+const inspectApplicationJob = (workflow, definition) => {
+  const job = workflow.jobs?.[definition.name];
+  if (
+    !isRecord(job) ||
+    !Array.isArray(job.steps) ||
+    (job.name !== undefined && job.name !== definition.name) ||
+    job["runs-on"] !== "windows-2025" ||
+    ["if", "needs", "strategy"].some((key) => Object.hasOwn(job, key)) ||
+    (job["continue-on-error"] !== undefined &&
+      job["continue-on-error"] !== false)
+  )
+    throw new Error(
+      `Application ${definition.name} job must be an independent blocking Windows job with its native name`,
+    );
+  inspectRunConfiguration(workflow.defaults?.run);
+  inspectRunConfiguration(job.defaults?.run);
+  const commands = [
+    "npm ci",
+    ...(definition.browser ? ["npm run browser:install"] : []),
+    ...definition.checks.map((check) => check.command),
+  ];
+  const positions = commands.map((command) => {
+    const mention = new RegExp(
+      `(?:^|[\\s;&|])${command.replaceAll(" ", "\\s+")}\\b`,
+    );
+    const matches = job.steps.flatMap((step, index) =>
+      isRecord(step) && typeof step.run === "string" && mention.test(step.run)
+        ? [{ step, index }]
+        : [],
+    );
+    if (matches.length !== 1 || matches[0].step.run.trim() !== command)
+      throw new Error(
+        `Application ${definition.name} job must run its actual canonical commands exactly once`,
+      );
+    inspectCommandStep(matches[0].step);
+    return matches[0].index;
+  });
+  if (
+    positions.some(
+      (position, index) => index > 0 && position <= positions[index - 1],
+    )
+  )
+    throw new Error(
+      "Application installation must precede browser setup and checks",
+    );
+};
+
+const inspectApplicationJobs = (workflow, manifest) => {
+  if (manifest.applicationReady !== true) {
+    if (
+      applicationJobs.some((job) =>
+        Object.hasOwn(workflow.jobs ?? {}, job.name),
+      )
+    )
+      throw new Error(
+        "Application jobs require a deliberate phase policy transition",
+      );
+    return;
+  }
+  if (workflow.jobs.check["runs-on"] !== "windows-2025")
+    throw new Error(
+      "The complete application check must use Windows visual prerequisites",
+    );
+  for (const definition of applicationJobs)
+    inspectApplicationJob(workflow, definition);
 };
 
 const parseWorkflow = (content) => {
@@ -144,6 +283,7 @@ export const inspectCi = (content, manifest) => {
   inspectPullRequestTrigger(workflow.on);
   inspectCheckJob(workflow);
   inspectCheckOwnership(manifest);
+  inspectApplicationJobs(workflow, manifest);
   return { requiredChecks: manifest.profiles.full.length };
 };
 
@@ -219,6 +359,10 @@ export const inspectSonarWorkflow = (content, manifest) => {
     );
   inspectRunConfiguration(scanner);
   inspectCheckOwnership(manifest);
+  if (manifest.applicationReady === true && job["runs-on"] !== "windows-2025")
+    throw new Error(
+      "The complete application scanner must use Windows visual prerequisites",
+    );
   return { requiredChecks: manifest.profiles.full.length };
 };
 

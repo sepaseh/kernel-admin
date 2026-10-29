@@ -119,8 +119,10 @@ establish those results in advance.
 
 ## Finite operations and quality prerequisites
 
-The same `assistant-guidance` identifier now deliberately includes 65 additional maintained paths, bringing the declared inventory to 431. The extension adds reviewed synthetic public examples, deployment/release sources, pure bundle/Lighthouse/target policies, complete operational EN/FA guides and dated visual provenance. It keeps `applicationReady: false`, every inherited check and the rejection of unplanned application entry/build files.
+The same `assistant-guidance` identifier now deliberately includes 70 additional maintained paths, bringing the declared inventory to 436. The extension adds reviewed synthetic public examples, deployment/release sources, pure bundle/Lighthouse/target policies, complete operational EN/FA guides and dated visual provenance. It keeps `applicationReady: false`, every inherited check and the rejection of unplanned application entry/build files.
 
 The exact example exceptions are `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example`. Only deliberately declared, reviewed synthetic Git sources qualify; arbitrary environment files, credentials and local operator state remain forbidden. The four PNGs and their metadata retain historical bytes and review dates, not current approval.
 
 New pure unit cases and synthetic governance/lifecycle cases run inside the two existing measured test commands. Full remains twelve required checks with thirteen registered definitions; no operational aliases or new focused profile are added. Helper code does not imply a production build, real Docker/Chrome, provider/E2E, visual, Lighthouse, mutation or deployment run. See [deployment](deployment.md), [coverage scope](component-coverage.md) and [visual history](visual-regression.md).
+
+Verification runner preparation adds import-safe visual/Lighthouse orchestration and build metadata stamping. Synthetic tests exercise ownership, failure cleanup and provenance without starting the application, Chrome or an API. No operational npm alias is registered; the twelve-check current gate and visual human-review requirement remain unchanged. Future application CI admission is tested separately from the current Linux workflow.

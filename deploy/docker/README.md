@@ -2,7 +2,7 @@
 
 [English](README.md) · [فارسی](README.fa.md)
 
-This directory publishes preparatory Docker/Compose definitions and an owned-resource smoke helper. It does not publish a runnable panel: `applicationReady` remains false. The Dockerfile still depends on future application entry/build configuration and a registered production packaging path. Do not treat an image definition, imported helper or synthetic lifecycle test as a successful image build or Docker smoke run.
+This directory supplies Docker/Compose definitions and an owned-resource smoke helper. Read admitted sources and `applicationReady` from [the publication policy](../../.github/bootstrap-policy.json), and commands from [the validation manifest](../../.agents/validation.json). While readiness is false, these prerequisites cannot establish a runnable panel. A real image additionally requires admitted application entry/build configuration and a registered production packaging path. Do not treat an image definition, imported helper or synthetic lifecycle test as a successful image build or Docker smoke run.
 
 The intended image serves static admin assets through Nginx; the independent API owns authentication execution, data and storage. Public build configuration and the reviewed synthetic example are not secrets. Operator TLS material belongs outside Git and the build context, mounted read-only after a separately authorized activation.
 

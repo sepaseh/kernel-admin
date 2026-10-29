@@ -278,7 +278,11 @@
         "scripts/validate-workflow-targets.mjs",
         "deploy/docker/smoke.mjs",
         "deploy/docker/resources.mjs",
-        "tooling/paths.ts"
+        "tooling/paths.ts",
+        "scripts/run-lighthouse.mjs",
+        "scripts/run-visual.mjs",
+        "scripts/stamp-admin-build.mjs",
+        "scripts/visual-environment.mjs"
       ],
       "contracts": [
         ".github/bootstrap-policy.json",
@@ -293,7 +297,8 @@
         "scripts/check-bundle-size.test.mjs",
         "scripts/run-lighthouse.test.mjs",
         "scripts/validate-production-env.test.mjs",
-        "scripts/validate-workflow-targets.test.mjs"
+        "scripts/validate-workflow-targets.test.mjs",
+        "scripts/visual.test.mjs"
       ],
       "checks": [
         "snapshot",

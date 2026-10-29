@@ -252,7 +252,7 @@ test("CI rejects duplicate YAML keys and malformed workflow documents", () => {
     );
 });
 
-test("CI refuses future multi-job checks until the execution policy is deliberately extended", () => {
+test("CI rejects undeclared job ownership in the current manifest", () => {
   for (const jobs of [["visual"], ["check", "visual"], []]) {
     const value = manifest();
     value.checks[0].ciJobs = jobs;
@@ -514,7 +514,7 @@ test("Sonar requires an exact immutable pin for its sole scanner", () => {
     );
 });
 
-test("Sonar analyzes deployment and shared tooling while classifying stories as tests without weakening source, coverage or duplication", () => {
+test("Sonar analyzes the declared phase and classifies its fixtures without weakening coverage or duplication", () => {
   const properties = Object.fromEntries(
     read("sonar-project.properties")
       .split(/\r?\n/)
@@ -524,6 +524,7 @@ test("Sonar analyzes deployment and shared tooling while classifying stories as 
         return [line.slice(0, separator), line.slice(separator + 1)];
       }),
   );
+  const application = manifest().applicationReady === true;
   assert.deepEqual(properties["sonar.sources"].split(","), [
     "src",
     "scripts",
@@ -531,11 +532,20 @@ test("Sonar analyzes deployment and shared tooling while classifying stories as 
     ".agents/hooks",
     "deploy",
     "tooling",
+    ...(application
+      ? [
+          "vite.config.ts",
+          "playwright.config.ts",
+          "playwright.visual.config.ts",
+          "vitest.contract.config.ts",
+        ]
+      : []),
   ]);
   assert.deepEqual(properties["sonar.tests"].split(","), [
     "src",
     "scripts",
     ".storybook",
+    ...(application ? ["e2e", "contract"] : []),
   ]);
   const fixtures = [
     "src/**/*.test.ts",
@@ -544,6 +554,7 @@ test("Sonar analyzes deployment and shared tooling while classifying stories as 
     "scripts/*.test.mjs",
     "src/**/*.stories.tsx",
     ".storybook/**",
+    ...(application ? ["e2e/**", "contract/**"] : []),
   ];
   assert.deepEqual(properties["sonar.test.inclusions"].split(","), fixtures);
   assert.deepEqual(properties["sonar.exclusions"].split(","), fixtures);
@@ -561,4 +572,277 @@ test("Sonar analyzes deployment and shared tooling while classifying stories as 
     properties["sonar.javascript.lcov.reportPaths"],
     "coverage/unit/lcov.info,coverage/governance/lcov.info",
   );
+});
+
+const prerequisiteManifest = () => {
+  const value = manifest();
+  value.phase = "assistant-guidance";
+  value.applicationReady = false;
+  value.checks = value.checks
+    .filter((check) => check.scopes.includes("assistant-guidance"))
+    .map((check) => ({ ...check, ciJobs: ["check"] }));
+  value.profiles.full = value.checks
+    .filter((check) => check.kind === "required")
+    .map((check) => check.id);
+  assert.equal(value.profiles.full.length, 12);
+  return value;
+};
+const applicationManifest = () => {
+  const value = prerequisiteManifest();
+  value.phase = "application-verification";
+  value.applicationReady = true;
+  for (const [id, command, ciJobs] of [
+    ["unused", "npm run check:unused", ["check"]],
+    ["application-build", "npm run build", ["check", "build"]],
+    ["bundle", "npm run check:bundle", ["check", "build"]],
+    ["contract", "npm run test:contract", ["check"]],
+    ["application-e2e", "npm run test:e2e", ["check", "e2e"]],
+    ["visual", "npm run test:visual", ["check", "visual"]],
+    ["lighthouse", "npm run test:lighthouse", ["check"]],
+  ]) {
+    value.checks.push({
+      id,
+      command,
+      ciJobs,
+      kind: "required",
+      scopes: [value.phase],
+    });
+    value.profiles.full.push(id);
+  }
+  return value;
+};
+const prerequisiteCi = () => {
+  const value = workflow();
+  for (const name of ["build", "e2e", "visual"]) delete value.jobs[name];
+  value.jobs.check["runs-on"] = "ubuntu-latest";
+  return value;
+};
+const applicationCi = () => {
+  const value = prerequisiteCi();
+  value.jobs.check["runs-on"] = "windows-2025";
+  const setup = value.jobs.check.steps.filter((step) => step.uses).slice(0, 2);
+  for (const [name, browser, commands] of [
+    ["build", false, ["npm run build", "npm run check:bundle"]],
+    ["e2e", true, ["npm run test:e2e"]],
+    ["visual", true, ["npm run test:visual"]],
+  ])
+    value.jobs[name] = {
+      "runs-on": "windows-2025",
+      steps: [
+        ...structuredClone(setup),
+        { run: "npm ci" },
+        ...(browser ? [{ run: "npm run browser:install" }] : []),
+        ...commands.map((run) => ({ run })),
+      ],
+    };
+  return value;
+};
+
+test("the twelve-check non-runnable phase remains independently valid on Linux", () => {
+  const declared = prerequisiteManifest();
+  assert.deepEqual(inspectCi(stringify(prerequisiteCi()), declared), {
+    requiredChecks: 12,
+  });
+  const sonar = sonarWorkflow();
+  sonar.jobs.analysis["runs-on"] = "ubuntu-latest";
+  assert.deepEqual(inspectSonarWorkflow(stringify(sonar), declared), {
+    requiredChecks: 12,
+  });
+  assert.throws(
+    () => inspectCi(stringify(applicationCi()), declared),
+    /phase policy transition/,
+  );
+});
+
+test("the deliberate application phase runs nineteen full checks and actual native application jobs", () => {
+  const declared = applicationManifest();
+  assert.deepEqual(inspectCi(stringify(applicationCi()), declared), {
+    requiredChecks: 19,
+  });
+  const sonar = sonarWorkflow();
+  sonar.jobs.analysis["runs-on"] = "windows-2025";
+  assert.deepEqual(inspectSonarWorkflow(stringify(sonar), declared), {
+    requiredChecks: 19,
+  });
+});
+
+test("application publication rejects an incomplete phase or invented check ownership", () => {
+  for (const change of [
+    (value) => {
+      value.phase = "assistant-guidance";
+    },
+    (value) => {
+      value.profiles.full.pop();
+    },
+    (value) => {
+      value.profiles.full = value.profiles.full.map((id) =>
+        id === "contract" ? "filler" : id,
+      );
+    },
+    (value) => {
+      value.checks.find((check) => check.id === "visual").kind = "advisory";
+    },
+    (value) => {
+      value.checks.find((check) => check.id === "application-build").ciJobs = [
+        "build",
+      ];
+    },
+    (value) => {
+      value.checks.find((check) => check.id === "visual").ciJobs = ["check"];
+    },
+    (value) => {
+      value.checks.find((check) => check.id === "bundle").command =
+        "npm run test:guidance";
+    },
+  ]) {
+    const declared = applicationManifest();
+    change(declared);
+    assert.throws(
+      () => inspectCi(stringify(applicationCi()), declared),
+      /nineteen|phase|policy transition|actual canonical/,
+    );
+  }
+});
+
+test("application publication preserves all inherited checks and rejects filler, duplicates or altered commands", () => {
+  for (const inherited of ["guidance", "audit", "boundaries"]) {
+    const declared = applicationManifest();
+    const original = declared.checks.find((check) => check.id === inherited);
+    declared.checks = declared.checks.filter((check) => check.id !== inherited);
+    declared.checks.push({ ...original, id: "filler" });
+    declared.profiles.full = declared.profiles.full.map((id) =>
+      id === inherited ? "filler" : id,
+    );
+    assert.throws(
+      () => inspectCi(stringify(applicationCi()), declared),
+      /nineteen exact required/,
+    );
+  }
+  for (const change of [
+    (value) => {
+      value.checks.push({ ...value.checks[0] });
+    },
+    (value) => {
+      value.profiles.full[2] = value.profiles.full[1];
+    },
+    (value) => {
+      value.checks.push({
+        id: "extra",
+        kind: "required",
+        command: "npm run lint",
+        ciJobs: ["check"],
+      });
+    },
+    (value) => {
+      value.profiles.full.reverse();
+    },
+    ...["unused", "contract", "lighthouse", "guidance"].map((id) => (value) => {
+      value.checks.find((check) => check.id === id).command = "npm run lint";
+    }),
+  ]) {
+    const declared = applicationManifest();
+    change(declared);
+    assert.throws(
+      () => inspectCi(stringify(applicationCi()), declared),
+      /nineteen exact required/,
+    );
+  }
+});
+
+test("application jobs cannot skip, depend on filtered jobs, rename their status or use a mismatched platform", () => {
+  for (const name of ["build", "e2e", "visual"])
+    for (const change of [
+      (value) => {
+        delete value.jobs[name];
+      },
+      (value) => {
+        value.jobs[name].name = "pretend-ready";
+      },
+      (value) => {
+        value.jobs[name]["runs-on"] = "ubuntu-latest";
+      },
+      (value) => {
+        value.jobs[name].if = "always()";
+      },
+      (value) => {
+        value.jobs[name].needs = "changes";
+      },
+      (value) => {
+        value.jobs[name].strategy = { matrix: { include: [] } };
+      },
+      (value) => {
+        value.jobs[name]["continue-on-error"] = true;
+      },
+    ]) {
+      const value = applicationCi();
+      change(value);
+      assert.throws(
+        () => inspectCi(stringify(value), applicationManifest()),
+        /independent blocking Windows/,
+      );
+    }
+  const ci = applicationCi();
+  ci.jobs.check["runs-on"] = "ubuntu-latest";
+  assert.throws(
+    () => inspectCi(stringify(ci), applicationManifest()),
+    /Windows visual prerequisites/,
+  );
+  const sonar = sonarWorkflow();
+  sonar.jobs.analysis["runs-on"] = "ubuntu-latest";
+  assert.throws(
+    () => inspectSonarWorkflow(stringify(sonar), applicationManifest()),
+    /Windows visual prerequisites/,
+  );
+});
+
+test("actual application commands and browser prerequisites cannot be replaced, hidden or reordered", () => {
+  for (const name of ["build", "e2e", "visual"])
+    for (const change of [
+      (job) => {
+        job.steps.pop();
+      },
+      (job) => {
+        job.steps.push({ ...job.steps.at(-1) });
+      },
+      (job) => {
+        job.steps.at(-1).run += " || true";
+      },
+      (job) => {
+        job.steps.at(-1).if = "always()";
+      },
+      (job) => {
+        job.steps.at(-1)["continue-on-error"] = true;
+      },
+      (job) => {
+        job.steps.at(-1).shell = "echo {0}";
+      },
+      (job) => {
+        job.steps.at(-1)["working-directory"] = "other";
+      },
+      (job) => {
+        job.steps.push(
+          job.steps.splice(
+            job.steps.findIndex((step) => step.run === "npm ci"),
+            1,
+          )[0],
+        );
+      },
+    ]) {
+      const value = applicationCi();
+      change(value.jobs[name]);
+      assert.throws(
+        () => inspectCi(stringify(value), applicationManifest()),
+        /actual canonical|unconditional|default shell|repository root|must precede/,
+      );
+    }
+  for (const name of ["e2e", "visual"]) {
+    const value = applicationCi();
+    value.jobs[name].steps = value.jobs[name].steps.filter(
+      (step) => step.run !== "npm run browser:install",
+    );
+    assert.throws(
+      () => inspectCi(stringify(value), applicationManifest()),
+      /actual canonical commands/,
+    );
+  }
 });
