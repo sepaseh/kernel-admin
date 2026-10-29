@@ -2,16 +2,9 @@
 
 [English](business-screens.md) · [فارسی](business-screens.fa.md)
 
-These business modules remain published in the `assistant-guidance` phase. The [canonical full gate](../.agents/validation.json) now includes guidance consistency alongside the inherited synthetic component and browser checks; the panel remains non-runnable.
+Account, users, roles, settings, calendar and dashboard modules build on the [Core/auth foundation](core-auth.md). The dashboard supplies a layout frame and does not implement dashboard metrics. Mutation, permission, request-generation and settings-language ownership below apply independently of publication phase.
 
-The `business-screens` phase adds account, users, roles, settings, calendar and
-dashboard modules to the existing [Core/auth foundation](core-auth.md).
-`applicationReady: false` remains deliberate: these are independently tested
-modules without an application entry point or assembled App/Routes tree.
-[Storybook verification](storybook-verification.md) now adds isolated component
-build/browser/a11y checks; production panel builds, complete application journeys
-and visual-regression evidence remain later work.
-The dashboard currently supplies a layout frame; it does not publish dashboard metrics.
+Read the [publication policy](../.github/bootstrap-policy.json) and [canonical full gate](../.agents/validation.json) before claiming application composition or readiness. While `applicationReady` is false, independently tested modules and the isolated [Storybook workshop](storybook-verification.md) do not establish a production build, complete application journey or approved visual comparison.
 
 ## Mutation ownership
 

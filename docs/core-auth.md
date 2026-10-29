@@ -2,14 +2,9 @@
 
 [English](core-auth.md) · [فارسی](core-auth.fa.md)
 
-The `assistant-guidance` phase retains these Core/form/layout modules and adds local development guidance. Follow the current [canonical full gate](../.agents/validation.json), including guidance consistency; no application entry or route composition is introduced.
+Core and Ant Design providers own validated settings, preferences and shared feedback. Access/navigation metadata, login/registration/recovery forms and authentication/default layouts build on the local HTTP and UI foundations; [business screens](business-screens.md) own their destination modules.
 
-The `core-auth` publication adds Core/Ant Design providers, access and navigation
-metadata, login/registration/password recovery forms, and authentication/default
-layouts to the existing HTTP and UI foundations. It has
-`applicationReady: false`: there is no application entry point, assembled route
-tree or runnable panel. The later [business-screens phase](business-screens.md)
-adds destination modules while application routing remains future work.
+The [publication policy](../.github/bootstrap-policy.json) declares whether application entry and route composition are admitted. A false `applicationReady` keeps this scope at independently verified modules. Runnable admission needs the genuine application checks in the [canonical full gate](../.agents/validation.json); component evidence alone does not establish application or API integration.
 
 ## Provider and preference ownership
 

@@ -1112,3 +1112,85 @@ test("application checkout accepts only the omitted or explicit repository-root 
     }
   }
 });
+
+test("application checkout must retain the pull-request default revision", () => {
+  for (const name of ["build", "e2e", "visual"])
+    for (const ref of ["main", "feature", "a".repeat(40), "", null, false, 0]) {
+      const value = applicationCi();
+      const checkout = value.jobs[name].steps.find((step) =>
+        step.uses?.startsWith("actions/checkout@"),
+      );
+      checkout.with = { ...checkout.with, ref };
+      assert.throws(
+        () => inspectCi(stringify(value), applicationManifest()),
+        /checkout must not select a ref/,
+      );
+    }
+});
+
+test("parenthesized commands cannot conceal duplicate canonical or application execution", () => {
+  for (const [inspect, create, declared, job, commands] of [
+    [
+      inspectCi,
+      prerequisiteCi,
+      prerequisiteManifest,
+      "check",
+      ["npm ci", "npm run browser:install", "npm run validate -- full"],
+    ],
+    [
+      inspectCi,
+      applicationCi,
+      applicationManifest,
+      "check",
+      ["npm ci", "npm run browser:install", "npm run validate -- full"],
+    ],
+    [
+      inspectSonarWorkflow,
+      sonarWorkflow,
+      prerequisiteManifest,
+      "analysis",
+      ["npm ci", "npm run browser:install", "npm run validate -- full"],
+    ],
+    [
+      inspectSonarWorkflow,
+      applicationSonar,
+      applicationManifest,
+      "analysis",
+      ["npm ci", "npm run browser:install", "npm run validate -- full"],
+    ],
+    [
+      inspectCi,
+      applicationCi,
+      applicationManifest,
+      "build",
+      ["npm ci", "npm run build", "npm run check:bundle"],
+    ],
+    [
+      inspectCi,
+      applicationCi,
+      applicationManifest,
+      "e2e",
+      ["npm ci", "npm run browser:install", "npm run test:e2e"],
+    ],
+    [
+      inspectCi,
+      applicationCi,
+      applicationManifest,
+      "visual",
+      ["npm ci", "npm run browser:install", "npm run test:visual"],
+    ],
+  ])
+    for (const command of commands)
+      for (const duplicate of [
+        `(${command})`,
+        `( ${command})`,
+        `(${command} )`,
+      ]) {
+        const value = create();
+        value.jobs[job].steps.push({ run: duplicate });
+        assert.throws(
+          () => inspect(stringify(value), declared()),
+          /exactly once/,
+        );
+      }
+});

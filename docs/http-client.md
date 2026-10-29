@@ -2,7 +2,7 @@
 
 [English](http-client.md) · [فارسی](http-client.fa.md)
 
-The non-runnable [publication phase](bootstrap.md) includes the Axios transport
+The [declared publication scope](bootstrap.md) includes the Axios transport
 and seven feature HTTP owners: authentication, account, roles, users, settings,
 calendar and settings logo uploads. Their local types describe HTTP data, not
 server implementations. Database, authentication execution and storage belong to

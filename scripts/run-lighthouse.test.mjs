@@ -1,12 +1,12 @@
 import { spawn } from "node:child_process";
 import { EventEmitter, once } from "node:events";
 import {
-  link,
   mkdir,
   mkdtemp,
   open,
   readdir,
   readFile,
+  rename,
   rm,
   symlink,
   unlink,
@@ -524,7 +524,9 @@ describe("validated build metadata", () => {
         buildDirectory: fixture.build,
         openFile: async (file, flags) => {
           temporary = file;
-          expect(path.dirname(file)).toBe(path.dirname(output));
+          expect(path.relative(fixture.build, file).startsWith("..")).toBe(
+            true,
+          );
           expect(file).not.toBe(output);
           expect(flags).toBe("wx");
           const handle = await open(file, flags);
@@ -542,14 +544,14 @@ describe("validated build metadata", () => {
             },
           };
         },
-        linkFile: async (source, target) => {
-          expect(source).toBe(temporary);
-          expect(target).toBe(output);
+        publishDirectory: async (source, target) => {
+          expect(source).toBe(path.dirname(temporary));
+          expect(target).toBe(path.dirname(output));
           expect(events).toEqual(["write", "close"]);
-          expect(JSON.parse(await readFile(source, "utf8"))).toEqual(
-            createBuildMetadata(publicBuildEnvironment),
-          );
-          await link(source, target);
+          expect(
+            JSON.parse(await readFile(path.join(source, "build.json"), "utf8")),
+          ).toEqual(createBuildMetadata(publicBuildEnvironment));
+          await rename(source, target);
           events.push("publish");
         },
       });
@@ -696,12 +698,15 @@ describe("validated build metadata", () => {
         stampAdminBuild({
           environment: publicBuildEnvironment,
           buildDirectory: fixture.build,
-          linkFile: async (source, target) => {
-            await writeFile(target, winner, { flag: "wx" });
-            await link(source, target);
+          publishDirectory: async (source, target) => {
+            await mkdir(target);
+            await writeFile(path.join(target, "build.json"), winner, {
+              flag: "wx",
+            });
+            await rename(source, target);
           },
         }),
-      ).rejects.toMatchObject({ code: "EEXIST" });
+      ).rejects.toHaveProperty("code");
       expect(await readFile(output)).toEqual(winner);
       expect(await readdir(path.dirname(output))).toEqual(["build.json"]);
     } finally {
@@ -719,8 +724,8 @@ describe("validated build metadata", () => {
         stampAdminBuild({
           environment: publicBuildEnvironment,
           buildDirectory: fixture.build,
-          removeFile: async (file) => {
-            temporary = file;
+          removeDirectory: async (directory) => {
+            temporary = directory;
             throw cleanupFailure;
           },
         }),
@@ -729,7 +734,7 @@ describe("validated build metadata", () => {
       expect(JSON.parse(await readFile(output, "utf8"))).toEqual(
         createBuildMetadata(publicBuildEnvironment),
       );
-      expect(await readFile(temporary)).toEqual(await readFile(output));
+      expect(await readdir(temporary)).toEqual([]);
     } finally {
       await fixture.cleanup();
     }
@@ -752,7 +757,9 @@ describe("validated build metadata", () => {
               events.push("open");
               temporary = file;
               expect(file).not.toBe(output);
-              expect(path.dirname(file)).toBe(path.dirname(output));
+              expect(path.relative(fixture.build, file).startsWith("..")).toBe(
+                true,
+              );
               expect(flags).toBe("wx");
               const handle = await open(file, flags);
               return {
@@ -803,13 +810,13 @@ describe("validated build metadata", () => {
     const originalBytes = Buffer.from("existing immutable metadata\r\n");
     const removeFile = vi.fn(unlink);
     try {
-      await mkdir(path.dirname(output));
-      await writeFile(output, originalBytes);
       await expect(
         stampAdminBuild({
           environment: publicBuildEnvironment,
           buildDirectory: fixture.build,
           openFile: async () => {
+            await mkdir(path.dirname(output));
+            await writeFile(output, originalBytes);
             throw failure;
           },
           removeFile,
@@ -840,7 +847,7 @@ describe("validated build metadata", () => {
           },
           removeFile,
         }),
-      ).rejects.toMatchObject({ code: "EEXIST" });
+      ).rejects.toMatchObject({ cause: { code: "EEXIST" } });
       expect(removeFile).not.toHaveBeenCalled();
       expect(await readFile(temporary)).toEqual(unowned);
       await expect(readFile(output)).rejects.toMatchObject({ code: "ENOENT" });
@@ -884,7 +891,7 @@ describe("validated build metadata", () => {
           },
         }),
       ).rejects.toMatchObject({
-        errors: [primary, closeFailure, cleanupFailure],
+        errors: expect.arrayContaining([primary, closeFailure, cleanupFailure]),
         cause: primary,
       });
       expect(events).toEqual(["write", "close", "unlink"]);
@@ -934,6 +941,41 @@ describe("validated build metadata", () => {
           buildDirectory: fixture.build,
         }),
       ).rejects.toThrow(/inside the build/);
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("does not follow a swapped metadata directory after checking the build", async () => {
+    const fixture = await buildFixture();
+    const outside = path.join(fixture.root, "outside");
+    const directory = path.join(fixture.build, "_kernel");
+    const displaced = path.join(fixture.root, "displaced");
+    await mkdir(outside);
+    try {
+      await expect(
+        stampAdminBuild({
+          environment: publicBuildEnvironment,
+          buildDirectory: fixture.build,
+          openFile: async (file, flags) => {
+            try {
+              await rename(directory, displaced);
+            } catch (error) {
+              if (error.code !== "ENOENT") throw error;
+            }
+            await symlink(
+              outside,
+              directory,
+              process.platform === "win32" ? "junction" : "dir",
+            );
+            return open(file, flags);
+          },
+        }),
+      ).rejects.toHaveProperty("code");
+      expect(await readdir(outside)).toEqual([]);
+      await expect(
+        readFile(path.join(outside, "build.json")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
     } finally {
       await fixture.cleanup();
     }
