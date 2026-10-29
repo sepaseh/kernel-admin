@@ -2,14 +2,9 @@
 
 [English](storybook-verification.md) · [فارسی](storybook-verification.fa.md)
 
-The current `assistant-guidance` publication inherits this workshop and adds guidance consistency to the [canonical full gate](../.agents/validation.json). The workshop remains isolated component evidence with `applicationReady: false`.
+Read the checked revision's [publication policy](../.github/bootstrap-policy.json), [source inventory](bootstrap.md) and [canonical full gate](../.agents/validation.json) for its admitted capabilities. The Storybook workshop remains isolated component evidence regardless of application readiness.
 
-The earlier `storybook-verification` phase introduced an isolated component workshop to the
-published UI, Core/authentication and business modules. `applicationReady: false`
-remains deliberate: there is no application entry point or assembled App/Routes
-tree. A static workshop build and component interactions in Chromium do not
-establish a production panel build, complete application E2E journey, production
-API integration, visual regression or field performance.
+A static workshop build and component interactions in Chromium alone do not establish a production panel build, complete application E2E journey, production API integration, visual regression or field performance. A declared capability or available command is not a successful execution result; record each admitted check's evidence separately.
 
 ## Synthetic ownership
 
@@ -32,7 +27,7 @@ The [dedicated Vite configuration](../.storybook/vite.config.ts) disables
 environment-file discovery and root public-directory discovery, sets synthetic
 API/release values and a blank observability endpoint, and resolves `@` within
 this checkout. Storybook explicitly uses that configuration rather than loading
-an unpublished application Vite configuration. Its declared static directory
+the application Vite configuration implicitly. Its declared static directory
 contains the published local assets. No production entry point is needed.
 
 ## Explicit language and appearance fixtures
@@ -62,11 +57,10 @@ npm run browser:install
 npm run validate -- full
 ```
 
-`browser:install` installs Playwright Chromium and its required system
-dependencies. CI performs this installation after `npm ci` and before the
+`browser:install` installs the Playwright browsers declared in package.json and their required system dependencies; Storybook uses Chromium. CI performs this installation after `npm ci` and before the
 unconditional canonical full gate in its existing `check` job.
 
-The current [canonical manifest](../.agents/validation.json) retains the snapshot, CI-policy, audit, boundaries, type, lint, formatting, unit-coverage and governance checks, plus `build-storybook`, `test:storybook` and guidance consistency. The build produces real static output under
+The [canonical manifest](../.agents/validation.json) owns every required check for that revision; do not maintain a separate complete list. `build-storybook` produces real static output under
 `coverage/storybook-static`. The separate
 [browser project](../vitest.storybook.config.ts) runs all registered stories and
 their play assertions in real headless Chromium through Playwright.
@@ -80,7 +74,4 @@ browser results do not replace `coverage/unit/lcov.info` or
 actual results for the exact proposed snapshot, not configuration as execution
 evidence. See [Sonar](sonarqube.md) and [Contributing](../CONTRIBUTING.md).
 
-Before a runnable panel merges, introduce the actual application composition and
-expand the canonical gate to the full nineteen genuine application checks,
-including production build, complete E2E and visual jobs. Observe those results
-and make their contexts required as described in [branch protection](branch-protection.md).
+Before a runnable panel merges, its actual composition and complete canonical application gate, including production build, complete E2E and visual checks, must be present and genuinely executed. Observe those results and make their contexts required as described in [branch protection](branch-protection.md). Storybook results replace neither those checks nor human approval of visual baselines.

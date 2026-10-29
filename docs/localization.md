@@ -2,12 +2,9 @@
 
 [English](localization.md) · [فارسی](localization.fa.md)
 
-The current `assistant-guidance` phase retains the localization contract and its measured tests. Guidance checking supplements the [canonical gate](../.agents/validation.json); it does not change API authority or create a visitor language preference.
+The localization contract preserves API authority and has no visitor language preference. Read the [publication policy](../.github/bootstrap-policy.json), [source inventory](bootstrap.md) and [canonical gate](../.agents/validation.json) for the capabilities admitted by the checked revision. A declared command or source file is not evidence that it ran successfully.
 
-The [assistant-guidance phase](bootstrap.md) publishes complete local catalogs
-and real translation/date adapters. Tests exercise their installed dependencies
-in Node, with synthetic Core/Ant Design provider tests in isolated jsdom.
-applicationReady:false remains deliberate: the provider modules and HTTP settings adapter are published alongside isolated Storybook browser checks, while the application entry point, App/Routes composition and complete application journeys remain future work.
+Complete local catalogs and real translation/date adapters have tests against their installed dependencies in Node; synthetic Core/Ant Design provider tests run in isolated jsdom. Isolated Storybook checks demonstrate their component scope. Application composition and complete browser journeys require their own admitted checks and actual results; neither catalog nor provider tests establish those results.
 
 ## One complete catalog per language
 
@@ -41,7 +38,7 @@ or calendar table. The API owns active language, direction, calendar and both
 public/native names; only a super-administrator may change the active language.
 The [HTTP settings adapter](http-client.md) validates and preserves complete server
 metadata and localized errors. Missing/unsupported metadata fails without local
-direction/calendar inference. The [Core provider](core-auth.md) applies accepted server metadata to i18next and Day.js; the Ant Design provider selects its exact locale and mirrors the server direction/code to the document. This phase does not implement a visitor chooser or a complete application journey. Theme and compact
+direction/calendar inference. The [Core provider](core-auth.md) applies accepted server metadata to i18next and Day.js; the Ant Design provider selects its exact locale and mirrors the server direction/code to the document. No visitor language chooser is provided; complete application journeys need their own executed evidence. Theme and compact
 preferences are separate concerns.
 
 [Storybook](storybook-verification.md) uses explicit synthetic English/Persian API
