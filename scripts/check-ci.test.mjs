@@ -637,6 +637,22 @@ const applicationCi = () => {
     };
   return value;
 };
+const portableSonarGuard = [
+  "node --input-type=module -e 'if (!process.env.SONAR_TOKEN ||",
+  '!process.env.SONAR_PROJECT_KEY) { console.error("Configure SONAR_TOKEN',
+  "and SONAR_PROJECT_KEY before analysis. No Sonar analysis was",
+  "performed.\"); process.exit(1); }'",
+].join(" ");
+const sonarReadinessStep = (value) =>
+  value.jobs.analysis.steps.find(
+    (step) => step.env?.SONAR_PROJECT_KEY !== undefined && step.run,
+  );
+const applicationSonar = () => {
+  const value = sonarWorkflow();
+  value.jobs.analysis["runs-on"] = "windows-2025";
+  sonarReadinessStep(value).run = portableSonarGuard;
+  return value;
+};
 
 test("the twelve-check non-runnable phase remains independently valid on Linux", () => {
   const declared = prerequisiteManifest();
@@ -659,11 +675,68 @@ test("the deliberate application phase runs nineteen full checks and actual nati
   assert.deepEqual(inspectCi(stringify(applicationCi()), declared), {
     requiredChecks: 19,
   });
-  const sonar = sonarWorkflow();
-  sonar.jobs.analysis["runs-on"] = "windows-2025";
-  assert.deepEqual(inspectSonarWorkflow(stringify(sonar), declared), {
-    requiredChecks: 19,
-  });
+  assert.deepEqual(
+    inspectSonarWorkflow(stringify(applicationSonar()), declared),
+    {
+      requiredChecks: 19,
+    },
+  );
+});
+
+test("application Sonar requires its portable blocking readiness guard before full validation", () => {
+  for (const change of [
+    (value) => {
+      sonarReadinessStep(value).run =
+        'if [[ -z "$SONAR_TOKEN" ]]; then exit 1; fi';
+    },
+    (value) => {
+      const guard = sonarReadinessStep(value);
+      value.jobs.analysis.steps = value.jobs.analysis.steps.filter(
+        (step) => step !== guard,
+      );
+    },
+    (value) => {
+      value.jobs.analysis.steps.unshift({ ...sonarReadinessStep(value) });
+    },
+    (value) => {
+      const guard = sonarReadinessStep(value);
+      value.jobs.analysis.steps = value.jobs.analysis.steps.filter(
+        (step) => step !== guard,
+      );
+      value.jobs.analysis.steps.push(guard);
+    },
+    (value) => {
+      sonarReadinessStep(value).run = portableSonarGuard.replace(
+        "process.exit(1)",
+        "process.exit(0)",
+      );
+    },
+    (value) => {
+      delete sonarReadinessStep(value).env.SONAR_TOKEN;
+    },
+    (value) => {
+      sonarReadinessStep(value).env.SONAR_PROJECT_KEY = "invented-project";
+    },
+    (value) => {
+      sonarReadinessStep(value)["continue-on-error"] = true;
+    },
+    (value) => {
+      sonarReadinessStep(value).if = "always()";
+    },
+    (value) => {
+      sonarReadinessStep(value).shell = "bash";
+    },
+    (value) => {
+      sonarReadinessStep(value).uses = "actions/cache@synthetic";
+    },
+  ]) {
+    const value = applicationSonar();
+    change(value);
+    assert.throws(
+      () => inspectSonarWorkflow(stringify(value), applicationManifest()),
+      /readiness guard|unconditional|default shell/,
+    );
+  }
 });
 
 test("application publication rejects an incomplete phase or invented check ownership", () => {
@@ -843,6 +916,126 @@ test("actual application commands and browser prerequisites cannot be replaced, 
     assert.throws(
       () => inspectCi(stringify(value), applicationManifest()),
       /actual canonical commands/,
+    );
+  }
+});
+
+test("application jobs require genuine blocking checkout and Node setup before installing dependencies", () => {
+  for (const name of ["build", "e2e", "visual"])
+    for (const action of ["actions/checkout", "actions/setup-node"])
+      for (const change of [
+        (job, step) => {
+          job.steps = job.steps.filter((item) => item !== step);
+        },
+        (_job, step) => {
+          step.if = "always()";
+        },
+        (_job, step) => {
+          step["continue-on-error"] = true;
+        },
+        (_job, step) => {
+          step.name = action;
+          delete step.uses;
+        },
+        (_job, step) => {
+          step.uses = `${action}@latest`;
+        },
+        (_job, step) => {
+          step.run = "echo not-an-action";
+        },
+        (job, step) => {
+          job.steps.push({ ...step });
+        },
+        (job, step) => {
+          job.steps = job.steps.filter((item) => item !== step);
+          job.steps.push(step);
+        },
+      ]) {
+        const value = applicationCi();
+        const job = value.jobs[name];
+        const step = job.steps.find((item) =>
+          item.uses?.startsWith(`${action}@`),
+        );
+        change(job, step);
+        assert.throws(
+          () => inspectCi(stringify(value), applicationManifest()),
+          /checkout|Node setup|unconditional|blocking|installation/,
+        );
+      }
+  for (const name of ["build", "e2e", "visual"]) {
+    const reversed = applicationCi();
+    [reversed.jobs[name].steps[0], reversed.jobs[name].steps[1]] = [
+      reversed.jobs[name].steps[1],
+      reversed.jobs[name].steps[0],
+    ];
+    assert.throws(
+      () => inspectCi(stringify(reversed), applicationManifest()),
+      /checkout|Node setup|installation/,
+    );
+    const wrongNode = applicationCi();
+    wrongNode.jobs[name].steps.find((step) =>
+      step.uses?.startsWith("actions/setup-node@"),
+    ).with = { "node-version": "20" };
+    assert.throws(
+      () => inspectCi(stringify(wrongNode), applicationManifest()),
+      /Node setup/,
+    );
+  }
+});
+
+test("suffixed aliases do not count as canonical commands in application or full jobs", () => {
+  const value = applicationCi();
+  value.jobs.build.steps.push({ run: "npm run build-foo" });
+  value.jobs.build.steps.push({ run: "custom-npm run build" });
+  value.jobs.e2e.steps.push({ run: "npm run test:e2e:debug" });
+  value.jobs.visual.steps.push({ run: "npm run test:visual-local" });
+  value.jobs.check.steps.push({ run: "npm run validate -- full:debug" });
+  value.jobs.check.steps.push({ run: "npm run browser:install-local" });
+  value.jobs.check.steps.push({ run: "npm ci-local" });
+  assert.deepEqual(inspectCi(stringify(value), applicationManifest()), {
+    requiredChecks: 19,
+  });
+});
+
+test("true canonical mentions remain visible behind separators and cannot be hidden by aliases", () => {
+  for (const [name, command] of [
+    ["build", "npm run build"],
+    ["e2e", "npm run test:e2e"],
+    ["visual", "npm run test:visual"],
+    ["check", "npm run validate -- full"],
+  ])
+    for (const prefix of [
+      "",
+      "echo ready;",
+      "echo ready && ",
+      "echo ready | ",
+      "echo ready\n",
+    ])
+      for (const suffix of [
+        "",
+        " ",
+        "; echo finished",
+        " && echo finished",
+        " | echo finished",
+        "\necho finished",
+      ]) {
+        const value = applicationCi();
+        value.jobs[name].steps.push({ run: `${prefix}${command}${suffix}` });
+        assert.throws(
+          () => inspectCi(stringify(value), applicationManifest()),
+          /exactly once|actual canonical/,
+        );
+      }
+  for (const [name, command] of [
+    ["build", "npm run build"],
+    ["e2e", "npm run test:e2e"],
+  ]) {
+    const value = applicationCi();
+    value.jobs[name].steps.find((step) => step.run === command).run =
+      `${command}:debug`;
+    assert.throws(
+      () => inspectCi(stringify(value), applicationManifest()),
+      /actual canonical/,
     );
   }
 });

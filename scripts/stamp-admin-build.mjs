@@ -1,4 +1,11 @@
-import { lstat, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import {
+  lstat,
+  mkdir,
+  open,
+  readFile,
+  realpath,
+  unlink,
+} from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,9 +25,41 @@ export function createBuildMetadata(environment) {
   };
 }
 
+async function writeBuildMetadata(file, contents, openFile, removeFile) {
+  const handle = await openFile(file, "wx");
+  const failures = [];
+  try {
+    await handle.writeFile(contents);
+  } catch (error) {
+    failures.push(error);
+  }
+  try {
+    await handle.close();
+  } catch (error) {
+    failures.push(error);
+  }
+  if (failures.length) {
+    try {
+      await removeFile(file);
+    } catch (error) {
+      failures.push(error);
+    }
+    if (failures.length > 1)
+      throw new AggregateError(
+        failures,
+        "Build metadata write or owned-file cleanup failed.",
+        { cause: failures[0] },
+      );
+
+    throw failures[0];
+  }
+}
+
 export async function stampAdminBuild({
   environment,
   buildDirectory = path.resolve("dist"),
+  openFile = open,
+  removeFile = unlink,
 }) {
   const metadata = createBuildMetadata(environment);
   const build = await realpath(buildDirectory);
@@ -44,10 +83,11 @@ export async function stampAdminBuild({
   const directoryInfo = await lstat(directory);
   if (directoryInfo.isSymbolicLink() || !directoryInfo.isDirectory())
     throw new Error("Build metadata directory must remain inside the build.");
-  await writeFile(
+  await writeBuildMetadata(
     path.join(directory, "build.json"),
     `${JSON.stringify(metadata, null, 2)}\n`,
-    { flag: "wx" },
+    openFile,
+    removeFile,
   );
   return metadata;
 }

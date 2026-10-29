@@ -105,14 +105,14 @@ const inspectCommandStep = (step) => {
 };
 
 const canonicalCommands = [
-  { command: "npm ci", mention: /(?:^|[\s;&|])npm\s+ci\b/ },
+  { command: "npm ci", mention: /(?:^|[\s;&|])npm\s+ci(?=$|[\s;&|])/ },
   {
     command: "npm run browser:install",
-    mention: /(?:^|[\s;&|])npm\s+run\s+browser:install\b/,
+    mention: /(?:^|[\s;&|])npm\s+run\s+browser:install(?=$|[\s;&|])/,
   },
   {
     command: "npm run validate -- full",
-    mention: /(?:^|[\s;&|])npm\s+run\s+validate\s+--\s+full\b/,
+    mention: /(?:^|[\s;&|])npm\s+run\s+validate\s+--\s+full(?=$|[\s;&|])/,
   },
 ];
 
@@ -202,6 +202,44 @@ const inspectCheckOwnership = (manifest) => {
     );
 };
 
+const inspectApplicationSetup = (steps, installationIndex) => {
+  const positions = ["checkout", "setup-node"].map((action) => {
+    const matches = steps.flatMap((step, index) =>
+      isRecord(step) &&
+      typeof step.uses === "string" &&
+      step.uses.startsWith(`actions/${action}@`)
+        ? [{ step, index }]
+        : [],
+    );
+    if (
+      matches.length !== 1 ||
+      !/^actions\/(?:checkout|setup-node)@[a-f0-9]{40}$/.test(
+        matches[0].step.uses,
+      ) ||
+      matches[0].step.run !== undefined ||
+      Object.hasOwn(matches[0].step, "if") ||
+      (matches[0].step["continue-on-error"] !== undefined &&
+        matches[0].step["continue-on-error"] !== false)
+    )
+      throw new Error(
+        "Application checkout and Node setup must each be pinned, unconditional and blocking",
+      );
+    const { step, index } = matches[0];
+    inspectRunConfiguration(step);
+    if (
+      action === "setup-node" &&
+      (step.with?.["node-version-file"] !== ".nvmrc" ||
+        step.with?.["node-version"] !== undefined)
+    )
+      throw new Error("Application Node setup must use the repository .nvmrc");
+    return index;
+  });
+  if (positions[0] >= positions[1] || positions[1] >= installationIndex)
+    throw new Error(
+      "Application checkout and Node setup must precede dependency installation in that order",
+    );
+};
+
 const inspectApplicationJob = (workflow, definition) => {
   const job = workflow.jobs?.[definition.name];
   if (
@@ -225,7 +263,9 @@ const inspectApplicationJob = (workflow, definition) => {
   ];
   const positions = commands.map((command) => {
     const commandPattern = command.replaceAll(" ", String.raw`\s+`);
-    const mention = new RegExp(String.raw`(?:^|[\s;&|])${commandPattern}\b`);
+    const mention = new RegExp(
+      String.raw`(?:^|[\s;&|])${commandPattern}(?=$|[\s;&|])`,
+    );
     const matches = job.steps.flatMap((step, index) =>
       isRecord(step) && typeof step.run === "string" && mention.test(step.run)
         ? [{ step, index }]
@@ -246,6 +286,7 @@ const inspectApplicationJob = (workflow, definition) => {
     throw new Error(
       "Application installation must precede browser setup and checks",
     );
+  inspectApplicationSetup(job.steps, positions[0]);
 };
 
 const inspectApplicationJobs = (workflow, manifest) => {
@@ -296,6 +337,37 @@ const normalizeCondition = (condition) => {
       ? trimmed.slice(3, -2).trim()
       : trimmed;
   return expression.replace(/\s+/g, " ");
+};
+
+const portableSonarGuard = [
+  "node --input-type=module -e 'if (!process.env.SONAR_TOKEN ||",
+  '!process.env.SONAR_PROJECT_KEY) { console.error("Configure SONAR_TOKEN',
+  "and SONAR_PROJECT_KEY before analysis. No Sonar analysis was",
+  "performed.\"); process.exit(1); }'",
+].join(" ");
+
+const inspectWindowsSonarReadiness = (job, fullIndex) => {
+  if (job["runs-on"] !== "windows-2025")
+    throw new Error(
+      "The complete application scanner must use Windows visual prerequisites",
+    );
+  const guards = job.steps.flatMap((step, index) =>
+    isRecord(step) && step.env?.SONAR_PROJECT_KEY !== undefined && step.run
+      ? [{ step, index }]
+      : [],
+  );
+  if (
+    guards.length !== 1 ||
+    guards[0].index >= fullIndex ||
+    guards[0].step.uses !== undefined ||
+    typeof guards[0].step.run !== "string" ||
+    guards[0].step.run.trim().replace(/\s+/g, " ") !== portableSonarGuard ||
+    guards[0].step.env.SONAR_TOKEN !== "${{ secrets.SONAR_TOKEN }}" ||
+    guards[0].step.env.SONAR_PROJECT_KEY !== "${{ vars.SONAR_PROJECT_KEY }}"
+  )
+    throw new Error(
+      "Windows Sonar requires its portable Node readiness guard before full validation",
+    );
 };
 
 export const inspectSonarWorkflow = (content, manifest) => {
@@ -358,10 +430,8 @@ export const inspectSonarWorkflow = (content, manifest) => {
     );
   inspectRunConfiguration(scanner);
   inspectCheckOwnership(manifest);
-  if (manifest.applicationReady === true && job["runs-on"] !== "windows-2025")
-    throw new Error(
-      "The complete application scanner must use Windows visual prerequisites",
-    );
+  if (manifest.applicationReady === true)
+    inspectWindowsSonarReadiness(job, fullIndex);
   return { requiredChecks: manifest.profiles.full.length };
 };
 

@@ -2,9 +2,11 @@ import { EventEmitter } from "node:events";
 import {
   mkdir,
   mkdtemp,
+  open,
   readFile,
   rm,
   symlink,
+  unlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -362,6 +364,46 @@ describe("owned Lighthouse lifecycle", () => {
     ]);
   });
 
+  it("writes both actual report files through the default writer", async () => {
+    const directory = await mkdtemp(
+      path.join(tmpdir(), "kernel-lighthouse-reports-test-"),
+    );
+    const fixture = lifecycle();
+    const options = {
+      ...fixture.options,
+      reportDirectory: path.join(directory, "reports"),
+    };
+    delete options.writeReports;
+    try {
+      await expect(runLighthouse(options)).resolves.toBe(60);
+      expect(
+        await readFile(
+          path.join(options.reportDirectory, "report.html"),
+          "utf8",
+        ),
+      ).toBe("<html>synthetic report</html>");
+      expect(
+        await readFile(
+          path.join(options.reportDirectory, "report.json"),
+          "utf8",
+        ),
+      ).toBe("{}");
+      expect(fixture.events.slice(-3)).toEqual([
+        "fixture-close",
+        "chrome-close",
+        "preview-close",
+      ]);
+    } finally {
+      expect(path.dirname(path.resolve(directory))).toBe(
+        path.resolve(tmpdir()),
+      );
+      expect(
+        path.basename(directory).startsWith("kernel-lighthouse-reports-test-"),
+      ).toBe(true);
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it.each(["preview", "launch", "fixture", "audit", "write", "verify"])(
     "preserves a %s failure and releases exactly the acquired resources",
     async (stage) => {
@@ -489,6 +531,8 @@ describe("validated build metadata", () => {
           ),
         ),
       ).toEqual(metadata);
+      const stampedFile = path.join(fixture.build, "_kernel/build.json");
+      const originalBytes = await readFile(stampedFile);
       await expect(
         stampAdminBuild({
           environment: {
@@ -498,6 +542,130 @@ describe("validated build metadata", () => {
           buildDirectory: fixture.build,
         }),
       ).rejects.toMatchObject({ code: "EEXIST" });
+      expect(await readFile(stampedFile)).toEqual(originalBytes);
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it.each(["write", "close"])(
+    "removes only its newly acquired metadata after a %s failure",
+    async (stage) => {
+      const fixture = await buildFixture();
+      const failure = new Error(`synthetic ${stage} failure`);
+      const events = [];
+      const output = path.join(fixture.build, "_kernel/build.json");
+      try {
+        await expect(
+          stampAdminBuild({
+            environment: publicBuildEnvironment,
+            buildDirectory: fixture.build,
+            openFile: async (file, flags) => {
+              events.push("open");
+              expect(file).toBe(output);
+              expect(flags).toBe("wx");
+              const handle = await open(file, flags);
+              return {
+                writeFile: async (contents) => {
+                  events.push("write");
+                  await handle.writeFile(
+                    stage === "write" ? "partial" : contents,
+                  );
+                  if (stage === "write") throw failure;
+                },
+                close: async () => {
+                  events.push("close");
+                  await handle.close();
+                  if (stage === "close") throw failure;
+                },
+              };
+            },
+            removeFile: async (file) => {
+              events.push("unlink");
+              await unlink(file);
+            },
+          }),
+        ).rejects.toBe(failure);
+        expect(events).toEqual(["open", "write", "close", "unlink"]);
+        await expect(readFile(output)).rejects.toMatchObject({
+          code: "ENOENT",
+        });
+        await expect(
+          stampAdminBuild({
+            environment: publicBuildEnvironment,
+            buildDirectory: fixture.build,
+          }),
+        ).resolves.toEqual(createBuildMetadata(publicBuildEnvironment));
+      } finally {
+        await fixture.cleanup();
+      }
+    },
+  );
+
+  it("does not remove an existing file when acquiring the handle fails", async () => {
+    const fixture = await buildFixture();
+    const failure = new Error("synthetic acquisition failure");
+    const output = path.join(fixture.build, "_kernel/build.json");
+    const originalBytes = Buffer.from("existing immutable metadata\r\n");
+    const removeFile = vi.fn(unlink);
+    try {
+      await mkdir(path.dirname(output));
+      await writeFile(output, originalBytes);
+      await expect(
+        stampAdminBuild({
+          environment: publicBuildEnvironment,
+          buildDirectory: fixture.build,
+          openFile: async () => {
+            throw failure;
+          },
+          removeFile,
+        }),
+      ).rejects.toBe(failure);
+      expect(removeFile).not.toHaveBeenCalled();
+      expect(await readFile(output)).toEqual(originalBytes);
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("retains partial-write, handle-close and owned-file cleanup errors", async () => {
+    const fixture = await buildFixture();
+    const primary = new Error("synthetic partial write");
+    const closeFailure = new Error("synthetic handle close");
+    const cleanupFailure = new Error("synthetic owned-file cleanup");
+    const events = [];
+    const output = path.join(fixture.build, "_kernel/build.json");
+    try {
+      await expect(
+        stampAdminBuild({
+          environment: publicBuildEnvironment,
+          buildDirectory: fixture.build,
+          openFile: async (file, flags) => {
+            const handle = await open(file, flags);
+            return {
+              writeFile: async () => {
+                events.push("write");
+                await handle.writeFile("partial");
+                throw primary;
+              },
+              close: async () => {
+                events.push("close");
+                await handle.close();
+                throw closeFailure;
+              },
+            };
+          },
+          removeFile: async () => {
+            events.push("unlink");
+            throw cleanupFailure;
+          },
+        }),
+      ).rejects.toMatchObject({
+        errors: [primary, closeFailure, cleanupFailure],
+        cause: primary,
+      });
+      expect(events).toEqual(["write", "close", "unlink"]);
+      expect(await readFile(output, "utf8")).toBe("partial");
     } finally {
       await fixture.cleanup();
     }
