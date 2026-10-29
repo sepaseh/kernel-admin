@@ -524,8 +524,8 @@ describe("validated build metadata", () => {
         buildDirectory: fixture.build,
         openFile: async (file, flags) => {
           temporary = file;
-          expect(path.relative(fixture.build, file).startsWith("..")).toBe(
-            true,
+          expect(path.relative(fixture.build, file).split(path.sep)[0]).toBe(
+            "..",
           );
           expect(file).not.toBe(output);
           expect(flags).toBe("wx");
@@ -709,6 +709,7 @@ describe("validated build metadata", () => {
       ).rejects.toHaveProperty("code");
       expect(await readFile(output)).toEqual(winner);
       expect(await readdir(path.dirname(output))).toEqual(["build.json"]);
+      expect(await readdir(fixture.root)).toEqual(["dist"]);
     } finally {
       await fixture.cleanup();
     }
@@ -757,9 +758,9 @@ describe("validated build metadata", () => {
               events.push("open");
               temporary = file;
               expect(file).not.toBe(output);
-              expect(path.relative(fixture.build, file).startsWith("..")).toBe(
-                true,
-              );
+              expect(
+                path.relative(fixture.build, file).split(path.sep)[0],
+              ).toBe("..");
               expect(flags).toBe("wx");
               const handle = await open(file, flags);
               return {
