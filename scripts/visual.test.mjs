@@ -205,7 +205,7 @@ test("occupied fixture ports fail closed without contacting or reusing the servi
 });
 
 test("unused ephemeral port passes availability preflight", async () => {
-  await assertVisualPortsAvailable([0]);
+  await assert.doesNotReject(() => assertVisualPortsAvailable([0]));
 });
 
 test("the actual update command rejects CI before inspecting baselines or starting fixtures", () => {

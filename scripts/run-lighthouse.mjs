@@ -82,6 +82,21 @@ export async function launchOwnedChrome(Launcher, options, signal) {
   return { port: instance.port, kill };
 }
 
+function getLighthouseReports(result) {
+  if (!result) throw new Error("Lighthouse did not produce a result.");
+
+  const reports = Array.isArray(result.report)
+    ? result.report
+    : [result.report];
+  if (
+    reports.length !== 2 ||
+    reports.some((report) => typeof report !== "string")
+  )
+    throw new Error("Lighthouse must produce both HTML and JSON reports.");
+
+  return reports;
+}
+
 export async function runLighthouse({
   appBasePath = "/",
   reportDirectory = path.resolve(".lighthouseci"),
@@ -141,15 +156,7 @@ export async function runLighthouse({
         }),
       controller.signal,
     );
-    if (!result) throw new Error("Lighthouse did not produce a result.");
-    const reports = Array.isArray(result.report)
-      ? result.report
-      : [result.report];
-    if (
-      reports.length !== 2 ||
-      reports.some((report) => typeof report !== "string")
-    )
-      throw new Error("Lighthouse must produce both HTML and JSON reports.");
+    const reports = getLighthouseReports(result);
     await writeReports(reportDirectory, reports);
     controller.signal.throwIfAborted();
     await fixture?.verify();

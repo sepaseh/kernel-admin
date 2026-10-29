@@ -225,7 +225,7 @@ const inspectApplicationJob = (workflow, definition) => {
   ];
   const positions = commands.map((command) => {
     const mention = new RegExp(
-      `(?:^|[\\s;&|])${command.replaceAll(" ", "\\s+")}\\b`,
+      String.raw`(?:^|[\s;&|])${command.replaceAll(" ", String.raw`\s+`)}\b`,
     );
     const matches = job.steps.flatMap((step, index) =>
       isRecord(step) && typeof step.run === "string" && mention.test(step.run)
