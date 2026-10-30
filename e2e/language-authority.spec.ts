@@ -211,7 +211,15 @@ for (const isSystemAdmin of [false, true]) {
     await page
       .getByRole("button", { name: catalogs.en.submit, exact: true })
       .click();
-    await page
+    const confirmation = page.getByRole("dialog", {
+      name: catalogs.en.settingsChangeConfirm,
+      exact: true,
+    });
+    await expect(confirmation).toBeVisible();
+    // Firefox can report the scaled button stable between opening-motion phases.
+    // Wait for the dialog's real transition before the same pointer confirmation.
+    await expect(confirmation).not.toHaveClass(/\bant-zoom-(?:appear|enter)\b/);
+    await confirmation
       .getByRole("button", { name: catalogs.en.yes, exact: true })
       .click();
     await expect(page.locator("html")).toHaveAttribute("lang", "fa");

@@ -2,7 +2,7 @@
 
 [English](sonarqube.md) · [فارسی](sonarqube.fa.md)
 
-The `assistant-guidance` phase adds executable guidance tooling to the analyzed source and measured governance tests. Current-head provider evidence must still be inspected independently; documentation and local checks do not establish hosted analysis.
+The application-verification phase includes composed application source and its genuine required checks alongside the inherited modules and measured governance tests. Current-head provider evidence must still be inspected independently; documentation and local checks do not establish hosted analysis.
 
 The [workflow](../.github/workflows/sonar.yml) performs CI-based analysis for this
 repository. Configure and verify this repository independently; another
@@ -13,8 +13,7 @@ project's successful integration does not establish this one's activation.
 1. Give the SonarQube Cloud app access through
    [GitHub installed applications](https://github.com/settings/installations).
 2. [Import the repository](https://sonarcloud.io/projects/create) into the
-   `sepaseh` organization and choose **With GitHub Actions**. Select **Linux** for
-   the `ubuntu-latest` runner, including when local development uses Windows.
+   `sepaseh` organization and choose **With GitHub Actions**. Follow the committed workflow's `windows-2025` runner and Windows prerequisites; do not replace it with the wizard's default Linux workflow.
 3. Disable **Automatic Analysis** under **Administration → Analysis Method**;
    automatic and CI-based analysis must not run together.
 4. Generate a token in [My Account → Security](https://sonarcloud.io/account/security)
@@ -33,13 +32,12 @@ work to create a baseline.
 ## Scope and evidence
 
 [sonar-project.properties](../sonar-project.properties) analyzes published `src`,
-`scripts`, `.storybook` and executable `.agents/hooks`, classifies test files separately and imports two real reports:
-`coverage/unit/lcov.info` and `coverage/governance/lcov.info`. The workflow
-generates both from the same checked-out revision. They cover the published
+`scripts`, `.storybook`, executable `.agents/hooks`, deployment/tooling owners and admitted Vite/Playwright/contract configuration, classifies test files separately and imports two real reports:
+`coverage/unit/lcov.info` and `coverage/governance/lcov.info`. The workflow installs dependencies and declared browsers, then runs the unchanged complete nineteen-check gate before exactly one immutable scanner invocation. Both reports come from that same checked-out revision. They cover the published
 catalogs, real translation/date runtime adapters, pure Persian calendar data,
 HTTP feature adapters, session races, lifecycle hooks, Core/Ant Design providers, authentication forms, layouts, access/navigation metadata, Ant Design widgets, theme/preferences/observability adapters, primitives and tooling. Provider/form/layout tests use synthetic HTTP/jsdom fixtures; see [Core and authentication](core-auth.md). Real font and vector-asset validation runs in the same required unit suite; see [UI foundation](ui-foundation.md).
 Test support under src/test and .storybook, plus registered *.stories.tsx modules, is classified as test code, alongside *.test.ts and *.test.tsx;
-production modules remain analyzed and measured. The application entry point, App/Routes composition, production backend/browser integration and a complete panel remain outside this phase.
+production modules remain analyzed and measured. Application entry/App/Routes and their measured unit regressions are included; e2e and contract fixtures are classified as test code. Browser output is not LCOV, and synthetic consumer checks do not verify the independent API provider or a deployed backend.
 
 Retain source/security analysis and honest coverage. Do not exclude code or
 weaken a quality gate to hide a failure. Review actual findings and correct real
