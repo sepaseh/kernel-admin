@@ -8,6 +8,8 @@ Actual execution is recorded per exact revision. API-provider compatibility, fre
 
 Before settings and appearance modules are ready, App renders a localized native status. Ant Design route loaders remain inside the themed application, avoiding an initial default-theme spinner mount.
 
+The data router resolves the matched layout and page through route-object `lazy` functions in parallel. Its initial `HydrateFallback` uses the existing themed loading status while the provider stays mounted, so unresolved page modules do not discard initial theme calculations through nested React Suspense retries. Later lazy navigation retains the current route until the next modules are ready. Static matching, basename, access guards and the router error fallback remain in place. Matching can import code before a page is authorized, including when the routes module loads for bootstrap error handling; feature imports must stay free of HTTP calls and mounted effects. The access guard runs before the page component mounts.
+
 Date plugins and all ten locales register at startup; localized Jalali month names are cached per locale on first access, so Gregorian startup does not build unused month labels.
 
 Each feature owns its published HTTP types, endpoints and helpers. Authentication

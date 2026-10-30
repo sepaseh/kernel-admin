@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { FC, ReactNode } from "react";
 import { Outlet } from "react-router";
@@ -23,6 +23,12 @@ const routeState = vi.hoisted(() => ({
   appearanceInitialized: vi.fn(),
   feedbackInitialized: vi.fn(),
   routesInitialized: vi.fn(),
+  authInitialized: vi.fn(),
+  loginInitialized: vi.fn(),
+  authModuleReady: undefined as Promise<void> | undefined,
+  loginModuleReady: undefined as Promise<void> | undefined,
+  loginLoadError: null as Error | null,
+  usersRendered: vi.fn(),
   dashboardError: false,
   retrySettings: vi.fn(),
   settingsError: null as Error | null,
@@ -68,7 +74,6 @@ vi.mock("@/app/providers/core/SettingsFeedback", async (importOriginal) => {
 vi.mock("@/app/lib", () => ({
   hasRouteAccess: (route: string) => routeState.allowedRoutes.has(route),
 }));
-vi.mock("@/layouts/auth", () => ({ AuthLayout: () => <Outlet /> }));
 vi.mock("@/layouts/default", () => ({ DefaultLayout: () => <Outlet /> }));
 vi.mock("@/features/account", () => ({ AccountPage: () => "Account page" }));
 vi.mock("@/features/dashboard", () => ({
@@ -83,7 +88,6 @@ vi.mock("@/features/calendar", () => ({
 vi.mock("@/features/forgot-pass", () => ({
   ForgotPassPage: () => "Forgot password page",
 }));
-vi.mock("@/features/login", () => ({ LoginPage: () => "Login page" }));
 vi.mock("@/features/register", () => ({
   RegisterPage: () => "Register page",
 }));
@@ -91,7 +95,12 @@ vi.mock("@/features/roles", () => ({ RolesPage: () => "Roles page" }));
 vi.mock("@/features/settings", () => ({
   SettingsPage: () => "Settings page",
 }));
-vi.mock("@/features/users", () => ({ UsersPage: () => "Users page" }));
+vi.mock("@/features/users", () => ({
+  UsersPage: () => {
+    routeState.usersRendered();
+    return "Users page";
+  },
+}));
 
 beforeEach(() => {
   routeState.antdMount.mockClear();
@@ -99,12 +108,29 @@ beforeEach(() => {
   routeState.appearanceInitialized.mockClear();
   routeState.feedbackInitialized.mockClear();
   routeState.routesInitialized.mockClear();
+  routeState.authInitialized.mockClear();
+  routeState.loginInitialized.mockClear();
+  routeState.authModuleReady = undefined;
+  routeState.loginModuleReady = undefined;
+  routeState.loginLoadError = null;
+  routeState.usersRendered.mockClear();
   routeState.dashboardError = false;
   routeState.retrySettings.mockClear();
   routeState.settingsError = null;
   routeState.settingsLoading = false;
   routeState.settingsReady = true;
   routeState.setCurrentRoute.mockClear();
+  vi.doMock("@/layouts/auth", async () => {
+    routeState.authInitialized();
+    await routeState.authModuleReady;
+    return { AuthLayout: () => <Outlet /> };
+  });
+  vi.doMock("@/features/login", async () => {
+    routeState.loginInitialized();
+    await routeState.loginModuleReady;
+    if (routeState.loginLoadError) throw routeState.loginLoadError;
+    return { LoginPage: () => "Login page" };
+  });
   vi.doUnmock("./Routes");
   vi.resetModules();
 });
@@ -199,6 +225,41 @@ describe("application routes", () => {
     expect(await screen.findByText("404")).toBeInTheDocument();
   }, 30_000);
 
+  it("loads the matched layout and page together while retaining its mounted provider", async () => {
+    let finishAuth = () => {};
+    let finishLogin = () => {};
+    routeState.authModuleReady = new Promise<void>((resolve) => {
+      finishAuth = resolve;
+    });
+    routeState.loginModuleReady = new Promise<void>((resolve) => {
+      finishLogin = resolve;
+    });
+    window.history.replaceState({}, "", "/auth");
+    const { App } = await import("./App");
+    render(<App />);
+
+    try {
+      await waitFor(() => {
+        expect(routeState.authInitialized).toHaveBeenCalledTimes(1);
+        expect(routeState.loginInitialized).toHaveBeenCalledTimes(1);
+      });
+      const provider = await screen.findByTestId("antd-provider");
+      expect(screen.getByLabelText(/Loading|در حال بارگذاری/)).toBeVisible();
+      expect(screen.queryByText("Login page")).not.toBeInTheDocument();
+      await act(async () => finishAuth());
+      expect(screen.getByTestId("antd-provider")).toBe(provider);
+      expect(screen.queryByText("Login page")).not.toBeInTheDocument();
+      await act(async () => finishLogin());
+      expect(await screen.findByText("Login page")).toBeVisible();
+      expect(screen.getByTestId("antd-provider")).toBe(provider);
+      expect(routeState.antdMount).toHaveBeenCalledTimes(1);
+      expect(routeState.antdUnmount).not.toHaveBeenCalled();
+    } finally {
+      finishAuth();
+      finishLogin();
+    }
+  });
+
   it.each([
     ["/", "Dashboard page", "root"],
     ["/account", "Account page", "account"],
@@ -227,7 +288,32 @@ describe("application routes", () => {
     render(<Routes />);
 
     expect(await screen.findByText("Dashboard page")).toBeInTheDocument();
+    expect(routeState.usersRendered).not.toHaveBeenCalled();
     routeState.allowedRoutes.add("users");
+  });
+
+  it("renders and reports the application fallback when a route module fails to load", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const send = vi.fn();
+    routeState.loginLoadError = new Error("synthetic login module failure");
+    window.history.replaceState({}, "", "/auth");
+    const { Routes } = await import("./Routes");
+    const { setObservabilityTransport } = await import("@/shared/lib");
+    setObservabilityTransport(send);
+    render(<Routes />);
+
+    expect(await screen.findByText("500")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /Reload|بارگذاری دوباره/ }),
+    ).toBeVisible();
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: expect.objectContaining({
+          source: "react-router.error-boundary",
+        }),
+        name: "error",
+      }),
+    );
   });
 
   it("renders and reports the application fallback when a route fails", async () => {
