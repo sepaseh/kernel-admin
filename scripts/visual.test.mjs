@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import {
   mkdir,
@@ -17,6 +18,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  assertVisualBaselineImages,
   fingerprintVisualSources,
   runVisual,
   runVisualChild,
@@ -391,6 +393,48 @@ test("the actual update command rejects CI before inspecting baselines or starti
   assert.match(result.stderr, /Visual baseline updates are forbidden in CI/);
 });
 
+test("the actual visual config rejects short and long update flags in CI", () => {
+  const configuration = new URL(
+    "../playwright.visual.config.ts",
+    import.meta.url,
+  );
+  for (const flag of [
+    "-u",
+    "-u=all",
+    "-uall",
+    "--update-snapshots",
+    "--update-snapshots=all",
+  ]) {
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "-e",
+        `process.argv.push(${JSON.stringify(flag)}); await import(${JSON.stringify(configuration.href)});`,
+      ],
+      {
+        env: {
+          ...visualEnvironment({
+            PATH: process.env.PATH,
+            SystemRoot: process.env.SystemRoot,
+          }),
+          CI: "1",
+          KERNEL_VISUAL_UPDATE: "0",
+        },
+        encoding: "utf8",
+        windowsHide: true,
+        timeout: 10_000,
+      },
+    );
+    assert.notEqual(result.status, 0, flag);
+    assert.match(
+      result.stderr,
+      /Visual baseline updates are forbidden in CI/,
+      flag,
+    );
+  }
+});
+
 const syntheticVisualDrivers = (failures = {}) => {
   const events = [];
   const act = (name) => {
@@ -401,6 +445,8 @@ const syntheticVisualDrivers = (failures = {}) => {
     platform: "win32",
     playwright: "synthetic-version",
     browserVersion: "synthetic-browser",
+    sourceFingerprint: "a".repeat(64),
+    sourceInputs: ["src/app/App.tsx"],
     review: { status: "pending", reviewer: null, reviewedAt: null },
   };
   return {
@@ -421,6 +467,7 @@ const syntheticVisualDrivers = (failures = {}) => {
           },
         };
       },
+      baselineImages: async () => act("images"),
       lock: async () => {
         act("lock");
         return async () => act("release");
@@ -444,6 +491,118 @@ const syntheticVisualDrivers = (failures = {}) => {
   };
 };
 
+test("comparison verifies approved PNG bytes and inventory before any browser or child", async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), "kernel-visual-image-hashes-"),
+  );
+  const image = path.join(directory, "approved.png");
+  const bytes = Buffer.from("synthetic reviewed PNG bytes");
+  const metadata = {
+    images: [
+      {
+        name: "approved.png",
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+      },
+    ],
+  };
+  try {
+    await writeFile(image, bytes);
+    await assertVisualBaselineImages(directory, metadata);
+    await writeFile(image, "unreviewed replacement bytes");
+    const fixture = syntheticVisualDrivers();
+    const baseline = fixture.drivers.baseline;
+    fixture.drivers.baseline = async () => ({
+      ...(await baseline()),
+      ...metadata,
+    });
+    fixture.drivers.baselineImages = async (reviewed) => {
+      fixture.events.push("images");
+      await assertVisualBaselineImages(directory, reviewed);
+    };
+    await assert.rejects(
+      runVisual({ platform: "win32", drivers: fixture.drivers }),
+      /image hash mismatch/,
+    );
+    assert.equal(fixture.events.includes("lock"), false);
+    assert.equal(fixture.events.includes("browser"), false);
+    assert.equal(fixture.events.includes("capture"), false);
+    await writeFile(image, bytes);
+    for (const invalid of [
+      {},
+      { images: [] },
+      { images: [metadata.images[0], metadata.images[0]] },
+      {
+        images: [{ name: "../private.png", sha256: metadata.images[0].sha256 }],
+      },
+    ])
+      await assert.rejects(
+        assertVisualBaselineImages(directory, invalid),
+        /image hashes are required/,
+      );
+    await writeFile(path.join(directory, "unlisted.png"), "unreviewed image");
+    await assert.rejects(
+      assertVisualBaselineImages(directory, metadata),
+      /image inventory mismatch/,
+    );
+  } finally {
+    assert.equal(path.dirname(path.resolve(directory)), path.resolve(tmpdir()));
+    assert.equal(
+      path.basename(directory).startsWith("kernel-visual-image-hashes-"),
+      true,
+    );
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("source edits during comparison or capture reject success and leave captures pending", async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), "kernel-visual-source-mutation-"),
+  );
+  const source = path.join(directory, "App.tsx"),
+    pending = path.join(directory, "metadata.json");
+  try {
+    for (const update of [false, true]) {
+      await writeFile(source, "synthetic source before child");
+      const fixture = syntheticVisualDrivers(),
+        metadata = fixture.drivers.metadata;
+      fixture.drivers.metadata = async () => ({
+        ...(await metadata()),
+        sourceFingerprint: createHash("sha256")
+          .update(await readFile(source))
+          .digest("hex"),
+      });
+      fixture.drivers.markPending = async (value) => {
+        fixture.events.push("pending");
+        await markVisualBaselinePending(pending, value);
+      };
+      fixture.drivers.capture = async () => {
+        fixture.events.push("capture");
+        await writeFile(source, "synthetic source edited while child ran");
+        return 0;
+      };
+      await assert.rejects(
+        runVisual({ update, platform: "win32", drivers: fixture.drivers }),
+        /Visual source changed/,
+      );
+      assert.equal(fixture.events.includes("capture"), true);
+      assert.equal(fixture.events.includes("result"), false);
+      assert.equal(fixture.events.at(-1), "release");
+      if (update)
+        assert.equal(
+          JSON.parse(await readFile(pending, "utf8")).review.status,
+          "pending",
+        );
+    }
+  } finally {
+    assert.equal(path.dirname(path.resolve(directory)), path.resolve(tmpdir()));
+    assert.equal(
+      path.basename(directory).startsWith("kernel-visual-source-mutation-"),
+      true,
+    );
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("a visual update marks fresh captures pending before starting and never reads an old approval", async () => {
   const fixture = syntheticVisualDrivers();
   const result = await runVisual({
@@ -461,6 +620,7 @@ test("a visual update marks fresh captures pending before starting and never rea
     "metadata",
     "pending",
     "capture",
+    "metadata",
     "result",
     "release",
   ]);

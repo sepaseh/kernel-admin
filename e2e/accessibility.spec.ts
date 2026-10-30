@@ -85,7 +85,7 @@ for (const language of ["en", "fa"] as const) {
         expect(unexpectedRequests).toEqual([]);
       });
 
-      test("user table and empty role list include contrast", async ({
+      test("user and role tables support keyboard scrolling and empty roles include contrast", async ({
         page,
         baseURL,
       }, testInfo) => {
@@ -106,6 +106,8 @@ for (const language of ["en", "fa"] as const) {
         const overflow = await usersRegion.evaluate(
           (element) => element.scrollWidth > element.clientWidth,
         );
+        if (testInfo.project.name === "mobile-chromium")
+          expect(overflow).toBe(true);
         if (overflow) {
           await usersRegion.focus();
           await expect(usersRegion).toBeFocused();
@@ -144,6 +146,43 @@ for (const language of ["en", "fa"] as const) {
         await expect(
           page.getByRole("button", { name: messages.create, exact: true }),
         ).toBeVisible();
+        await expectNoAxeViolations(page, testInfo);
+        const roleName =
+          "Support operators with user administration permissions";
+        await page.route("https://api.example.com/roles", async (route) => {
+          await route.fulfill({
+            json: [
+              { id: "role-1", name: roleName, permissions: ["users.read"] },
+            ],
+          });
+        });
+        await page.goto("/roles");
+        await expect(
+          page.getByRole("cell", { name: roleName, exact: true }),
+        ).toBeVisible();
+        const rolesRegion = page.getByRole("region", {
+          name: messages.roles,
+          exact: true,
+        });
+        await expect(rolesRegion).toHaveAttribute("tabindex", "0");
+        const rolesOverflow = await rolesRegion.evaluate(
+          (element) => element.scrollWidth > element.clientWidth,
+        );
+        if (testInfo.project.name === "mobile-chromium")
+          expect(rolesOverflow).toBe(true);
+        if (rolesOverflow) {
+          await rolesRegion.focus();
+          await expect(rolesRegion).toBeFocused();
+          const before = await rolesRegion.evaluate(
+            (element) => element.scrollLeft,
+          );
+          await page.keyboard.press(
+            language === "fa" ? "ArrowLeft" : "ArrowRight",
+          );
+          await expect
+            .poll(() => rolesRegion.evaluate((element) => element.scrollLeft))
+            .not.toBe(before);
+        }
         await expectNoAxeViolations(page, testInfo);
         expect(unexpectedRequests).toEqual([]);
       });

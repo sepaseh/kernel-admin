@@ -13,7 +13,10 @@ if (!["0", "1"].includes(process.env.KERNEL_VISUAL_UPDATE ?? ""))
 const update = process.env.KERNEL_VISUAL_UPDATE === "1";
 if (
   process.env.CI &&
-  (update || process.argv.some((arg) => arg.startsWith("--update-snapshots")))
+  (update ||
+    process.argv.some(
+      (arg) => arg.startsWith("--update-snapshots") || arg.startsWith("-u"),
+    ))
 )
   throw new Error("Visual baseline updates are forbidden in CI.");
 

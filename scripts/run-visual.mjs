@@ -4,6 +4,7 @@ import {
   lstat,
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
   realpath,
   writeFile,
@@ -23,6 +24,65 @@ import {
   visualEnvironment,
   visualSourceInputs,
 } from "./visual-environment.mjs";
+
+export async function assertVisualBaselineImages(directory, metadata) {
+  const images = metadata?.images;
+  if (
+    !Array.isArray(images) ||
+    !images.length ||
+    !images.every(
+      (image) =>
+        /^[a-z0-9][a-z0-9-]*\.png$/.test(image?.name ?? "") &&
+        /^[a-f0-9]{64}$/.test(image?.sha256 ?? ""),
+    ) ||
+    new Set(images.map((image) => image.name)).size !== images.length
+  )
+    throw new Error("Reviewed visual baseline image hashes are required.");
+
+  const filename = path.resolve(directory);
+  const root = await realpath(filename);
+  const samePath = (left, right) =>
+    process.platform === "win32"
+      ? left.toLowerCase() === right.toLowerCase()
+      : left === right;
+  const status = await lstat(filename);
+  if (
+    !samePath(root, filename) ||
+    status.isSymbolicLink() ||
+    !status.isDirectory()
+  )
+    throw new Error(
+      "Reviewed visual baselines must use an ordinary directory.",
+    );
+
+  const actualNames = (await readdir(root))
+    .filter((name) => /\.png$/i.test(name))
+    .sort();
+  const reviewedNames = images.map((image) => image.name).sort();
+  if (JSON.stringify(actualNames) !== JSON.stringify(reviewedNames))
+    throw new Error("Reviewed visual baseline image inventory mismatch.");
+
+  for (const image of images) {
+    const imagePath = path.join(root, image.name);
+    const imageStatus = await lstat(imagePath);
+    if (
+      imageStatus.isSymbolicLink() ||
+      !imageStatus.isFile() ||
+      !samePath(await realpath(imagePath), imagePath)
+    )
+      throw new Error(
+        `Reviewed visual baseline must be an ordinary image: ${image.name}`,
+      );
+
+    const actualHash = createHash("sha256")
+      .update(await readFile(imagePath))
+      .digest("hex");
+    if (actualHash !== image.sha256)
+      throw new Error(
+        `Reviewed visual baseline image hash mismatch: ${image.name}`,
+      );
+  }
+}
 
 export async function fingerprintVisualSources(repository) {
   const root = await realpath(repository);
@@ -111,7 +171,10 @@ export async function runVisual({
     throw new Error("Explicit visual fixture drivers are required.");
   const runtime = await drivers.runtime();
   const baseline = update ? undefined : await drivers.baseline();
-  if (!update) assertReviewedVisualBaseline(baseline, { ...runtime, platform });
+  if (!update) {
+    assertReviewedVisualBaseline(baseline, { ...runtime, platform });
+    await drivers.baselineImages(baseline);
+  }
   const releaseLock = await drivers.lock();
   let result, failure;
   let failed = false;
@@ -125,8 +188,27 @@ export async function runVisual({
         browserVersion,
       });
     const metadata = await drivers.metadata(runtime, browserVersion);
+    if (
+      !/^[a-f0-9]{64}$/.test(metadata.sourceFingerprint ?? "") ||
+      !Array.isArray(metadata.sourceInputs) ||
+      !metadata.sourceInputs.length
+    )
+      throw new Error("Visual source provenance is required before capture.");
+    const sourceBefore = {
+      sourceFingerprint: metadata.sourceFingerprint,
+      sourceInputs: [...metadata.sourceInputs],
+    };
     if (update) await drivers.markPending(metadata);
     const exitCode = await drivers.capture({ update, metadata });
+    const sourceAfter = await drivers.metadata(runtime, browserVersion);
+    if (
+      sourceBefore.sourceFingerprint !== sourceAfter.sourceFingerprint ||
+      JSON.stringify(sourceBefore.sourceInputs) !==
+        JSON.stringify(sourceAfter.sourceInputs)
+    )
+      throw new Error(
+        "Visual source changed while the child built or captured.",
+      );
     result = {
       ...metadata,
       baselineIdentity: baseline,
@@ -197,6 +279,8 @@ async function createVisualDrivers(platform, inherited) {
         );
       }
     },
+    baselineImages: (metadata) =>
+      assertVisualBaselineImages(baselineDirectory, metadata),
     lock: () => acquireVisualLock(resultsDirectory),
     ports: () => assertVisualPortsAvailable(),
     browserVersion: () =>

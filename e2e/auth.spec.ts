@@ -131,7 +131,13 @@ test.describe("public authentication", () => {
     await fillOtp(page, "123456");
     await page.getByLabel("New password").fill(syntheticCredential);
     await page.getByLabel("Confirm password").fill(syntheticCredential);
+    const recoveryRequest = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" &&
+        request.url() === "https://api.example.com/auth/forgot-password",
+    );
     await page.getByRole("button", { name: "Reset password" }).click();
+    await recoveryRequest;
 
     await expect(page).toHaveURL(/\/auth$/);
   });

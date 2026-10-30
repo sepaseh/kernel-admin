@@ -29,7 +29,7 @@
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:governance": "node -e \"require('node:fs').mkdirSync('coverage/governance', { recursive: true })\" && node --experimental-test-coverage --test --test-concurrency=1 --test-reporter=spec --test-reporter=lcov --test-reporter-destination=stdout --test-reporter-destination=coverage/governance/lcov.info scripts/check-pr-size.test.mjs scripts/check-ci.test.mjs scripts/validate-bootstrap.test.mjs scripts/boundaries.test.mjs scripts/validate.test.mjs scripts/guidance.test.mjs scripts/ai-hooks.portable.test.mjs scripts/ai-hooks.test.mjs scripts/deployment.test.mjs scripts/docker-smoke-resources.test.mjs scripts/package-release.test.mjs scripts/visual.test.mjs",
     "test:guidance": "node --test scripts/guidance.test.mjs scripts/ai-hooks.portable.test.mjs scripts/ai-hooks.test.mjs",
-    "test:lighthouse": "node scripts/run-lighthouse.mjs",
+    "test:lighthouse": "npm run build && node scripts/run-lighthouse.mjs",
     "test:storybook": "vitest run --config vitest.storybook.config.ts",
     "test:visual": "node scripts/run-visual.mjs",
     "test:visual:update": "node scripts/run-visual.mjs --update",

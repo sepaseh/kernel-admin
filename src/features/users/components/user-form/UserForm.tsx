@@ -82,7 +82,10 @@ export const UserForm = ({ data, onFinish }: UserFormProps) => {
   }, [goBack, hash, isCreate, open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      receivedFormFocus.current = false;
+      return;
+    }
     form.resetFields();
     if (isUpdate) {
       form.setFieldsValue({

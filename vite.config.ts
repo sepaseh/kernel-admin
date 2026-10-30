@@ -7,8 +7,12 @@ import { srcPath } from "./tooling/paths.ts";
 
 const repositoryRoot = fileURLToPath(new URL("./", import.meta.url));
 
-const securityHeaders = (apiOrigin: string) => ({
-  "Content-Security-Policy": `default-src 'self'; base-uri 'self'; connect-src 'self' ${apiOrigin}; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: blob: ${apiOrigin}; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'`,
+const securityHeaders = (
+  apiOrigin: string,
+  assetOrigin: string,
+  observabilityOrigin: string,
+) => ({
+  "Content-Security-Policy": `default-src 'self'; base-uri 'self'; connect-src 'self' ${apiOrigin}${observabilityOrigin ? ` ${observabilityOrigin}` : ""}; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: blob: ${apiOrigin}${assetOrigin !== apiOrigin ? ` ${assetOrigin}` : ""}; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'`,
   "Permissions-Policy":
     "camera=(), geolocation=(), microphone=(), payment=(), usb=()",
   "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -30,6 +34,12 @@ export default defineConfig(({ mode }) => {
     "VITE_RELEASE_ID",
   ];
   const apiOrigin = new URL(env.VITE_API_BASE_URL || "http://localhost").origin;
+  const assetOrigin = env.PUBLIC_ASSET_ORIGIN
+    ? new URL(env.PUBLIC_ASSET_ORIGIN).origin
+    : apiOrigin;
+  const observabilityOrigin = env.VITE_OBSERVABILITY_URL
+    ? new URL(env.VITE_OBSERVABILITY_URL).origin
+    : "";
 
   return {
     base: env.VITE_APP_BASE_URL,
@@ -73,7 +83,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     preview: {
-      headers: securityHeaders(apiOrigin),
+      headers: securityHeaders(apiOrigin, assetOrigin, observabilityOrigin),
       host: "127.0.0.1",
       strictPort: true,
     },

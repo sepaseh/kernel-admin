@@ -27,6 +27,7 @@ describe("dialog keyboard endpoints", () => {
           <button>Inert</button>
         </div>
         <button>Last</button>
+        <button style={{ visibility: "hidden" }}>CSS hidden</button>
         <button tabIndex={-1}>Not in tab order</button>
       </div>,
     );

@@ -231,7 +231,9 @@ describe("authentication pages", () => {
       },
       expect.any(AbortSignal),
     );
-    expect(screen.getByLabelText("location")).toHaveTextContent("/");
+    await waitFor(() =>
+      expect(screen.getByLabelText("location")).toHaveTextContent(/^\/$/),
+    );
   });
 
   it("reports rejected login credentials without navigating", async () => {
@@ -328,7 +330,9 @@ describe("authentication pages", () => {
       },
       expect.any(AbortSignal),
     );
-    expect(screen.getByLabelText("location")).toHaveTextContent("/");
+    await waitFor(() =>
+      expect(screen.getByLabelText("location")).toHaveTextContent(/^\/$/),
+    );
   });
 });
 
@@ -685,10 +689,14 @@ describe("users page", () => {
     confirmation = mocks.modalConfirm.mock.calls.at(-1)?.[0] as {
       onOk: () => Promise<void>;
     };
+    vi.mocked(api.fetchUsers).mockResolvedValue({ items: [], total: 0 });
     await confirmation.onOk();
     expect(api.deleteUser).toHaveBeenCalledWith(
       "user-1",
       expect.any(AbortSignal),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Ada Lovelace")).not.toBeInTheDocument(),
     );
   });
 });

@@ -22,6 +22,8 @@ const mocks = vi.hoisted(() => ({
   currentUser: { id: "admin-1", isSystemAdmin: true, permissions: [] },
   deferDrawerOpening: false,
   drawerOpening: null as (() => void) | null,
+  deferDrawerClosing: false,
+  drawerClosing: null as (() => void) | null,
 }));
 
 vi.mock("@/features/roles/api", () => ({
@@ -69,6 +71,8 @@ vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
         afterOpenChange={(open) => {
           if (open && mocks.deferDrawerOpening)
             mocks.drawerOpening = () => props.afterOpenChange?.(open);
+          else if (!open && mocks.deferDrawerClosing)
+            mocks.drawerClosing = () => props.afterOpenChange?.(open);
           else props.afterOpenChange?.(open);
         }}
       />
@@ -101,6 +105,13 @@ const LeaveCreateForm = () => {
   return <button onClick={() => void navigate("/")}>Leave creation</button>;
 };
 
+const ReopenCreateForm = () => {
+  const navigate = useNavigate();
+  return (
+    <button onClick={() => void navigate("/#create")}>Reopen creation</button>
+  );
+};
+
 const beginUserCreation = async (onFinish: () => void) => {
   const view = renderAtHash(
     <>
@@ -123,6 +134,8 @@ const beginUserCreation = async (onFinish: () => void) => {
 beforeEach(() => {
   mocks.deferDrawerOpening = false;
   mocks.drawerOpening = null;
+  mocks.deferDrawerClosing = false;
+  mocks.drawerClosing = null;
   mocks.currentUser.isSystemAdmin = true;
   clearAccessToken();
   vi.mocked(api.createRole)
@@ -145,6 +158,31 @@ beforeEach(() => {
 });
 
 describe("user identity form", () => {
+  it("restores initial focus when reopening before the close callback completes", async () => {
+    mocks.deferDrawerOpening = true;
+    mocks.deferDrawerClosing = true;
+    const { user } = renderAtHash(
+      <>
+        <LeaveCreateForm />
+        <ReopenCreateForm />
+        <UserForm onFinish={vi.fn()} />
+      </>,
+      "#create",
+    );
+    await waitFor(() => expect(mocks.drawerOpening).not.toBeNull());
+    act(() => mocks.drawerOpening?.());
+    await user.type(screen.getByLabelText("firstName"), "Ada");
+    await user.click(screen.getByRole("button", { name: "Leave creation" }));
+    await waitFor(() => expect(mocks.drawerClosing).not.toBeNull());
+    mocks.drawerOpening = null;
+    await user.click(screen.getByRole("button", { name: "Reopen creation" }));
+    await waitFor(() => expect(mocks.drawerOpening).not.toBeNull());
+    act(() => mocks.drawerOpening?.());
+
+    expect(screen.getByLabelText("firstName")).toHaveValue("");
+    expect(screen.getByLabelText("firstName")).toHaveFocus();
+  });
+
   it("preserves the user's focused field when the creation drawer finishes opening", async () => {
     mocks.deferDrawerOpening = true;
     const onFinish = vi.fn();

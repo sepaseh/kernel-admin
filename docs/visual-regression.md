@@ -17,3 +17,5 @@ The six scenarios cover English/light desktop login, Persian/dark mobile login, 
 Capture success is not approval. Failed or partial captures remain pending; neither assistant observation nor a publication request supplies human review. Before promotion, present the exact image bytes and runtime/source metadata for actual human approval. Preserve the first failure artifacts and existing historical bytes/dates. An automated capture on another runtime requires its own expressly authorized workflow; do not bypass the CI update prohibition or silently relax provenance.
 
 See [accessibility](accessibility.md), [test reliability](test-reliability.md) and [validation](validation.md). Screenshots do not establish API-provider compatibility, assistive-technology review or deployed behavior.
+
+Comparison verifies the approved PNG inventory and every recorded SHA-256 before launching a browser. Comparison and capture both verify the source fingerprint and input list again after the child build/capture; a source change rejects the result and leaves new captures pending. CI rejects snapshot-update flags in both long and `-u` shorthand forms.
