@@ -145,6 +145,38 @@ beforeEach(() => {
 });
 
 describe("user identity form", () => {
+  it("preserves the user's focused field when the creation drawer finishes opening", async () => {
+    mocks.deferDrawerOpening = true;
+    const onFinish = vi.fn();
+    const { user } = renderAtHash(<UserForm onFinish={onFinish} />, "#create");
+    const firstName = await screen.findByLabelText("firstName");
+    const lastName = screen.getByLabelText("lastName");
+
+    await user.type(firstName, "Ada");
+    await user.click(lastName);
+    await waitFor(() => expect(mocks.drawerOpening).not.toBeNull());
+    act(() => mocks.drawerOpening?.());
+    expect(lastName).toHaveFocus();
+    await user.keyboard("Lovelace");
+    expect(firstName).toHaveValue("Ada");
+    expect(lastName).toHaveValue("Lovelace");
+    await user.type(screen.getByLabelText("mobile"), "09120000000");
+    await user.click(screen.getByRole("button", { name: "submit" }));
+
+    await waitFor(() => expect(api.createUser).toHaveBeenCalledOnce());
+    expect(api.createUser).toHaveBeenCalledWith(
+      {
+        firstName: "Ada",
+        lastName: "Lovelace",
+        mobile: "09120000000",
+        password: expect.any(String),
+      },
+      expect.any(AbortSignal),
+    );
+    expect(mocks.messageSuccess).toHaveBeenCalledWith("userCreated");
+    expect(onFinish).toHaveBeenCalledOnce();
+  });
+
   it("keeps an early edit when the update drawer finishes opening", async () => {
     mocks.deferDrawerOpening = true;
     const { user } = renderAtHash(

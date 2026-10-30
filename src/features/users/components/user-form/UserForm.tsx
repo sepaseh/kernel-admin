@@ -1,5 +1,5 @@
 import { Form, Input } from "antd";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router";
 
@@ -32,6 +32,7 @@ export const UserForm = ({ data, onFinish }: UserFormProps) => {
   const { canCreate, canUpdate } = getRoutePermissions("users", user);
   const { hash, pathname, search } = useLocation();
   const [form] = Form.useForm<UserRequest>();
+  const receivedFormFocus = useRef(false);
   const goBack = useGoBack();
   const isUpdate = hash === userDrawerKeys.update && !!data;
   const isCreate = hash === userDrawerKeys.create;
@@ -96,8 +97,9 @@ export const UserForm = ({ data, onFinish }: UserFormProps) => {
     <FormDrawer
       afterOpenChange={(isOpen) => {
         if (isOpen) {
-          form.focusField("firstName");
+          if (!receivedFormFocus.current) form.focusField("firstName");
         } else {
+          receivedFormFocus.current = false;
           form.resetFields();
         }
       }}
@@ -114,6 +116,9 @@ export const UserForm = ({ data, onFinish }: UserFormProps) => {
         form={form}
         initialValues={isUpdate ? data : undefined}
         layout="vertical"
+        onFocusCapture={() => {
+          receivedFormFocus.current = true;
+        }}
         onFinish={(values) => void handleSubmit(values)}
       >
         <Form.Item<UserRequest>
