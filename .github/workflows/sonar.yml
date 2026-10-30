@@ -50,6 +50,19 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+      - name: Preserve failed application verification reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: sonar-analysis-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            coverage/e2e/
+            coverage/visual/
+            coverage/lighthouse/
+          if-no-files-found: warn
+          retention-days: 3
+          overwrite: false
+          include-hidden-files: false
 env:
   KERNEL_SYNTHETIC_ENV: "1"
   STORYBOOK_DISABLE_TELEMETRY: "1"

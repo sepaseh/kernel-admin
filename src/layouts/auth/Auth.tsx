@@ -29,6 +29,7 @@ export const AuthLayout = () => {
         style={{
           backgroundColor: token.colorBgContainer,
           borderRadius: 8,
+          color: token.colorText,
           maxWidth: token.screenXS,
           padding: 32,
           width: "100%",

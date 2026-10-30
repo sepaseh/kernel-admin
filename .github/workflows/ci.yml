@@ -35,6 +35,19 @@ jobs:
       - run: npm ci
       - run: npm run browser:install
       - run: npm run validate -- full
+      - name: Preserve failed application verification reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ci-check-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            coverage/e2e/
+            coverage/visual/
+            coverage/lighthouse/
+          if-no-files-found: warn
+          retention-days: 3
+          overwrite: false
+          include-hidden-files: false
   build:
     runs-on: windows-2025
     steps:
@@ -61,6 +74,16 @@ jobs:
       - run: npm ci
       - run: npm run browser:install
       - run: npm run test:e2e
+      - name: Preserve failed browser journey reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ci-e2e-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: coverage/e2e/
+          if-no-files-found: warn
+          retention-days: 3
+          overwrite: false
+          include-hidden-files: false
   visual:
     runs-on: windows-2025
     steps:
@@ -74,6 +97,16 @@ jobs:
       - run: npm ci
       - run: npm run browser:install
       - run: npm run test:visual
+      - name: Preserve failed visual comparison reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ci-visual-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: coverage/visual/
+          if-no-files-found: warn
+          retention-days: 3
+          overwrite: false
+          include-hidden-files: false
 env:
   KERNEL_SYNTHETIC_ENV: "1"
   STORYBOOK_DISABLE_TELEMETRY: "1"

@@ -46,6 +46,7 @@ export default defineConfig(({ mode }) => {
           codeSplitting: {
             groups: [
               {
+                entriesAware: true,
                 name: "react",
                 priority: 30,
                 test: /node_modules[\\/](?:react|react-dom|react-router|scheduler)[\\/]/,
