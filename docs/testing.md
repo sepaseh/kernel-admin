@@ -29,3 +29,5 @@ The production Vite UI and vendor groups partition shared modules by their actua
 Language-setting confirmation cases wait for the active dialog’s opening motion to finish before the real mouse click. The Q4 Firefox trace showed a click during the entrance transition missing the moving button, with no settings PUT. Readiness synchronization preserves the original settings assertions, deadlines and zero retries.
 
 The authentication panel applies its active foreground and background together, including native links. Failed CI check/E2E/visual and Sonar jobs retain generated synthetic browser, visual and Lighthouse diagnostics for three days.
+
+The logout journey waits for the fullscreen loading blocker to leave before opening the account menu with its declared desktop hover or touch gesture. Its original authorization-header, redirect and login-form assertions, deadlines and zero retries remain unchanged.

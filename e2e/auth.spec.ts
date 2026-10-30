@@ -191,7 +191,7 @@ test.describe("public authentication", () => {
     await expect(page.getByRole("link", { name: "Logo" })).toBeVisible();
   });
 
-  test("logs out and returns to login", async ({ page }) => {
+  test("logs out and returns to login", async ({ hasTouch, page }) => {
     await page.route("https://api.example.com/auth/login", async (route) => {
       await route.fulfill({
         contentType: "application/json",
@@ -216,7 +216,10 @@ test.describe("public authentication", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("link", { name: "Logo" })).toBeVisible();
 
-    await page.getByRole("button", { name: "Account" }).click();
+    await expect(page.locator(".ant-spin-fullscreen")).toHaveCount(0);
+    const account = page.getByRole("button", { name: "Account" });
+    if (hasTouch) await account.tap();
+    else await account.hover();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
 
     await expect(page).toHaveURL(/\/auth$/);
