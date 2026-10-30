@@ -8,6 +8,8 @@ Actual execution is recorded per exact revision. API-provider compatibility, fre
 
 Before settings and appearance modules are ready, App renders a localized native status. Ant Design route loaders remain inside the themed application, avoiding an initial default-theme spinner mount.
 
+Date plugins and all ten locales register at startup; localized Jalali month names are cached per locale on first access, so Gregorian startup does not build unused month labels.
+
 Each feature owns its published HTTP types, endpoints and helpers. Authentication
 forms call the auth owner; the default layout reads the account owner; the
 permission key type belongs to roles. Import an existing owning module rather

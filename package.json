@@ -9,7 +9,7 @@
   "scripts": {
     "audit": "node scripts/run-audit.mjs",
     "browser:install": "playwright install --with-deps chromium firefox webkit",
-    "build": "npm run check:production-env && tsc -b tsconfig.app.json tsconfig.node.json && vite build && node scripts/stamp-admin-build.mjs",
+    "build": "npm run check:production-env && npm run typecheck && vite build && node scripts/stamp-admin-build.mjs",
     "build-storybook": "storybook build --output-dir coverage/storybook-static",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:bundle": "node scripts/check-bundle-size.mjs",
