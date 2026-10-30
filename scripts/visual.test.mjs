@@ -6,6 +6,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -492,8 +493,8 @@ const syntheticVisualDrivers = (failures = {}) => {
 };
 
 test("comparison verifies approved PNG bytes and inventory before any browser or child", async () => {
-  const directory = await mkdtemp(
-    path.join(tmpdir(), "kernel-visual-image-hashes-"),
+  const directory = await realpath(
+    await mkdtemp(path.join(tmpdir(), "kernel-visual-image-hashes-")),
   );
   const image = path.join(directory, "approved.png");
   const bytes = Buffer.from("synthetic reviewed PNG bytes");
@@ -545,7 +546,10 @@ test("comparison verifies approved PNG bytes and inventory before any browser or
       /image inventory mismatch/,
     );
   } finally {
-    assert.equal(path.dirname(path.resolve(directory)), path.resolve(tmpdir()));
+    assert.equal(
+      path.dirname(path.resolve(directory)),
+      await realpath(tmpdir()),
+    );
     assert.equal(
       path.basename(directory).startsWith("kernel-visual-image-hashes-"),
       true,
