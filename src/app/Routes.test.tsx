@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { FC, ReactNode } from "react";
 import { Outlet } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -17,6 +18,8 @@ const routeState = vi.hoisted(() => ({
     "settings",
     "users",
   ]),
+  antdMount: vi.fn(),
+  antdUnmount: vi.fn(),
   dashboardError: false,
   retrySettings: vi.fn(),
   settingsError: null as Error | null,
@@ -36,8 +39,16 @@ vi.mock("@/app/hooks", () => ({
   }),
 }));
 vi.mock("@/app/providers", async () => {
-  const { Fragment } = await import("react");
-  return { AntdProvider: Fragment, CoreProvider: Fragment };
+  const { Fragment, useEffect } = await import("react");
+  type MockProviderProps = { children?: ReactNode };
+  const AntdProvider: FC<MockProviderProps> = ({ children }) => {
+    useEffect(() => {
+      routeState.antdMount();
+      return () => routeState.antdUnmount();
+    }, []);
+    return <div data-testid="antd-provider">{children}</div>;
+  };
+  return { AntdProvider, CoreProvider: Fragment };
 });
 vi.mock("@/app/lib", () => ({
   hasRouteAccess: (route: string) => routeState.allowedRoutes.has(route),
@@ -68,6 +79,8 @@ vi.mock("@/features/settings", () => ({
 vi.mock("@/features/users", () => ({ UsersPage: () => "Users page" }));
 
 beforeEach(() => {
+  routeState.antdMount.mockClear();
+  routeState.antdUnmount.mockClear();
   routeState.dashboardError = false;
   routeState.retrySettings.mockClear();
   routeState.settingsError = null;
@@ -90,6 +103,8 @@ describe("application routes", () => {
     const { App } = await import("./App");
     const { rerender } = render(<App />);
     expect(screen.getByLabelText(/Loading|در حال بارگذاری/)).toBeVisible();
+    expect(routeState.antdMount).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("antd-provider")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Verified application routes"),
     ).not.toBeInTheDocument();
@@ -100,8 +115,11 @@ describe("application routes", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "synthetic initial settings failure",
     );
+    const retryProvider = screen.getByTestId("antd-provider");
+    expect(routeState.antdMount).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole("button", { name: /Retry|تلاش دوباره/ }));
     expect(routeState.retrySettings).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("antd-provider")).toBe(retryProvider);
     expect(routeState.setCurrentRoute).not.toHaveBeenCalled();
     expect(
       screen.queryByText("Verified application routes"),
@@ -114,6 +132,9 @@ describe("application routes", () => {
       await screen.findByText("Verified application routes"),
     ).toBeVisible();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByTestId("antd-provider")).toBe(retryProvider);
+    expect(routeState.antdMount).toHaveBeenCalledTimes(1);
+    expect(routeState.antdUnmount).not.toHaveBeenCalled();
   }, 30_000);
 
   it("retains the verified route while a later settings refresh fails", async () => {
@@ -127,6 +148,8 @@ describe("application routes", () => {
       "Verified application routes",
     );
     expect(verifiedRoute).toBeVisible();
+    const verifiedProvider = screen.getByTestId("antd-provider");
+    expect(routeState.antdMount).toHaveBeenCalledTimes(1);
 
     routeState.settingsError = new Error("synthetic settings refresh failure");
     rerender(<App />);
@@ -135,6 +158,9 @@ describe("application routes", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "synthetic settings refresh failure",
     );
+    expect(screen.getByTestId("antd-provider")).toBe(verifiedProvider);
+    expect(routeState.antdMount).toHaveBeenCalledTimes(1);
+    expect(routeState.antdUnmount).not.toHaveBeenCalled();
   }, 30_000);
 
   it("renders the not-found page for an unknown route", async () => {

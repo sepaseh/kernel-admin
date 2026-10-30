@@ -9,23 +9,20 @@ import { Routes } from "./Routes";
 const ApplicationContent = () => {
   const { settingsError, themePalettes } = useCore();
 
-  if (!themePalettes)
-    return settingsError ? <SettingsFeedback /> : <RouteLoading />;
+  if (!themePalettes && !settingsError) return <RouteLoading />;
 
   return (
-    <>
+    <AntdProvider>
       <SettingsFeedback />
-      <Routes />
-    </>
+      {themePalettes ? <Routes /> : null}
+    </AntdProvider>
   );
 };
 
 export const App = () => (
   <ErrorBoundary>
     <CoreProvider>
-      <AntdProvider>
-        <ApplicationContent />
-      </AntdProvider>
+      <ApplicationContent />
     </CoreProvider>
   </ErrorBoundary>
 );

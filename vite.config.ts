@@ -51,12 +51,14 @@ export default defineConfig(({ mode }) => {
                 test: /node_modules[\\/](?:react|react-dom|react-router|scheduler)[\\/]/,
               },
               {
+                entriesAware: true,
                 maxSize: 450_000,
                 name: "ui",
                 priority: 20,
                 test: /node_modules[\\/](?:@ant-design|@emotion|@rc-component|antd|antd-style|rc-[^\\/]+)[\\/]/,
               },
               {
+                entriesAware: true,
                 maxSize: 450_000,
                 name: "vendor",
                 priority: 10,
