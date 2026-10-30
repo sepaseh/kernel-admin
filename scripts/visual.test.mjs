@@ -625,22 +625,16 @@ test(
     };
     try {
       await writeFile(path.join(directory, "approved.png"), bytes);
-      const script = [
-        "Add-Type -TypeDefinition @'",
-        "using System; using System.Text; using System.Runtime.InteropServices;",
-        "public static class KernelVisualShortName {",
-        '[DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]',
-        "public static extern uint GetShortPathName(string path, StringBuilder result, uint length);",
-        "}",
-        "'@",
-        "$buffer = [Text.StringBuilder]::new(32768)",
-        "$length = [KernelVisualShortName]::GetShortPathName($env:KERNEL_VISUAL_OWNED_PATH, $buffer, 32768)",
-        "if ($length -eq 0) { throw 'GetShortPathName failed for the owned directory' }",
-        "[Console]::WriteLine($buffer.ToString())",
-      ].join("\n");
       const result = spawnSync(
-        "powershell.exe",
-        ["-NoProfile", "-NonInteractive", "-Command", script],
+        "cmd.exe",
+        [
+          "/d",
+          "/e:on",
+          "/v:off",
+          "/u",
+          "/c",
+          'for %I in ("%KERNEL_VISUAL_SHORT_QUERY_PATH%") do @echo "%~fsI"',
+        ],
         {
           env: {
             ...visualEnvironment({
@@ -649,15 +643,19 @@ test(
               TEMP: directory,
               TMP: directory,
             }),
-            KERNEL_VISUAL_OWNED_PATH: directory,
+            KERNEL_VISUAL_SHORT_QUERY_PATH: directory,
           },
-          encoding: "utf8",
+          encoding: "utf16le",
+          windowsVerbatimArguments: true,
           windowsHide: true,
           timeout: 10_000,
         },
       );
+      assert.ifError(result.error);
       assert.equal(result.status, 0, result.stderr);
-      const alias = result.stdout.trim();
+      const quotedAlias = result.stdout.trim();
+      assert.match(quotedAlias, /^".+"$/u);
+      const alias = quotedAlias.slice(1, -1);
       if (alias.toLowerCase() === directory.toLowerCase()) {
         context.skip("This Windows volume does not expose an 8.3 alias.");
         return;
