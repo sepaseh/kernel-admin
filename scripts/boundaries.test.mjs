@@ -714,6 +714,26 @@ test("application composition admits only its explicit runtime and type package 
   const main = path.join(root, "src/main.tsx");
   const app = path.join(root, "src/app/App.tsx");
   const routes = path.join(root, "src/app/Routes.tsx");
+  assert.equal(
+    check(
+      "react-i18next",
+      path.join(root, "node_modules/react-i18next/index.d.ts"),
+      app,
+      false,
+      "react-i18next",
+    ),
+    undefined,
+  );
+  assert.match(
+    check(
+      "react-i18next",
+      path.join(root, "node_modules/react-i18next/index.d.ts"),
+      app,
+      true,
+      "react-i18next",
+    ),
+    /not allowed/,
+  );
   for (const typeOnly of [false, true]) {
     assert.equal(
       check(

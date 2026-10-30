@@ -1,4 +1,11 @@
+import { createRequire } from "node:module";
+
+import type { LaunchOptions } from "@playwright/test";
 import { defineConfig, devices } from "@playwright/test";
+
+const { windowsChromiumLaunchOptions } = createRequire(import.meta.url)(
+  "./scripts/visual-environment.mjs",
+) as { windowsChromiumLaunchOptions: () => LaunchOptions };
 
 const baseURL = "http://127.0.0.1:4185";
 
@@ -15,6 +22,7 @@ export default defineConfig({
       testIgnore: [/visual\.spec\.ts/, /[\\/]visual[\\/]/],
       use: {
         ...devices["Desktop Chrome"],
+        launchOptions: windowsChromiumLaunchOptions(),
       },
     },
     {
@@ -32,6 +40,7 @@ export default defineConfig({
       testIgnore: [/visual\.spec\.ts/, /[\\/]visual[\\/]/],
       use: {
         ...devices["Pixel 7"],
+        launchOptions: windowsChromiumLaunchOptions(),
       },
     },
   ],

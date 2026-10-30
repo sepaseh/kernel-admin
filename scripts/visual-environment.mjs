@@ -2,6 +2,58 @@ import { mkdir, open, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
 
+const playwright1641DisabledFeatures = [
+  "AvoidUnnecessaryBeforeUnloadCheckSync",
+  "DestroyProfileOnBrowserClose",
+  "DialMediaRouteProvider",
+  "GlobalMediaControls",
+  "HttpsUpgrades",
+  "LensOverlay",
+  "MediaRouter",
+  "PaintHolding",
+  "ThirdPartyStoragePartitioning",
+  "BlockOriginHeaderModificationOnRedirect",
+  "AvoidCorsURLLoaderRestartOnRedirect",
+  "Translate",
+  "AutoDeElevate",
+  "OptimizationHints",
+  "NetworkTimeServiceQuerying",
+  "AimEnabled",
+  "msForceBrowserSignIn",
+  "msEdgeUpdateLaunchServicesPreferredVersion",
+];
+
+export function windowsChromiumFlags(
+  defaultFlags,
+  platform = process.platform,
+) {
+  if (platform !== "win32") return [...defaultFlags];
+
+  const prefix = "--disable-features=";
+  if (defaultFlags.filter((flag) => flag.startsWith(prefix)).length !== 1)
+    throw new Error("One existing Chromium disabled-feature list is required.");
+
+  return defaultFlags.map((flag) => {
+    if (!flag.startsWith(prefix)) return flag;
+
+    const features = flag.slice(prefix.length).split(",");
+    if (!features.includes("TcpPortRandomizationWin"))
+      features.push("TcpPortRandomizationWin");
+    return prefix + features.join(",");
+  });
+}
+
+export function windowsChromiumLaunchOptions(platform = process.platform) {
+  if (platform !== "win32") return {};
+
+  const original =
+    "--disable-features=" + playwright1641DisabledFeatures.join(",");
+  return {
+    args: windowsChromiumFlags([original], platform),
+    ignoreDefaultArgs: [original],
+  };
+}
+
 export function visualSourceInputs(allowedFiles) {
   if (
     !Array.isArray(allowedFiles) ||

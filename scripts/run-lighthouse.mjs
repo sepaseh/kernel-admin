@@ -6,6 +6,7 @@ import {
   createLighthouseUrl,
   evaluateLighthouseReport,
 } from "./lighthouse-policy.mjs";
+import { windowsChromiumFlags } from "./visual-environment.mjs";
 
 export {
   createLighthouseUrl,
@@ -46,6 +47,24 @@ async function untilAborted(operation, signal) {
   } finally {
     signal.removeEventListener("abort", onAbort);
   }
+}
+
+export function createLighthouseChromeOptions(
+  Launcher,
+  chromePath,
+  platform = process.platform,
+) {
+  const chromeFlags = ["--headless=new", "--disable-background-networking"];
+  if (platform !== "win32") return { chromeFlags, chromePath };
+
+  return {
+    chromeFlags: [
+      ...windowsChromiumFlags(Launcher.defaultFlags(), platform),
+      ...chromeFlags,
+    ],
+    chromePath,
+    ignoreDefaultFlags: true,
+  };
 }
 
 export async function launchOwnedChrome(Launcher, options, signal) {
@@ -287,10 +306,10 @@ async function main() {
     launchChrome: (signal) =>
       launchOwnedChrome(
         launcher.Launcher,
-        {
-          chromePath: chromium.executablePath(),
-          chromeFlags: ["--headless=new", "--disable-background-networking"],
-        },
+        createLighthouseChromeOptions(
+          launcher.Launcher,
+          chromium.executablePath(),
+        ),
         signal,
       ),
     prepareFixture: (chrome, url) =>

@@ -30,7 +30,54 @@ import {
   markVisualBaselinePending,
   visualEnvironment,
   visualSourceInputs,
+  windowsChromiumFlags,
+  windowsChromiumLaunchOptions,
 } from "./visual-environment.mjs";
+
+test("Windows Chromium backport preserves the actual pinned Playwright feature defaults", async () => {
+  const packageUrl = import.meta.resolve("playwright-core/package.json");
+  const installed = JSON.parse(await readFile(new URL(packageUrl), "utf8"));
+  assert.equal(installed.version, "1.64.1");
+  const source = await readFile(
+    new URL("./lib/coreBundle.js", packageUrl),
+    "utf8",
+  );
+  const block = /disabledFeatures = \[([\s\S]*?)\]\.filter\(Boolean\)/.exec(
+    source,
+  );
+  assert.ok(block, "The pinned SDK must expose its reviewed feature list.");
+  const features = JSON.parse(
+    "[" + block[1].replace(/\/\/[^\n]*/g, "").replace(/,\s*$/, "") + "]",
+  );
+  assert.ok(!features.includes("TcpPortRandomizationWin"));
+  const original = "--disable-features=" + features.join(",");
+  const options = windowsChromiumLaunchOptions("win32");
+  assert.deepEqual(Object.keys(options).sort(), ["args", "ignoreDefaultArgs"]);
+  assert.deepEqual(options.ignoreDefaultArgs, [original]);
+  assert.deepEqual(options.args, [original + ",TcpPortRandomizationWin"]);
+  for (const platform of ["linux", "darwin"])
+    assert.deepEqual(windowsChromiumLaunchOptions(platform), {});
+});
+
+test("Windows feature extension keeps unrelated flags and rejects ambiguous replacements", () => {
+  const flags = Object.freeze([
+    "--enable-automation",
+    "--disable-features=Alpha,Beta",
+    "--headless=new",
+  ]);
+  const extended = windowsChromiumFlags(flags, "win32");
+  assert.deepEqual(extended, [
+    flags[0],
+    flags[1] + ",TcpPortRandomizationWin",
+    flags[2],
+  ]);
+  assert.deepEqual(windowsChromiumFlags(extended, "win32"), extended);
+  assert.equal(flags[1], "--disable-features=Alpha,Beta");
+  for (const platform of ["linux", "darwin"])
+    assert.deepEqual(windowsChromiumFlags(flags, platform), flags);
+  for (const invalid of [[], [flags[1], flags[1]]])
+    assert.throws(() => windowsChromiumFlags(invalid, "win32"), /One existing/);
+});
 
 test("source provenance includes App, providers, fonts and capture inputs without reading private files", async () => {
   const configuration = [

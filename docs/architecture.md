@@ -6,6 +6,8 @@ Scope updated: 29 October 2026. The application-verification phase admits a stan
 
 Actual execution is recorded per exact revision. API-provider compatibility, fresh human visual approval, deployment and optional host evaluation are separate evidence; a readiness declaration or synthetic fixture cannot establish them.
 
+Before settings and appearance modules are ready, App renders a localized native status. Ant Design route loaders remain inside the themed application, avoiding an initial default-theme spinner mount.
+
 Each feature owns its published HTTP types, endpoints and helpers. Authentication
 forms call the auth owner; the default layout reads the account owner; the
 permission key type belongs to roles. Import an existing owning module rather

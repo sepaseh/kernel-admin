@@ -16,6 +16,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { Launcher } from "chrome-launcher";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -24,7 +25,11 @@ import {
   lighthouseThresholds,
   minimumPerformanceScore,
 } from "./lighthouse-policy.mjs";
-import { launchOwnedChrome, runLighthouse } from "./run-lighthouse.mjs";
+import {
+  createLighthouseChromeOptions,
+  launchOwnedChrome,
+  runLighthouse,
+} from "./run-lighthouse.mjs";
 import { createBuildMetadata, stampAdminBuild } from "./stamp-admin-build.mjs";
 
 const createReport = ({
@@ -38,6 +43,49 @@ const createReport = ({
     ]),
   ),
   categories: { performance: { score } },
+});
+
+describe("Windows Lighthouse socket workaround", () => {
+  it("extends the public launcher defaults without changing other launch flags", () => {
+    const defaults = Launcher.defaultFlags();
+    const featureFlag = defaults.find((flag) =>
+      flag.startsWith("--disable-features="),
+    );
+    const options = createLighthouseChromeOptions(
+      Launcher,
+      "synthetic-chromium",
+      "win32",
+    );
+    expect(options).toEqual({
+      chromeFlags: [
+        ...defaults.map((flag) =>
+          flag === featureFlag ? flag + ",TcpPortRandomizationWin" : flag,
+        ),
+        "--headless=new",
+        "--disable-background-networking",
+      ],
+      chromePath: "synthetic-chromium",
+      ignoreDefaultFlags: true,
+    });
+    expect(
+      options.chromeFlags.filter((flag) =>
+        flag.startsWith("--disable-features="),
+      ),
+    ).toHaveLength(1);
+    expect(Launcher.defaultFlags()).toEqual(defaults);
+  });
+
+  it.each(["linux", "darwin"])(
+    "keeps the original %s launch options",
+    (platform) => {
+      expect(
+        createLighthouseChromeOptions(Launcher, "synthetic-chromium", platform),
+      ).toEqual({
+        chromeFlags: ["--headless=new", "--disable-background-networking"],
+        chromePath: "synthetic-chromium",
+      });
+    },
+  );
 });
 
 const lifecycle = (failures = {}) => {

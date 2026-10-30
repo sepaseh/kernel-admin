@@ -31,3 +31,5 @@ Language-setting confirmation cases wait for the active dialog’s opening motio
 The authentication panel applies its active foreground and background together, including native links. Failed CI check/E2E/visual and Sonar jobs retain generated synthetic browser, visual and Lighthouse diagnostics for three days.
 
 The logout journey waits for the fullscreen loading blocker to leave before opening the account menu with its declared desktop hover or touch gesture. Its original authorization-header, redirect and login-form assertions, deadlines and zero retries remain unchanged.
+
+Windows application E2E and Lighthouse Chromium launchers backport [Playwright's socket fix](https://github.com/microsoft/playwright/pull/43605) by adding `TcpPortRandomizationWin` to each launcher's complete existing disabled-feature list. The pinned Playwright 1.64.1 defaults and every other flag stay intact; other platforms and the reviewed visual launcher are unchanged. Remove this temporary backport when the pinned stable release includes the upstream fix. Browser versions, videos, checks, deadlines, retries and performance budgets remain unchanged.

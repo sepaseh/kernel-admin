@@ -121,7 +121,9 @@ describe("application routes", () => {
     window.history.replaceState({}, "", "/auth");
     const { App } = await import("./App");
     const { rerender } = render(<App />);
-    expect(screen.getByLabelText(/Loading|در حال بارگذاری/)).toBeVisible();
+    const bootstrapStatus = screen.getByLabelText(/Loading|در حال بارگذاری/);
+    expect(bootstrapStatus).toBeVisible();
+    expect(bootstrapStatus).toHaveTextContent(/Loading|در حال بارگذاری/);
     expect(routeState.antdMount).not.toHaveBeenCalled();
     expect(routeState.appearanceInitialized).not.toHaveBeenCalled();
     expect(routeState.feedbackInitialized).not.toHaveBeenCalled();
