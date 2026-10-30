@@ -18,11 +18,15 @@ test.describe("production security headers", () => {
     expect(contentSecurityPolicy).toContain("default-src 'self'");
     expect(contentSecurityPolicy).toContain("object-src 'none'");
     expect(contentSecurityPolicy).toContain("frame-ancestors 'none'");
-    const scriptSources = contentSecurityPolicy
-      .split(";")
-      .map((directive) => directive.trim().split(/\s+/))
-      .filter(([name]) => name === "script-src");
+    const directives = contentSecurityPolicy.split(";").map((directive) => {
+      const [name, ...sources] = directive.trim().split(/\s+/);
+      return [name.toLowerCase(), ...sources];
+    });
+    const scriptSources = directives.filter(([name]) => name === "script-src");
     expect(scriptSources).toEqual([["script-src", "'self'"]]);
+    expect(directives.filter(([name]) => name === "script-src-elem")).toEqual(
+      [],
+    );
     expect(headers["x-frame-options"]).toBe("DENY");
     expect(headers["x-content-type-options"]).toBe("nosniff");
     expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");

@@ -25,6 +25,29 @@ import {
   visualSourceInputs,
 } from "./visual-environment.mjs";
 
+async function canonicalVisualDirectory(directory) {
+  const filename = path.resolve(directory);
+  const ancestors = [];
+  let current = filename;
+  while (true) {
+    ancestors.push(current);
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  const statuses = await Promise.all(
+    ancestors.map((ancestor) => lstat(ancestor)),
+  );
+  if (
+    statuses.some((status) => status.isSymbolicLink() || !status.isDirectory())
+  )
+    throw new Error(
+      "Reviewed visual baselines must use an ordinary directory.",
+    );
+
+  return realpath(filename);
+}
+
 export async function assertVisualBaselineImages(directory, metadata) {
   const images = metadata?.images;
   if (
@@ -39,22 +62,11 @@ export async function assertVisualBaselineImages(directory, metadata) {
   )
     throw new Error("Reviewed visual baseline image hashes are required.");
 
-  const filename = path.resolve(directory);
-  const root = await realpath(filename);
+  const root = await canonicalVisualDirectory(directory);
   const samePath = (left, right) =>
     process.platform === "win32"
       ? left.toLowerCase() === right.toLowerCase()
       : left === right;
-  const status = await lstat(filename);
-  if (
-    !samePath(root, filename) ||
-    status.isSymbolicLink() ||
-    !status.isDirectory()
-  )
-    throw new Error(
-      "Reviewed visual baselines must use an ordinary directory.",
-    );
-
   const actualNames = new Set(
     (await readdir(root)).filter((name) => /\.png$/i.test(name)),
   );
@@ -213,6 +225,7 @@ export async function runVisual({
       throw new Error(
         "Visual source changed while the child built or captured.",
       );
+    if (!update) await drivers.baselineImages(baseline);
     result = {
       ...metadata,
       baselineIdentity: baseline,

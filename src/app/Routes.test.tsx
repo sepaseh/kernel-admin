@@ -28,6 +28,8 @@ const routeState = vi.hoisted(() => ({
   authModuleReady: undefined as Promise<void> | undefined,
   loginModuleReady: undefined as Promise<void> | undefined,
   loginLoadError: null as Error | null,
+  usersInitialized: vi.fn(),
+  usersLoadError: null as Error | null,
   usersRendered: vi.fn(),
   dashboardError: false,
   retrySettings: vi.fn(),
@@ -95,12 +97,6 @@ vi.mock("@/features/roles", () => ({ RolesPage: () => "Roles page" }));
 vi.mock("@/features/settings", () => ({
   SettingsPage: () => "Settings page",
 }));
-vi.mock("@/features/users", () => ({
-  UsersPage: () => {
-    routeState.usersRendered();
-    return "Users page";
-  },
-}));
 
 beforeEach(() => {
   routeState.antdMount.mockClear();
@@ -113,6 +109,8 @@ beforeEach(() => {
   routeState.authModuleReady = undefined;
   routeState.loginModuleReady = undefined;
   routeState.loginLoadError = null;
+  routeState.usersInitialized.mockClear();
+  routeState.usersLoadError = null;
   routeState.usersRendered.mockClear();
   routeState.dashboardError = false;
   routeState.retrySettings.mockClear();
@@ -130,6 +128,16 @@ beforeEach(() => {
     await routeState.loginModuleReady;
     if (routeState.loginLoadError) throw routeState.loginLoadError;
     return { LoginPage: () => "Login page" };
+  });
+  vi.doMock("@/features/users", () => {
+    routeState.usersInitialized();
+    if (routeState.usersLoadError) throw routeState.usersLoadError;
+    return {
+      UsersPage: () => {
+        routeState.usersRendered();
+        return "Users page";
+      },
+    };
   });
   vi.doUnmock("./Routes");
   vi.resetModules();
@@ -277,7 +285,13 @@ describe("application routes", () => {
     render(<Routes />);
 
     expect(await screen.findByText(content)).toBeInTheDocument();
-    expect(routeState.setCurrentRoute).toHaveBeenCalledWith(route);
+    await waitFor(() => {
+      expect(routeState.setCurrentRoute).toHaveBeenCalledWith(route);
+    });
+    if (route === "users") {
+      expect(routeState.usersInitialized).toHaveBeenCalledTimes(1);
+      expect(routeState.usersRendered).toHaveBeenCalled();
+    }
   });
 
   it("redirects a disallowed route to the dashboard", async () => {
@@ -290,6 +304,47 @@ describe("application routes", () => {
     expect(await screen.findByText("Dashboard page")).toBeInTheDocument();
     expect(routeState.usersRendered).not.toHaveBeenCalled();
     routeState.allowedRoutes.add("users");
+  });
+
+  it("redirects a denied route without importing its unavailable page module", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    routeState.allowedRoutes.delete("users");
+    routeState.usersLoadError = new Error("synthetic unavailable users chunk");
+    window.history.replaceState({}, "", "/users");
+    try {
+      const { Routes } = await import("./Routes");
+      render(<Routes />);
+
+      expect(await screen.findByText("Dashboard page")).toBeVisible();
+      expect(routeState.usersInitialized).not.toHaveBeenCalled();
+      expect(routeState.usersRendered).not.toHaveBeenCalled();
+      expect(screen.queryByText("500")).not.toBeInTheDocument();
+    } finally {
+      routeState.allowedRoutes.add("users");
+    }
+  });
+
+  it("reports a protected page import failure when the route is allowed", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    routeState.usersLoadError = new Error("synthetic unavailable users chunk");
+    window.history.replaceState({}, "", "/users");
+    const { Routes } = await import("./Routes");
+    const { setObservabilityTransport } = await import("@/shared/lib");
+    const send = vi.fn();
+    setObservabilityTransport(send);
+    render(<Routes />);
+
+    expect(await screen.findByText("500")).toBeVisible();
+    expect(routeState.usersInitialized).toHaveBeenCalledTimes(1);
+    expect(routeState.usersRendered).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context: expect.objectContaining({
+          source: "react-router.error-boundary",
+        }),
+        name: "error",
+      }),
+    );
   });
 
   it("renders and reports the application fallback when a route module fails to load", async () => {

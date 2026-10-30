@@ -607,6 +607,176 @@ test("source edits during comparison or capture reject success and leave capture
   }
 });
 
+test(
+  "ordinary Windows short-name aliases retain reviewed image integrity",
+  { skip: process.platform !== "win32" },
+  async (context) => {
+    const directory = await realpath(
+      await mkdtemp(path.join(tmpdir(), "kernel-visual-short-name-")),
+    );
+    const bytes = Buffer.from("synthetic reviewed short-name image");
+    const metadata = {
+      images: [
+        {
+          name: "approved.png",
+          sha256: createHash("sha256").update(bytes).digest("hex"),
+        },
+      ],
+    };
+    try {
+      await writeFile(path.join(directory, "approved.png"), bytes);
+      const script = [
+        "Add-Type -TypeDefinition @'",
+        "using System; using System.Text; using System.Runtime.InteropServices;",
+        "public static class KernelVisualShortName {",
+        '[DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]',
+        "public static extern uint GetShortPathName(string path, StringBuilder result, uint length);",
+        "}",
+        "'@",
+        "$buffer = [Text.StringBuilder]::new(32768)",
+        "$length = [KernelVisualShortName]::GetShortPathName($env:KERNEL_VISUAL_OWNED_PATH, $buffer, 32768)",
+        "if ($length -eq 0) { throw 'GetShortPathName failed for the owned directory' }",
+        "[Console]::WriteLine($buffer.ToString())",
+      ].join("\n");
+      const result = spawnSync(
+        "powershell.exe",
+        ["-NoProfile", "-NonInteractive", "-Command", script],
+        {
+          env: {
+            ...visualEnvironment({
+              PATH: process.env.PATH,
+              SystemRoot: process.env.SystemRoot,
+              TEMP: directory,
+              TMP: directory,
+            }),
+            KERNEL_VISUAL_OWNED_PATH: directory,
+          },
+          encoding: "utf8",
+          windowsHide: true,
+          timeout: 10_000,
+        },
+      );
+      assert.equal(result.status, 0, result.stderr);
+      const alias = result.stdout.trim();
+      if (alias.toLowerCase() === directory.toLowerCase()) {
+        context.skip("This Windows volume does not expose an 8.3 alias.");
+        return;
+      }
+      assert.equal(await realpath(alias), directory);
+      await assertVisualBaselineImages(alias, metadata);
+    } finally {
+      assert.equal(path.dirname(directory), await realpath(tmpdir()));
+      assert.ok(
+        path.basename(directory).startsWith("kernel-visual-short-name-"),
+      );
+      await rm(directory, { recursive: true, force: true });
+    }
+  },
+);
+
+test("reviewed baselines reject linked directories, ancestors and images", async () => {
+  const container = await realpath(
+    await mkdtemp(path.join(tmpdir(), "kernel-visual-linked-images-")),
+  );
+  const target = path.join(container, "target"),
+    alias = path.join(container, "alias"),
+    nested = path.join(target, "nested"),
+    images = path.join(container, "images");
+  const bytes = Buffer.from("synthetic reviewed linked image"),
+    metadata = {
+      images: [
+        {
+          name: "approved.png",
+          sha256: createHash("sha256").update(bytes).digest("hex"),
+        },
+      ],
+    };
+  const linkType = process.platform === "win32" ? "junction" : "dir";
+  try {
+    await mkdir(nested, { recursive: true });
+    await mkdir(images);
+    await writeFile(path.join(target, "approved.png"), bytes);
+    await writeFile(path.join(nested, "approved.png"), bytes);
+    await symlink(target, alias, linkType);
+    await assert.rejects(
+      assertVisualBaselineImages(alias, metadata),
+      /ordinary directory/,
+    );
+    await assert.rejects(
+      assertVisualBaselineImages(path.join(alias, "nested"), metadata),
+      /ordinary directory/,
+    );
+    await symlink(target, path.join(images, "approved.png"), linkType);
+    await assert.rejects(
+      assertVisualBaselineImages(images, metadata),
+      /ordinary image/,
+    );
+  } finally {
+    assert.equal(path.dirname(container), await realpath(tmpdir()));
+    assert.ok(
+      path.basename(container).startsWith("kernel-visual-linked-images-"),
+    );
+    await rm(container, { recursive: true, force: true });
+  }
+});
+
+test("comparison rejects baseline hash or inventory edits during its child before writing results", async () => {
+  const directory = await realpath(
+    await mkdtemp(path.join(tmpdir(), "kernel-visual-baseline-mutation-")),
+  );
+  const image = path.join(directory, "approved.png"),
+    extra = path.join(directory, "unlisted.png"),
+    bytes = Buffer.from("synthetic reviewed original image");
+  const metadata = {
+    images: [
+      {
+        name: "approved.png",
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+      },
+    ],
+  };
+  try {
+    for (const kind of ["hash", "inventory"]) {
+      await writeFile(image, bytes);
+      const fixture = syntheticVisualDrivers(),
+        baseline = fixture.drivers.baseline;
+      fixture.drivers.baseline = async () => ({
+        ...(await baseline()),
+        ...metadata,
+      });
+      fixture.drivers.baselineImages = async (reviewed) => {
+        fixture.events.push("images");
+        await assertVisualBaselineImages(directory, reviewed);
+      };
+      fixture.drivers.capture = async () => {
+        fixture.events.push("capture");
+        await writeFile(
+          kind === "hash" ? image : extra,
+          "unreviewed image bytes",
+        );
+        return 0;
+      };
+      await assert.rejects(
+        runVisual({ platform: "win32", drivers: fixture.drivers }),
+        kind === "hash" ? /image hash mismatch/ : /image inventory mismatch/,
+      );
+      assert.equal(
+        fixture.events.filter((event) => event === "images").length,
+        2,
+      );
+      assert.equal(fixture.events.includes("capture"), true);
+      assert.equal(fixture.events.includes("result"), false);
+      assert.equal(fixture.events.at(-1), "release");
+    }
+  } finally {
+    assert.equal(path.dirname(directory), await realpath(tmpdir()));
+    assert.ok(
+      path.basename(directory).startsWith("kernel-visual-baseline-mutation-"),
+    );
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("a visual update marks fresh captures pending before starting and never reads an old approval", async () => {
   const fixture = syntheticVisualDrivers();
   const result = await runVisual({

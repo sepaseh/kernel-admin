@@ -1,5 +1,5 @@
 import type { ComponentType, FC, ReactNode } from "react";
-import { Fragment, useEffect } from "react";
+import { Fragment, lazy, Suspense, useEffect } from "react";
 import type { RouteObject } from "react-router";
 import { createBrowserRouter, Navigate, useRouteError } from "react-router";
 import { RouterProvider } from "react-router/dom";
@@ -47,7 +47,23 @@ const routeKeys = Object.keys(routeTree) as RouteKey[];
 
 const createPageRoute = (route: RouteKey): RouteObject => {
   const definition = routeTree[route];
-  const lazy = async () => {
+  if (definition.permissions.access !== "public") {
+    const Page = lazy(async () => ({
+      default: await pageRegistry[route](),
+    }));
+    const element = (
+      <RouteWrapper route={route}>
+        <Suspense fallback={<RouteLoading />}>
+          <Page />
+        </Suspense>
+      </RouteWrapper>
+    );
+    return "index" in definition && definition.index
+      ? { index: true, element }
+      : { path: definition.path, element };
+  }
+
+  const loadPage = async () => {
     const Page = await pageRegistry[route]();
     return {
       element: (
@@ -58,8 +74,8 @@ const createPageRoute = (route: RouteKey): RouteObject => {
     };
   };
   return "index" in definition && definition.index
-    ? { index: true, lazy }
-    : { path: definition.path, lazy };
+    ? { index: true, lazy: loadPage }
+    : { path: definition.path, lazy: loadPage };
 };
 
 const createLayoutRoutes = (layout: RouteLayout): RouteObject[] =>
