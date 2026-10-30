@@ -132,6 +132,7 @@ const productionPaths = [
 ];
 const runtimeImports = {
   "src/main.tsx": ["react", "react-dom/client"],
+  "src/app/App.tsx": ["react"],
   "src/app/Routes.tsx": ["react", "react-router", "react-router/dom"],
   "src/app/contexts/Core.ts": ["react"],
   "src/app/hooks/useAntd.ts": ["antd", "react"],
@@ -290,6 +291,7 @@ const runtimeImports = {
   "src/shared/hooks/useMutationRequest.ts": ["axios", "react"],
 };
 const typeImports = {
+  "src/app/App.tsx": ["react"],
   "src/app/Routes.tsx": ["react", "react-router"],
   "src/app/config/routes.ts": ["i18next"],
   "src/app/providers/antd/Antd.tsx": ["antd", "react"],

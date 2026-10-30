@@ -1,10 +1,32 @@
-import { useCore } from "@/app/hooks";
-import { AntdProvider, CoreProvider } from "@/app/providers";
-import { SettingsFeedback } from "@/app/providers/core/SettingsFeedback";
+import type { FC } from "react";
+import { lazy, Suspense } from "react";
+
+import { useCore } from "@/app/hooks/useCore";
+import { CoreProvider } from "@/app/providers/core/Core";
 import { ErrorBoundary } from "@/shared/ui/error-boundary";
 import { RouteLoading } from "@/shared/ui/route-loading";
 
-import { Routes } from "./Routes";
+const ThemedApplication = lazy(async () => {
+  const [{ AntdProvider }, { SettingsFeedback }, { Routes }] =
+    await Promise.all([
+      import("@/app/providers/antd/Antd"),
+      import("@/app/providers/core/SettingsFeedback"),
+      import("./Routes"),
+    ]);
+
+  const ThemedApplicationContent: FC = () => {
+    const { themePalettes } = useCore();
+
+    return (
+      <AntdProvider>
+        <SettingsFeedback />
+        {themePalettes ? <Routes /> : null}
+      </AntdProvider>
+    );
+  };
+
+  return { default: ThemedApplicationContent };
+});
 
 const ApplicationContent = () => {
   const { settingsError, themePalettes } = useCore();
@@ -12,10 +34,9 @@ const ApplicationContent = () => {
   if (!themePalettes && !settingsError) return <RouteLoading />;
 
   return (
-    <AntdProvider>
-      <SettingsFeedback />
-      {themePalettes ? <Routes /> : null}
-    </AntdProvider>
+    <Suspense fallback={<RouteLoading />}>
+      <ThemedApplication />
+    </Suspense>
   );
 };
 

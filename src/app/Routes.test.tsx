@@ -20,6 +20,9 @@ const routeState = vi.hoisted(() => ({
   ]),
   antdMount: vi.fn(),
   antdUnmount: vi.fn(),
+  appearanceInitialized: vi.fn(),
+  feedbackInitialized: vi.fn(),
+  routesInitialized: vi.fn(),
   dashboardError: false,
   retrySettings: vi.fn(),
   settingsError: null as Error | null,
@@ -28,7 +31,7 @@ const routeState = vi.hoisted(() => ({
   setCurrentRoute: vi.fn(),
 }));
 
-vi.mock("@/app/hooks", () => ({
+vi.mock("@/app/hooks/useCore", () => ({
   useCore: () => ({
     retrySettings: routeState.retrySettings,
     setCurrentRoute: routeState.setCurrentRoute,
@@ -38,8 +41,14 @@ vi.mock("@/app/hooks", () => ({
     user: {},
   }),
 }));
-vi.mock("@/app/providers", async () => {
-  const { Fragment, useEffect } = await import("react");
+vi.mock("@/app/providers/core/Core", async () => {
+  const { Fragment } = await import("react");
+  await import("@/shared/i18n");
+  return { CoreProvider: Fragment };
+});
+vi.mock("@/app/providers/antd/Antd", async () => {
+  const { useEffect } = await import("react");
+  routeState.appearanceInitialized();
   type MockProviderProps = { children?: ReactNode };
   const AntdProvider: FC<MockProviderProps> = ({ children }) => {
     useEffect(() => {
@@ -48,7 +57,13 @@ vi.mock("@/app/providers", async () => {
     }, []);
     return <div data-testid="antd-provider">{children}</div>;
   };
-  return { AntdProvider, CoreProvider: Fragment };
+  return { AntdProvider };
+});
+vi.mock("@/app/providers/core/SettingsFeedback", async (importOriginal) => {
+  routeState.feedbackInitialized();
+  return importOriginal<
+    typeof import("@/app/providers/core/SettingsFeedback")
+  >();
 });
 vi.mock("@/app/lib", () => ({
   hasRouteAccess: (route: string) => routeState.allowedRoutes.has(route),
@@ -81,6 +96,9 @@ vi.mock("@/features/users", () => ({ UsersPage: () => "Users page" }));
 beforeEach(() => {
   routeState.antdMount.mockClear();
   routeState.antdUnmount.mockClear();
+  routeState.appearanceInitialized.mockClear();
+  routeState.feedbackInitialized.mockClear();
+  routeState.routesInitialized.mockClear();
   routeState.dashboardError = false;
   routeState.retrySettings.mockClear();
   routeState.settingsError = null;
@@ -93,9 +111,10 @@ beforeEach(() => {
 
 describe("application routes", () => {
   it("waits for initial settings and keeps bootstrap failure retryable before mounting routes", async () => {
-    vi.doMock("./Routes", () => ({
-      Routes: () => <output>Verified application routes</output>,
-    }));
+    vi.doMock("./Routes", () => {
+      routeState.routesInitialized();
+      return { Routes: () => <output>Verified application routes</output> };
+    });
     const user = userEvent.setup();
     routeState.settingsReady = false;
     routeState.settingsLoading = true;
@@ -104,6 +123,9 @@ describe("application routes", () => {
     const { rerender } = render(<App />);
     expect(screen.getByLabelText(/Loading|در حال بارگذاری/)).toBeVisible();
     expect(routeState.antdMount).not.toHaveBeenCalled();
+    expect(routeState.appearanceInitialized).not.toHaveBeenCalled();
+    expect(routeState.feedbackInitialized).not.toHaveBeenCalled();
+    expect(routeState.routesInitialized).not.toHaveBeenCalled();
     expect(screen.queryByTestId("antd-provider")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Verified application routes"),
@@ -117,6 +139,9 @@ describe("application routes", () => {
     );
     const retryProvider = screen.getByTestId("antd-provider");
     expect(routeState.antdMount).toHaveBeenCalledTimes(1);
+    expect(routeState.appearanceInitialized).toHaveBeenCalledTimes(1);
+    expect(routeState.feedbackInitialized).toHaveBeenCalledTimes(1);
+    expect(routeState.routesInitialized).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole("button", { name: /Retry|تلاش دوباره/ }));
     expect(routeState.retrySettings).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("antd-provider")).toBe(retryProvider);

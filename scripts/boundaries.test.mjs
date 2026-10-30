@@ -712,7 +712,30 @@ test("development tooling accepts valid registry semver ranges", async (context)
 
 test("application composition admits only its explicit runtime and type package edges", () => {
   const main = path.join(root, "src/main.tsx");
+  const app = path.join(root, "src/app/App.tsx");
   const routes = path.join(root, "src/app/Routes.tsx");
+  for (const typeOnly of [false, true]) {
+    assert.equal(
+      check(
+        "react",
+        path.join(root, "node_modules/@types/react/index.d.ts"),
+        app,
+        typeOnly,
+        "@types/react",
+      ),
+      undefined,
+    );
+    assert.match(
+      check(
+        "axios",
+        path.join(root, "node_modules/axios/index.d.ts"),
+        app,
+        typeOnly,
+        "axios",
+      ),
+      /not allowed/,
+    );
+  }
   assert.equal(
     check(
       "react-dom/client",
