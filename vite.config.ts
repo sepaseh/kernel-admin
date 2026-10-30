@@ -11,14 +11,29 @@ const securityHeaders = (
   apiOrigin: string,
   assetOrigin: string,
   observabilityOrigin: string,
-) => ({
-  "Content-Security-Policy": `default-src 'self'; base-uri 'self'; connect-src 'self' ${apiOrigin}${observabilityOrigin ? ` ${observabilityOrigin}` : ""}; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: blob: ${apiOrigin}${assetOrigin !== apiOrigin ? ` ${assetOrigin}` : ""}; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'`,
-  "Permissions-Policy":
-    "camera=(), geolocation=(), microphone=(), payment=(), usb=()",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-  "X-Content-Type-Options": "nosniff",
-  "X-Frame-Options": "DENY",
-});
+) => {
+  const connectSources = ["'self'", apiOrigin, observabilityOrigin]
+    .filter(Boolean)
+    .join(" ");
+  const imageSources = [
+    "'self'",
+    "data:",
+    "blob:",
+    apiOrigin,
+    assetOrigin === apiOrigin ? "" : assetOrigin,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return {
+    "Content-Security-Policy": `default-src 'self'; base-uri 'self'; connect-src ${connectSources}; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; img-src ${imageSources}; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'`,
+    "Permissions-Policy":
+      "camera=(), geolocation=(), microphone=(), payment=(), usb=()",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+  };
+};
 
 export default defineConfig(({ mode }) => {
   // Isolated checks must not inspect the operator's local environment files.

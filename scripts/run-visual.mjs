@@ -55,33 +55,37 @@ export async function assertVisualBaselineImages(directory, metadata) {
       "Reviewed visual baselines must use an ordinary directory.",
     );
 
-  const actualNames = (await readdir(root))
-    .filter((name) => /\.png$/i.test(name))
-    .sort();
-  const reviewedNames = images.map((image) => image.name).sort();
-  if (JSON.stringify(actualNames) !== JSON.stringify(reviewedNames))
+  const actualNames = new Set(
+    (await readdir(root)).filter((name) => /\.png$/i.test(name)),
+  );
+  if (
+    actualNames.size !== images.length ||
+    images.some((image) => !actualNames.has(image.name))
+  )
     throw new Error("Reviewed visual baseline image inventory mismatch.");
 
-  for (const image of images) {
-    const imagePath = path.join(root, image.name);
-    const imageStatus = await lstat(imagePath);
-    if (
-      imageStatus.isSymbolicLink() ||
-      !imageStatus.isFile() ||
-      !samePath(await realpath(imagePath), imagePath)
-    )
-      throw new Error(
-        `Reviewed visual baseline must be an ordinary image: ${image.name}`,
-      );
+  await Promise.all(
+    images.map(async (image) => {
+      const imagePath = path.join(root, image.name);
+      const imageStatus = await lstat(imagePath);
+      if (
+        imageStatus.isSymbolicLink() ||
+        !imageStatus.isFile() ||
+        !samePath(await realpath(imagePath), imagePath)
+      )
+        throw new Error(
+          `Reviewed visual baseline must be an ordinary image: ${image.name}`,
+        );
 
-    const actualHash = createHash("sha256")
-      .update(await readFile(imagePath))
-      .digest("hex");
-    if (actualHash !== image.sha256)
-      throw new Error(
-        `Reviewed visual baseline image hash mismatch: ${image.name}`,
-      );
-  }
+      const actualHash = createHash("sha256")
+        .update(await readFile(imagePath))
+        .digest("hex");
+      if (actualHash !== image.sha256)
+        throw new Error(
+          `Reviewed visual baseline image hash mismatch: ${image.name}`,
+        );
+    }),
+  );
 }
 
 export async function fingerprintVisualSources(repository) {
