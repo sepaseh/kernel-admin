@@ -17,7 +17,7 @@ export function visualSourceInputs(allowedFiles) {
       "Visual source inventory must contain safe unique public paths.",
     );
 
-  const configuration = [
+  const configuration = new Set([
     ".nvmrc",
     "package.json",
     "package-lock.json",
@@ -32,7 +32,7 @@ export function visualSourceInputs(allowedFiles) {
     "scripts/stamp-admin-build.mjs",
     "scripts/validate-production-env.mjs",
     "scripts/validate-deployment-env.mjs",
-  ];
+  ]);
   for (const file of configuration)
     if (!allowedFiles.includes(file))
       throw new Error(`Visual source inventory is missing ${file}.`);
@@ -40,12 +40,16 @@ export function visualSourceInputs(allowedFiles) {
   const selected = allowedFiles
     .filter(
       (file) =>
-        configuration.includes(file) ||
+        configuration.has(file) ||
         file.startsWith("src/") ||
         file.startsWith("public/") ||
         (file.startsWith("e2e/") && !file.startsWith("e2e/visual/baselines/")),
     )
-    .sort();
+    .sort((left, right) => {
+      if (left < right) return -1;
+      if (left > right) return 1;
+      return 0;
+    });
   if (selected.some((file) => /(?:^|\/)\.env(?:\.|$)/i.test(file)))
     throw new Error("Operator environment files are not visual source inputs.");
   return selected;

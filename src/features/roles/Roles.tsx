@@ -169,9 +169,8 @@ export const RolesPage = () => {
           retry={() => detailTarget && handleUpdate(detailTarget)}
         />
         {(!list.error || list.data) && (
-          <div
+          <section
             aria-label={t("roles")}
-            role="region"
             style={{ overflowX: "auto" }}
             tabIndex={0}
           >
@@ -184,7 +183,7 @@ export const RolesPage = () => {
               size="small"
               styles={{ content: { minWidth: token.screenMD } }}
             />
-          </div>
+          </section>
         )}
       </div>
       {canCreate && (

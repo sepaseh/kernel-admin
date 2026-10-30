@@ -9,6 +9,7 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises";
+import { registerHooks } from "node:module";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -662,4 +663,180 @@ test("repeated visual interrupts retain ownership until child close", async () =
   assert.equal(await completion, 1);
   assert.equal(signals.listenerCount("SIGINT"), 0);
   assert.equal(signals.listenerCount("SIGTERM"), 0);
+});
+
+test("the visual CLI binds a pending capture to its public sources and synthetic child", async () => {
+  const repository = fileURLToPath(new URL("../", import.meta.url));
+  const script = fileURLToPath(new URL("./run-visual.mjs", import.meta.url));
+  const baseline = path.join(
+    repository,
+    "e2e/visual/baselines/application/win32/metadata.json",
+  );
+  const baselineBefore = await readFile(baseline);
+  const fixtureKey = Symbol.for("kernel-admin.visual-cli.synthetic");
+  const fixture = {
+    children: [],
+    browsers: [],
+    executable: path.join(repository, "synthetic-browser/chrome.exe"),
+  };
+  globalThis[fixtureKey] = fixture;
+  const hooks = registerHooks({
+    resolve(specifier, context, nextResolve) {
+      if (specifier === "node:child_process")
+        return { url: "kernel-visual:child", shortCircuit: true };
+      if (specifier === "@playwright/test")
+        return { url: "kernel-visual:browser", shortCircuit: true };
+      return nextResolve(specifier, context);
+    },
+    load(url, context, nextLoad) {
+      if (url === "kernel-visual:child")
+        return {
+          format: "module",
+          shortCircuit: true,
+          source: [
+            'import { EventEmitter } from "node:events";',
+            'const fixture = globalThis[Symbol.for("kernel-admin.visual-cli.synthetic")];',
+            "export function spawn(command, args, options) {",
+            "  fixture.children.push({ command, args, options });",
+            "  const child = new EventEmitter();",
+            "  child.pid = 123;",
+            "  child.kill = () => true;",
+            '  queueMicrotask(() => child.emit("close", 0));',
+            "  return child;",
+            "}",
+          ].join("\n"),
+        };
+      if (url === "kernel-visual:browser")
+        return {
+          format: "module",
+          shortCircuit: true,
+          source: [
+            'const fixture = globalThis[Symbol.for("kernel-admin.visual-cli.synthetic")];',
+            "export const chromium = {",
+            "  executablePath: () => fixture.executable,",
+            "  launch: async (options) => {",
+            "    const call = { options, closed: false };",
+            "    fixture.browsers.push(call);",
+            "    return {",
+            '      version: () => "synthetic-chromium-version",',
+            "      close: async () => { call.closed = true; },",
+            "    };",
+            "  },",
+            "};",
+          ].join("\n"),
+        };
+      return nextLoad(url, context);
+    },
+  });
+  const original = {
+    argv: process.argv,
+    ci: process.env.CI,
+    exitCode: process.exitCode,
+    info: console.info,
+    error: console.error,
+  };
+  const messages = [],
+    errors = [];
+  let captureDirectory, resultDirectory;
+  try {
+    process.argv = [process.execPath, script, "--update"];
+    process.env.CI = "";
+    process.exitCode = undefined;
+    console.info = (message) => messages.push(message);
+    console.error = (message) => errors.push(message);
+    await import(
+      new URL("./run-visual.mjs?synthetic-cli-wiring", import.meta.url)
+    );
+
+    assert.deepEqual(errors, []);
+    assert.equal(process.exitCode, 0);
+    assert.equal(fixture.children.length, 1);
+    assert.equal(fixture.browsers.length, 1);
+    assert.equal(fixture.browsers[0].closed, true);
+    assert.equal(
+      fixture.browsers[0].options.executablePath,
+      fixture.executable,
+    );
+    assert.equal(fixture.browsers[0].options.headless, true);
+    const child = fixture.children[0];
+    assert.equal(child.command, process.execPath);
+    assert.equal(child.options.cwd, repository);
+    assert.equal(child.options.timeout, 900_000);
+    assert.equal(child.options.windowsHide, true);
+    assert.equal(child.options.stdio, "inherit");
+    assert.deepEqual(child.args.slice(1), [
+      "test",
+      "--config=playwright.visual.config.ts",
+      "--update-snapshots",
+    ]);
+    assert.equal(
+      child.options.env.VITE_API_BASE_URL,
+      "https://api.example.com",
+    );
+    assert.equal(child.options.env.KERNEL_SYNTHETIC_ENV, "1");
+    assert.equal(child.options.env.KERNEL_VISUAL_RUNNER, "1");
+    assert.equal(child.options.env.KERNEL_VISUAL_UPDATE, "1");
+    captureDirectory = child.options.env.KERNEL_VISUAL_BASELINES;
+    resultDirectory = child.options.env.KERNEL_VISUAL_RESULTS;
+    const pending = JSON.parse(
+      await readFile(path.join(captureDirectory, "metadata.json"), "utf8"),
+    );
+    const result = JSON.parse(
+      await readFile(path.join(resultDirectory, "environment.json"), "utf8"),
+    );
+    assert.deepEqual(pending.review, {
+      status: "pending",
+      reviewer: null,
+      reviewedAt: null,
+    });
+    assert.equal(result.mode, "update");
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.captureDirectory, captureDirectory);
+    assert.equal(result.browserVersion, "synthetic-chromium-version");
+    assert.deepEqual(result.review, pending.review);
+    assert.equal(result.sourceFingerprint, pending.sourceFingerprint);
+    assert.match(result.sourceFingerprint, /^[a-f0-9]{64}$/);
+    assert.deepEqual(
+      result.sourceInputs,
+      (await fingerprintVisualSources(repository)).sourceInputs,
+    );
+    assert.equal(
+      result.sourceInputs.some((file) => /(?:^|\/)\.env(?:\.|$)/i.test(file)),
+      false,
+    );
+    assert.match(messages.join("\n"), /captures remain pending/);
+    assert.deepEqual(await readFile(baseline), baselineBefore);
+    const release = await acquireVisualLock(
+      path.join(repository, "coverage/visual"),
+    );
+    await release();
+  } finally {
+    process.argv = original.argv;
+    if (original.ci === undefined) delete process.env.CI;
+    else process.env.CI = original.ci;
+    process.exitCode = original.exitCode;
+    console.info = original.info;
+    console.error = original.error;
+    hooks.deregister();
+    delete globalThis[fixtureKey];
+    if (captureDirectory) {
+      assert.equal(
+        path.dirname(path.resolve(captureDirectory)),
+        path.resolve(repository, "coverage/visual/captures"),
+      );
+      assert.equal(
+        path.basename(captureDirectory).startsWith("candidate-"),
+        true,
+      );
+      await rm(captureDirectory, { recursive: true, force: true });
+    }
+    if (resultDirectory) {
+      assert.equal(
+        path.dirname(path.resolve(resultDirectory)),
+        path.resolve(repository, "coverage/visual"),
+      );
+      assert.equal(path.basename(resultDirectory).startsWith("run-"), true);
+      await rm(resultDirectory, { recursive: true, force: true });
+    }
+  }
 });

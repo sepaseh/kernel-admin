@@ -517,9 +517,8 @@ export const UsersPage = () => {
           </Row>
         </Form>
         {(!list.error || list.data) && (
-          <div
+          <section
             aria-label={t("users")}
-            role="region"
             style={{ overflowX: "auto" }}
             tabIndex={0}
           >
@@ -543,7 +542,7 @@ export const UsersPage = () => {
               size="small"
               styles={{ content: { minWidth: token.screenXL } }}
             />
-          </div>
+          </section>
         )}
       </div>
       {canCreate && (

@@ -273,32 +273,30 @@ if (
 ) {
   const args = process.argv.slice(2),
     update = args.includes("--update");
-  Promise.resolve()
-    .then(async () => {
-      if (args.some((arg) => arg !== "--update") || args.length > 1)
-        throw new Error(
-          "Use the visual runner with at most one --update argument.",
-        );
-      assertVisualMode({
-        update,
-        ci: process.env.CI,
-        platform: process.platform,
-      });
-      const drivers = await createVisualDrivers(process.platform, process.env);
-      const result = await runVisual({
-        update,
-        ci: process.env.CI,
-        platform: process.platform,
-        drivers,
-      });
-      if (update)
-        console.info(
-          "New captures remain pending. Obtain human review of every image before promotion; historical baselines were not changed.",
-        );
-      process.exitCode = result.exitCode;
-    })
-    .catch((error) => {
-      console.error(error.message);
-      process.exitCode = 1;
+  try {
+    if (args.some((arg) => arg !== "--update") || args.length > 1)
+      throw new Error(
+        "Use the visual runner with at most one --update argument.",
+      );
+    assertVisualMode({
+      update,
+      ci: process.env.CI,
+      platform: process.platform,
     });
+    const drivers = await createVisualDrivers(process.platform, process.env);
+    const result = await runVisual({
+      update,
+      ci: process.env.CI,
+      platform: process.platform,
+      drivers,
+    });
+    if (update)
+      console.info(
+        "New captures remain pending. Obtain human review of every image before promotion; historical baselines were not changed.",
+      );
+    process.exitCode = result.exitCode;
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
 }
