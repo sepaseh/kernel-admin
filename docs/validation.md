@@ -2,9 +2,9 @@
 
 [English](validation.md) · [فارسی](validation.fa.md)
 
-[The manifest](../.agents/validation.json) owns check IDs, commands, kinds, scopes, CI jobs and profiles. The `assistant-guidance` phase retains `applicationReady: false` and every inherited workshop check, adding the required guidance check. Settings project `full` in order; guidance checking verifies that projection, navigation/evaluation paths, instruction links and maintained Markdown. CI is validated through the existing semantic workflow guard, rather than expecting each nested command as a separate YAML step.
+[The manifest](../.agents/validation.json) owns check IDs, commands, kinds, scopes, CI jobs and profiles. The application-verification phase retains all twelve inherited checks and adds seven application checks, for nineteen required full entries. Settings project `full` in order; guidance checking verifies that projection, navigation/evaluation paths, instruction links and maintained Markdown. CI is validated through the existing semantic workflow guard, rather than expecting each nested command as a separate YAML step.
 
-Start with the smallest relevant check. `npm run validate -- guidance` and `npm run test:guidance` are focused development tools. Before every explicitly authorized commit or PR handoff, export the exact proposed Git tree to a fresh independent directory and run:
+Start with the smallest relevant check. `npm run validate -- guidance` and `npm run test:guidance` are focused development tools. Before every explicitly authorized commit, push or PR handoff, export the exact proposed Git tree to a fresh independent directory and run:
 
 ```sh
 npm ci
@@ -20,14 +20,14 @@ The optional safety hook models literal Bash/sh/dash/zsh commands with a 65,536-
 
 Storybook uses its isolated Vite configuration, disables environment-file and ambient VITE discovery, fully replaces feature APIs and the shared client, and runs real Chromium play/accessibility assertions with violations treated as errors. No environment file or real API is required. Generated output stays under `coverage` and is never committed. Preserve production coverage scope and thresholds; browser output is not unit LCOV.
 
-Application entry, App/Routes composition, production build, Pact/provider journeys, application E2E, visual comparison, actual performance measurement and real deployment execution remain future work. Published pure budgets and synthetic operational fixtures are preparatory checks. Their genuine checks must join the full application gate before a runnable panel merges. Do not use synthetic application flags for unpublished configurations. Read [testing](testing.md), [Contributing](../CONTRIBUTING.md) and [comprehension evaluation](comprehension-evaluation.md).
+The application-verification phase preserves all twelve inherited checks and adds unused-code analysis, production build, bundle budgets, Pact consumer contracts, application browser journeys, visual comparison and Lighthouse. The canonical full profile has nineteen required checks. Source admission does not establish a successful run, API-provider compatibility, human visual approval or deployment. The production build and browser checks use explicit synthetic configuration and owned resources. Real provider, Docker, staging/DAST and deployment execution remain separate. Read [testing](testing.md), [Contributing](../CONTRIBUTING.md) and [comprehension evaluation](comprehension-evaluation.md).
 
 ## Finite prerequisite extension
 
-The inventory now includes 436 maintained files in the same non-runnable phase. Twelve required full entries and thirteen registered definitions retain their command ownership/order. No operational npm aliases or new focused profile are introduced. Pure helper unit cases and synthetic rendering/packaging/Docker lifecycle cases join the two existing coverage commands without duplicate full-suite execution.
+The inventory now admits 471 maintained files in the application-verification phase. The manifest owns nineteen required full entries and the advisory focused guidance definition, their order and native job ownership. CI and scanner use matching Windows prerequisites. Pure helper and synthetic rendering/packaging/Docker lifecycle cases remain inside the existing two coverage commands, without duplicate full-suite execution.
 
 The exact public-template exceptions are `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example`, containing reviewed synthetic values. Do not read arbitrary local environments to validate source. Some helper CLIs load selected files, write outputs or make network requests; use pure APIs with explicit synthetic fixtures during tests and require authorization for real operation.
 
 Only the exact-tree run and its actual results can establish local readiness. Historical Win32 metadata, release configuration, policy evaluation or a rendered fixture does not establish a production artifact, deployed TLS, current visual review or real Lighthouse result.
 
-Verification runner preparation adds import-safe visual/Lighthouse orchestration and build metadata stamping. Synthetic tests exercise ownership, failure cleanup and provenance without starting the application, Chrome or an API. No operational npm alias is registered; the twelve-check current gate and visual human-review requirement remain unchanged. Future application CI admission is tested separately from the current Linux workflow.
+Visual/Lighthouse runners and build metadata stamping remain import-safe. Injected lifecycle/provenance tests do not start the application, Chrome or an API. The admitted application commands separately execute owned synthetic previews and browsers; preserve matching runtime provenance, actual human image approval and the unchanged CI update prohibition. Provider, Docker, staging and deployment operation require separate authorization and evidence.

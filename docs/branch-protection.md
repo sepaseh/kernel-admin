@@ -2,7 +2,7 @@
 
 [English](branch-protection.md) · [فارسی](branch-protection.fa.md)
 
-The current `assistant-guidance` phase retains the native provider contexts below. Guidance checking runs inside the existing canonical `check` job; an updated source policy does not prove that remote protection or provider execution succeeded.
+The application-verification source supplies real native build, e2e and visual jobs alongside the inherited contexts below. The canonical check job retains every inherited check. Source configuration does not prove hosted execution or installed remote protection.
 
 Use native GitHub CI, CodeRabbit and SonarQube Cloud checks. The merge policy
 requires current-head CI and provider results, at least one approving review and
@@ -10,8 +10,7 @@ resolved conversations. Apply protection to administrators, dismiss stale
 approvals, require an up-to-date branch and prohibit force pushes and deletion.
 Repository administrators manage the actual remote settings.
 
-Required checks follow the published phase. Assistant-guidance protection requires these
-five native contexts with their observed GitHub App identities:
+Required checks follow the published phase. Retain these five inherited native contexts with their observed GitHub App identities; add the application's genuine build/e2e/visual contexts only through an authorized, verified remote protection transition before runnable merge:
 
 | Required context           | Provider       | App ID   |
 | -------------------------- | -------------- | -------- |
@@ -39,16 +38,7 @@ may describe a skipped review. Automatic approval can satisfy the normal approva
 count after a clean completed review, but the native GitHub count also accepts
 other eligible reviewers; it does not enforce a particular bot's identity.
 
-The assistant-guidance phase has `applicationReady: false`; its protection does not
-require full panel **build**, **e2e** or **visual** jobs that it does not supply.
-Its existing `check` context must run all canonical commands, including the
-real static Storybook build and Chromium play/accessibility suite. Those component
-checks do not establish complete application build/E2E or visual-regression evidence.
-Before any runnable panel merges, introduce genuine application jobs, expand the
-canonical full gate, observe their current-revision results pass and add all three
-contexts to required checks. Do not use placeholder jobs, successful skips or
-unpublished source to establish readiness. Any protection change requires
-authorization and verification against actual hosted results.
+The application source supplies genuine native **build**, **e2e** and **visual** jobs, and `check` runs the complete nineteen-check profile including the inherited Storybook suite. Dedicated jobs add separately required evidence. Before runnable merge, observe actual current-head passes and obtain authorization to require all three native contexts from GitHub Actions App 15368 while preserving existing protection. Visual comparison needs matching runtime provenance and unchanged human-approved images. These synthetic browser/consumer checks do not establish API-provider compatibility or deployment. Placeholder jobs and skipped successes are not readiness evidence.
 
 Require the actual asynchronous Sonar quality gate as well as scanner execution.
 Missing, failed, pending, skipped or quota-limited evidence must not be presented

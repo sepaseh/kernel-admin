@@ -1,6 +1,6 @@
 {
-  "name": "kernel-admin-guidance",
-  "description": "Assistant-neutral guidance for the non-runnable standalone admin, its local HTTP owners and isolated component workshop.",
+  "name": "kernel-admin-application",
+  "description": "Assistant-neutral guidance for the standalone admin application and its complete application verification.",
   "rules": [
     ".agents/rules/admin.md",
     ".agents/rules/api-collection.md",
@@ -49,7 +49,14 @@
     "npm run test:coverage",
     "npm run test:governance",
     "npm run build-storybook",
-    "npm run test:storybook"
+    "npm run test:storybook",
+    "npm run check:unused",
+    "npm run build",
+    "npm run check:bundle",
+    "npm run test:contract",
+    "npm run test:e2e",
+    "npm run test:visual",
+    "npm run test:lighthouse"
   ],
   "navigation": ".agents/navigation.json",
   "validation": ".agents/validation.json",

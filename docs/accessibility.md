@@ -2,12 +2,16 @@
 
 [English](accessibility.md) · [فارسی](accessibility.fa.md)
 
-Read the admitted inventory and `applicationReady` in [the publication policy](../.github/bootstrap-policy.json), and select actual checks from [the manifest](../.agents/validation.json). While readiness is false, unit/component and isolated Storybook evidence cannot establish complete application journeys. Even a runnable application and successful automated audits do not establish a manual screen-reader review or deployed accessibility.
+Use the [publication policy](../.github/bootstrap-policy.json) to establish admitted application capability and the [manifest](../.agents/validation.json) to select its required checks. Unit/component cases and the isolated Storybook Chromium suite remain required. The application-verification phase adds real route/browser fixtures; a successful synthetic journey does not establish deployed accessibility or a manual screen-reader review.
 
 Use Ant Design tokens and the shared theme for readable text, controls, status marks and visible focus in light/dark and LTR/RTL views. Decorative Lucide icons use `aria-hidden`; the owning control needs a translated accessible name. Keep genuine complete local catalogs and server-owned language/direction metadata.
 
 For an affected form or dialog, verify keyboard submission, first invalid-field focus, labels and visible errors, focus containment/Escape/trigger restoration, and destructive confirmation behavior where implemented. Use accessible roles and labels with synthetic fixtures rather than implementation-only assertions. Storybook uses complete API mocks and treats accessibility violations as failures; do not disable audits to hide a defect.
 
-Application accessibility evidence requires admitted route/browser owners and genuine runs against the built application with synthetic API fixtures. Record the source revision, exercised states, violations and unexecuted manual work. The retained [Windows images](visual-regression.md) are dated provenance, not a fresh visual or accessibility approval. A screenshot cannot replace keyboard, contrast or assistive-technology testing.
+The admitted application accessibility suite exercises authentication forms, tables and drawers with English/Persian settings in light/dark themes. It uses real browsers, complete synthetic API replies and a fail-closed unexpected-request guard. Axe violations fail the suite; the assertions also verify keyboard order, invalid-field focus and accessible error associations. Run every browser project declared by the application configuration, without retries or excluded failing cases.
+
+The user and role lists place their unchanged Ant Design tables inside translated, named horizontal scroll regions. The region itself is a keyboard stop so read-only tables remain scrollable without row actions. Browser cases verify actual arrow-key scrolling when the table overflows. Shared form drawers and destructive confirmations intercept Tab at their first/last available controls through public Ant Design event/render props; Ant Design retains opening, Escape and trigger restoration. Hidden, disabled and inert controls do not become endpoints. Invalid-form cases await the form's actual error focus before entering corrected values.
+
+The retained [Windows images](visual-regression.md) are dated provenance, not current visual or accessibility approval. New screenshots require actual human review. A screenshot cannot replace keyboard, contrast or assistive-technology testing; assistive-technology and deployed checks need their own observed evidence.
 
 See [component coverage](component-coverage.md), [Storybook verification](storybook-verification.md) and [testing](testing.md).

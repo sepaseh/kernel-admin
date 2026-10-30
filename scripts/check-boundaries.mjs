@@ -7,6 +7,9 @@ import ts from "typescript";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const productionPaths = [
+  "src/main.tsx",
+  "src/app/App.tsx",
+  "src/app/Routes.tsx",
   "src/app/config/index.ts",
   "src/app/config/routes.ts",
   "src/app/contexts/Core.ts",
@@ -102,6 +105,7 @@ const productionPaths = [
   "src/shared/i18n/locales/ru.ts",
   "src/shared/i18n/locales/tr.ts",
   "src/shared/lib/color-contrast.ts",
+  "src/shared/lib/dialog-focus.ts",
   "src/shared/lib/error.ts",
   "src/shared/lib/index.ts",
   "src/shared/lib/observability.ts",
@@ -127,8 +131,10 @@ const productionPaths = [
   "src/shared/ui/route-loading/index.ts",
 ];
 const runtimeImports = {
+  "src/main.tsx": ["react", "react-dom/client"],
+  "src/app/Routes.tsx": ["react", "react-router", "react-router/dom"],
   "src/app/contexts/Core.ts": ["react"],
-  "src/app/hooks/useAntd.ts": ["antd"],
+  "src/app/hooks/useAntd.ts": ["antd", "react"],
   "src/app/hooks/useCore.ts": ["react"],
   "src/app/not-found/NotFound.tsx": ["antd", "react-i18next", "react-router"],
   "src/app/providers/antd/Antd.tsx": [
@@ -284,6 +290,7 @@ const runtimeImports = {
   "src/shared/hooks/useMutationRequest.ts": ["axios", "react"],
 };
 const typeImports = {
+  "src/app/Routes.tsx": ["react", "react-router"],
   "src/app/config/routes.ts": ["i18next"],
   "src/app/providers/antd/Antd.tsx": ["antd", "react"],
   "src/app/providers/core/Core.tsx": ["react"],
@@ -294,8 +301,10 @@ const typeImports = {
   "src/layouts/default/Default.tsx": ["antd"],
   "src/shared/config/theme.ts": ["antd"],
   "src/shared/hooks/useGoBack.ts": ["react-router"],
+  "src/shared/lib/dialog-focus.ts": ["react"],
   "src/shared/lib/observability.ts": ["web-vitals"],
   "src/shared/ui/digits-input/DigitsInput.tsx": ["antd"],
+  "src/shared/ui/form-drawer/FormDrawer.tsx": ["react"],
   "src/shared/ui/otp-input/OtpInput.tsx": ["react"],
   "src/shared/api/client.ts": ["axios"],
   "src/features/account/Account.tsx": [],
@@ -442,6 +451,12 @@ const localSourceViolation = ({
 };
 
 const dependencyPackageName = (specifier, resolvedPackage) => {
+  if (
+    specifier === "react-dom/client" &&
+    resolvedPackage === "@types/react-dom"
+  )
+    return "@types/react-dom";
+  if (specifier.startsWith("react-router/")) return "react-router";
   if (specifier === "react" && resolvedPackage === "@types/react")
     return "@types/react";
   if (specifier.startsWith("dayjs/")) return "dayjs";

@@ -1,17 +1,13 @@
 # Testing
 
-The current `assistant-guidance` phase keeps `applicationReady: false`. Vitest,
-React Testing Library, synthetic MSW fixtures and the isolated Storybook Chromium
-suite verify published modules. The existing 68 registered story cases use full
-API/client mocks, fixture resets and failing unexpected-request guards; they do
-not prove an integrated application journey or production API compatibility.
+The application-verification phase admits startup, composed routes and genuine application checks beside the published modules and isolated Storybook suite. All registered stories retain full API/client mocks, fixture resets and failing unexpected-request guards. Synthetic application journeys do not prove production API compatibility.
 
 ## Select the current check
 
 Use the [validation manifest](../validation.json) and
 [validation policy](../../docs/validation.md). Start with the smallest affected
 check, then run `npm run validate -- full` on the exact final snapshot before an
-authorized commit, push or PR handoff. Full contains twelve required checks.
+authorized commit, push or PR handoff. Full contains nineteen required checks, preserving every inherited check.
 Guidance and safety regressions run within the existing governance coverage
 command and LCOV. The focused `guidance` profile includes the required guidance
 check and advisory `test:guidance`; it does not replace the full gate.
@@ -34,8 +30,10 @@ make a change pass.
   existing measured coverage.
 - Rendering, release packaging and Docker resource/orchestration: disposable
   synthetic governance cases, without launching real infrastructure.
-- Complete application E2E, current visual regression and real deployment:
-  future activation work; published prerequisites/history do not execute them.
+- Composed application behavior: real browser and consumer-contract checks with synthetic HTTP and owned resources.
+- Visual comparison: unchanged tolerances, matching runtime provenance and human-approved images; fresh captures remain pending until actual human review.
+- Production build/bundle and Lighthouse: genuine checks on the exact admitted source, retaining every budget and throttling setting.
+- Real provider, Docker, staging and deployment: separately authorized targets and observed evidence; source fixtures/history do not execute them.
 
 Use [request reliability](../../docs/admin-request-reliability.md),
 [Storybook verification](../../docs/storybook-verification.md) and
@@ -48,12 +46,10 @@ passthrough or contact a real API. Accessibility violations are errors. Do not
 disable audits or widen thresholds to hide a failure. Synthetic preview toolbar
 language/direction settings do not create visitor preferences.
 
-Use disposable, uniquely owned resources and clean only those resources. If a
-future application/deployment task introduces servers, containers or visual
-baselines, it must also provide genuine checks and targeted cleanup. Never read,
+Use disposable, uniquely owned resources and clean only those resources. When an application/deployment task introduces servers, containers or visual baselines, it must also provide genuine checks and targeted cleanup. Never read,
 move or reuse real `.env.local`, credentials, `server/data`, databases, uploads or
 another checkout's running service as a fixture.
 
 Read [component coverage](../../docs/component-coverage.md), [performance policy](../../docs/performance.md) and [test reliability](../../docs/test-reliability.md). The three public example exceptions contain reviewed synthetic values only; real/local environments and operator certificates remain unread. New prerequisite suites run once in existing unit/governance commands; no third full suite or operational profile is added.
 
-Keep existing stress corpora, assertions and bounded deadlines. Separate newly added behavior into another mandatory bounded child when appropriate rather than accumulating unrelated workload under a legacy deadline or weakening the guard. Historical Win32 assets and metadata are provenance, not a fresh screenshot pass. Real Docker/Chrome/preview/provider/staging checks require future source, explicit authorization, owned-resource cleanup and actual evidence.
+Keep existing stress corpora, assertions and bounded deadlines. Separate newly added behavior into another mandatory bounded child when appropriate rather than accumulating unrelated workload under a legacy deadline or weakening the guard. Historical Win32 assets and metadata are provenance, not a fresh screenshot pass. Admitted synthetic application checks own their Chrome/preview resources and actual evidence. Real Docker/provider/staging operation still requires admitted source, explicit target authorization and owned-resource cleanup.

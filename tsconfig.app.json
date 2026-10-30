@@ -1,4 +1,7 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./coverage/types/tsconfig.app.tsbuildinfo"
+  },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

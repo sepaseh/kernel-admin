@@ -1,11 +1,11 @@
-# Assistant guidance publication phase
+# Application verification publication phase
 
 [English](bootstrap.md) · [فارسی](bootstrap.fa.md)
 
 The `assistant-guidance` phase extends the workshop with canonical English assistant rules/skills, local hooks, task navigation and read-only evaluation procedures. Human explanations keep complete English/Persian companions. The [canonical manifest](../.agents/validation.json) adds guidance consistency without removing an inherited check.
 
 The [publication policy](../.github/bootstrap-policy.json) declares the
-**assistant-guidance** phase with `applicationReady: false`. It contains ten complete flat
+**application-verification** phase with `applicationReady: true`. It contains ten complete flat
 catalogs, their code registry, pure Persian calendar data and integrity tests,
 alongside token state, transport/profile contracts, HTTP key transforms and
 color-contrast helpers. The real i18next/react-i18next adapter initializes fixed Persian bootstrap
@@ -15,18 +15,18 @@ normalization and translated error messages are also published. The phase also p
 complete server language/palette metadata validation, pure appearance vocabulary
 and [request lifecycle hooks](request-lifecycle.md). Tests use real Axios with
 fail-closed MSW and real React hook rendering in isolated jsdom, alongside Node
-translation/date tests. This scope is not a runnable panel.
+translation/date tests. The current phase additionally admits the standalone entry, App/Routes composition and genuine application checks; actual execution remains separate evidence.
 See [README](../README.md) for source ownership and
 [localization](localization.md) for catalog rules. [Contributing](../CONTRIBUTING.md)
 defines validation and review policy.
 
-The phase also publishes [UI foundation](ui-foundation.md): seven Ant Design widgets, theme/preferences/observability adapters, route-back behavior and six validated local assets. [Core and authentication](core-auth.md) adds Core/Ant Design providers, typed access/navigation metadata, authentication forms and layout modules. [Business screens](business-screens.md) adds account, users/roles, settings, calendar and a dashboard frame with guarded mutation and permission checks. [Storybook verification](storybook-verification.md) adds all registered component stories, complete synthetic API owner mocks, a static workshop build and real Chromium play/accessibility checks. The policy owns the exact maintained file inventory; the independent PR delta remains limited to 100 files. No application entry point or App/Routes composition is published.
+The phase also publishes [UI foundation](ui-foundation.md): seven Ant Design widgets, theme/preferences/observability adapters, route-back behavior and six validated local assets. [Core and authentication](core-auth.md) adds Core/Ant Design providers, typed access/navigation metadata, authentication forms and layout modules. [Business screens](business-screens.md) adds account, users/roles, settings, calendar and a dashboard frame with guarded mutation and permission checks. [Storybook verification](storybook-verification.md) adds all registered component stories, complete synthetic API owner mocks, a static workshop build and real Chromium play/accessibility checks. The policy owns the exact maintained file inventory; the independent PR delta remains limited to 100 files. Application startup is in src/main.tsx, src/app/App.tsx and src/app/Routes.tsx; the separate API provider remains outside this repository.
 
 ## Exact snapshot
 
 The inventory guard requires the exact declared maintained files and rejects
 unexpected source, private paths and symbolic links. Only explicitly declared generated
-directories, including root `node_modules` and `coverage`, plus Git metadata, are outside
+directories, including root `node_modules`, `coverage` and admitted application `dist`, plus Git metadata, are outside
 the maintained inventory. Static Storybook output belongs under `coverage/storybook-static`.
 Do not use ambient untracked application files to make a
 partial publication appear complete.
@@ -47,12 +47,11 @@ npm run validate -- full
 
 The [canonical manifest](../.agents/validation.json) defines the complete
 current-phase gate. Its required checks cover the exact inventory, semantic CI policy, audit, source boundaries,
-types, lint, formatting, both measured test runs, `build-storybook`, `test:storybook` and guidance consistency.
+types, lint, formatting, both measured test runs, `build-storybook`, `test:storybook` and guidance consistency. It adds unused-code analysis, production build, bundle budgets, Pact consumer contracts, application E2E, visual comparison and Lighthouse, for nineteen required checks.
 Unit tests use Node or isolated jsdom with environment-file discovery disabled.
 Storybook uses its dedicated Vite configuration, complete synthetic feature/client
 mocks and real headless Chromium. All registered stories run their play assertions
-and accessibility audits with violations treated as errors. No running panel,
-API process or real environment/state is required.
+and accessibility audits with violations treated as errors. Application checks start their own synthetic preview/browser resources; no running external API or real environment/state is required.
 
 Initial publication is staged under the 100-file PR cap. Every PR runs this
 complete published-scope gate through the same `npm run validate -- full` command
@@ -68,9 +67,7 @@ unconditional `npm ci`, then `npm run browser:install`, before one unconditional
 PR path/branch filters, omitted lifecycle events, conditional or advisory check
 execution, non-root working directories and shell overrides. Other conditional
 steps such as the PR-size guard or artifact upload do not make validation optional.
-The current policy keeps all required checks, including Storybook build/browser
-verification, in `check`. Introduce job-aware validation and update this policy
-explicitly before adding separate application or Windows visual jobs.
+The current policy retains every required check in `check`, including Storybook verification, and declares genuine additional build/e2e/visual job ownership. The application workflow and scanner use matching Windows prerequisites; observe actual current-head results separately.
 
 Unit tests produce `coverage/unit/lcov.info`; Node governance tests produce
 `coverage/governance/lcov.info`. Both are measured in this checkout and imported
@@ -104,25 +101,16 @@ a cycle. Require authorization, available quota and no in-flight duplicate. Foll
 
 ## Runnable panel readiness
 
-Assistant-guidance protection requires the published CI and provider checks listed in
-[branch protection](branch-protection.md). Static workshop build and isolated component
-browser/a11y checks run within `check`; they are not a production panel build,
-complete application E2E journey or visual-regression job.
-Do not add placeholder passing jobs or describe skipped checks as evidence.
+The inherited native CI/provider contexts remain required. Application source now supplies real build, E2E and visual jobs, while `check` executes the entire nineteen-check full profile. Do not add placeholder passing jobs or describe skipped checks as evidence.
 
-Introduce the actual React/Vite entry point and App/Routes composition, production build, browser,
-accessibility, performance and visual
-evidence in coherent later work. Before any runnable panel merges, expand the
-canonical full gate and inventory, observe genuine build/e2e/visual jobs pass and
-add them to required checks. Passing this assistant-guidance phase gate cannot
-establish those results in advance.
+Before any runnable panel merges, observe genuine current-head build/e2e/visual passes and obtain authorization to add their native contexts to live protection, preserving every existing setting. A declared source phase does not install remote protection, verify the independent API or authorize deployment. Follow [branch protection](branch-protection.md).
 
 ## Finite operations and quality prerequisites
 
-The same `assistant-guidance` identifier now deliberately includes 70 additional maintained paths, bringing the declared inventory to 436. The extension adds reviewed synthetic public examples, deployment/release sources, pure bundle/Lighthouse/target policies, complete operational EN/FA guides and dated visual provenance. It keeps `applicationReady: false`, every inherited check and the rejection of unplanned application entry/build files.
+The earlier assistant-guidance stage added 70 maintained prerequisites, bringing its inventory to 436 with applicationReady false. The current application-verification phase retains them and admits the finite application closure, for 471 maintained paths. The inventory and this PR's changed-file count remain separate quantities.
 
 The exact example exceptions are `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example`. Only deliberately declared, reviewed synthetic Git sources qualify; arbitrary environment files, credentials and local operator state remain forbidden. The four PNGs and their metadata retain historical bytes and review dates, not current approval.
 
-New pure unit cases and synthetic governance/lifecycle cases run inside the two existing measured test commands. Full remains twelve required checks with thirteen registered definitions; no operational aliases or new focused profile are added. Helper code does not imply a production build, real Docker/Chrome, provider/E2E, visual, Lighthouse, mutation or deployment run. See [deployment](deployment.md), [coverage scope](component-coverage.md) and [visual history](visual-regression.md).
+Pure unit and synthetic governance/lifecycle cases still run once inside the two existing measured test commands. Full now has nineteen required entries and retains the advisory focused guidance definition. No deployment alias or new operator profile is implied. Source or helper cases do not establish a real provider, Docker, staging, mutation or deployment run. See [deployment](deployment.md), [coverage scope](component-coverage.md) and [visual history](visual-regression.md).
 
-Verification runner preparation adds import-safe visual/Lighthouse orchestration and build metadata stamping. Synthetic tests exercise ownership, failure cleanup and provenance without starting the application, Chrome or an API. No operational npm alias is registered; the twelve-check current gate and visual human-review requirement remain unchanged. Future application CI admission is tested separately from the current Linux workflow.
+Visual/Lighthouse runners and build metadata stamping remain import-safe. Injected lifecycle/provenance tests do not start the application, Chrome or an API. The admitted application commands separately execute owned synthetic previews and browsers; preserve matching runtime provenance, actual human image approval and the unchanged CI update prohibition. Provider, Docker, staging and deployment operation require separate authorization and evidence.

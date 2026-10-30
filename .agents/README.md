@@ -1,19 +1,13 @@
 # Assistant guidance
 
-Start with [root instructions](../AGENTS.md), [source navigation](../docs/source-navigation.md)
-and the rules indexed in [settings](settings.json). The current
-`assistant-guidance` phase retains `applicationReady: false`: it publishes
-instructions, verification tooling and finite operations/quality prerequisites beside
-the isolated Storybook scope, without an application entry point or production deployment.
+Start with [root instructions](../AGENTS.md), [source navigation](../docs/source-navigation.md) and the rules indexed in [settings](settings.json). The application-verification phase admits standalone startup, composed routes and the complete application gate. Source admission does not establish successful verification, human visual approval, API-provider compatibility or deployment.
 
 Change only authorized files and preserve unpublished local work. Existing user
 authorization and preferences in the current conversation remain valid; do not
 ask again for an action already authorized. Never read real environments,
 credentials or operator state to answer a source question.
 
-The [validation manifest](validation.json) owns commands and profiles. The full
-profile has twelve required checks: the existing eleven phase checks plus
-`check:guidance`. Guidance regressions join the existing governance suite and its
+The [validation manifest](validation.json) owns commands and profiles. The full profile preserves all twelve inherited checks and adds seven application checks, for nineteen required entries. Guidance regressions join the existing governance suite and its
 measured LCOV; they are not a second required full-suite invocation. During
 iteration, `npm run validate -- guidance` runs the required guidance check and
 advisory `test:guidance` profile entry. Focused checks do not replace
@@ -43,8 +37,8 @@ The optional safety policy models literal Bash/sh/dash/zsh commands within its
 `readonly` or `local`, plus `xargs` and `find` execution actions, are blocked. Arbitrary program behavior and host authorization remain outside this
 convenience guard.
 
-Read [deployment preparation](../docs/deployment.md), [performance policy](../docs/performance.md) and [visual provenance](../docs/visual-regression.md). Pure helper cases join existing measured unit/governance commands; full keeps twelve required checks. No operational npm alias or focused profile is introduced.
+Read [deployment preparation](../docs/deployment.md), [performance policy](../docs/performance.md) and [visual provenance](../docs/visual-regression.md). Pure helper cases join existing measured unit/governance commands; full retains every inherited check and adds the complete application gate. No operational npm alias or focused profile is introduced.
 
-The exact public example exceptions are `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example`, only as reviewed synthetic declared sources. Never use an existing local environment or private operator version as an example. Rendering, packaging, health and smoke CLIs may have filesystem/resource/network effects when called; imports and synthetic fixtures do not authorize real execution. Application build, external provider/E2E, real visual/Lighthouse/Docker and deployment checks remain future activation work. Historical image metadata does not establish a current approved baseline.
+The exact public example exceptions are `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example`, only as reviewed synthetic declared sources. Never use an existing local environment or private operator version as an example. Rendering, packaging, health and smoke CLIs may have filesystem/resource/network effects when called; imports and synthetic fixtures do not authorize real execution. The application gate owns real build, synthetic browser, visual and Lighthouse checks; external provider, Docker and deployment operation remain separate. Historical image metadata does not establish a current approved baseline.
 
-Import-safe verification runners and the build metadata stamper are preparatory source. Their injected lifecycle/provenance tests join existing measured suites; importing a module must never start a browser, process, network request or write. Keep operational aliases absent and the current twelve-check Linux gate unchanged. Synthetic future-phase CI admission tests do not activate that phase.
+Visual/Lighthouse runners and build metadata stamping remain import-safe. Injected lifecycle/provenance tests do not start the application, Chrome or an API. The admitted application commands separately execute owned synthetic previews and browsers; preserve matching runtime provenance, actual human image approval and the unchanged CI update prohibition. Provider, Docker, staging and deployment operation require separate authorization and evidence.

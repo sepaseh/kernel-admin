@@ -255,7 +255,7 @@ test("undeclared production and linked source are not hidden by an empty import 
 
 test("the Storybook phase retains all measured production modules", async () => {
   const result = await checkBoundaries();
-  assert.equal(result.files, 118);
+  assert.equal(result.files, 122);
   assert.deepEqual(result.violations, []);
 });
 
@@ -352,6 +352,78 @@ test("runtime adapters may import only exact declared packages contained in this
     assert.match(check("node:fs", target, adapter), /not allowed/);
     assert.match(check("dayjs/locale/xx", target, adapter), /not allowed/);
   }
+});
+
+test("dialog focus admits only its published helper and exact runtime or erased React owners", () => {
+  const helper = path.join(root, "src/shared/lib/dialog-focus.ts");
+  for (const source of [
+    "src/app/hooks/useAntd.ts",
+    "src/shared/ui/form-drawer/FormDrawer.tsx",
+  ]) {
+    const owner = path.join(root, source);
+    assert.equal(check("@/shared/lib/dialog-focus", helper, owner), undefined);
+    assert.match(
+      check(
+        "@/shared/lib/dialog-focus-internal",
+        path.join(root, "src/shared/lib/dialog-focus-internal.ts"),
+        owner,
+      ),
+      /published production modules/,
+    );
+  }
+  const react = path.join(root, "node_modules/@types/react/index.d.ts");
+  for (const [source, typeOnly] of [
+    ["src/app/hooks/useAntd.ts", false],
+    ["src/shared/ui/form-drawer/FormDrawer.tsx", true],
+    ["src/shared/lib/dialog-focus.ts", true],
+  ]) {
+    const owner = path.join(root, source);
+    assert.equal(
+      check("react", react, owner, typeOnly, "@types/react"),
+      undefined,
+    );
+    assert.match(
+      check("react", react, owner, typeOnly, "synthetic-alias"),
+      /not allowed/,
+    );
+    assert.match(
+      check(
+        "react",
+        path.resolve(
+          root,
+          "../another-checkout/node_modules/@types/react/index.d.ts",
+        ),
+        owner,
+        typeOnly,
+        "@types/react",
+      ),
+      /not allowed/,
+    );
+    for (const dependency of [
+      "axios",
+      "react-dom",
+      "react/internal",
+      "node:fs",
+    ])
+      assert.match(
+        check(
+          dependency,
+          path.join(root, "node_modules", dependency, "index.d.ts"),
+          owner,
+          typeOnly,
+          dependency,
+        ),
+        /not allowed/,
+      );
+  }
+  for (const source of [
+    "src/shared/ui/form-drawer/FormDrawer.tsx",
+    "src/shared/lib/dialog-focus.ts",
+  ])
+    assert.match(
+      check("react", react, path.join(root, source), false, "@types/react"),
+      /not allowed/,
+    );
 });
 
 test("OTP accessibility owns only its exact React and translation runtime dependencies", () => {
@@ -636,4 +708,59 @@ test("development tooling accepts valid registry semver ranges", async (context)
     );
     assert.deepEqual((await checkBoundaries(directory)).violations, []);
   }
+});
+
+test("application composition admits only its explicit runtime and type package edges", () => {
+  const main = path.join(root, "src/main.tsx");
+  const routes = path.join(root, "src/app/Routes.tsx");
+  assert.equal(
+    check(
+      "react-dom/client",
+      path.join(root, "node_modules/@types/react-dom/client.d.ts"),
+      main,
+      false,
+      "@types/react-dom",
+    ),
+    undefined,
+  );
+  assert.equal(
+    check(
+      "react-router/dom",
+      path.join(root, "node_modules/react-router/dist/dom-export.d.mts"),
+      routes,
+      false,
+      "react-router",
+    ),
+    undefined,
+  );
+  assert.match(
+    check(
+      "react-dom/server",
+      path.join(root, "node_modules/@types/react-dom/server.d.ts"),
+      main,
+      false,
+      "@types/react-dom",
+    ),
+    /not allowed/,
+  );
+  assert.match(
+    check(
+      "react-dom/client",
+      path.join(root, "node_modules/unrelated/client.d.ts"),
+      main,
+      false,
+      "@types/react-dom",
+    ),
+    /not allowed/,
+  );
+  assert.match(
+    check(
+      "axios",
+      path.join(root, "node_modules/axios/index.d.ts"),
+      routes,
+      false,
+      "axios",
+    ),
+    /not allowed/,
+  );
 });

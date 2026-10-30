@@ -84,7 +84,7 @@ export const validateStandaloneLockfile = (lock, pkg) => {
   return errors;
 };
 
-const checkDefinitions = (definitions) => {
+const checkDefinitions = (definitions, application = false) => {
   const errors = [];
   const ids = definitions.map((check) => check?.id);
   if (!isStrings(ids) || !ids.length || duplicates(ids))
@@ -99,7 +99,15 @@ const checkDefinitions = (definitions) => {
       errors.push(`Invalid check definition: ${check?.id}`);
       continue;
     }
-    const jobs = check.kind === "required" ? ["check"] : [];
+    const applicationOwners = {
+      "application-build": "build",
+      bundle: "build",
+      "application-e2e": "e2e",
+      visual: "visual",
+    };
+    const owner = application ? applicationOwners[check.id] : undefined;
+    const jobs =
+      check.kind === "required" ? ["check", ...(owner ? [owner] : [])] : [];
     if (!same(check.ciJobs, jobs))
       errors.push(`Canonical CI ownership differs for ${check.id}`);
   }
@@ -161,7 +169,10 @@ export const validateManifest = (manifest, settings, workflows) => {
     !isRecord(manifest.profiles)
   )
     return ["Invalid validation manifest schema"];
-  const definitions = checkDefinitions(manifest.checks);
+  const definitions = checkDefinitions(
+    manifest.checks,
+    manifest.applicationReady === true,
+  );
   const checks = new Map(manifest.checks.map((check) => [check?.id, check]));
   const errors = [
     ...definitions,

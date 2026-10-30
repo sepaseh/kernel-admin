@@ -2,6 +2,55 @@ import { mkdir, open, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
 
+export function visualSourceInputs(allowedFiles) {
+  if (
+    !Array.isArray(allowedFiles) ||
+    new Set(allowedFiles).size !== allowedFiles.length ||
+    !allowedFiles.every(
+      (file) =>
+        typeof file === "string" &&
+        !/[\\:\0\r\n]/.test(file) &&
+        file.split("/").every((part) => part && part !== "." && part !== ".."),
+    )
+  )
+    throw new Error(
+      "Visual source inventory must contain safe unique public paths.",
+    );
+
+  const configuration = [
+    ".nvmrc",
+    "package.json",
+    "package-lock.json",
+    "index.html",
+    "vite.config.ts",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "playwright.visual.config.ts",
+    "scripts/run-visual.mjs",
+    "scripts/visual-environment.mjs",
+    "scripts/stamp-admin-build.mjs",
+    "scripts/validate-production-env.mjs",
+    "scripts/validate-deployment-env.mjs",
+  ];
+  for (const file of configuration)
+    if (!allowedFiles.includes(file))
+      throw new Error(`Visual source inventory is missing ${file}.`);
+
+  const selected = allowedFiles
+    .filter(
+      (file) =>
+        configuration.includes(file) ||
+        file.startsWith("src/") ||
+        file.startsWith("public/") ||
+        (file.startsWith("e2e/") && !file.startsWith("e2e/visual/baselines/")),
+    )
+    .sort();
+  if (selected.some((file) => /(?:^|\/)\.env(?:\.|$)/i.test(file)))
+    throw new Error("Operator environment files are not visual source inputs.");
+  return selected;
+}
+
 export async function markVisualBaselinePending(metadataPath, metadata) {
   await mkdir(path.dirname(metadataPath), { recursive: true });
   await writeFile(
@@ -150,7 +199,7 @@ export function visualEnvironment(inherited = process.env) {
   };
 }
 
-export async function assertVisualPortsAvailable(ports = [4173]) {
+export async function assertVisualPortsAvailable(ports = [4185]) {
   await Promise.all(
     [...new Set(ports)].map(async (port) => {
       const server = createServer();

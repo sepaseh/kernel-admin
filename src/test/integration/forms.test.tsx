@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import type * as ReactI18next from "react-i18next";
 import { MemoryRouter, useNavigate } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   messageSuccess: vi.fn(),
   notificationSuccess: vi.fn(),
   currentUser: { id: "admin-1", isSystemAdmin: true, permissions: [] },
+  deferDrawerOpening: false,
+  drawerOpening: null as (() => void) | null,
 }));
 
 vi.mock("@/features/roles/api", () => ({
@@ -55,6 +57,24 @@ vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof ReactI18next>()),
   useTranslation: () => ({ t: (key: string) => key }),
 }));
+
+vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/shared/ui/form-drawer")>();
+  return {
+    ...actual,
+    FormDrawer: (props: ComponentProps<typeof actual.FormDrawer>) => (
+      <actual.FormDrawer
+        {...props}
+        afterOpenChange={(open) => {
+          if (open && mocks.deferDrawerOpening)
+            mocks.drawerOpening = () => props.afterOpenChange?.(open);
+          else props.afterOpenChange?.(open);
+        }}
+      />
+    ),
+  };
+});
 
 const userData: User = {
   email: "ada@example.com",
@@ -101,6 +121,8 @@ const beginUserCreation = async (onFinish: () => void) => {
 };
 
 beforeEach(() => {
+  mocks.deferDrawerOpening = false;
+  mocks.drawerOpening = null;
   mocks.currentUser.isSystemAdmin = true;
   clearAccessToken();
   vi.mocked(api.createRole)
@@ -123,6 +145,28 @@ beforeEach(() => {
 });
 
 describe("user identity form", () => {
+  it("keeps an early edit when the update drawer finishes opening", async () => {
+    mocks.deferDrawerOpening = true;
+    const { user } = renderAtHash(
+      <UserForm data={userData} onFinish={vi.fn()} />,
+      "#update",
+    );
+    const firstName = await screen.findByLabelText("firstName");
+    await waitFor(() => expect(firstName).toHaveValue("Ada"));
+    fireEvent.change(firstName, { target: { value: "Augusta" } });
+    await waitFor(() => expect(mocks.drawerOpening).not.toBeNull());
+    act(() => mocks.drawerOpening?.());
+    expect(firstName).toHaveValue("Augusta");
+    await user.click(screen.getByRole("button", { name: "submit" }));
+    await waitFor(() =>
+      expect(api.updateUser).toHaveBeenCalledWith(
+        "user-1",
+        expect.objectContaining({ firstName: "Augusta" }),
+        expect.any(AbortSignal),
+      ),
+    );
+  });
+
   it("validates and creates a user", async () => {
     const onFinish = vi.fn();
     const { user } = renderAtHash(<UserForm onFinish={onFinish} />, "#create");

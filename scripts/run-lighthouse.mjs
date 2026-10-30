@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -99,7 +99,7 @@ function getLighthouseReports(result) {
 
 export async function runLighthouse({
   appBasePath = "/",
-  reportDirectory = path.resolve(".lighthouseci"),
+  reportDirectory = path.resolve("coverage/lighthouse"),
   preview,
   launchChrome,
   audit,
@@ -206,12 +206,112 @@ export async function runLighthouse({
   return score;
 }
 
+async function prepareLighthouseFixture(chromium, settings, chrome, url) {
+  const browser = await chromium.connectOverCDP(
+    `http://127.0.0.1:${chrome.port}`,
+  );
+  try {
+    const context = browser.contexts()[0],
+      unexpected = [];
+    let settingsRequests = 0;
+    await context.route("**/*", (route) => {
+      const request = route.request(),
+        target = new URL(request.url());
+      if (target.origin === new URL(url).origin) return route.continue();
+      if (
+        target.href === "https://api.example.com/settings" &&
+        request.method() === "GET"
+      ) {
+        settingsRequests++;
+        return route.fulfill({ json: settings("en") });
+      }
+      unexpected.push(`${request.method()} ${target.href}`);
+      return route.abort("blockedbyclient");
+    });
+    context.on("page", (page) =>
+      page.on("pageerror", (error) => unexpected.push(error.message)),
+    );
+    const page = await context.newPage();
+    const response = await page.goto(url);
+    if (response?.status() !== 200)
+      throw new Error("Lighthouse fixture document is not ready.");
+    await page
+      .locator('input[type="password"]')
+      .first()
+      .waitFor({ state: "visible" });
+    await page.getByRole("heading", { level: 1 }).waitFor({ state: "visible" });
+    const verify = () => {
+      if (!settingsRequests || unexpected.length)
+        throw new Error(
+          `Lighthouse fixture failed: ${unexpected.join("; ") || "settings not loaded"}`,
+        );
+    };
+    verify();
+    await page.close();
+    return { verify, dispose: () => browser.close() };
+  } catch (error) {
+    try {
+      await browser.close();
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [error, cleanupError],
+        "Lighthouse fixture setup and cleanup failed.",
+        { cause: cleanupError },
+      );
+    }
+    throw error;
+  }
+}
+
+async function main() {
+  const repository = fileURLToPath(new URL("../", import.meta.url));
+  const metadata = JSON.parse(
+    await readFile(path.join(repository, "dist/_kernel/build.json"), "utf8"),
+  );
+  if (metadata.apiOrigin !== "https://api.example.com")
+    throw new Error(
+      "Lighthouse requires a completed build using the explicit synthetic API origin.",
+    );
+  const [{ preview }, launcher, { default: audit }, { chromium }, fixtures] =
+    await Promise.all([
+      import("vite"),
+      import("chrome-launcher"),
+      import("lighthouse"),
+      import("@playwright/test"),
+      import(new URL("../e2e/fixtures.ts", import.meta.url).href),
+    ]);
+  const score = await runLighthouse({
+    appBasePath: metadata.basePath,
+    preview,
+    audit,
+    launchChrome: (signal) =>
+      launchOwnedChrome(
+        launcher.Launcher,
+        {
+          chromePath: chromium.executablePath(),
+          chromeFlags: ["--headless=new", "--disable-background-networking"],
+        },
+        signal,
+      ),
+    prepareFixture: (chrome, url) =>
+      prepareLighthouseFixture(
+        chromium,
+        fixtures.applicationSettingsFixture,
+        chrome,
+        url,
+      ),
+  });
+  console.info(
+    `Lighthouse verification passed with a performance score of ${score}.`,
+  );
+}
+
 if (
   process.argv[1] &&
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  console.error(
-    "Application Lighthouse CLI integration is not published in this phase.",
-  );
-  process.exitCode = 1;
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
 }
