@@ -1,11 +1,22 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "node:test";
 
 import { parse, stringify } from "yaml";
 
 import {
   coverageManifest,
+  createEvidenceRunner,
   inspectCi,
   inspectSonarWorkflow,
   lighthouseException,
@@ -1256,4 +1267,441 @@ test("Sonar analyzes the declared phase and classifies its fixtures without weak
     properties["sonar.javascript.lcov.reportPaths"],
     "coverage/unit/lcov.info,coverage/governance/lcov.info",
   );
+});
+const evidenceFixture = async (context) => {
+  const directory = await realpath(
+    await mkdtemp(path.join(tmpdir(), "kernel-ci-evidence-")),
+  );
+  context.after(async () => {
+    assert.equal(path.dirname(directory), await realpath(tmpdir()));
+    assert.ok(path.basename(directory).startsWith("kernel-ci-evidence-"));
+    await rm(directory, { recursive: true, force: true });
+  });
+  const expected = identity();
+  const environment = {
+    GITHUB_REPOSITORY: expected.repository,
+    GITHUB_RUN_ID: expected.runId,
+    GITHUB_RUN_ATTEMPT: expected.runAttempt,
+    GITHUB_TOKEN: "synthetic-read-only-token",
+    GITHUB_OUTPUT: path.join(directory, "output"),
+    GITHUB_EVENT_PATH: path.join(directory, "event.json"),
+    GITHUB_EVENT_NAME: "pull_request",
+    VERIFICATION_HEAD: expected.head,
+    VERIFICATION_BASE: expected.base,
+    VERIFICATION_COMMIT: expected.commit,
+    VERIFICATION_TREE: expected.tree,
+    VERIFICATION_METADATA_ONLY: "true",
+    VERIFICATION_APPLICATION: "false",
+    SONAR_PROJECT_KEY: "synthetic-analysis",
+  };
+  const producer = {
+    ...expected,
+    commit: "e".repeat(40),
+    runId: "122",
+    runAttempt: "2",
+  };
+  const run = {
+    id: 122,
+    status: "completed",
+    conclusion: "success",
+    head_sha: expected.head,
+    head_repository: { full_name: expected.repository },
+    path: ".github/workflows/ci.yml",
+    updated_at: "2026-10-31T01:00:00Z",
+  };
+  const artifact = { name: "verification-122-2", expired: false };
+  const report = coverageManifest(producer, contents(), {
+    applicationReady: false,
+  });
+  const put = async (file, data) => {
+    const filename = path.join(directory, file);
+    await mkdir(path.dirname(filename), { recursive: true });
+    await writeFile(filename, data);
+  };
+  await put(
+    ".agents/validation.json",
+    JSON.stringify({ applicationReady: false }),
+  );
+  await put(
+    "event.json",
+    JSON.stringify({
+      action: "edited",
+      changes: { title: { from: "before" } },
+      pull_request: {
+        head: { sha: expected.head },
+        base: { sha: expected.base },
+      },
+    }),
+  );
+  for (const [file, data] of Object.entries(contents())) await put(file, data);
+  await put("coverage/verification-coverage.json", JSON.stringify(report));
+  const requests = [];
+  const responses = new Map([
+    [
+      "actions/workflows/ci.yml/runs?head_sha=" +
+        expected.head +
+        "&per_page=20",
+      { total_count: 1, workflow_runs: [run] },
+    ],
+    ["actions/runs/122/artifacts?per_page=100", { artifacts: [artifact] }],
+    ["actions/runs/122", run],
+  ]);
+  const logs = [];
+  const runner = (overrides = {}) =>
+    createEvidenceRunner({
+      directory,
+      environment,
+      readGit: (...args) => {
+        if (args[0] === "diff") return "docs/validation.md\0";
+        assert.equal(args[0], "rev-parse");
+        return args[1] === "HEAD" ? expected.commit : expected.tree;
+      },
+      request: async (url, options) => {
+        assert.equal(
+          options.headers.Authorization,
+          "Bearer synthetic-read-only-token",
+        );
+        const prefix =
+          "https://api.github.com/repos/" + expected.repository + "/";
+        assert.ok(url.startsWith(prefix));
+        const route = url.slice(prefix.length);
+        requests.push(route);
+        assert.ok(
+          responses.has(route),
+          "Unexpected synthetic request: " + route,
+        );
+        return {
+          ok: true,
+          status: 200,
+          json: async () => responses.get(route),
+        };
+      },
+      now: () => new Date("2026-10-31T00:00:00Z"),
+      logger: {
+        log: (value) => logs.push(value),
+        warn: (value) => logs.push(value),
+      },
+      ...overrides,
+    });
+  const outputs = async () =>
+    Object.fromEntries(
+      (await readFile(environment.GITHUB_OUTPUT, "utf8"))
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map((line) => {
+          const separator = line.indexOf("=");
+          return [line.slice(0, separator), line.slice(separator + 1)];
+        }),
+    );
+  const resetOutput = () => writeFile(environment.GITHUB_OUTPUT, "");
+  const enableReuse = () =>
+    Object.assign(environment, {
+      VERIFICATION_REUSE_DOWNLOAD: "success",
+      VERIFICATION_REUSE_ARTIFACT: artifact.name,
+      VERIFICATION_REUSE_RUN_ID: producer.runId,
+      VERIFICATION_REUSE_ATTEMPT: producer.runAttempt,
+    });
+  return {
+    directory,
+    environment,
+    expected,
+    producer,
+    run,
+    artifact,
+    report,
+    put,
+    requests,
+    responses,
+    logs,
+    runner,
+    outputs,
+    resetOutput,
+    enableReuse,
+  };
+};
+
+test("evidence orchestration records real scope and fresh measured bytes, then verifies that exact artifact", async (context) => {
+  const fixture = await evidenceFixture(context);
+  const execute = fixture.runner();
+  await execute("--scope");
+  assert.equal((await fixture.outputs()).run, "false");
+  assert.equal((await fixture.outputs()).profile, "full");
+  assert.equal((await fixture.outputs()).tree, fixture.expected.tree);
+  await fixture.resetOutput();
+  await execute("--performance-scope");
+  assert.equal((await fixture.outputs()).advisory, "true");
+  await fixture.resetOutput();
+  await execute("--record-coverage");
+  const recorded = JSON.parse(
+    await readFile(
+      path.join(fixture.directory, "coverage/verification-coverage.json"),
+      "utf8",
+    ),
+  );
+  assert.deepEqual(recorded.identity, fixture.expected);
+  assert.deepEqual(
+    recorded.files,
+    coverageManifest(fixture.expected, contents()).files,
+  );
+  assert.deepEqual(await fixture.outputs(), {
+    artifact: "verification-123-2",
+    attempt: "2",
+    run_id: "123",
+  });
+  await execute("--verify-coverage");
+  assert.equal(fixture.requests.length, 0);
+});
+
+test("evidence orchestration preserves the original successful producer through reuse, publication and scanner verification", async (context) => {
+  const fixture = await evidenceFixture(context);
+  const execute = fixture.runner();
+  await execute("--prepare-reuse");
+  assert.deepEqual(await fixture.outputs(), {
+    artifact: fixture.artifact.name,
+    runId: "122",
+    runAttempt: "2",
+  });
+  fixture.enableReuse();
+  await fixture.resetOutput();
+  await execute("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "true");
+  fixture.environment.VERIFICATION_REUSED = "true";
+  await fixture.resetOutput();
+  await execute("--record-coverage");
+  assert.deepEqual(await fixture.outputs(), {
+    artifact: fixture.artifact.name,
+    attempt: "2",
+    run_id: "122",
+  });
+  assert.deepEqual(
+    JSON.parse(
+      await readFile(
+        path.join(fixture.directory, "coverage/verification-coverage.json"),
+        "utf8",
+      ),
+    ),
+    fixture.report,
+  );
+  fixture.environment.VERIFICATION_COVERAGE_RUN_ID = "122";
+  fixture.environment.VERIFICATION_COVERAGE_ATTEMPT = "2";
+  await execute("--verify-coverage");
+  assert.ok(
+    fixture.logs.some((line) =>
+      line.includes("no fresh test execution is claimed"),
+    ),
+  );
+});
+
+test("missing credentials and failed or unavailable API evidence never authorize reuse", async (context) => {
+  const fixture = await evidenceFixture(context);
+  const scenarios = [
+    {
+      setup: () => {
+        delete fixture.environment.GITHUB_TOKEN;
+      },
+      overrides: {},
+    },
+    {
+      setup: () => {
+        fixture.environment.GITHUB_TOKEN = "synthetic-read-only-token";
+      },
+      overrides: { request: async () => ({ ok: false, status: 503 }) },
+    },
+    {
+      setup: () => {},
+      overrides: {
+        request: async () => {
+          throw new Error("synthetic network failure");
+        },
+      },
+    },
+    {
+      setup: () => {
+        fixture.run.conclusion = "failure";
+      },
+      overrides: {},
+    },
+    {
+      setup: () => {
+        fixture.run.conclusion = "success";
+        fixture.responses.set("actions/runs/122/artifacts?per_page=100", {
+          artifacts: [],
+        });
+      },
+      overrides: {},
+    },
+  ];
+  for (const scenario of scenarios) {
+    scenario.setup();
+    await fixture.resetOutput();
+    await fixture.runner(scenario.overrides)("--prepare-reuse");
+    assert.deepEqual(await fixture.outputs(), {});
+  }
+  assert.ok(
+    fixture.logs.some((line) =>
+      line.includes("fresh canonical checks will run"),
+    ),
+  );
+  fixture.environment.VERIFICATION_METADATA_ONLY = "false";
+  const count = fixture.requests.length;
+  await fixture.runner()("--prepare-reuse");
+  assert.equal(fixture.requests.length, count);
+});
+
+test("missing or corrupt downloaded evidence falls back to fresh checks instead of a reuse pass", async (context) => {
+  const fixture = await evidenceFixture(context);
+  const execute = fixture.runner();
+  await execute("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "false");
+  fixture.enableReuse();
+  await fixture.put("coverage/verification-coverage.json", "not JSON");
+  await execute("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "false");
+  await fixture.put(
+    "coverage/verification-coverage.json",
+    JSON.stringify(fixture.report),
+  );
+  await fixture.put("coverage/unit/lcov.info", "tampered bytes");
+  await execute("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "false");
+  await fixture.put(
+    "coverage/unit/lcov.info",
+    contents()["coverage/unit/lcov.info"],
+  );
+  const mismatched = structuredClone(fixture.report);
+  mismatched.verification.applicationReady = true;
+  await fixture.put(
+    "coverage/verification-coverage.json",
+    JSON.stringify(mismatched),
+  );
+  await execute("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "false");
+  assert.ok(
+    fixture.logs.some((line) =>
+      line.includes("did not match this source/base/tree"),
+    ),
+  );
+});
+
+test("fresh scanner and evidence publication fail closed on invalid identity, checkout, missing files or configuration", async (context) => {
+  const fixture = await evidenceFixture(context);
+  const execute = fixture.runner();
+  const head = fixture.environment.VERIFICATION_HEAD;
+  delete fixture.environment.VERIFICATION_HEAD;
+  await assert.rejects(execute("--verify-coverage"), /Coverage identity/);
+  fixture.environment.VERIFICATION_HEAD = head;
+  await assert.rejects(
+    fixture.runner({ readGit: () => "f".repeat(40) })("--verify-coverage"),
+    /checked-out revision/,
+  );
+  await assert.rejects(
+    fixture.runner({
+      readGit: (_command, ref) =>
+        ref === "HEAD" ? fixture.expected.commit : "f".repeat(40),
+    })("--verify-coverage"),
+    /checked-out revision/,
+  );
+  await execute("--record-coverage");
+  delete fixture.environment.SONAR_PROJECT_KEY;
+  await assert.rejects(
+    execute("--verify-coverage"),
+    /Configure SONAR_PROJECT_KEY/,
+  );
+  fixture.environment.SONAR_PROJECT_KEY = "synthetic-analysis";
+  await rm(path.join(fixture.directory, "coverage/unit/lcov.info"));
+  await assert.rejects(execute("--verify-coverage"), /ENOENT/);
+  await mkdir(path.join(fixture.directory, "coverage/unit/lcov.info"));
+  await assert.rejects(execute("--record-coverage"), /ordinary measured files/);
+  await rm(path.join(fixture.directory, "coverage/unit/lcov.info"), {
+    recursive: true,
+  });
+  await fixture.put(
+    "coverage/unit/lcov.info",
+    contents()["coverage/unit/lcov.info"],
+  );
+  await rm(path.join(fixture.directory, "coverage/verification-coverage.json"));
+  await mkdir(
+    path.join(fixture.directory, "coverage/verification-coverage.json"),
+  );
+  await assert.rejects(
+    execute("--verify-coverage"),
+    /provenance must be an ordinary artifact file/,
+  );
+});
+
+test("application phase mismatch cannot reuse otherwise valid measured evidence", () => {
+  const producer = { ...identity(), runId: "122" };
+  const report = coverageManifest(producer, contents(), {
+    applicationReady: false,
+  });
+  assert.throws(
+    () =>
+      verifyReusedCoverage(
+        report,
+        identity(),
+        { artifact: "verification-122-2", runId: "122", runAttempt: "2" },
+        {},
+        contents(),
+        { applicationReady: true },
+      ),
+    /different application phase/,
+  );
+});
+
+test("incomplete or malformed API history cannot establish the latest successful verification", async (context) => {
+  const fixture = await evidenceFixture(context);
+  const route =
+    "actions/workflows/ci.yml/runs?head_sha=" +
+    fixture.expected.head +
+    "&per_page=20";
+  for (const history of [
+    { total_count: 21, workflow_runs: [fixture.run] },
+    { workflow_runs: [fixture.run] },
+    { total_count: 0 },
+  ]) {
+    fixture.responses.set(route, history);
+    await fixture.resetOutput();
+    await fixture.runner()("--prepare-reuse");
+    assert.deepEqual(await fixture.outputs(), {});
+  }
+  assert.deepEqual(fixture.requests, [route, route, route]);
+});
+
+test("download acceptance rechecks actual producer success, source identity and current performance expiry", async (context) => {
+  const fixture = await evidenceFixture(context);
+  fixture.enableReuse();
+  fixture.run.conclusion = "failure";
+  await fixture.runner()("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "false");
+  fixture.run.conclusion = "success";
+  const stale = structuredClone(fixture.report);
+  stale.identity.base = fixture.expected.head;
+  await fixture.put(
+    "coverage/verification-coverage.json",
+    JSON.stringify(stale),
+  );
+  await fixture.runner()("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "false");
+  await fixture.put(
+    ".agents/validation.json",
+    JSON.stringify({ applicationReady: true }),
+  );
+  const advisory = coverageManifest(fixture.producer, contents(), {
+    applicationReady: true,
+    performanceAdvisory: true,
+    performanceOutcome: "failure",
+  });
+  await fixture.put(
+    "coverage/verification-coverage.json",
+    JSON.stringify(advisory),
+  );
+  await fixture.runner({ now: () => new Date("2026-11-06T23:59:59Z") })(
+    "--accept-reuse",
+  );
+  assert.equal((await fixture.outputs()).reused, "true");
+  await fixture.runner({ now: () => new Date(lighthouseException.expiresAt) })(
+    "--accept-reuse",
+  );
+  assert.equal((await fixture.outputs()).reused, "false");
 });

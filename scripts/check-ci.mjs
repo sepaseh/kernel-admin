@@ -50,11 +50,17 @@ const sha = (value) =>
   /^[a-f0-9]{40}$/.test(value) &&
   !/^0+$/.test(value);
 const git = (...args) =>
-  execFileSync("git", args, {
-    cwd: repository,
-    encoding: "utf8",
-    windowsHide: true,
-  }).trimEnd();
+  execFileSync(
+    process.platform === "win32"
+      ? String.raw`C:\Program Files\Git\bin\git.exe`
+      : "/usr/bin/git",
+    args,
+    {
+      cwd: repository,
+      encoding: "utf8",
+      windowsHide: true,
+    },
+  ).trimEnd();
 
 export const visualInputsChanged = (files) => {
   if (!Array.isArray(files)) throw new Error("Changed paths must be an array");
@@ -92,11 +98,9 @@ export const selectVerificationScope = ({
     );
   const pullRequest = eventName === "pull_request";
   const head = pullRequest ? event.pull_request?.head?.sha : commit;
-  const base = pullRequest
-    ? event.pull_request?.base?.sha
-    : sha(event.before) && !/^0+$/.test(event.before)
-      ? event.before
-      : commit;
+  let base = commit;
+  if (pullRequest) base = event.pull_request?.base?.sha;
+  else if (sha(event.before)) base = event.before;
   if (!sha(head) || !sha(base))
     throw new Error("The tested source head and base must be exact commits");
   const retargeted =
@@ -150,7 +154,7 @@ export const validateCoverageIdentity = (identity) => {
       .some((part) => part === "." || part === "..") ||
     ["head", "base", "commit", "tree"].some((key) => !sha(identity[key])) ||
     ["runId", "runAttempt"].some(
-      (key) => !/^[1-9][0-9]*$/.test(identity[key] ?? ""),
+      (key) => !/^[1-9]\d*$/.test(identity[key] ?? ""),
     )
   )
     throw new Error(
@@ -230,15 +234,11 @@ export const reusableCoverageCandidate = (runs, artifacts, expected) => {
   validateCoverageIdentity(expected);
   if (!Array.isArray(runs) || !Array.isArray(artifacts)) return undefined;
   const latest = priorVerificationRun(runs, expected);
-  if (
-    !latest ||
-    latest.status !== "completed" ||
-    latest.conclusion !== "success"
-  )
+  if (latest?.status !== "completed" || latest.conclusion !== "success")
     return undefined;
   for (const run of [latest]) {
     for (const artifact of artifacts) {
-      const match = /^verification-([1-9][0-9]*)-([1-9][0-9]*)$/.exec(
+      const match = /^verification-([1-9]\d*)-([1-9]\d*)$/.exec(
         artifact.name ?? "",
       );
       if (artifact.expired === false && match?.[1] === String(run.id))
@@ -333,7 +333,7 @@ const blocking = (step, { condition } = {}) => {
 };
 const commandStep = (job, command, options) => {
   const token = command
-    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
     .replaceAll(" ", String.raw`\s+`);
   const mention = new RegExp(
     String.raw`(?:^|[\s;&|<>()])${token}(?=$|[\s;&|<>()])`,
@@ -363,9 +363,9 @@ const pinnedAction = (job, action, options) => {
   );
   if (
     matches.length !== 1 ||
-    !new RegExp("^" + action.replaceAll("/", "\\/") + "@[a-f0-9]{40}$").test(
-      matches[0].step.uses,
-    ) ||
+    !new RegExp(
+      "^" + action.replaceAll("/", String.raw`\/`) + "@[a-f0-9]{40}$",
+    ).test(matches[0].step.uses) ||
     matches[0].step.run !== undefined
   )
     throw new Error(
@@ -519,14 +519,10 @@ const setup = (value, { ref } = {}) => {
   return node.index;
 };
 
-const inspectLegacyWorkflow = (workflow, manifest, scanner) => {
-  const events = workflow.on;
-  const names =
-    typeof events === "string"
-      ? [events]
-      : Array.isArray(events)
-        ? events
-        : Object.keys(events ?? {});
+const inspectLegacyTrigger = (events) => {
+  let names = Object.keys(events ?? {});
+  if (typeof events === "string") names = [events];
+  else if (Array.isArray(events)) names = events;
   if (!names.includes("pull_request"))
     throw new Error("CI must run on pull_request events");
   const trigger = isRecord(events) ? events.pull_request : undefined;
@@ -542,6 +538,10 @@ const inspectLegacyWorkflow = (workflow, manifest, scanner) => {
           ))))
   )
     throw new Error("PR validation must not filter its required lifecycle");
+};
+
+const inspectLegacyWorkflow = (workflow, manifest, scanner) => {
+  inspectLegacyTrigger(workflow.on);
   const value = workflow.jobs?.[scanner ? "analysis" : "check"];
   const sameRepository =
     "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository";
@@ -829,8 +829,11 @@ export const inspectCi = (content, manifest) => {
       "Metadata runs need read-only evidence access and must not cancel active source verification",
     );
   if (
-    JSON.stringify(Object.keys(workflow.jobs ?? {}).sort()) !==
-    '["analysis","check","scope"]'
+    JSON.stringify(
+      Object.keys(workflow.jobs ?? {}).sort((left, right) =>
+        left.localeCompare(right),
+      ),
+    ) !== '["analysis","check","scope"]'
   )
     throw new Error(
       "Each suite must have one execution owner; duplicate build/browser/image jobs are not allowed",
@@ -921,275 +924,295 @@ export const inspectSonarWorkflow = (content, manifest) => {
   return { requiredChecks };
 };
 
-const expectedIdentity = () =>
-  validateCoverageIdentity({
-    repository: process.env.GITHUB_REPOSITORY,
-    head: process.env.VERIFICATION_HEAD,
-    base: process.env.VERIFICATION_BASE,
-    commit: process.env.VERIFICATION_COMMIT,
-    tree: process.env.VERIFICATION_TREE,
-    runId:
-      process.env.VERIFICATION_COVERAGE_RUN_ID ?? process.env.GITHUB_RUN_ID,
-    runAttempt:
-      process.env.VERIFICATION_COVERAGE_ATTEMPT ??
-      process.env.GITHUB_RUN_ATTEMPT,
-  });
-const output = (values) =>
-  appendFile(
-    process.env.GITHUB_OUTPUT,
-    Object.entries(values)
-      .map(([key, value]) => `${key}=${value}\n`)
-      .join(""),
-  );
-const githubJson = async (identity, route) => {
-  if (!process.env.GITHUB_TOKEN)
-    throw new Error(
-      "Read-only Actions access is required to verify previous evidence",
+export const createEvidenceRunner = ({
+  directory = repository,
+  environment = process.env,
+  readGit = git,
+  request = fetch,
+  now = () => new Date(),
+  logger = console,
+} = {}) => {
+  const expectedIdentity = () =>
+    validateCoverageIdentity({
+      repository: environment.GITHUB_REPOSITORY,
+      head: environment.VERIFICATION_HEAD,
+      base: environment.VERIFICATION_BASE,
+      commit: environment.VERIFICATION_COMMIT,
+      tree: environment.VERIFICATION_TREE,
+      runId:
+        environment.VERIFICATION_COVERAGE_RUN_ID ?? environment.GITHUB_RUN_ID,
+      runAttempt:
+        environment.VERIFICATION_COVERAGE_ATTEMPT ??
+        environment.GITHUB_RUN_ATTEMPT,
+    });
+  const output = (values) =>
+    appendFile(
+      environment.GITHUB_OUTPUT,
+      Object.entries(values)
+        .map(([key, value]) => `${key}=${value}\n`)
+        .join(""),
     );
-  const response = await fetch(
-    `https://api.github.com/repos/${identity.repository}/${route}`,
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
+  const githubJson = async (identity, route) => {
+    if (!environment.GITHUB_TOKEN)
+      throw new Error(
+        "Read-only Actions access is required to verify previous evidence",
+      );
+    const response = await request(
+      `https://api.github.com/repos/${identity.repository}/${route}`,
+      {
+        headers: {
+          Authorization: `Bearer ${environment.GITHUB_TOKEN}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        signal: AbortSignal.timeout(15_000),
       },
-      signal: AbortSignal.timeout(15_000),
-    },
-  );
-  if (!response.ok)
-    throw new Error(
-      "Previous verification evidence is unavailable (HTTP " +
-        response.status +
-        ")",
     );
-  return response.json();
-};
-const previousCandidate = () => ({
-  artifact: process.env.VERIFICATION_REUSE_ARTIFACT,
-  runId: process.env.VERIFICATION_REUSE_RUN_ID,
-  runAttempt: process.env.VERIFICATION_REUSE_ATTEMPT,
-});
-const readCoverageProvenance = async () => {
-  const filename = path.join(repository, "coverage/verification-coverage.json");
-  const status = await lstat(filename);
-  if (!status.isFile() || status.isSymbolicLink())
-    throw new Error("Coverage provenance must be an ordinary artifact file");
-  return JSON.parse(await readFile(filename, "utf8"));
-};
-const reusePolicy = async () => ({
-  applicationReady:
-    JSON.parse(
-      await readFile(path.join(repository, ".agents/validation.json"), "utf8"),
-    ).applicationReady === true,
-  now: new Date(),
-});
-const readCoverage = async () =>
-  Object.fromEntries(
-    await Promise.all(
-      coverageFiles.map(async (file) => {
-        const filename = path.join(repository, file);
-        const status = await lstat(filename);
-        if (!status.isFile() || status.isSymbolicLink())
-          throw new Error("Coverage must be ordinary measured files");
-        return [file, await readFile(filename)];
-      }),
-    ),
-  );
-const recordVerificationScope = async () => {
-  const event = JSON.parse(
-    await readFile(process.env.GITHUB_EVENT_PATH, "utf8"),
-  );
-  const commit = git("rev-parse", "HEAD");
-  const tree = git("rev-parse", "HEAD^{tree}");
-  const compare =
-    process.env.GITHUB_EVENT_NAME === "pull_request"
-      ? event.pull_request?.base?.sha
-      : event.before;
-  const files =
-    sha(compare) && !/^0+$/.test(compare)
-      ? git("diff", "--name-only", "-z", compare, commit)
-          .split("\0")
-          .filter(Boolean)
-      : ["package.json"];
-  const result = selectVerificationScope({
-    event,
-    eventName: process.env.GITHUB_EVENT_NAME,
-    commit,
-    tree,
-    files,
+    if (!response.ok)
+      throw new Error(
+        "Previous verification evidence is unavailable (HTTP " +
+          response.status +
+          ")",
+      );
+    return response.json();
+  };
+  const previousCandidate = () => ({
+    artifact: environment.VERIFICATION_REUSE_ARTIFACT,
+    runId: environment.VERIFICATION_REUSE_RUN_ID,
+    runAttempt: environment.VERIFICATION_REUSE_ATTEMPT,
+  });
+  const readCoverageProvenance = async () => {
+    const filename = path.join(
+      directory,
+      "coverage/verification-coverage.json",
+    );
+    const status = await lstat(filename);
+    if (!status.isFile() || status.isSymbolicLink())
+      throw new Error("Coverage provenance must be an ordinary artifact file");
+    return JSON.parse(await readFile(filename, "utf8"));
+  };
+  const reusePolicy = async () => ({
     applicationReady:
       JSON.parse(
-        await readFile(
-          path.join(repository, ".agents/validation.json"),
-          "utf8",
-        ),
+        await readFile(path.join(directory, ".agents/validation.json"), "utf8"),
       ).applicationReady === true,
+    now: now(),
   });
-  await output(result);
-  return;
-};
-const prepareCoverageReuse = async (identity) => {
-  if (process.env.VERIFICATION_METADATA_ONLY !== "true") return;
-  try {
-    const runs = await githubJson(
-      identity,
-      `actions/workflows/ci.yml/runs?head_sha=${identity.head}&per_page=20`,
+  const readCoverage = async () =>
+    Object.fromEntries(
+      await Promise.all(
+        coverageFiles.map(async (file) => {
+          const filename = path.join(directory, file);
+          const status = await lstat(filename);
+          if (!status.isFile() || status.isSymbolicLink())
+            throw new Error("Coverage must be ordinary measured files");
+          return [file, await readFile(filename)];
+        }),
+      ),
     );
-    const run = priorVerificationRun(runs.workflow_runs ?? [], identity);
-    if (run) {
-      if (run.status !== "completed" || run.conclusion !== "success") return;
-      const artifacts = await githubJson(
-        identity,
-        `actions/runs/${run.id}/artifacts?per_page=100`,
-      );
-      const candidate = reusableCoverageCandidate(
-        [run],
-        artifacts.artifacts,
-        identity,
-      );
-      if (candidate) {
-        await output(candidate);
-        return;
-      }
-    }
-  } catch {
-    console.warn(
-      "Previous verification could not be established; fresh canonical checks will run.",
+  const recordVerificationScope = async () => {
+    const event = JSON.parse(
+      await readFile(environment.GITHUB_EVENT_PATH, "utf8"),
     );
-  }
-  return;
-};
-const acceptCoverageReuse = async (identity) => {
-  if (
-    process.env.VERIFICATION_REUSE_DOWNLOAD !== "success" ||
-    !process.env.VERIFICATION_REUSE_RUN_ID
-  ) {
-    await output({ reused: "false" });
-    return;
-  }
-  try {
-    const candidate = previousCandidate();
-    const run = await githubJson(identity, `actions/runs/${candidate.runId}`);
-    verifyReusedCoverage(
-      await readCoverageProvenance(),
-      identity,
-      candidate,
-      run,
-      await readCoverage(),
-      await reusePolicy(),
-    );
-    await output({ reused: "true" });
-    console.log(
-      "Reused an actual successful CI producer for unchanged source head, base and tested tree; no fresh test execution is claimed.",
-    );
-  } catch {
-    await output({ reused: "false" });
-    console.warn(
-      "Previous verification did not match this source/base/tree; fresh canonical checks will run.",
-    );
-  }
-  return;
-};
-const recordMeasuredCoverage = async (identity) => {
-  const contents = await readCoverage();
-  const filename = path.join(repository, "coverage/verification-coverage.json");
-  if (process.env.VERIFICATION_REUSED === "true") {
-    const candidate = previousCandidate();
-    verifyReusedCoverage(
-      await readCoverageProvenance(),
-      identity,
-      candidate,
-      await githubJson(identity, `actions/runs/${candidate.runId}`),
-      contents,
-      await reusePolicy(),
-    );
-    await output({
-      artifact: candidate.artifact,
-      attempt: candidate.runAttempt,
-      run_id: candidate.runId,
+    const commit = readGit("rev-parse", "HEAD");
+    const tree = readGit("rev-parse", "HEAD^{tree}");
+    const compare =
+      environment.GITHUB_EVENT_NAME === "pull_request"
+        ? event.pull_request?.base?.sha
+        : event.before;
+    const files =
+      sha(compare) && !/^0+$/.test(compare)
+        ? readGit("diff", "--name-only", "-z", compare, commit)
+            .split("\0")
+            .filter(Boolean)
+        : ["package.json"];
+    const result = selectVerificationScope({
+      event,
+      eventName: environment.GITHUB_EVENT_NAME,
+      commit,
+      tree,
+      files,
+      applicationReady:
+        JSON.parse(
+          await readFile(
+            path.join(directory, ".agents/validation.json"),
+            "utf8",
+          ),
+        ).applicationReady === true,
     });
-    return;
-  }
-  await writeFile(
-    filename,
-    JSON.stringify(
-      coverageManifest(identity, contents, {
-        applicationReady: process.env.VERIFICATION_APPLICATION === "true",
-        performanceAdvisory:
-          process.env.VERIFICATION_PERFORMANCE_ADVISORY === "true",
-        performanceOutcome:
-          process.env.VERIFICATION_PERFORMANCE_OUTCOME || "not-applicable",
-      }),
-      null,
-      2,
-    ) + "\n",
-  );
-  const artifact = `verification-${identity.runId}-${identity.runAttempt}`;
-  await output({
-    artifact,
-    attempt: identity.runAttempt,
-    run_id: identity.runId,
-  });
-};
-const verifyMeasuredCoverage = async (identity) => {
-  const contents = await readCoverage();
-  const report = await readCoverageProvenance();
-  if (identity.runId !== process.env.GITHUB_RUN_ID) {
-    const candidate = {
-      artifact: `verification-${identity.runId}-${identity.runAttempt}`,
-      runId: identity.runId,
-      runAttempt: identity.runAttempt,
-    };
-    verifyReusedCoverage(
-      report,
-      { ...identity, runId: process.env.GITHUB_RUN_ID },
-      candidate,
-      await githubJson(identity, `actions/runs/${identity.runId}`),
-      contents,
-      await reusePolicy(),
+    await output(result);
+  };
+  const prepareCoverageReuse = async (identity) => {
+    if (environment.VERIFICATION_METADATA_ONLY !== "true") return;
+    try {
+      const runs = await githubJson(
+        identity,
+        `actions/workflows/ci.yml/runs?head_sha=${identity.head}&per_page=20`,
+      );
+      if (
+        !Array.isArray(runs.workflow_runs) ||
+        !Number.isSafeInteger(runs.total_count) ||
+        runs.total_count !== runs.workflow_runs.length
+      )
+        return;
+      const run = priorVerificationRun(runs.workflow_runs ?? [], identity);
+      if (run) {
+        if (run.status !== "completed" || run.conclusion !== "success") return;
+        const artifacts = await githubJson(
+          identity,
+          `actions/runs/${run.id}/artifacts?per_page=100`,
+        );
+        const candidate = reusableCoverageCandidate(
+          [run],
+          artifacts.artifacts,
+          identity,
+        );
+        if (candidate) {
+          await output(candidate);
+          return;
+        }
+      }
+    } catch {
+      logger.warn(
+        "Previous verification could not be established; fresh canonical checks will run.",
+      );
+    }
+  };
+  const acceptCoverageReuse = async (identity) => {
+    if (
+      environment.VERIFICATION_REUSE_DOWNLOAD !== "success" ||
+      !environment.VERIFICATION_REUSE_RUN_ID
+    ) {
+      await output({ reused: "false" });
+      return;
+    }
+    try {
+      const candidate = previousCandidate();
+      const run = await githubJson(identity, `actions/runs/${candidate.runId}`);
+      verifyReusedCoverage(
+        await readCoverageProvenance(),
+        identity,
+        candidate,
+        run,
+        await readCoverage(),
+        await reusePolicy(),
+      );
+      await output({ reused: "true" });
+      logger.log(
+        "Reused an actual successful CI producer for unchanged source head, base and tested tree; no fresh test execution is claimed.",
+      );
+    } catch {
+      await output({ reused: "false" });
+      logger.warn(
+        "Previous verification did not match this source/base/tree; fresh canonical checks will run.",
+      );
+    }
+  };
+  const recordMeasuredCoverage = async (identity) => {
+    const contents = await readCoverage();
+    const filename = path.join(
+      directory,
+      "coverage/verification-coverage.json",
     );
-    identity.commit = report.identity.commit;
-  }
-  verifyCoverageManifest(report, identity, contents);
-  if (!process.env.SONAR_PROJECT_KEY)
-    throw new Error(
-      "Configure SONAR_PROJECT_KEY before analysis. No Sonar analysis was performed.",
+    if (environment.VERIFICATION_REUSED === "true") {
+      const candidate = previousCandidate();
+      verifyReusedCoverage(
+        await readCoverageProvenance(),
+        identity,
+        candidate,
+        await githubJson(identity, `actions/runs/${candidate.runId}`),
+        contents,
+        await reusePolicy(),
+      );
+      await output({
+        artifact: candidate.artifact,
+        attempt: candidate.runAttempt,
+        run_id: candidate.runId,
+      });
+      return;
+    }
+    await writeFile(
+      filename,
+      JSON.stringify(
+        coverageManifest(identity, contents, {
+          applicationReady: environment.VERIFICATION_APPLICATION === "true",
+          performanceAdvisory:
+            environment.VERIFICATION_PERFORMANCE_ADVISORY === "true",
+          performanceOutcome:
+            environment.VERIFICATION_PERFORMANCE_OUTCOME || "not-applicable",
+        }),
+        null,
+        2,
+      ) + "\n",
     );
-  console.log(
-    "Verified measured unit/governance coverage for the exact source head, base/tree and producer run.",
-  );
-};
-const executeEvidence = async (mode) => {
-  if (mode === "--performance-scope") {
-    await output(selectPerformanceScope());
-    return;
-  }
-  if (mode === "--scope") {
-    await recordVerificationScope();
-    return;
-  }
-  const identity = expectedIdentity();
-  if (
-    git("rev-parse", "HEAD") !== process.env.VERIFICATION_COMMIT ||
-    git("rev-parse", "HEAD^{tree}") !== identity.tree
-  )
-    throw new Error(
-      "The checked-out revision/tree differs from the tested coverage source",
+    const artifact = `verification-${identity.runId}-${identity.runAttempt}`;
+    await output({
+      artifact,
+      attempt: identity.runAttempt,
+      run_id: identity.runId,
+    });
+  };
+  const verifyMeasuredCoverage = async (identity) => {
+    const contents = await readCoverage();
+    const report = await readCoverageProvenance();
+    if (identity.runId !== environment.GITHUB_RUN_ID) {
+      const candidate = {
+        artifact: `verification-${identity.runId}-${identity.runAttempt}`,
+        runId: identity.runId,
+        runAttempt: identity.runAttempt,
+      };
+      verifyReusedCoverage(
+        report,
+        { ...identity, runId: environment.GITHUB_RUN_ID },
+        candidate,
+        await githubJson(identity, `actions/runs/${identity.runId}`),
+        contents,
+        await reusePolicy(),
+      );
+      identity.commit = report.identity.commit;
+    }
+    verifyCoverageManifest(report, identity, contents);
+    if (!environment.SONAR_PROJECT_KEY)
+      throw new Error(
+        "Configure SONAR_PROJECT_KEY before analysis. No Sonar analysis was performed.",
+      );
+    logger.log(
+      "Verified measured unit/governance coverage for the exact source head, base/tree and producer run.",
     );
+  };
+  const executeEvidence = async (mode) => {
+    if (mode === "--performance-scope") {
+      await output(selectPerformanceScope(now()));
+      return;
+    }
+    if (mode === "--scope") {
+      await recordVerificationScope();
+      return;
+    }
+    const identity = expectedIdentity();
+    if (
+      readGit("rev-parse", "HEAD") !== environment.VERIFICATION_COMMIT ||
+      readGit("rev-parse", "HEAD^{tree}") !== identity.tree
+    )
+      throw new Error(
+        "The checked-out revision/tree differs from the tested coverage source",
+      );
 
-  const operation = {
-    "--prepare-reuse": prepareCoverageReuse,
-    "--accept-reuse": acceptCoverageReuse,
-    "--record-coverage": recordMeasuredCoverage,
-    "--verify-coverage": verifyMeasuredCoverage,
-  }[mode];
-  await operation(identity);
+    const operation = {
+      "--prepare-reuse": prepareCoverageReuse,
+      "--accept-reuse": acceptCoverageReuse,
+      "--record-coverage": recordMeasuredCoverage,
+      "--verify-coverage": verifyMeasuredCoverage,
+    }[mode];
+    await operation(identity);
+  };
+
+  return executeEvidence;
 };
 
 if (isMain && executionModes.has(process.argv[2])) {
   try {
-    await executeEvidence(process.argv[2]);
+    await createEvidenceRunner()(process.argv[2]);
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
