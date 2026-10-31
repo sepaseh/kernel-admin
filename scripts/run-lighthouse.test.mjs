@@ -6,6 +6,7 @@ import {
   open,
   readdir,
   readFile,
+  realpath,
   rename,
   rm,
   symlink,
@@ -491,8 +492,11 @@ const publicBuildEnvironment = {
   VITE_APP_BASE_URL: "/console/",
   VITE_RELEASE_ID: "synthetic-v1",
 };
-const buildFixture = async () => {
-  const root = await mkdtemp(path.join(tmpdir(), "kernel-build-stamp-test-"));
+const buildFixture = async (temporaryParent = tmpdir()) => {
+  const temporaryRoot = await realpath(temporaryParent);
+  const root = await mkdtemp(
+    path.join(temporaryRoot, "kernel-build-stamp-test-"),
+  );
   const build = path.join(root, "dist");
   await mkdir(build);
   await writeFile(
@@ -503,7 +507,7 @@ const buildFixture = async () => {
     root,
     build,
     cleanup: async () => {
-      expect(path.dirname(path.resolve(root))).toBe(path.resolve(tmpdir()));
+      expect(path.dirname(path.resolve(root))).toBe(temporaryRoot);
       expect(path.basename(root).startsWith("kernel-build-stamp-test-")).toBe(
         true,
       );
@@ -513,6 +517,50 @@ const buildFixture = async () => {
 };
 
 describe("validated build metadata", () => {
+  it("keeps sibling ownership when the temporary parent is an alias", async () => {
+    const temporaryParent = await realpath(tmpdir());
+    const root = await mkdtemp(
+      path.join(temporaryParent, "kernel-build-parent-test-"),
+    );
+    const target = path.join(root, "target");
+    const alias = path.join(root, "alias");
+    let fixture;
+    try {
+      await mkdir(target);
+      await symlink(
+        target,
+        alias,
+        process.platform === "win32" ? "junction" : "dir",
+      );
+      fixture = await buildFixture(alias);
+      const canonicalParent = await realpath(target);
+      expect(path.dirname(fixture.root)).toBe(canonicalParent);
+      const metadata = await stampAdminBuild({
+        environment: publicBuildEnvironment,
+        buildDirectory: fixture.build,
+        openFile: async (file, flags) => {
+          expect(path.dirname(path.dirname(path.dirname(file)))).toBe(
+            fixture.root,
+          );
+          expect(path.relative(fixture.build, file).split(path.sep)[0]).toBe(
+            "..",
+          );
+          expect(flags).toBe("wx");
+          return open(file, flags);
+        },
+      });
+      expect(metadata).toEqual(createBuildMetadata(publicBuildEnvironment));
+      expect(await readdir(target)).toEqual([path.basename(fixture.root)]);
+    } finally {
+      if (fixture) await fixture.cleanup();
+      expect(path.dirname(root)).toBe(temporaryParent);
+      expect(path.basename(root).startsWith("kernel-build-parent-test-")).toBe(
+        true,
+      );
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("publishes only a complete closed identity from its temporary sibling", async () => {
     const fixture = await buildFixture();
     const output = path.join(fixture.build, "_kernel/build.json");
