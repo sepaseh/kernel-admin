@@ -15,6 +15,9 @@ const expectNoAxeViolations = async (page: Page, testInfo: TestInfo) => {
     contentType: "application/json",
   });
   expect(violations).toEqual([]);
+  expect(incomplete.filter((result) => result.id === "color-contrast")).toEqual(
+    [],
+  );
 };
 
 test.use({ reducedMotion: "reduce" });

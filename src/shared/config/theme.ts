@@ -127,6 +127,13 @@ export const createThemeConfig = (
         colorTextLightSolid: readableTextColor(floatPrimary),
       },
       Input: { colorBorder: controlBorder },
+      Pagination: {
+        itemActiveColor: ensureContrast(derived.colorPrimary, surfaces),
+        itemActiveColorHover: ensureContrast(
+          derived.colorPrimaryHover,
+          surfaces,
+        ),
+      },
       Select: {
         colorBorder: controlBorder,
         colorTextQuaternary: secondaryText,

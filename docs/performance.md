@@ -13,5 +13,3 @@ Published observability adapters and tests describe scoped event/privacy behavio
 Record the checked revision, runtime, first failure and limitations with each executed result. Laboratory measurements do not establish field results; thresholds, throttling and budgets must not be widened to conceal regressions. Real API-provider and deployed performance verification require their own authorized targets.
 
 See [testing](testing.md) and [deployment](deployment.md).
-
-Lighthouse remains a real audit with unchanged metric budgets and throttling. Its temporary advisory exception expires on **2026-11-07T00:00:00Z**. The **Kernel Admin frontend/test maintainer** owns fixture-startup repair and review before expiry. Report the original audit/setup failure separately; it is not a pass. An expired exception blocks validation until a renewed explicit decision or restored blocking enforcement is recorded.

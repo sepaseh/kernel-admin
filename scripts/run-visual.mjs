@@ -360,6 +360,8 @@ export function runVisualChild({
   executeFile = execFileSync,
   platform = process.platform,
   signals = process,
+  setTimer = setTimeout,
+  clearTimer = clearTimeout,
 }) {
   return new Promise((resolve, reject) => {
     const child = spawnCommand(command, args, {
@@ -367,12 +369,13 @@ export function runVisualChild({
       env: environment,
       stdio: "inherit",
       windowsHide: true,
-      timeout: 900_000,
     });
     let failure,
-      interrupted = false;
+      timer,
+      interrupted = false,
+      finished = false;
     const interrupt = () => {
-      if (interrupted) return;
+      if (interrupted || finished) return;
       interrupted = true;
       if (
         platform === "win32" &&
@@ -380,8 +383,13 @@ export function runVisualChild({
         child.pid > 0
       ) {
         try {
+          const systemRoot = environment.SystemRoot || String.raw`C:\Windows`;
+          if (!path.win32.isAbsolute(systemRoot))
+            throw new Error(
+              "Visual process cleanup requires an absolute Windows system root.",
+            );
           executeFile(
-            String.raw`C:\Windows\System32\taskkill.exe`,
+            path.win32.join(systemRoot, "System32", "taskkill.exe"),
             ["/pid", String(child.pid), "/T", "/F"],
             { stdio: "ignore", windowsHide: true, timeout: 10_000 },
           );
@@ -393,22 +401,26 @@ export function runVisualChild({
     };
     signals.on("SIGINT", interrupt);
     signals.on("SIGTERM", interrupt);
-    const removeListeners = () => {
+    const cleanup = () => {
+      if (finished) return;
+      finished = true;
+      clearTimer(timer);
       signals.removeListener("SIGINT", interrupt);
       signals.removeListener("SIGTERM", interrupt);
     };
     child.once("error", (error) => {
       failure = error;
       if (!child.pid) {
-        removeListeners();
+        cleanup();
         reject(error);
       }
     });
     child.once("close", (code) => {
-      removeListeners();
+      cleanup();
       if (failure) reject(failure);
       else resolve(interrupted ? 1 : (code ?? 1));
     });
+    timer = setTimer(interrupt, 900_000);
   });
 }
 

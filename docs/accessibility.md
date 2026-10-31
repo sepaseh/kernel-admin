@@ -4,7 +4,7 @@
 
 Use the [publication policy](../.github/bootstrap-policy.json) to establish admitted application capability and the [manifest](../.agents/validation.json) to select its required checks. Unit/component cases and the isolated Storybook Chromium suite remain required. The application-verification phase adds real route/browser fixtures; a successful synthetic journey does not establish deployed accessibility or a manual screen-reader review.
 
-Use Ant Design tokens and the shared theme for readable text, controls, status marks and visible focus in light/dark and LTR/RTL views. Decorative Lucide icons use `aria-hidden`; the owning control needs a translated accessible name. Keep genuine complete local catalogs and server-owned language/direction metadata.
+Use Ant Design tokens and the shared theme for readable text, controls, status marks and visible focus in light/dark and LTR/RTL views. The [shared theme](../src/shared/config/theme.ts) applies the existing 4.5:1 contrast guard to active and hovered pagination labels against container/layout surfaces; tests cover default light/dark themes with normal and compact spacing. Decorative Lucide icons use `aria-hidden`; the owning control needs a translated accessible name. Keep genuine complete local catalogs and server-owned language/direction metadata.
 
 For an affected form or dialog, verify keyboard submission, first invalid-field focus, labels and visible errors, focus containment/Escape/trigger restoration, and destructive confirmation behavior where implemented. Use accessible roles and labels with synthetic fixtures rather than implementation-only assertions. Storybook uses complete API mocks and treats accessibility violations as failures; do not disable audits to hide a defect.
 

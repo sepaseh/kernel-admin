@@ -1410,6 +1410,151 @@ test("Windows visual interrupts stop only the owned process tree before the CLI 
   assert.equal(signals.listenerCount("SIGTERM"), 0);
 });
 
+test("the visual deadline uses the supplied Windows system root and the same once-only owned-tree shutdown", async () => {
+  const child = new EventEmitter(),
+    signals = new EventEmitter(),
+    events = [],
+    timer = Symbol("synthetic visual deadline");
+  let expire,
+    cleared = 0;
+  child.pid = 321;
+  child.kill = (signal) => events.push(["kill", signal]);
+  const pending = runVisualChild({
+    command: "synthetic-node",
+    args: [],
+    environment: { SystemRoot: String.raw`D:\Windows` },
+    cwd: "synthetic-only",
+    spawnCommand: (_command, _args, options) => {
+      assert.equal(Object.hasOwn(options, "timeout"), false);
+      return child;
+    },
+    platform: "win32",
+    executeFile: (command, args) => events.push(["tree", command, args]),
+    signals,
+    setTimer: (callback, delay) => {
+      assert.equal(delay, 900_000);
+      expire = callback;
+      return timer;
+    },
+    clearTimer: (owned) => {
+      assert.equal(owned, timer);
+      cleared++;
+    },
+  });
+  expire();
+  signals.emit("SIGINT");
+  expire();
+  assert.deepEqual(events, [
+    [
+      "tree",
+      String.raw`D:\Windows\System32\taskkill.exe`,
+      ["/pid", "321", "/T", "/F"],
+    ],
+    ["kill", "SIGTERM"],
+  ]);
+  child.emit("close", 0);
+  assert.equal(await pending, 1);
+  assert.equal(cleared, 1);
+  assert.equal(signals.listenerCount("SIGINT"), 0);
+  assert.equal(signals.listenerCount("SIGTERM"), 0);
+  expire();
+  assert.equal(events.length, 2);
+});
+
+test("normal visual completion clears its owned deadline and cannot terminate a later reused PID", async () => {
+  const child = new EventEmitter(),
+    signals = new EventEmitter(),
+    timer = {};
+  let expire,
+    cleared = 0;
+  child.pid = 123;
+  child.kill = () => assert.fail("The completed child is no longer owned");
+  const pending = runVisualChild({
+    command: "synthetic-node",
+    args: [],
+    environment: {},
+    cwd: "synthetic-only",
+    spawnCommand: () => child,
+    platform: "win32",
+    executeFile: () => assert.fail("The completed tree is no longer owned"),
+    signals,
+    setTimer: (callback) => {
+      expire = callback;
+      return timer;
+    },
+    clearTimer: (owned) => {
+      assert.equal(owned, timer);
+      cleared++;
+    },
+  });
+  child.emit("close", 0);
+  assert.equal(await pending, 0);
+  assert.equal(cleared, 1);
+  assert.equal(signals.listenerCount("SIGINT"), 0);
+  assert.equal(signals.listenerCount("SIGTERM"), 0);
+  expire();
+  signals.emit("SIGTERM");
+});
+
+test("a failed visual spawn clears its deadline and listeners without targeting a process", async () => {
+  const child = new EventEmitter(),
+    signals = new EventEmitter(),
+    timer = {},
+    failure = new Error("synthetic spawn failed");
+  let expire,
+    cleared = 0;
+  child.kill = () => assert.fail("No child process was started");
+  const pending = runVisualChild({
+    command: "synthetic-node",
+    args: [],
+    environment: {},
+    cwd: "synthetic-only",
+    spawnCommand: () => child,
+    platform: "win32",
+    executeFile: () => assert.fail("No process tree was started"),
+    signals,
+    setTimer: (callback) => {
+      expire = callback;
+      return timer;
+    },
+    clearTimer: (owned) => {
+      assert.equal(owned, timer);
+      cleared++;
+    },
+  });
+  child.emit("error", failure);
+  await assert.rejects(pending, (error) => error === failure);
+  child.emit("close", -1);
+  assert.equal(cleared, 1);
+  assert.equal(signals.listenerCount("SIGINT"), 0);
+  assert.equal(signals.listenerCount("SIGTERM"), 0);
+  expire();
+  signals.emit("SIGINT");
+});
+
+test("a relative Windows system root cannot fall back to a process-cleanup PATH search", async () => {
+  const child = new EventEmitter(),
+    signals = new EventEmitter();
+  child.pid = 123;
+  child.kill = () => true;
+  const pending = runVisualChild({
+    command: "synthetic-node",
+    args: [],
+    environment: { SystemRoot: "relative-system-root" },
+    cwd: "synthetic-only",
+    spawnCommand: () => child,
+    platform: "win32",
+    executeFile: () =>
+      assert.fail("A relative cleanup executable is forbidden"),
+    signals,
+  });
+  signals.emit("SIGTERM");
+  child.emit("close", 0);
+  await assert.rejects(pending, /absolute Windows system root/);
+  assert.equal(signals.listenerCount("SIGINT"), 0);
+  assert.equal(signals.listenerCount("SIGTERM"), 0);
+});
+
 test("a Windows tree cleanup failure remains a failure after CLI termination and listener cleanup", async () => {
   const signals = new EventEmitter(),
     child = new EventEmitter(),
@@ -1559,7 +1704,7 @@ test("the visual CLI binds a pending capture to its public sources and synthetic
     const child = fixture.children[0];
     assert.equal(child.command, process.execPath);
     assert.equal(child.options.cwd, repository);
-    assert.equal(child.options.timeout, 900_000);
+    assert.equal(Object.hasOwn(child.options, "timeout"), false);
     assert.equal(child.options.windowsHide, true);
     assert.equal(child.options.stdio, "inherit");
     assert.deepEqual(child.args.slice(1), [

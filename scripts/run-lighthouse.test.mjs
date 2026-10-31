@@ -108,6 +108,13 @@ describe("Lighthouse authentication fixture readiness", () => {
     expect(() => prepared.verify()).not.toThrow();
     const auditTarget = await fixture.browser.contexts()[0].newPage();
     expect(auditTarget).not.toBe(fixture.page);
+    const application = await auditTarget.request(
+      "http://127.0.0.1:4174/auth/app.js",
+    );
+    expect(application.continue).toHaveBeenCalledOnce();
+    expect(application.fulfill).not.toHaveBeenCalled();
+    expect(application.abort).not.toHaveBeenCalled();
+    expect(() => prepared.verify()).not.toThrow();
     const settings = await auditTarget.request(
       "https://api.example.com/settings",
     );
