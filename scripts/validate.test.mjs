@@ -7,12 +7,10 @@ import { commandArguments, runProfile } from "./validate.mjs";
 
 const applicationChecks = [
   { id: "unused", command: "npm run check:unused" },
-  { id: "application-build", command: "npm run build" },
+  { id: "application-build", command: "npm run build:verification" },
   { id: "bundle", command: "npm run check:bundle" },
   { id: "contract", command: "npm run test:contract" },
   { id: "application-e2e", command: "npm run test:e2e" },
-  { id: "visual", command: "npm run test:visual" },
-  { id: "lighthouse", command: "npm run test:lighthouse" },
 ];
 const historicalManifest = () => {
   const manifest = JSON.parse(
@@ -77,7 +75,7 @@ test("the current full gate executes every published required check in declared 
   );
   const application = manifest.phase === "application-verification";
   assert.equal(manifest.applicationReady, application);
-  assert.equal(required.length, application ? 19 : 12);
+  assert.equal(required.length, application ? 17 : 12);
   const inherited = historicalManifest().checks.filter(
     (check) => check.kind === "required",
   );
@@ -114,9 +112,7 @@ test("the current full gate executes every published required check in declared 
   );
   assert.equal(
     pkg.scripts["browser:install"],
-    application
-      ? "playwright install --with-deps chromium firefox webkit"
-      : "playwright install --with-deps chromium",
+    "playwright install --with-deps chromium",
   );
   assert.deepEqual(
     manifest.profiles.full,
@@ -166,7 +162,7 @@ test("the historical twelve-check fixture executes every inherited command witho
   );
 });
 
-test("the future nineteen-check fixture retains the inherited gate and rejects every omitted application check before execution", () => {
+test("the future seventeen-check fixture retains the inherited gate and rejects every omitted application check before execution", () => {
   const manifest = historicalManifest();
   manifest.phase = "application-verification";
   manifest.applicationReady = true;
@@ -176,9 +172,9 @@ test("the future nineteen-check fixture retains the inherited gate and rejects e
   manifest.profiles.full.push(...applicationChecks.map((check) => check.id));
   assert.equal(
     manifest.checks.filter((check) => check.kind === "required").length,
-    19,
+    17,
   );
-  assert.equal(manifest.profiles.full.length, 19);
+  assert.equal(manifest.profiles.full.length, 17);
   assert.deepEqual(manifest.profiles.full.slice(10, 12), [
     "storybook-build",
     "storybook-browser",
@@ -409,4 +405,65 @@ test("focused profiles keep their explicit scope and may include manual or advis
     0,
   );
   assert.deepEqual(executed, ["lab", "deploy"]);
+});
+
+test("complete verification retains core checks and replaces the Chromium suite rather than repeating it", () => {
+  const declared = historicalManifest();
+  declared.applicationReady = true;
+  declared.phase = "application-verification";
+  declared.checks.push(
+    ...applicationChecks.map((check) => ({ ...check, kind: "required" })),
+    {
+      id: "browser-compatibility",
+      command: "npm run test:e2e:complete",
+      kind: "manual",
+    },
+    { id: "visual", command: "npm run test:visual", kind: "manual" },
+  );
+  declared.profiles.full = declared.checks
+    .filter((check) => check.kind === "required")
+    .map((check) => check.id);
+  declared.profiles.complete = [
+    ...declared.profiles.full.slice(0, -1),
+    "browser-compatibility",
+    "visual",
+  ];
+  const executed = [];
+  assert.equal(
+    runProfile(declared, "complete", (_args, check) => {
+      executed.push(check.id);
+      return 0;
+    }),
+    0,
+  );
+  assert.deepEqual(executed, [
+    ...declared.profiles.full.slice(0, -1),
+    "browser-compatibility",
+    "visual",
+  ]);
+  for (const ids of [
+    declared.profiles.complete.filter((id) => id !== "visual"),
+    [...declared.profiles.complete, "application-e2e"],
+    declared.profiles.complete.filter((id) => id !== "contract"),
+    [...declared.profiles.complete].reverse(),
+  ]) {
+    const value = structuredClone(declared);
+    value.profiles.complete = ids;
+    const seen = [];
+    assert.throws(
+      () =>
+        runProfile(value, "complete", (_args, check) => seen.push(check.id)),
+      /Complete verification/,
+    );
+    assert.deepEqual(seen, []);
+  }
+});
+
+test("an advisory profile still returns its observed failure instead of claiming a local pass", () => {
+  const value = mixedManifest();
+  value.profiles.performance = ["lab"];
+  assert.equal(
+    runProfile(value, "performance", () => 9),
+    9,
+  );
 });

@@ -119,7 +119,7 @@ establish those results in advance.
 
 ## Finite operations and quality prerequisites
 
-The same `assistant-guidance` identifier now deliberately includes 70 additional maintained paths, bringing the declared inventory to 436. The extension adds reviewed synthetic public examples, deployment/release sources, pure bundle/Lighthouse/target policies, complete operational EN/FA guides and dated visual provenance. It keeps `applicationReady: false`, every inherited check and the rejection of unplanned application entry/build files.
+The earlier preparation extension admitted 70 additional paths. Consolidating its scanner workflow leaves 435 declared maintained paths under the same `assistant-guidance` identifier. The extension adds reviewed synthetic public examples, deployment/release sources, pure bundle/Lighthouse/target policies, complete operational EN/FA guides and dated visual provenance. It keeps `applicationReady: false`, every inherited check and the rejection of unplanned application entry/build files.
 
 The exact example exceptions are `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example`. Only deliberately declared, reviewed synthetic Git sources qualify; arbitrary environment files, credentials and local operator state remain forbidden. The four PNGs and their metadata retain historical bytes and review dates, not current approval.
 

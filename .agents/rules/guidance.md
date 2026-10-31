@@ -6,20 +6,12 @@ entry points and hooks are not runtime dependencies or evidence of automatic loa
 
 ## Canonical sources
 
-- Runtime ownership and behavior: current source, feature HTTP DTOs, synthetic
-  consumer tests and executable boundary policies. Backend routes, authentication,
-  database, storage and API-owned wire evidence stay in the separate API repository.
-- Published scope: `.github/bootstrap-policy.json`. The current
-  `assistant-guidance` phase retains `applicationReady: false`; isolated Storybook
-  does not establish application initialization, full E2E, visual approval or deployment. Finite public operational prerequisites are published within the same identifier, not a runnable activation.
-- Validation commands/profiles: `.agents/validation.json`. Settings and documentation
-  are links or checked projections, never separate complete gate definitions.
-- Task ownership: `.agents/navigation.json` and
-  [source navigation](../../docs/source-navigation.md). Open actual owners,
-  contracts and tests rather than trusting the map alone.
+- Runtime ownership and behavior: current source, feature HTTP DTOs, synthetic consumer tests and executable boundaries. Backend routes, authentication, database, storage and API-owned wire evidence remain in the independent API repository.
+- Published scope: `.github/bootstrap-policy.json`. Read its actual phase and `applicationReady` flag. With readiness false, modules, Storybook and preparatory tooling do not establish application initialization, full E2E, current image approval or deployment. With readiness true, source admission still needs actual applicable checks and does not authorize deployment.
+- Validation commands/profiles: `.agents/validation.json`. Settings and documentation are links or checked projections, never a second command inventory.
+- Task ownership: `.agents/navigation.json` and [source navigation](../../docs/source-navigation.md); inspect actual source, contracts and tests.
 - Decisions: [ADRs](../../docs/adr/README.md); explain consequences and supersession.
-- Evaluation: `.agents/evaluation/cases.json`, its run template and
-  [comprehension evaluation](../../docs/comprehension-evaluation.md).
+- Evaluation: `.agents/evaluation/cases.json`, its run template and [comprehension evaluation](../../docs/comprehension-evaluation.md).
 
 Correct active explanations that conflict with verified source. Preserve dated
 research and historical evidence as history, not current runtime structure or a
@@ -38,11 +30,7 @@ relative to each document. Link only published paths; describe future surfaces a
 plain code references. Prefer current symbols/paths over fragile line numbers in
 living navigation, and verified lines in actual review evidence.
 
-The guidance checker validates safe paths, links, indexes and command projection.
-Guidance/safety regressions run inside the existing governance coverage suite. The
-focused guidance profile includes an advisory regression command; the required full
-profile includes twelve checks without duplicating that suite. Optional Node/Bash
-hooks need compatible host support; they cannot replace the complete gate.
+The guidance checker validates safe paths, links, indexes and command projection. Guidance/safety regressions remain inside measured governance coverage. Settings project the current blocking `full` plan; the manifest separately declares any admitted complete compatibility, hosted image or advisory performance roles. Optional Node/Bash hooks require compatible hosts and never replace validation.
 
 Static checks cannot prove assistant discovery, semantic completeness, aesthetic
 quality or improved model performance. Record host-reported loaded-file evidence
@@ -68,4 +56,6 @@ The declared inventory includes finite deployment/release helpers, pure quality 
 
 Only explicitly declared, reviewed synthetic public examples at `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example` qualify for source admission. Do not generalize this to another environment filename or read a local private homonym. Real credentials, certificates and operator state remain outside guidance/source verification.
 
-Keep twelve required full checks and existing measured suite owners. No new operational command/profile is implied by prose. Read [deployment](../../docs/deployment.md), [test reliability](../../docs/test-reliability.md) and [visual history](../../docs/visual-regression.md); preserve actual source revisions and limits.
+Preserve the declared current core profile, measured suite owners, product assertions and coverage thresholds. Commands and profile roles are admitted by the manifest, not prose. Read [deployment](../../docs/deployment.md), [test reliability](../../docs/test-reliability.md) and [visual history](../../docs/visual-regression.md); preserve source revisions and evidence limits.
+
+The approved workflow model reuses reports only with verified tested-source and original-producer identity. Scheduled/manual requests and synthetic future-phase fixtures never change the readiness flag or activate unpublished application behavior.

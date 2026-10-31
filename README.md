@@ -101,7 +101,7 @@ must expand to cover the application.
 
 ## Operational and quality prerequisites
 
-This publication intentionally extends `assistant-guidance` with public configuration examples, deployment/release helpers, pure quality policies and complete [operational guides](docs/deployment.md). The exact [inventory](.github/bootstrap-policy.json) contains 436 maintained paths; the application remains non-runnable.
+This publication intentionally extends `assistant-guidance` with public configuration examples, deployment/release helpers, pure quality policies and complete [operational guides](docs/deployment.md). The exact [inventory](.github/bootstrap-policy.json) contains 435 maintained paths; the application remains non-runnable.
 
 New helper regressions join the existing measured unit/governance suites. They exercise explicit synthetic inputs and owned-resource failure handling; they do not start Docker/Chrome, build the panel or contact a deployed API. [Performance policy](docs/performance.md), [contract preparation](docs/contract-testing.md) and [security review](docs/security/reviews.md) describe their actual scope. The four Windows PNGs and metadata are [dated provenance](docs/visual-regression.md), not a fresh baseline approval.
 

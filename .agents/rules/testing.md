@@ -1,25 +1,14 @@
 # Testing
 
-The current `assistant-guidance` phase keeps `applicationReady: false`. Vitest,
-React Testing Library, synthetic MSW fixtures and the isolated Storybook Chromium
-suite verify published modules. The existing 68 registered story cases use full
-API/client mocks, fixture resets and failing unexpected-request guards; they do
-not prove an integrated application journey or production API compatibility.
+Read the publication policy's actual phase and `applicationReady` value before selecting evidence. Published modules and isolated Storybook use Vitest, React Testing Library, synthetic MSW responses, full API/client mocks and fail-closed unexpected-request guards. When readiness is false, those tests do not establish a composed application or current image comparison. When the application is admitted, its synthetic browser journeys still do not establish production API compatibility.
 
 ## Select the current check
 
-Use the [validation manifest](../validation.json) and
-[validation policy](../../docs/validation.md). Start with the smallest affected
-check, then run `npm run validate -- full` on the exact final snapshot before an
-authorized commit, push or PR handoff. Full contains twelve required checks.
-Guidance and safety regressions run within the existing governance coverage
-command and LCOV. The focused `guidance` profile includes the required guidance
-check and advisory `test:guidance`; it does not replace the full gate.
+Use the [validation manifest](../validation.json) and [validation policy](../../docs/validation.md). Start with the smallest affected test, then run the current blocking `full` profile on the exact proposed snapshot before an authorized commit, push or PR handoff. Settings project that plan; prose must not create another command list. Guidance and portable safety regressions remain inside measured governance coverage, and focused profiles do not replace required checks.
 
-Keep the measured unit thresholds: 69% lines, 68% statements, 59% functions and
-54% branches. Do not replace genuine LCOV with static counts, Storybook build
-output or browser artifacts. Required checks cannot be skipped or weakened to
-make a change pass.
+Keep production thresholds at 69% lines, 68% statements, 59% functions and 54% branches. Never fabricate LCOV or substitute browser/build artifacts for measured coverage. Sonar consumes the original verified reports for the same tested source instead of running the suite again. Report optional host skips and advisory failures separately from passes.
+
+When application checks are admitted, ordinary PR validation uses Chromium; scheduled/manual complete verification substitutes the full declared browser matrix and performs applicable image comparison once. A request while readiness is false remains limited to the current core profile and does not establish pre-release application verification. Local code validation does not require matching the reviewed image runtime. Performance exceptions require the actual manifest's owner, expiry and observed result; expired exceptions do not silently waive a blocking check.
 
 ## Choose meaningful coverage
 
@@ -34,8 +23,9 @@ make a change pass.
   existing measured coverage.
 - Rendering, release packaging and Docker resource/orchestration: disposable
   synthetic governance cases, without launching real infrastructure.
-- Complete application E2E, current visual regression and real deployment:
-  future activation work; published prerequisites/history do not execute them.
+- Admitted application behavior: real synthetic browser and consumer-contract checks on owned resources.
+- Image comparison: matching approved runtime, unchanged tolerances and actual human-approved baselines.
+- Real provider, Docker, staging and deployment: separate source admission, target authorization and observed evidence.
 
 Use [request reliability](../../docs/admin-request-reliability.md),
 [Storybook verification](../../docs/storybook-verification.md) and
@@ -48,12 +38,12 @@ passthrough or contact a real API. Accessibility violations are errors. Do not
 disable audits or widen thresholds to hide a failure. Synthetic preview toolbar
 language/direction settings do not create visitor preferences.
 
-Use disposable, uniquely owned resources and clean only those resources. If a
-future application/deployment task introduces servers, containers or visual
+Use disposable, uniquely owned resources and clean only those resources. When an
+application/deployment task introduces servers, containers or visual
 baselines, it must also provide genuine checks and targeted cleanup. Never read,
 move or reuse real `.env.local`, credentials, `server/data`, databases, uploads or
 another checkout's running service as a fixture.
 
-Read [component coverage](../../docs/component-coverage.md), [performance policy](../../docs/performance.md) and [test reliability](../../docs/test-reliability.md). The three public example exceptions contain reviewed synthetic values only; real/local environments and operator certificates remain unread. New prerequisite suites run once in existing unit/governance commands; no third full suite or operational profile is added.
+Read [component coverage](../../docs/component-coverage.md), [performance policy](../../docs/performance.md) and [test reliability](../../docs/test-reliability.md). The three public example exceptions contain reviewed synthetic values only; real/local environments and operator certificates remain unread. Helper suites run once inside their existing measured owners; the manifest declares applicable profiles without authorizing operations.
 
-Keep existing stress corpora, assertions and bounded deadlines. Separate newly added behavior into another mandatory bounded child when appropriate rather than accumulating unrelated workload under a legacy deadline or weakening the guard. Historical Win32 assets and metadata are provenance, not a fresh screenshot pass. Real Docker/Chrome/preview/provider/staging checks require future source, explicit authorization, owned-resource cleanup and actual evidence.
+Keep existing stress corpora, assertions and bounded deadlines. Separate newly added behavior into another mandatory bounded child when appropriate rather than accumulating unrelated workload under a legacy deadline or weakening the guard. Historical Win32 assets and metadata are provenance, not a fresh screenshot pass. Real checks require admitted source, applicable authorization, owned-resource cleanup and actual evidence; preparatory fixtures do not establish execution.

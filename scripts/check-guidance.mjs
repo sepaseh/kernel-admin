@@ -84,7 +84,7 @@ export const validateStandaloneLockfile = (lock, pkg) => {
   return errors;
 };
 
-const checkDefinitions = (definitions) => {
+const checkDefinitions = (definitions, application = false) => {
   const errors = [];
   const ids = definitions.map((check) => check?.id);
   if (!isStrings(ids) || !ids.length || duplicates(ids))
@@ -99,7 +99,16 @@ const checkDefinitions = (definitions) => {
       errors.push(`Invalid check definition: ${check?.id}`);
       continue;
     }
-    const jobs = check.kind === "required" ? ["check"] : [];
+    const scheduledApplicationChecks = new Set([
+      "visual",
+      "browser-compatibility",
+      "lighthouse",
+    ]);
+    const jobs =
+      check.kind === "required" ||
+      (application && scheduledApplicationChecks.has(check.id))
+        ? ["check"]
+        : [];
     if (!same(check.ciJobs, jobs))
       errors.push(`Canonical CI ownership differs for ${check.id}`);
   }
@@ -161,7 +170,10 @@ export const validateManifest = (manifest, settings, workflows) => {
     !isRecord(manifest.profiles)
   )
     return ["Invalid validation manifest schema"];
-  const definitions = checkDefinitions(manifest.checks);
+  const definitions = checkDefinitions(
+    manifest.checks,
+    manifest.applicationReady === true,
+  );
   const checks = new Map(manifest.checks.map((check) => [check?.id, check]));
   const errors = [
     ...definitions,
@@ -1140,17 +1152,19 @@ const inspectObsoleteRoots = async (root) => {
 export const checkGuidance = async (directory = repository) => {
   const root = await realpath(directory);
   const json = async (filename) => JSON.parse(await readSource(root, filename));
-  const [manifest, settings, navigation, evaluation, pkg, lock, ci, sonar] =
-    await Promise.all([
-      json(".agents/validation.json"),
-      json(".agents/settings.json"),
-      json(".agents/navigation.json"),
-      json(".agents/evaluation/cases.json"),
-      json("package.json"),
-      json("package-lock.json"),
-      readSource(root, ".github/workflows/ci.yml"),
-      readSource(root, ".github/workflows/sonar.yml"),
-    ]);
+  const manifest = await json(".agents/validation.json");
+  const [settings, navigation, evaluation, pkg, lock, ci] = await Promise.all([
+    json(".agents/settings.json"),
+    json(".agents/navigation.json"),
+    json(".agents/evaluation/cases.json"),
+    json("package.json"),
+    json("package-lock.json"),
+    readSource(root, ".github/workflows/ci.yml"),
+  ]);
+  const sonar =
+    manifest.verificationModel === "single-pass-v1" || manifest.applicationReady
+      ? ci
+      : await readSource(root, ".github/workflows/sonar.yml");
   const errors = [
     ...validateManifest(manifest, settings, { CI: ci, Sonar: sonar }),
     ...validateStandaloneManifest(pkg),

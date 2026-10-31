@@ -85,6 +85,39 @@ const workflows = ({ ci, sonar }) => ({
   CI: stringify(ci),
   Sonar: stringify(sonar),
 });
+
+test("application guidance requires one execution owner while preserving prerequisite ownership", async () => {
+  const source = (name) =>
+    readFile(new URL("../" + name, import.meta.url), "utf8");
+  const manifest = JSON.parse(await source(".agents/validation.json"));
+  const settings = JSON.parse(await source(".agents/settings.json"));
+  const hosted = {
+    CI: await source(".github/workflows/ci.yml"),
+    Sonar: await source(".github/workflows/ci.yml"),
+  };
+  assert.deepEqual(validateManifest(manifest, settings, hosted), []);
+  const owned = manifest.checks.filter(
+    (check) =>
+      check.kind === "required" ||
+      (manifest.applicationReady &&
+        ["visual", "browser-compatibility", "lighthouse"].includes(check.id)),
+  );
+  for (const { id } of owned)
+    for (const jobs of [[], ["check", "other"], ["build", "check"]]) {
+      const changed = structuredClone(manifest);
+      changed.checks.find((item) => item.id === id).ciJobs = jobs;
+      assert.match(
+        validateManifest(changed, settings, hosted).join("\n"),
+        /Canonical CI ownership differs/,
+      );
+    }
+  const prerequisite = fixture();
+  prerequisite.manifest.checks[0].ciJobs = ["check", "build"];
+  assert.match(
+    inspect(prerequisite).join("\n"),
+    /Canonical CI ownership differs/,
+  );
+});
 const inspect = (state) =>
   validateManifest(state.manifest, state.settings, workflows(state));
 

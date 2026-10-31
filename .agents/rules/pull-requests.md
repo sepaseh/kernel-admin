@@ -37,12 +37,7 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
 - Verify actual provider evidence for the current PR head. Missing, pending,
   failed, skipped or quota-limited review/analysis must not be reported as a
   completed review or passing analysis. Do not remove checks to hide a failure.
-- Match protection to the declared published phase, changing remote requirements
-  only with explicit authorization. A foundation with `applicationReady: false`
-  requires its actual phase CI, scanner, Sonar quality gate and CodeRabbit; it
-  must not claim unpublished application checks. Before any runnable application
-  merge, introduce real build, end-to-end and visual jobs, observe them pass, add
-  them to required checks and expand the full canonical application gate.
+- Match protection to the declared phase and approved workflow model. Keep the existing native contexts and protection settings unless a remote transition is authorized. When application readiness is false, require the declared module/workshop gate without claiming unpublished application behavior. When readiness is true, require the applicable genuine application checks before merge. Do not duplicate test suites solely to create extra contexts or claim preparatory fixtures activate the panel.
 - Inspect actual check details, review results and project binding for the latest
   PR head. Configuration files, installed apps and a successful status alone do
   not prove analysis or review ran; success may represent a skipped review.
@@ -88,3 +83,5 @@ Do not create, update, mark ready, merge or close a pull request without explici
 authorization covering that action. Honor authorization and preferences already
 provided in the conversation; do not introduce another approval step for the same
 authorized action. A request to publish a PR includes the necessary branch push.
+
+The protected check job executes on every applicable event. Title/body-only PR edits may reuse original measured coverage only when the latest earlier CI run actually succeeded for the same head, destination base and checked commit/tree, with the original producer/run identity and both LCOV digests verified. Missing or mismatched evidence requires a fresh full run. A skipped job is not a successful execution, and a base change invalidates reuse. The actual **SonarQube Cloud analysis** job then scans the verified source using those reports without rerunning the suite.

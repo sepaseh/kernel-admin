@@ -5,6 +5,7 @@ import {
   mkdtemp,
   readdir,
   readFile,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -16,8 +17,10 @@ import { test } from "node:test";
 
 import { packageRelease } from "./package-release.mjs";
 
-const fixture = async (basePath = "/") => {
-  const root = await mkdtemp(path.join(tmpdir(), "kernel-admin-package-"));
+const fixture = async (basePath = "/", temporaryParent = tmpdir()) => {
+  const root = await mkdtemp(
+    path.join(await realpath(temporaryParent), "kernel-admin-package-"),
+  );
   const build = path.join(root, "dist");
   await mkdir(path.join(build, "_kernel"), { recursive: true });
   await mkdir(path.join(build, "assets"));
@@ -36,8 +39,11 @@ const fixture = async (basePath = "/") => {
   );
   return { root, build };
 };
-const cleanup = async (root) => {
-  assert.equal(path.dirname(path.resolve(root)), path.resolve(tmpdir()));
+const cleanup = async (root, temporaryParent = tmpdir()) => {
+  assert.equal(
+    path.dirname(path.resolve(root)),
+    await realpath(temporaryParent),
+  );
   assert.ok(path.basename(root).startsWith("kernel-admin-package-"));
   await rm(root, { recursive: true, force: true });
 };
@@ -189,3 +195,39 @@ test(
     }
   },
 );
+
+test("canonicalizes an owned temporary-parent alias before packaging", async () => {
+  const temporaryParent = await realpath(tmpdir());
+  const container = await mkdtemp(
+    path.join(temporaryParent, "kernel-package-parent-test-"),
+  );
+  const target = path.join(container, "target");
+  const alias = path.join(container, "alias");
+  let root;
+  try {
+    await mkdir(target);
+    await symlink(
+      target,
+      alias,
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    ({ root } = await fixture("/", alias));
+    assert.equal(path.dirname(root), await realpath(target));
+    const output = await packageRelease({
+      repositoryRoot: root,
+      releaseId: "synthetic-v1",
+    });
+    assert.equal(output.directory, path.join(root, "releases/synthetic-v1"));
+    assert.deepEqual(await readdir(target), [path.basename(root)]);
+  } finally {
+    try {
+      if (root) await cleanup(root, target);
+    } finally {
+      assert.equal(path.dirname(container), temporaryParent);
+      assert.ok(
+        path.basename(container).startsWith("kernel-package-parent-test-"),
+      );
+      await rm(container, { recursive: true, force: true });
+    }
+  }
+});
