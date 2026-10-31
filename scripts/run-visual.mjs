@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
   lstat,
@@ -357,6 +357,8 @@ export function runVisualChild({
   environment,
   cwd,
   spawnCommand = spawn,
+  executeFile = execFileSync,
+  platform = process.platform,
   signals = process,
 }) {
   return new Promise((resolve, reject) => {
@@ -372,6 +374,21 @@ export function runVisualChild({
     const interrupt = () => {
       if (interrupted) return;
       interrupted = true;
+      if (
+        platform === "win32" &&
+        Number.isSafeInteger(child.pid) &&
+        child.pid > 0
+      ) {
+        try {
+          executeFile(
+            String.raw`C:\Windows\System32\taskkill.exe`,
+            ["/pid", String(child.pid), "/T", "/F"],
+            { stdio: "ignore", windowsHide: true, timeout: 10_000 },
+          );
+        } catch (error) {
+          failure ??= error;
+        }
+      }
       child.kill("SIGTERM");
     };
     signals.on("SIGINT", interrupt);

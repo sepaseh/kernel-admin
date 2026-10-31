@@ -44,8 +44,9 @@ suite decodes the actual WOFF2 bytes using dev-only Fontkit, verifies the family
 100–900 weight-axis metadata, Persian/Latin cmap and default glyph outlines, and
 checks license identity, exact hashes, CSS font references and safe self-contained
 SVGs. The stylesheet retains visible keyboard focus and reduced-motion behavior.
-These checks do not prove browser loading or interpolation at every font weight;
-the real font-loading browser journey belongs to the later runnable panel gate.
+These static checks do not prove browser loading or interpolation at every font
+weight. The real font-loading browser journey ([`e2e/font.spec.ts`](../e2e/font.spec.ts))
+is part of the manifest's required `application-e2e` check.
 
 Reduced-motion rules require the admin `#root` or Storybook `#storybook-root`,
 include document scrolling and portals outside that root, and stay reactive to

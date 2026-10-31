@@ -158,7 +158,7 @@ beforeEach(() => {
 });
 
 describe("user identity form", () => {
-  it("restores initial focus when reopening before the close callback completes", async () => {
+  it("resets creation values and initial focus when reopening", async () => {
     mocks.deferDrawerOpening = true;
     mocks.deferDrawerClosing = true;
     const { user } = renderAtHash(

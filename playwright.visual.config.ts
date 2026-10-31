@@ -11,14 +11,13 @@ if (!["0", "1"].includes(process.env.KERNEL_VISUAL_UPDATE ?? ""))
   throw new Error("The visual runner must declare comparison or capture mode.");
 
 const update = process.env.KERNEL_VISUAL_UPDATE === "1";
-if (
-  process.env.CI &&
-  (update ||
-    process.argv.some(
-      (arg) => arg.startsWith("--update-snapshots") || arg.startsWith("-u"),
-    ))
-)
+const snapshotUpdateFlag = process.argv.some(
+  (arg) => arg.startsWith("--update-snapshots") || arg.startsWith("-u"),
+);
+if (process.env.CI && (update || snapshotUpdateFlag))
   throw new Error("Visual baseline updates are forbidden in CI.");
+if (!update && snapshotUpdateFlag)
+  throw new Error("Snapshot-update flags require KERNEL_VISUAL_UPDATE=1.");
 
 const repository = fileURLToPath(new URL("./", import.meta.url));
 const baselineDirectory = path.resolve(

@@ -69,6 +69,17 @@ const lighthouseFixtureDriver = ({
     on: vi.fn(),
     newPage: vi.fn(async () => page),
   };
+  const auditTarget = {
+    context: () => context,
+    request: async (url) => {
+      expect(page.close).toHaveBeenCalledOnce();
+      expect(auditTarget.context().route).toHaveBeenCalledOnce();
+      const request = route(url);
+      await routeHandler(request);
+      return request;
+    },
+  };
+  context.newPage.mockResolvedValueOnce(page).mockResolvedValue(auditTarget);
   const browser = {
     contexts: () => [context],
     close: vi.fn(async () => undefined),
@@ -79,11 +90,6 @@ const lighthouseFixtureDriver = ({
     ready,
     chromium: { connectOverCDP: vi.fn(async () => browser) },
     settings: vi.fn((language) => ({ language })),
-    request: async (url) => {
-      const request = route(url);
-      await routeHandler(request);
-      return request;
-    },
   };
 };
 
@@ -100,7 +106,17 @@ describe("Lighthouse authentication fixture readiness", () => {
     expect(fixture.ready).toHaveBeenCalledTimes(2);
     expect(fixture.page.close).toHaveBeenCalledOnce();
     expect(() => prepared.verify()).not.toThrow();
-    const foreign = await fixture.request(
+    const auditTarget = await fixture.browser.contexts()[0].newPage();
+    expect(auditTarget).not.toBe(fixture.page);
+    const settings = await auditTarget.request(
+      "https://api.example.com/settings",
+    );
+    expect(settings.fulfill).toHaveBeenCalledExactlyOnceWith({
+      json: { language: "en" },
+    });
+    expect(fixture.settings).toHaveBeenCalledTimes(2);
+    expect(() => prepared.verify()).not.toThrow();
+    const foreign = await auditTarget.request(
       "https://foreign.example.test/private",
     );
     expect(foreign.abort).toHaveBeenCalledExactlyOnceWith("blockedbyclient");

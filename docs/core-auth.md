@@ -13,7 +13,7 @@ lifecycle. It starts with Persian bootstrap metadata, retains usable settings
 during refresh, supports retry and refreshes on focus. Accepting a saved settings
 snapshot supersedes the older read. Aborted or obsolete reads cannot overwrite
 the current settings. `SettingsFeedback` exposes loading, failure and retry state
-to the eventual application composition.
+inside the application's Ant Design subtree.
 Core keeps its context value and action callbacks stable when an unrelated parent
 render does not change state. Actual settings and appearance changes still reach
 context consumers.
@@ -26,10 +26,12 @@ Only theme and compact mode are browser preferences, with storage-event updates.
 There is no visitor language preference. See [localization](localization.md) and
 [UI foundation](ui-foundation.md).
 
-`useCore` and `useAntd` require their corresponding providers. The later
-application must compose Core outside Ant Design and mount forms/layouts inside a
-router. This stage tests those modules with explicit synthetic provider/router
-trees rather than introducing production initialization.
+`useCore` and `useAntd` require their corresponding providers.
+[App](../src/app/App.tsx) mounts `CoreProvider` outside the lazily loaded
+`AntdProvider`. The themed subtree contains `SettingsFeedback` and mounts
+`Routes` when validated palettes are available; bootstrap loading remains outside
+Ant Design. Forms and layouts render inside that router. Module tests use explicit
+synthetic provider/router trees; they do not establish production API integration.
 
 ## Session and access ownership
 
@@ -71,7 +73,7 @@ after its page had left. Cancellation protects client continuation and state; it
 cannot undo a server-side mutation or a cookie already accepted by the browser.
 Request URLs and payloads are unchanged. See [request reliability](admin-request-reliability.md).
 
-## Evidence and later activation
+## Verification evidence
 
 Real React/Ant Design tests in jsdom exercise Core settings replacement and
 focus/retry, exact locale metadata, account/navigation/layout behavior and form

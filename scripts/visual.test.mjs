@@ -667,24 +667,58 @@ test("the actual update command rejects CI before inspecting baselines or starti
   assert.match(result.stderr, /Visual baseline updates are forbidden in CI/);
 });
 
-test("the actual visual config rejects short and long update flags in CI", () => {
+test("the actual visual config requires declared capture for update flags and forbids every CI update", () => {
   const configuration = new URL(
     "../playwright.visual.config.ts",
     import.meta.url,
   );
-  for (const flag of [
+  const flags = [
     "-u",
     "-u=all",
     "-uall",
     "--update-snapshots",
     "--update-snapshots=all",
-  ]) {
+  ];
+  const scenarios = [
+    { update: "0", ci: "", expected: "none" },
+    { update: "1", ci: "", expected: "all" },
+    {
+      update: "1",
+      ci: "1",
+      error: /Visual baseline updates are forbidden in CI/,
+    },
+    ...flags.flatMap((flag) => [
+      { flag, update: "0", ci: "", error: /require KERNEL_VISUAL_UPDATE=1/ },
+      { flag, update: "1", ci: "", expected: "all" },
+      {
+        flag,
+        update: "0",
+        ci: "1",
+        error: /Visual baseline updates are forbidden in CI/,
+      },
+      {
+        flag,
+        update: "1",
+        ci: "1",
+        error: /Visual baseline updates are forbidden in CI/,
+      },
+    ]),
+  ];
+  const repository = fileURLToPath(new URL("../", import.meta.url));
+  for (const scenario of scenarios) {
+    const label = JSON.stringify(scenario);
     const result = spawnSync(
       process.execPath,
       [
         "--input-type=module",
         "-e",
-        `process.argv.push(${JSON.stringify(flag)}); await import(${JSON.stringify(configuration.href)});`,
+        [
+          scenario.flag
+            ? `process.argv.push(${JSON.stringify(scenario.flag)});`
+            : "",
+          `const configuration = await import(${JSON.stringify(configuration.href)});`,
+          "console.log(configuration.default.updateSnapshots);",
+        ].join("\n"),
       ],
       {
         env: {
@@ -692,20 +726,37 @@ test("the actual visual config rejects short and long update flags in CI", () =>
             PATH: process.env.PATH,
             SystemRoot: process.env.SystemRoot,
           }),
-          CI: "1",
-          KERNEL_VISUAL_UPDATE: "0",
+          CI: scenario.ci,
+          KERNEL_VISUAL_UPDATE: scenario.update,
+          KERNEL_VISUAL_BASELINES:
+            scenario.update === "1"
+              ? path.join(
+                  repository,
+                  "coverage/visual/captures/candidate-synthetic",
+                )
+              : path.join(
+                  repository,
+                  "e2e/visual/baselines/application",
+                  process.platform,
+                ),
+          KERNEL_VISUAL_RESULTS: path.join(
+            repository,
+            "coverage/visual/run-synthetic",
+          ),
         },
         encoding: "utf8",
         windowsHide: true,
         timeout: 10_000,
       },
     );
-    assert.notEqual(result.status, 0, flag);
-    assert.match(
-      result.stderr,
-      /Visual baseline updates are forbidden in CI/,
-      flag,
-    );
+    assert.ifError(result.error);
+    if (scenario.error) {
+      assert.notEqual(result.status, 0, label);
+      assert.match(result.stderr, scenario.error, label);
+    } else {
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stdout.trim(), scenario.expected, label);
+    }
   }
 });
 
@@ -1282,6 +1333,7 @@ test("visual child signals target only its owned process and remove listeners af
     environment: {},
     cwd: tmpdir(),
     spawnCommand: () => child,
+    platform: "linux",
     signals,
   });
   signals.emit("SIGINT");
@@ -1303,6 +1355,7 @@ test("repeated visual interrupts retain ownership until child close", async () =
     environment: {},
     cwd: "synthetic-only",
     spawnCommand: () => child,
+    platform: "linux",
     signals,
   });
   signals.emit("SIGINT");
@@ -1315,6 +1368,98 @@ test("repeated visual interrupts retain ownership until child close", async () =
   assert.equal(await completion, 1);
   assert.equal(signals.listenerCount("SIGINT"), 0);
   assert.equal(signals.listenerCount("SIGTERM"), 0);
+});
+
+test("Windows visual interrupts stop only the owned process tree before the CLI and ignore duplicate signals", async () => {
+  const signals = new EventEmitter(),
+    child = new EventEmitter(),
+    events = [];
+  child.pid = 123;
+  child.kill = (signal) => events.push(["kill", signal]);
+  const pending = runVisualChild({
+    command: "synthetic-node",
+    args: [],
+    environment: {},
+    cwd: "synthetic-only",
+    spawnCommand: () => child,
+    platform: "win32",
+    executeFile: (command, args, options) => {
+      events.push(["tree", command, args]);
+      assert.deepEqual(options, {
+        stdio: "ignore",
+        windowsHide: true,
+        timeout: 10_000,
+      });
+    },
+    signals,
+  });
+  signals.emit("SIGINT");
+  signals.emit("SIGTERM");
+  assert.deepEqual(events, [
+    [
+      "tree",
+      String.raw`C:\Windows\System32\taskkill.exe`,
+      ["/pid", "123", "/T", "/F"],
+    ],
+    ["kill", "SIGTERM"],
+  ]);
+  assert.equal(signals.listenerCount("SIGINT"), 1);
+  child.emit("close", 0);
+  assert.equal(await pending, 1);
+  assert.equal(signals.listenerCount("SIGINT"), 0);
+  assert.equal(signals.listenerCount("SIGTERM"), 0);
+});
+
+test("a Windows tree cleanup failure remains a failure after CLI termination and listener cleanup", async () => {
+  const signals = new EventEmitter(),
+    child = new EventEmitter(),
+    events = [],
+    failure = new Error("synthetic owned-tree cleanup failed");
+  child.pid = 123;
+  child.kill = (signal) => events.push(signal);
+  const pending = runVisualChild({
+    command: "synthetic-node",
+    args: [],
+    environment: {},
+    cwd: "synthetic-only",
+    spawnCommand: () => child,
+    platform: "win32",
+    executeFile: () => {
+      throw failure;
+    },
+    signals,
+  });
+  signals.emit("SIGTERM");
+  assert.deepEqual(events, ["SIGTERM"]);
+  child.emit("close", 0);
+  await assert.rejects(pending, (error) => error === failure);
+  assert.equal(signals.listenerCount("SIGINT"), 0);
+  assert.equal(signals.listenerCount("SIGTERM"), 0);
+});
+
+test("Windows visual interruption without an owned PID never starts a tree termination command", async () => {
+  for (const pid of [undefined, 0, -1, 1.5]) {
+    const signals = new EventEmitter(),
+      child = new EventEmitter();
+    child.pid = pid;
+    child.kill = () => true;
+    const pending = runVisualChild({
+      command: "synthetic-node",
+      args: [],
+      environment: {},
+      cwd: "synthetic-only",
+      spawnCommand: () => child,
+      platform: "win32",
+      executeFile: () =>
+        assert.fail("An owned positive integer PID is required"),
+      signals,
+    });
+    signals.emit("SIGINT");
+    child.emit("close", 0);
+    assert.equal(await pending, 1);
+    assert.equal(signals.listenerCount("SIGINT"), 0);
+    assert.equal(signals.listenerCount("SIGTERM"), 0);
+  }
 });
 
 test("the visual CLI binds a pending capture to its public sources and synthetic child", async () => {
@@ -1348,6 +1493,7 @@ test("the visual CLI binds a pending capture to its public sources and synthetic
           source: [
             'import { EventEmitter } from "node:events";',
             'const fixture = globalThis[Symbol.for("kernel-admin.visual-cli.synthetic")];',
+            'export function execFileSync() { throw new Error("Unexpected process-tree cleanup in the synthetic successful run"); }',
             "export function spawn(command, args, options) {",
             "  fixture.children.push({ command, args, options });",
             "  const child = new EventEmitter();",

@@ -52,6 +52,16 @@ for (const language of ["en", "fa"] as const) {
               page.getByLabel(messages.firstName, { exact: true }),
             ).toHaveAttribute("maxlength", String(profileNameMaxLength));
           await expectNoAxeViolations(page, testInfo);
+          const { violations, incomplete } = await new AxeBuilder({ page })
+            .include("form")
+            .withRules(["color-contrast"])
+            .analyze();
+          await testInfo.attach("auth-form-color-contrast", {
+            body: JSON.stringify({ violations, incomplete }, null, 2),
+            contentType: "application/json",
+          });
+          expect(violations).toEqual([]);
+          expect(incomplete).toEqual([]);
           expect(unexpectedRequests).toEqual([]);
         });
       }
