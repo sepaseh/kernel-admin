@@ -87,9 +87,10 @@ boundary checks plus real unit/governance coverage. [Storybook verification](sto
 adds a required static workshop build and real Chromium play/accessibility checks
 with complete synthetic API mocks. These tests establish the declared module behavior.
 They do not establish production API integration, a production panel build, complete
-application journeys, full font-loading coverage or visual-regression results. The later runnable
-publication must expand the full gate to all nineteen genuine application
-checks and observe its required build/browser/visual jobs pass before merge.
+application journeys, full font-loading coverage or visual-regression results.
+The canonical manifest owns the admitted application's blocking full profile,
+complete browser compatibility, applicable image comparison and separate
+performance responsibilities. Each applicable result requires its own execution.
 
 See [architecture](architecture.md), [bootstrap scope](bootstrap.md) and
 [Contributing](../CONTRIBUTING.md) for the maintained boundaries and handoff rules.

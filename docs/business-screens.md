@@ -66,8 +66,9 @@ use fail-closed mocks. Test support stays independent of another checkout. The
 separate Storybook test project uses full synthetic API owner mocks and real
 Chromium; it does not run application startup or replace measured unit/governance coverage.
 
-These tests do not establish a runnable panel or external API behavior. The later
-application phase must introduce and pass all nineteen genuine required checks,
-including production build, browser journeys and visual checks, before merge.
+These module tests do not establish application execution or external API behavior.
+The admitted application phase adds separately executed production build and browser
+journeys. The manifest owns the blocking full profile, complete compatibility,
+applicable visual checks and separate performance responsibilities.
 See [request reliability](admin-request-reliability.md), [input validation](input-validation.md)
 and [publication policy](bootstrap.md).

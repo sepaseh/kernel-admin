@@ -2,6 +2,111 @@ import { mkdir, open, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
 
+const playwright1641DisabledFeatures = [
+  "AvoidUnnecessaryBeforeUnloadCheckSync",
+  "DestroyProfileOnBrowserClose",
+  "DialMediaRouteProvider",
+  "GlobalMediaControls",
+  "HttpsUpgrades",
+  "LensOverlay",
+  "MediaRouter",
+  "PaintHolding",
+  "ThirdPartyStoragePartitioning",
+  "BlockOriginHeaderModificationOnRedirect",
+  "AvoidCorsURLLoaderRestartOnRedirect",
+  "Translate",
+  "AutoDeElevate",
+  "OptimizationHints",
+  "NetworkTimeServiceQuerying",
+  "AimEnabled",
+  "msForceBrowserSignIn",
+  "msEdgeUpdateLaunchServicesPreferredVersion",
+];
+
+export function windowsChromiumFlags(
+  defaultFlags,
+  platform = process.platform,
+) {
+  if (platform !== "win32") return [...defaultFlags];
+
+  const prefix = "--disable-features=";
+  if (defaultFlags.filter((flag) => flag.startsWith(prefix)).length !== 1)
+    throw new Error("One existing Chromium disabled-feature list is required.");
+
+  return defaultFlags.map((flag) => {
+    if (!flag.startsWith(prefix)) return flag;
+
+    const features = flag.slice(prefix.length).split(",");
+    if (!features.includes("TcpPortRandomizationWin"))
+      features.push("TcpPortRandomizationWin");
+    return prefix + features.join(",");
+  });
+}
+
+export function windowsChromiumLaunchOptions(platform = process.platform) {
+  if (platform !== "win32") return {};
+
+  const original =
+    "--disable-features=" + playwright1641DisabledFeatures.join(",");
+  return {
+    args: windowsChromiumFlags([original], platform),
+    ignoreDefaultArgs: [original],
+  };
+}
+
+export function visualSourceInputs(allowedFiles) {
+  if (
+    !Array.isArray(allowedFiles) ||
+    new Set(allowedFiles).size !== allowedFiles.length ||
+    !allowedFiles.every(
+      (file) =>
+        typeof file === "string" &&
+        !/[\\:\0\r\n]/.test(file) &&
+        file.split("/").every((part) => part && part !== "." && part !== ".."),
+    )
+  )
+    throw new Error(
+      "Visual source inventory must contain safe unique public paths.",
+    );
+
+  const configuration = new Set([
+    ".nvmrc",
+    "package.json",
+    "package-lock.json",
+    "index.html",
+    "vite.config.ts",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "playwright.visual.config.ts",
+    "scripts/run-visual.mjs",
+    "scripts/visual-environment.mjs",
+    "scripts/stamp-admin-build.mjs",
+    "scripts/validate-production-env.mjs",
+    "scripts/validate-deployment-env.mjs",
+  ]);
+  for (const file of configuration)
+    if (!allowedFiles.includes(file))
+      throw new Error(`Visual source inventory is missing ${file}.`);
+
+  const selected = allowedFiles
+    .filter(
+      (file) =>
+        configuration.has(file) ||
+        file.startsWith("src/") ||
+        file.startsWith("public/") ||
+        (file.startsWith("e2e/") && !file.startsWith("e2e/visual/baselines/")),
+    )
+    .sort((left, right) => {
+      if (left < right) return -1;
+      if (left > right) return 1;
+      return 0;
+    });
+  if (selected.some((file) => /(?:^|\/)\.env(?:\.|$)/i.test(file)))
+    throw new Error("Operator environment files are not visual source inputs.");
+  return selected;
+}
+
 export async function markVisualBaselinePending(metadataPath, metadata) {
   await mkdir(path.dirname(metadataPath), { recursive: true });
   await writeFile(
@@ -150,7 +255,7 @@ export function visualEnvironment(inherited = process.env) {
   };
 }
 
-export async function assertVisualPortsAvailable(ports = [4173]) {
+export async function assertVisualPortsAvailable(ports = [4185]) {
   await Promise.all(
     [...new Set(ports)].map(async (port) => {
       const server = createServer();

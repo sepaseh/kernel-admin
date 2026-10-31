@@ -56,5 +56,6 @@ The full [canonical manifest](../.agents/validation.json) remains mandatory on e
 PR. Coverage includes every published production module. React/jsdom tests cover
 widget actions and RTL feedback, theme contrast, local preferences and Router
 hooks. The full gate now also requires Storybook build and browser/a11y verification.
-Neither static/jsdom nor isolated component-browser results substitute for the later
-nineteen-check application gate, production panel build, complete E2E or visual validation.
+Neither static/jsdom nor isolated component-browser results substitute for
+separately executed application build, browser journeys or applicable visual and
+performance verification. The manifest owns their current profiles and responsibilities.

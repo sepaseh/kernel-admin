@@ -1019,6 +1019,71 @@ test("metadata edits cannot turn a latest failed, pending, canceled or missing v
   );
 });
 
+test("repeated metadata reuse selects the newest unexpired artifact from successful matching producers", () => {
+  const producer = {
+    id: 120,
+    status: "completed",
+    conclusion: "success",
+    head_sha: head,
+    head_repository: { full_name: identity().repository },
+    path: ".github/workflows/ci.yml",
+    updated_at: "2026-10-31T01:00:00Z",
+  };
+  const latest = {
+    ...producer,
+    id: 122,
+    updated_at: "2026-10-31T03:00:00Z",
+  };
+  const failed = {
+    ...producer,
+    id: 121,
+    conclusion: "failure",
+    updated_at: "2026-10-31T02:00:00Z",
+  };
+  const artifact = {
+    name: "verification-120-2",
+    expired: false,
+    created_at: "2026-10-31T01:00:00Z",
+  };
+  const runs = [producer, latest, failed];
+  const artifacts = [
+    {
+      ...artifact,
+      name: "verification-120-1",
+      created_at: "2026-10-31T00:00:00Z",
+    },
+    { ...artifact, name: "verification-121-1" },
+    { ...artifact, name: "verification-122-1", expired: true },
+    artifact,
+    {
+      ...artifact,
+      name: "verification-120-3",
+      expired: true,
+      created_at: "2026-10-31T02:00:00Z",
+    },
+  ];
+
+  assert.deepEqual(reusableCoverageCandidate(runs, artifacts, identity()), {
+    artifact: artifact.name,
+    runId: "120",
+    runAttempt: "2",
+  });
+  for (const change of [
+    { status: "in_progress", conclusion: null },
+    { status: "completed", conclusion: "cancelled" },
+    { status: "completed", conclusion: "failure" },
+  ]) {
+    assert.equal(
+      reusableCoverageCandidate(
+        [producer, { ...latest, ...change }, failed],
+        artifacts,
+        identity(),
+      ),
+      undefined,
+    );
+  }
+});
+
 test("application metadata cannot reuse an advisory performance failure after expiry while the prerequisite phase gains no performance gate", () => {
   const expected = identity();
   const run = {
@@ -1491,6 +1556,124 @@ test("evidence orchestration preserves the original successful producer through 
       line.includes("no fresh test execution is claimed"),
     ),
   );
+});
+
+test("two successive metadata edits reuse the original measured producer without republishing its artifact", async (context) => {
+  const fixture = await evidenceFixture(context);
+  const historyRoute =
+    "actions/workflows/ci.yml/runs?head_sha=" +
+    fixture.expected.head +
+    "&per_page=20";
+  const history = [fixture.run];
+
+  for (const runId of ["123", "124"]) {
+    fixture.environment.GITHUB_RUN_ID = runId;
+    fixture.responses.set(historyRoute, {
+      total_count: history.length,
+      workflow_runs: [...history],
+    });
+    const execute = fixture.runner();
+    await fixture.resetOutput();
+    await execute("--prepare-reuse");
+    assert.deepEqual(await fixture.outputs(), {
+      artifact: fixture.artifact.name,
+      runId: fixture.producer.runId,
+      runAttempt: fixture.producer.runAttempt,
+    });
+    fixture.enableReuse();
+    await fixture.resetOutput();
+    await execute("--accept-reuse");
+    assert.equal((await fixture.outputs()).reused, "true");
+    fixture.environment.VERIFICATION_REUSED = "true";
+    await fixture.resetOutput();
+    await execute("--record-coverage");
+    assert.deepEqual(await fixture.outputs(), {
+      artifact: fixture.artifact.name,
+      attempt: fixture.producer.runAttempt,
+      run_id: fixture.producer.runId,
+    });
+    assert.deepEqual(
+      JSON.parse(
+        await readFile(
+          path.join(fixture.directory, "coverage/verification-coverage.json"),
+          "utf8",
+        ),
+      ),
+      fixture.report,
+    );
+    history.push({
+      ...fixture.run,
+      id: Number(runId),
+      updated_at: "2026-10-31T02:00:00Z",
+    });
+    fixture.responses.set(`actions/runs/${runId}/artifacts?per_page=100`, {
+      artifacts: [],
+    });
+  }
+  assert.deepEqual(fixture.requests, [
+    historyRoute,
+    "actions/runs/122/artifacts?per_page=100",
+    "actions/runs/122",
+    "actions/runs/122",
+    historyRoute,
+    "actions/runs/123/artifacts?per_page=100",
+    "actions/runs/122/artifacts?per_page=100",
+    "actions/runs/122",
+    "actions/runs/122",
+  ]);
+});
+
+test("older failed or incomplete runs never provide artifacts and the newest unsuccessful run blocks all reuse", async (context) => {
+  const fixture = await evidenceFixture(context);
+  const historyRoute =
+    "actions/workflows/ci.yml/runs?head_sha=" +
+    fixture.expected.head +
+    "&per_page=20";
+  const latest = {
+    ...fixture.run,
+    id: 121,
+    updated_at: "2026-10-31T04:00:00Z",
+  };
+  const failed = {
+    ...fixture.run,
+    id: 120,
+    conclusion: "failure",
+    updated_at: "2026-10-31T03:00:00Z",
+  };
+  const pending = {
+    ...fixture.run,
+    id: 119,
+    status: "in_progress",
+    conclusion: null,
+    updated_at: "2026-10-31T02:00:00Z",
+  };
+  fixture.responses.set(historyRoute, {
+    total_count: 4,
+    workflow_runs: [fixture.run, pending, latest, failed],
+  });
+  fixture.responses.set("actions/runs/121/artifacts?per_page=100", {
+    artifacts: [{ name: "verification-121-1", expired: true }],
+  });
+  await fixture.runner()("--prepare-reuse");
+  assert.equal((await fixture.outputs()).runId, fixture.producer.runId);
+  assert.deepEqual(fixture.requests, [
+    historyRoute,
+    "actions/runs/121/artifacts?per_page=100",
+    "actions/runs/122/artifacts?per_page=100",
+  ]);
+
+  for (const change of [
+    { status: "completed", conclusion: "failure" },
+    { status: "completed", conclusion: "cancelled" },
+    { status: "in_progress", conclusion: null },
+  ]) {
+    Object.assign(latest, change);
+    await fixture.resetOutput();
+    const count = fixture.requests.length;
+    await fixture.runner()("--prepare-reuse");
+    assert.deepEqual(await fixture.outputs(), {});
+    assert.deepEqual(fixture.requests.slice(count), [historyRoute]);
+  }
 });
 
 test("missing credentials and failed or unavailable API evidence never authorize reuse", async (context) => {

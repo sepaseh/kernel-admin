@@ -13,7 +13,8 @@ type Font = {
   hasGlyphForCodePoint: (code: number) => boolean;
   variationAxes: { wght: { min: number; default: number; max: number } };
 };
-const fontkit = createRequire(import.meta.url)("fontkit") as {
+const require = createRequire(import.meta.url);
+const fontkit = require("fontkit") as {
   create: (data: Buffer) => Font;
 };
 const root = process.cwd();

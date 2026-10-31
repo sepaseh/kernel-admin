@@ -1,8 +1,7 @@
 {
   "schemaVersion": 1,
-  "verificationModel": "single-pass-v1",
-  "phase": "assistant-guidance",
-  "applicationReady": false,
+  "phase": "application-verification",
+  "applicationReady": true,
   "checks": [
     {
       "id": "snapshot",
@@ -15,7 +14,8 @@
         "core-auth",
         "business-screens",
         "storybook-verification",
-        "assistant-guidance"
+        "assistant-guidance",
+        "application-verification"
       ]
     },
     {
@@ -29,7 +29,8 @@
         "core-auth",
         "business-screens",
         "storybook-verification",
-        "assistant-guidance"
+        "assistant-guidance",
+        "application-verification"
       ]
     },
     {
@@ -37,7 +38,7 @@
       "command": "npm run check:guidance",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["assistant-guidance"]
+      "scopes": ["assistant-guidance", "application-verification"]
     },
     {
       "id": "audit",
@@ -50,7 +51,8 @@
         "core-auth",
         "business-screens",
         "storybook-verification",
-        "assistant-guidance"
+        "assistant-guidance",
+        "application-verification"
       ]
     },
     {
@@ -64,7 +66,8 @@
         "core-auth",
         "business-screens",
         "storybook-verification",
-        "assistant-guidance"
+        "assistant-guidance",
+        "application-verification"
       ]
     },
     {
@@ -78,7 +81,8 @@
         "core-auth",
         "business-screens",
         "storybook-verification",
-        "assistant-guidance"
+        "assistant-guidance",
+        "application-verification"
       ]
     },
     {
@@ -92,7 +96,8 @@
         "core-auth",
         "business-screens",
         "storybook-verification",
-        "assistant-guidance"
+        "assistant-guidance",
+        "application-verification"
       ]
     },
     {
@@ -106,7 +111,8 @@
         "core-auth",
         "business-screens",
         "storybook-verification",
-        "assistant-guidance"
+        "assistant-guidance",
+        "application-verification"
       ]
     },
     {
@@ -120,7 +126,8 @@
         "core-auth",
         "business-screens",
         "storybook-verification",
-        "assistant-guidance"
+        "assistant-guidance",
+        "application-verification"
       ]
     },
     {
@@ -134,7 +141,8 @@
         "core-auth",
         "business-screens",
         "storybook-verification",
-        "assistant-guidance"
+        "assistant-guidance",
+        "application-verification"
       ]
     },
     {
@@ -142,21 +150,91 @@
       "command": "npm run build-storybook",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["storybook-verification", "assistant-guidance"]
+      "scopes": [
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "storybook-browser",
       "command": "npm run test:storybook",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["storybook-verification", "assistant-guidance"]
+      "scopes": [
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "guidance-tests",
       "command": "npm run test:guidance",
       "kind": "advisory",
       "ciJobs": [],
-      "scopes": ["assistant-guidance"]
+      "scopes": ["assistant-guidance", "application-verification"]
+    },
+    {
+      "id": "unused",
+      "command": "npm run check:unused",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "application-build",
+      "command": "npm run build:verification",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "bundle",
+      "command": "npm run check:bundle",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "contract",
+      "command": "npm run test:contract",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "application-e2e",
+      "command": "npm run test:e2e",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "visual",
+      "command": "npm run test:visual",
+      "kind": "manual",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "lighthouse",
+      "command": "npm run test:lighthouse:verified",
+      "kind": "advisory",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"],
+      "exception": {
+        "owner": "Kernel Admin frontend/test maintainer",
+        "reviewBy": "2026-11-07",
+        "expiresAt": "2026-11-07T00:00:00Z",
+        "reason": "Investigate Lighthouse fixture startup independently of blocking application correctness; preserve numerical budgets and reports."
+      }
+    },
+    {
+      "id": "browser-compatibility",
+      "command": "npm run test:e2e:complete",
+      "kind": "manual",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
     }
   ],
   "profiles": {
@@ -172,9 +250,36 @@
       "unit-coverage",
       "governance-coverage",
       "storybook-build",
-      "storybook-browser"
+      "storybook-browser",
+      "unused",
+      "application-build",
+      "bundle",
+      "contract",
+      "application-e2e"
     ],
-    "guidance": ["guidance", "guidance-tests"]
+    "guidance": ["guidance", "guidance-tests"],
+    "complete": [
+      "snapshot",
+      "ci-policy",
+      "guidance",
+      "audit",
+      "boundaries",
+      "typecheck",
+      "lint",
+      "format",
+      "unit-coverage",
+      "governance-coverage",
+      "storybook-build",
+      "storybook-browser",
+      "unused",
+      "application-build",
+      "bundle",
+      "contract",
+      "browser-compatibility",
+      "visual"
+    ],
+    "visual": ["visual"],
+    "performance": ["lighthouse"]
   },
   "externalWorkflows": [
     {
@@ -185,5 +290,6 @@
       "path": ".github/workflows/pr-policy.yml",
       "mode": "ci"
     }
-  ]
+  ],
+  "verificationModel": "single-pass-v1"
 }

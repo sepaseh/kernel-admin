@@ -1,24 +1,13 @@
 # Assistant guidance
 
-Start with [root instructions](../AGENTS.md), [source navigation](../docs/source-navigation.md)
-and the rules indexed in [settings](settings.json). The current
-`assistant-guidance` phase retains `applicationReady: false`: it publishes
-instructions, verification tooling and finite operations/quality prerequisites beside
-the isolated Storybook scope, without an application entry point or production deployment.
+Start with [root instructions](../AGENTS.md), [source navigation](../docs/source-navigation.md) and the rules indexed in [settings](settings.json). The application-verification phase admits standalone startup, composed routes and the complete application gate. Source admission does not establish successful verification, human visual approval, API-provider compatibility or deployment.
 
 Change only authorized files and preserve unpublished local work. Existing user
 authorization and preferences in the current conversation remain valid; do not
 ask again for an action already authorized. Never read real environments,
 credentials or operator state to answer a source question.
 
-The [validation manifest](validation.json) owns commands and profiles. The full
-profile has twelve required checks: the existing eleven phase checks plus
-`check:guidance`. Guidance regressions join the existing governance suite and its
-measured LCOV; they are not a second required full-suite invocation. During
-iteration, `npm run validate -- guidance` runs the required guidance check and
-advisory `test:guidance` profile entry. Focused checks do not replace
-`npm run validate -- full` on the exact final snapshot before an authorized
-commit, push or PR handoff.
+The [validation manifest](validation.json) owns commands and profiles. The manifest separates the seventeen blocking `full` checks from complete browser/visual verification and the temporary advisory performance profile. Local and ordinary PR validation use Chromium. Scheduled and manually requested pre-release verification replace that browser run with the complete four-project matrix, then compare the six approved images once. Each suite runs once per tested source tree; Sonar consumes its verified measured reports. This source verification does not authorize an operational release or deployment. During iteration, `npm run validate -- guidance` is a focused aid; it does not replace exact-source blocking validation.
 
 Active assistant instructions and evaluation prompts are English only. Maintain
 English/Persian companions for human documentation. Dated evidence remains
@@ -43,12 +32,8 @@ The optional safety policy models literal Bash/sh/dash/zsh commands within its
 `readonly` or `local`, plus `xargs` and `find` execution actions, are blocked. Arbitrary program behavior and host authorization remain outside this
 convenience guard.
 
-Read [deployment preparation](../docs/deployment.md), [performance policy](../docs/performance.md) and [visual provenance](../docs/visual-regression.md). Pure helper cases join existing measured unit/governance commands; full keeps twelve required checks. No operational npm alias or focused profile is introduced.
+Read [deployment preparation](../docs/deployment.md), [performance policy](../docs/performance.md) and [visual provenance](../docs/visual-regression.md). Pure helper cases join existing measured unit/governance commands. The manifest defines local/PR, complete compatibility and performance responsibilities; policy prose must not recreate a second command inventory.
 
-The exact public example exceptions are `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example`, only as reviewed synthetic declared sources. Never use an existing local environment or private operator version as an example. Rendering, packaging, health and smoke CLIs may have filesystem/resource/network effects when called; imports and synthetic fixtures do not authorize real execution. Application build, external provider/E2E, real visual/Lighthouse/Docker and deployment checks remain future activation work. Historical image metadata does not establish a current approved baseline.
+The exact public example exceptions are `.env.example`, `deploy/docker/.env.example` and `deploy/native/hosts.env.example`, only as reviewed synthetic declared sources. Never use an existing local environment or private operator version as an example. Rendering, packaging, health and smoke CLIs may have filesystem/resource/network effects when called; imports and synthetic fixtures do not authorize real execution. The application gate owns real build, synthetic browser, visual and Lighthouse checks; external provider, Docker and deployment operation remain separate. Historical image metadata does not establish a current approved baseline.
 
-Import-safe verification runners and the build metadata stamper are preparatory source. Their injected lifecycle/provenance tests join existing measured suites; importing a module must never start a browser, process, network request or write. Keep operational aliases absent and preserve the twelve-check published scope. Synthetic future-phase CI admission tests do not activate that phase.
-
-The `single-pass-v1` workflow model does not activate the application. While `applicationReady` is false, ordinary, scheduled and manual verification all run the same twelve blocking `full` checks. A manual `complete` request is limited to this published scope and is not application pre-release verification. Application build/E2E, current image comparison and Lighthouse remain inactive until their source and checks are separately admitted.
-
-The protected check job executes on every applicable event. Title/body-only PR edits may reuse the original measured coverage only when the latest earlier CI run really succeeded for the same head, destination base and checked commit/tree, and the producer/run identity and both LCOV digests verify. Missing or mismatched evidence falls back to a fresh full run. A skipped job is not successful verification; retargeting the base always invalidates reuse. The actual job named **SonarQube Cloud analysis** then scans the tested source using the verified reports, without installing browsers or rerunning the suite.
+Visual/Lighthouse runners and build metadata stamping remain import-safe. Injected lifecycle/provenance tests do not start the application, Chrome or an API. The admitted application commands separately execute owned synthetic previews and browsers; preserve matching runtime provenance, actual human image approval and the unchanged CI update prohibition. Provider, Docker, staging and deployment operation require separate authorization and evidence.

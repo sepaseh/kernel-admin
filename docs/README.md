@@ -2,7 +2,7 @@
 
 [English](README.md) · [فارسی](README.fa.md)
 
-The `assistant-guidance` publication adds local guidance, task navigation and evaluation procedures to the component workshop. It retains `applicationReady: false`. These documents describe current source ownership, not a runnable panel, deployment or completed assistant evaluation.
+The application-verification publication admits the standalone panel, composed routes and its blocking code, complete compatibility and hosted visual checks. Documents describe ownership and evidence boundaries. Actual tested revisions, advisory failures, human image approval, API-provider verification and deployment remain distinct records.
 
 ## Current product
 
@@ -35,7 +35,7 @@ The `assistant-guidance` publication adds local guidance, task navigation and ev
 - [Branch protection](branch-protection.md) · [فارسی](branch-protection.fa.md)
 - [SonarQube Cloud](sonarqube.md) · [فارسی](sonarqube.fa.md)
 
-The finite prerequisite guides below are published now; real application composition, production build, provider/E2E journeys, visual comparison, Lighthouse and deployment execution remain future work. Local archives and historical image metadata do not establish fresh verification.
+The guides below distinguish genuine admitted application checks from independent operation. Provider verification, deployment and operator automation need separate authorization/evidence. Historical images and archives are not fresh verification.
 
 ## Published prerequisites and future operation
 
@@ -56,4 +56,4 @@ The finite prerequisite guides below are published now; real application composi
 - [Threat model](security/threat-model.md) · [فارسی](security/threat-model.fa.md)
 - [Security review records](security/reviews.md) · [فارسی](security/reviews.fa.md)
 
-These sources extend the existing non-runnable phase. Public examples and synthetic helper tests are available; no operator deployment, production build or real external check is inferred.
+Public examples and helper tests remain synthetic. Application verification must actually execute; operator deployment and external provider checks cannot be inferred from source.

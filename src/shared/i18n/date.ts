@@ -18,22 +18,28 @@ dayjs.extend(calendar);
 dayjs.extend(jalaliday);
 
 const vendorLocales = { ar, de, en, es, fa: faDayjs, fr, it, pt, ru, tr };
-const reference = dayjs("2026-04-01T12:00:00Z").calendar(
-  "jalali",
-) as unknown as Dayjs;
 
 for (const code of localeCodes) {
-  const formatter = new Intl.DateTimeFormat(code, {
-    calendar: "persian",
-    month: "long",
-    timeZone: "UTC",
-  });
-  const jmonths =
-    code === "fa"
-      ? faDayjs.jmonths
-      : Array.from({ length: 12 }, (_, month) =>
-          formatter.format(reference.month(month).date(15).toDate()),
-        );
-  const locale = { ...vendorLocales[code], jmonths };
+  let jmonths: string[] | undefined;
+  const locale = {
+    ...vendorLocales[code],
+    get jmonths() {
+      if (code === "fa") return faDayjs.jmonths;
+      if (jmonths) return jmonths;
+
+      const formatter = new Intl.DateTimeFormat(code, {
+        calendar: "persian",
+        month: "long",
+        timeZone: "UTC",
+      });
+      const reference = dayjs("2026-04-01T12:00:00Z").calendar(
+        "jalali",
+      ) as unknown as Dayjs;
+      jmonths = Array.from({ length: 12 }, (_, month) =>
+        formatter.format(reference.month(month).date(15).toDate()),
+      );
+      return jmonths;
+    },
+  };
   dayjs.locale(locale, undefined, true);
 }
