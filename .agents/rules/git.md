@@ -53,3 +53,5 @@ current-revision evidence. Disclose capabilities and checks that remain unpublis
 - A request to draft or prepare is not authorization to publish. A commit does
   not authorize a push, and starting an issue does not authorize comments,
   assignment, labels, status changes or a pull request.
+
+The manifest owns the current blocking core profile and applicable hosted checks. Read `applicationReady` before claiming application capability; workshop evidence alone does not activate the panel. The protected check job executes on every applicable event. Title/body-only PR edits may reuse original measured coverage only when the latest earlier CI run actually succeeded for the same head, destination base and checked commit/tree, with the original producer/run identity and both LCOV digests verified. Missing or mismatched evidence requires a fresh full run. A skipped job is not a successful execution, and a base change invalidates reuse. The actual **SonarQube Cloud analysis** job then scans the verified source using those reports without rerunning the suite.

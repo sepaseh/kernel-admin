@@ -49,22 +49,9 @@ inventory. Start with a focused check during development, then run the complete
 an isolated checkout/export of the exact proposed snapshot. Passing checks over
 unpublished, untracked application files do not validate a partial PR.
 
-Initial publication is staged within the 100-file PR cap. On every PR, CI runs
-the same `npm run validate -- full` command after installation; it does not keep
-a shorter command list or select checks by changed paths. Before any command
-runs, the runner rejects duplicate check definitions, unknown profile entries,
-and a full profile that omits a required check, repeats one or includes a manual
-or advisory check. Focused profiles remain development tools and cannot replace
-this complete published-scope gate. Expand it with genuine application checks as
-their source arrives, before merging a runnable panel.
+Initial publication remains staged within the 100-file PR cap. The manifest retains the same twelve required commands and their order. A fresh validation runs `npm run validate -- full`; duplicate definitions, unknown entries and omitted or repeated required checks remain errors. The approved single-pass model reuses genuine measured reports rather than repeating the full suite solely for analysis. Focused profiles do not replace this published-scope gate.
 
-The required CI policy check parses YAML with unique keys. It rejects PR path,
-branch or lifecycle filters, conditional/advisory validation, non-root execution,
-shell overrides and missing or reordered dependency installation, Chromium installation
-and canonical full steps. All current
-checks belong to `check`. Future multi-job application validation requires an
-explicit policy and workflow transition, so a Windows visual check cannot silently
-enter this Linux-only command plan.
+The required CI policy check validates unique YAML keys, the approved single-pass workflow, root execution, dependency/browser prerequisites and exact coverage identity. The check job is real and blocking; the actual Sonar scanner consumes its verified reports. Title/body-only reuse requires an earlier matching successful run and original producer identity; a changed code/base or invalid artifact requires fresh validation. Source configuration does not establish hosted results or installed protection.
 
 The required phase checks cover snapshot integrity, semantic CI policy, dependencies, boundaries,
 types, lint, formatting, measured unit tests, governance tests, `build-storybook`,
@@ -131,4 +118,6 @@ Bundle/Lighthouse policy and production/target-input tests join existing unit co
 
 Read [deployment](docs/deployment.md), [test reliability](docs/test-reliability.md) and [visual provenance](docs/visual-regression.md). Application build, real Docker/Chrome, provider/E2E/visual and deployed checks remain future activation work. Retained images and release configuration are not fresh approvals or executed releases.
 
-Verification runner preparation adds import-safe visual/Lighthouse orchestration and build metadata stamping. Synthetic tests exercise ownership, failure cleanup and provenance without starting the application, Chrome or an API. No operational npm alias is registered; the twelve-check current gate and visual human-review requirement remain unchanged. Future application CI admission is tested separately from the current Linux workflow.
+Verification runner preparation adds import-safe visual/Lighthouse orchestration and build metadata stamping. Synthetic tests exercise ownership, failure cleanup and provenance without starting the application, Chrome or an API. No operational npm alias is registered; the twelve-check current gate and visual human-review requirement remain unchanged. Future application CI admission is tested separately from the current non-runnable workflow.
+
+The `single-pass-v1` workflow model does not activate the application. While `applicationReady` is false, ordinary, scheduled and manual verification all run the same twelve blocking `full` checks. A manual `complete` request is limited to this published scope and is not application pre-release verification. Application build/E2E, current image comparison and Lighthouse remain inactive until their source and checks are separately admitted.

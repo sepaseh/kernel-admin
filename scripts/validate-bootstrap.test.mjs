@@ -162,7 +162,9 @@ const historicalStorybookPolicy = async () => {
   return {
     ...latest,
     phase: "storybook-verification",
-    allowedFiles: latest.allowedFiles.filter(
+    allowedFiles: [
+      ...new Set([...latest.allowedFiles, ".github/workflows/sonar.yml"]),
+    ].filter(
       (file) =>
         !isGuidancePhaseFile(file) &&
         !operationsPrerequisiteFiles.includes(file),
@@ -740,7 +742,7 @@ test("assistant guidance retains the complete workshop and requires every declar
     ),
   );
   assert.equal(current.phase, "assistant-guidance");
-  assert.equal(validateBootstrapPolicy(current).size, 436);
+  assert.equal(validateBootstrapPolicy(current).size, 435);
   const additions = current.allowedFiles.filter(isGuidancePhaseFile);
   assert.equal(additions.length, 63);
   for (const missing of [
@@ -781,7 +783,7 @@ test("assistant guidance retains the complete workshop and requires every declar
   );
   const { root } = await fixture(context, current);
   const result = await inspectBootstrap(root);
-  assert.equal(result.files, 436);
+  assert.equal(result.files, 435);
   assert.equal(result.applicationReady, false);
   assert.match(result.scope, /assistant-neutral instructions/);
   assert.match(result.scope, /no application entry point/);
@@ -878,7 +880,7 @@ test("current prerequisites retain only the three synthetic public template name
     ),
   );
   const { root, put } = await fixture(context, current);
-  assert.equal((await inspectBootstrap(root)).files, 436);
+  assert.equal((await inspectBootstrap(root)).files, 435);
   await put(
     "deploy/native/.env.local",
     "synthetic forbidden contents must never be parsed",

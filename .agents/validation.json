@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "verificationModel": "single-pass-v1",
   "phase": "assistant-guidance",
   "applicationReady": false,
   "checks": [
@@ -182,10 +183,6 @@
     },
     {
       "path": ".github/workflows/pr-policy.yml",
-      "mode": "ci"
-    },
-    {
-      "path": ".github/workflows/sonar.yml",
       "mode": "ci"
     }
   ]

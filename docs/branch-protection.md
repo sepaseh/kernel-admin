@@ -2,16 +2,9 @@
 
 [English](branch-protection.md) · [فارسی](branch-protection.fa.md)
 
-The current `assistant-guidance` phase retains the native provider contexts below. Guidance checking runs inside the existing canonical `check` job; an updated source policy does not prove that remote protection or provider execution succeeded.
+Read the actual phase, `applicationReady` and validation roles from the [publication policy](../.github/bootstrap-policy.json) and [manifest](../.agents/validation.json). The shared single-pass workflow does not change readiness or install remote protection. Repository administrators manage the actual settings.
 
-Use native GitHub CI, CodeRabbit and SonarQube Cloud checks. The merge policy
-requires current-head CI and provider results, at least one approving review and
-resolved conversations. Apply protection to administrators, dismiss stale
-approvals, require an up-to-date branch and prohibit force pushes and deletion.
-Repository administrators manage the actual remote settings.
-
-Required checks follow the published phase. Assistant-guidance protection requires these
-five native contexts with their observed GitHub App identities:
+Require current-source blocking CI/provider results, at least one approving review and resolved conversations. Apply protection to administrators, dismiss stale approvals, require an up-to-date branch and linear history, and prohibit force pushes and deletion. Preserve these five native contexts and their observed GitHub App identities:
 
 | Required context           | Provider       | App ID   |
 | -------------------------- | -------------- | -------- |
@@ -21,36 +14,12 @@ five native contexts with their observed GitHub App identities:
 | `SonarCloud Code Analysis` | SonarCloud     | `12526`  |
 | `CodeRabbit`               | CodeRabbit     | `347564` |
 
-Verify the actual remote settings and current-head results; adding a workflow or
-documenting a context does not install protection. Preserve the approval count,
-administrator enforcement, stale-approval dismissal, conversation resolution,
-strict up-to-date checks, linear history and force-push/deletion prohibitions
-when applying an authorized phase transition.
+The real `check` job owns the current declared blocking core profile. With readiness false, this verifies modules and the isolated Storybook workshop; it does not supply full-panel build, application E2E or current visual evidence. With readiness true, it executes admitted application checks and applicable approved-image comparison, with complete browser compatibility assigned to scheduled/manual pre-release verification. A complete request while readiness is false remains core-only. Do not duplicate suites solely to create more contexts or claim skipped work as execution.
 
-CodeRabbit automatic review is disabled. Request a manual review only after the
-[latest-head preflight](../CONTRIBUTING.md#before-requesting-coderabbit): all required
-non-CodeRabbit checks, scanner and actual Sonar quality gate pass, and the complete
-applicable Sonar report has zero open/unresolved issues of any severity, including
-existing code. Missing or stale evidence and open documented false positives block
-requests; new commits invalidate preflight. Exclude CodeRabbit's own check/approval
-only to avoid a cycle. Require authorization, actual quota and no in-flight duplicate.
-Inspect substantive findings and approval: a successful progress status
-may describe a skipped review. Automatic approval can satisfy the normal approval
-count after a clean completed review, but the native GitHub count also accepts
-other eligible reviewers; it does not enforce a particular bot's identity.
+The protected check job executes on every applicable event. Title/body-only PR edits may reuse original measured coverage only when the latest earlier CI run actually succeeded for the same head, destination base and checked commit/tree, with the original producer/run identity and both LCOV digests verified. Missing or mismatched evidence requires a fresh full run. A skipped job is not a successful execution, and a base change invalidates reuse. The actual **SonarQube Cloud analysis** job then scans the verified source using those reports without rerunning the suite.
 
-The assistant-guidance phase has `applicationReady: false`; its protection does not
-require full panel **build**, **e2e** or **visual** jobs that it does not supply.
-Its existing `check` context must run all canonical commands, including the
-real static Storybook build and Chromium play/accessibility suite. Those component
-checks do not establish complete application build/E2E or visual-regression evidence.
-Before any runnable panel merges, introduce genuine application jobs, expand the
-canonical full gate, observe their current-revision results pass and add all three
-contexts to required checks. Do not use placeholder jobs, successful skips or
-unpublished source to establish readiness. Any protection change requires
-authorization and verification against actual hosted results.
+Before an authorized manual CodeRabbit request, complete [the request preflight](../CONTRIBUTING.md#before-requesting-coderabbit). Every applicable non-CodeRabbit blocking check, the real scanner and asynchronous Sonar quality gate must pass for the tested source. Inspect every page/severity of the applicable provider report, including existing code: zero open/unresolved issues are required. A green quality gate, documented false positive still open in the provider, or a skipped progress check does not establish readiness. New source or base invalidates earlier evidence. Respect actual provider allowance and avoid duplicate in-flight requests.
 
-Require the actual asynchronous Sonar quality gate as well as scanner execution.
-Missing, failed, pending, skipped or quota-limited evidence must not be presented
-as completed review. Read [Sonar setup](sonarqube.md) and
-[Contributing](../CONTRIBUTING.md) before reporting merge readiness.
+CodeRabbit automatic review is disabled. Its skipped status is not approval; require a substantive completed review and the normal native approval count. GitHub may count other eligible reviewers and does not enforce a particular bot identity. Source fixtures and local passes do not establish API-provider compatibility, human visual review or deployment. Any remote protection transition still requires authorization and actual hosted verification.
+
+See [Sonar setup](sonarqube.md), [validation](validation.md) and [Contributing](../CONTRIBUTING.md). Performance advisory roles are limited to the admitted manifest's actual owner/expiry policy and must be reported separately from successful audits.

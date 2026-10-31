@@ -1,35 +1,217 @@
 name: CI
-
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    types: [opened, synchronize, reopened, edited, ready_for_review]
-
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+      - ready_for_review
+  schedule:
+    - cron: 30 1 * * *
+  workflow_dispatch:
+    inputs:
+      verification:
+        description: Complete compatibility verification before a release
+        type: choice
+        required: true
+        default: complete
+        options:
+          - full
+          - complete
 permissions:
   contents: read
   pull-requests: read
-
+  actions: read
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.action == 'edited' && !github.event.changes.base && 'metadata' || 'source' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
 jobs:
-  check:
-    runs-on: ubuntu-latest
+  scope:
+    runs-on: windows-2025
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+      profile: ${{ steps.scope.outputs.profile }}
+      browser_install: ${{ steps.scope.outputs.browser_install }}
+      visual: ${{ steps.scope.outputs.visual }}
+      head: ${{ steps.scope.outputs.head }}
+      base: ${{ steps.scope.outputs.base }}
+      commit: ${{ steps.scope.outputs.commit }}
+      tree: ${{ steps.scope.outputs.tree }}
+      application: ${{ steps.scope.outputs.application }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+      - id: scope
+        run: node scripts/check-ci.mjs --scope
+  check:
+    needs: scope
+    if: always()
+    runs-on: windows-2025
+    outputs:
+      coverage_artifact: ${{ steps.coverage.outputs.artifact }}
+      coverage_attempt: ${{ steps.coverage.outputs.attempt }}
+      coverage_run_id: ${{ steps.coverage.outputs.run_id }}
+    env:
+      KERNEL_REUSE_VERIFICATION_BUILD: "1"
+      VERIFICATION_HEAD: ${{ needs.scope.outputs.head }}
+      VERIFICATION_BASE: ${{ needs.scope.outputs.base }}
+      VERIFICATION_COMMIT: ${{ needs.scope.outputs.commit }}
+      VERIFICATION_TREE: ${{ needs.scope.outputs.tree }}
+    steps:
+      - name: Require successful source scope selection
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+        run: if ($env:SCOPE_RESULT -ne "success") { throw "Source scope selection failed; verification cannot be established." }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.scope.outputs.commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: Enforce the 100-file pull request limit
+      - id: reuse-candidate
+        name: Find prior successful verification for metadata-only edits
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VERIFICATION_METADATA_ONLY: ${{ needs.scope.outputs.run == 'false' }}
+        run: node scripts/check-ci.mjs --prepare-reuse
+      - id: reuse-download
+        name: Download existing measured coverage when eligible
+        if: steps.reuse-candidate.outputs.artifact != ''
+        continue-on-error: true
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: ${{ steps.reuse-candidate.outputs.artifact }}
+          path: coverage
+          run-id: ${{ steps.reuse-candidate.outputs.runId }}
+          github-token: ${{ github.token }}
+      - id: reuse
+        name: Accept only successful evidence for the exact source and merge tree
+        env:
+          VERIFICATION_REUSE_ARTIFACT: ${{ steps.reuse-candidate.outputs.artifact }}
+          VERIFICATION_REUSE_RUN_ID: ${{ steps.reuse-candidate.outputs.runId }}
+          VERIFICATION_REUSE_ATTEMPT: ${{ steps.reuse-candidate.outputs.runAttempt }}
+          GITHUB_TOKEN: ${{ github.token }}
+          VERIFICATION_REUSE_DOWNLOAD: ${{ steps.reuse-download.outcome }}
+        run: node scripts/check-ci.mjs --accept-reuse
+      - name: Enforce the pull request file limit
         if: github.event_name == 'pull_request'
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/check-pr-size.mjs
       - run: npm ci
-      - run: npm run browser:install
-      - run: npm run validate -- full
+        if: steps.reuse.outputs.reused != 'true'
+      - run: npm run ${{ needs.scope.outputs.browser_install }}
+        if: steps.reuse.outputs.reused != 'true'
+      - name: Validate the tested source once
+        run: npm run validate -- ${{ needs.scope.outputs.profile }}
+        if: steps.reuse.outputs.reused != 'true'
+      - name: Compare images when rendering inputs changed
+        if: needs.scope.outputs.application == 'true' && steps.reuse.outputs.reused != 'true' && needs.scope.outputs.profile == 'full' && needs.scope.outputs.visual == 'true'
+        run: npm run validate -- visual
+      - id: performance-policy
+        name: Re-evaluate the advisory deadline immediately before the audit
+        if: needs.scope.outputs.application == 'true' && steps.reuse.outputs.reused != 'true'
+        run: node scripts/check-ci.mjs --performance-scope
+      - name: Measure performance with a bounded advisory exception
+        id: performance
+        continue-on-error: ${{ steps.performance-policy.outputs.advisory == 'true' }}
+        run: npm run validate -- performance
+        if: needs.scope.outputs.application == 'true' && steps.reuse.outputs.reused != 'true'
+      - name: Record performance outcome and review deadline
+        if: always()
+        env:
+          PERFORMANCE_OUTCOME: ${{ steps.performance.outcome }}
+          PERFORMANCE_ADVISORY: ${{ steps.performance-policy.outputs.advisory }}
+          VERIFICATION_REUSED: ${{ steps.reuse.outputs.reused }}
+        run: '"Verification reused: $env:VERIFICATION_REUSED. Lighthouse outcome: $env:PERFORMANCE_OUTCOME. Advisory: $env:PERFORMANCE_ADVISORY. Owner: Kernel Admin frontend/test maintainer. Review by: 2026-11-07; exception expires 2026-11-07T00:00:00Z." >> $env:GITHUB_STEP_SUMMARY'
+      - name: Bind measured coverage to this tested source and merge base
+        id: coverage
+        run: node scripts/check-ci.mjs --record-coverage
+        env:
+          VERIFICATION_REUSE_ARTIFACT: ${{ steps.reuse-candidate.outputs.artifact }}
+          VERIFICATION_REUSE_RUN_ID: ${{ steps.reuse-candidate.outputs.runId }}
+          VERIFICATION_REUSE_ATTEMPT: ${{ steps.reuse-candidate.outputs.runAttempt }}
+          GITHUB_TOKEN: ${{ github.token }}
+          VERIFICATION_REUSED: ${{ steps.reuse.outputs.reused }}
+          VERIFICATION_APPLICATION: ${{ needs.scope.outputs.application }}
+          VERIFICATION_PERFORMANCE_ADVISORY: ${{ steps.performance-policy.outputs.advisory }}
+          VERIFICATION_PERFORMANCE_OUTCOME: ${{ steps.performance.outcome }}
+      - name: Preserve measured coverage and verification diagnostics
+        if: always() && steps.reuse.outputs.reused != 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            coverage/unit/lcov.info
+            coverage/governance/lcov.info
+            coverage/verification-coverage.json
+            coverage/e2e/
+            coverage/visual/
+            coverage/lighthouse/
+          if-no-files-found: warn
+          retention-days: 3
+          overwrite: false
+          include-hidden-files: false
+  analysis:
+    name: SonarQube Cloud analysis
+    needs:
+      - scope
+      - check
+    if: needs.scope.result == 'success' && needs.check.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: windows-2025
+    env:
+      VERIFICATION_HEAD: ${{ needs.scope.outputs.head }}
+      VERIFICATION_BASE: ${{ needs.scope.outputs.base }}
+      VERIFICATION_COMMIT: ${{ needs.scope.outputs.commit }}
+      VERIFICATION_TREE: ${{ needs.scope.outputs.tree }}
+      VERIFICATION_COVERAGE_ATTEMPT: ${{ needs.check.outputs.coverage_attempt }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+      VERIFICATION_COVERAGE_RUN_ID: ${{ needs.check.outputs.coverage_run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.scope.outputs.commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+      - name: Download coverage from the successful producer job
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: ${{ needs.check.outputs.coverage_artifact }}
+          path: coverage
+          run-id: ${{ needs.check.outputs.coverage_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify coverage identity and measured bytes before analysis
+        run: node scripts/check-ci.mjs --verify-coverage
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Install locked TypeScript analysis dependencies without running scripts
+        run: npm ci --ignore-scripts
+      - name: Analyze the tested source with its measured coverage
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9
+        env:
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} -Dsonar.scm.revision=${{ needs.scope.outputs.head }}
+env:
+  KERNEL_SYNTHETIC_ENV: "1"
+  STORYBOOK_DISABLE_TELEMETRY: "1"
+  VITE_API_BASE_URL: https://api.example.com
+  VITE_APP_BASE_URL: /
+  VITE_OBSERVABILITY_URL: ""
+  VITE_RELEASE_ID: application-verification

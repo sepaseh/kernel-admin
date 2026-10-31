@@ -68,6 +68,25 @@ export const runProfile = (manifest, profile, run) => {
         "The full profile must run every required check exactly once",
       );
   }
+  if (profile === "complete" && manifest.applicationReady === true) {
+    const required = [...checks.values()].filter(
+      (check) => check.kind === "required",
+    );
+    const expected = required
+      .map((check) =>
+        check.id === "application-e2e" ? "browser-compatibility" : check.id,
+      )
+      .concat("visual");
+    if (
+      JSON.stringify(ids) !== JSON.stringify(expected) ||
+      checks.get("browser-compatibility")?.command !==
+        "npm run test:e2e:complete" ||
+      checks.get("visual")?.command !== "npm run test:visual"
+    )
+      throw new Error(
+        "Complete verification must retain every core check, replace Chromium with the full browser matrix and compare images exactly once",
+      );
+  }
   for (const { args, check } of commands) {
     const result = run(args, check);
     if (result !== 0) return result ?? 1;
@@ -91,6 +110,7 @@ if (
     throw new Error(
       "Run this tool through npm run validate so npm's CLI is available",
     );
+  let reusableBuild = false;
   process.exitCode = runProfile(
     manifest,
     process.argv[2] ?? "full",
@@ -100,8 +120,14 @@ if (
         cwd: repository,
         stdio: "inherit",
         windowsHide: true,
+        env: {
+          ...process.env,
+          ...(reusableBuild ? { KERNEL_REUSE_VERIFICATION_BUILD: "1" } : {}),
+        },
       });
       if (result.error) throw result.error;
+      if (check.id === "application-build" && result.status === 0)
+        reusableBuild = true;
       return result.status ?? 1;
     },
   );

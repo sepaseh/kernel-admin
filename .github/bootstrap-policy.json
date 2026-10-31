@@ -51,7 +51,6 @@
     ".github/dependabot.yml",
     ".github/workflows/ci.yml",
     ".github/workflows/pr-policy.yml",
-    ".github/workflows/sonar.yml",
     ".gitignore",
     ".nvmrc",
     ".prettierignore",
