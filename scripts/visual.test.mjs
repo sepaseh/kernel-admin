@@ -1,21 +1,32 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import {
   mkdir,
   mkdtemp,
-  readdir,
   readFile,
+  realpath,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
+import { registerHooks } from "node:module";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { runVisual, runVisualChild } from "./run-visual.mjs";
+import {
+  assertVisualBaselineImages,
+  buildVerification,
+  fingerprintVisualSources,
+  runVisual,
+  runVisualChild,
+  verifyVerificationBuild,
+  withVerificationBuild,
+} from "./run-visual.mjs";
 import {
   acquireVisualLock,
   assertReviewedVisualBaseline,
@@ -24,7 +35,361 @@ import {
   inspectVisualBrowser,
   markVisualBaselinePending,
   visualEnvironment,
+  visualSourceInputs,
+  windowsChromiumFlags,
+  windowsChromiumLaunchOptions,
 } from "./visual-environment.mjs";
+
+const withBuildFixture = async (run) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "kernel-build-proof-"));
+  const environment = {
+    KERNEL_SYNTHETIC_ENV: "1",
+    VITE_API_BASE_URL: "https://api.example.com",
+    VITE_APP_BASE_URL: "/",
+    VITE_OBSERVABILITY_URL: "",
+    VITE_RELEASE_ID: "application-verification",
+  };
+  const files = [
+    ".nvmrc",
+    "package.json",
+    "package-lock.json",
+    "index.html",
+    "vite.config.ts",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "playwright.visual.config.ts",
+    "scripts/run-visual.mjs",
+    "scripts/visual-environment.mjs",
+    "scripts/stamp-admin-build.mjs",
+    "scripts/validate-production-env.mjs",
+    "scripts/validate-deployment-env.mjs",
+    "src/app/App.tsx",
+    "docs/public.md",
+  ];
+  try {
+    await mkdir(path.join(directory, ".github"));
+    await writeFile(
+      path.join(directory, ".github/bootstrap-policy.json"),
+      JSON.stringify({
+        allowedFiles: [
+          ...files,
+          ".env.example",
+          "deploy/docker/.env.example",
+          "deploy/native/hosts.env.example",
+        ],
+      }),
+    );
+    for (const filename of files) {
+      await mkdir(path.dirname(path.join(directory, filename)), {
+        recursive: true,
+      });
+      await writeFile(
+        path.join(directory, filename),
+        `synthetic public ${filename}`,
+      );
+    }
+    await mkdir(path.join(directory, "dist/_kernel"), { recursive: true });
+    await writeFile(
+      path.join(directory, "dist/index.html"),
+      "<html>synthetic</html>",
+    );
+    await writeFile(
+      path.join(directory, "dist/app.js"),
+      "synthetic built application",
+    );
+    await writeFile(
+      path.join(directory, "dist/_kernel/build.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        releaseId: environment.VITE_RELEASE_ID,
+        basePath: environment.VITE_APP_BASE_URL,
+        apiOrigin: environment.VITE_API_BASE_URL,
+      }),
+    );
+    await run(directory, environment);
+  } finally {
+    assert.equal(path.dirname(path.resolve(directory)), path.resolve(tmpdir()));
+    assert.ok(path.basename(directory).startsWith("kernel-build-proof-"));
+    await rm(directory, { recursive: true, force: true });
+  }
+};
+
+test("verification reuse binds the public source, build bytes and synthetic environment", async () => {
+  await withBuildFixture(async (directory, environment) => {
+    let builds = 0;
+    const identity = await buildVerification({
+      repository: directory,
+      environment,
+      build: async () => {
+        builds++;
+        return 0;
+      },
+    });
+    assert.equal(builds, 1);
+    assert.deepEqual(
+      await verifyVerificationBuild(directory, environment),
+      identity,
+    );
+    assert.ok(
+      !identity.sourceInputs.some((file) => file.includes(".env.example")),
+    );
+    await assert.rejects(
+      verifyVerificationBuild(directory, {
+        ...environment,
+        VITE_RELEASE_ID: "different",
+      }),
+      /synthetic CI environment/,
+    );
+    await writeFile(
+      path.join(directory, "docs/public.md"),
+      "changed public tree",
+    );
+    await assert.rejects(
+      verifyVerificationBuild(directory, environment),
+      /stale/,
+    );
+  });
+});
+
+test("a failed build or concurrent source edit never publishes reusable evidence", async () => {
+  await withBuildFixture(async (directory, environment) => {
+    const proof = path.join(directory, "coverage/verification-build.json");
+    await assert.rejects(
+      buildVerification({
+        repository: directory,
+        environment,
+        build: async () => 7,
+      }),
+      /exit code 7/,
+    );
+    await assert.rejects(readFile(proof), { code: "ENOENT" });
+    await assert.rejects(
+      buildVerification({
+        repository: directory,
+        environment,
+        build: async () => {
+          await writeFile(
+            path.join(directory, "src/app/App.tsx"),
+            "concurrent source edit",
+          );
+          return 0;
+        },
+      }),
+      /sources changed/,
+    );
+    await assert.rejects(readFile(proof), { code: "ENOENT" });
+  });
+});
+
+test("verification rejects modified or added distribution assets and linked outputs", async () => {
+  await withBuildFixture(async (directory, environment) => {
+    await buildVerification({
+      repository: directory,
+      environment,
+      build: async () => 0,
+    });
+    await writeFile(path.join(directory, "dist/extra.js"), "unexpected output");
+    await assert.rejects(
+      verifyVerificationBuild(directory, environment),
+      /stale/,
+    );
+    await rm(path.join(directory, "dist/extra.js"));
+    await writeFile(path.join(directory, "dist/app.js"), "changed output");
+    await assert.rejects(
+      verifyVerificationBuild(directory, environment),
+      /stale/,
+    );
+    await mkdir(path.join(directory, "outside"));
+    await symlink(
+      path.join(directory, "outside"),
+      path.join(directory, "dist/linked"),
+      "junction",
+    );
+    await assert.rejects(
+      verifyVerificationBuild(directory, environment),
+      /ordinary/,
+    );
+  });
+});
+
+test("verification operations retain their original error and post-operation integrity failure", async () => {
+  await withBuildFixture(async (directory, environment) => {
+    await buildVerification({
+      repository: directory,
+      environment,
+      build: async () => 0,
+    });
+    const primary = new Error("synthetic original audit failure");
+    await assert.rejects(
+      withVerificationBuild(directory, environment, async () => {
+        await writeFile(
+          path.join(directory, "dist/app.js"),
+          "changed during operation",
+        );
+        throw primary;
+      }),
+      (error) =>
+        error instanceof AggregateError &&
+        error.errors[0] === primary &&
+        /stale/.test(error.errors[1].message),
+    );
+  });
+});
+
+test("Windows Chromium backport preserves the actual pinned Playwright feature defaults", async () => {
+  const packageUrl = import.meta.resolve("playwright-core/package.json");
+  const installed = JSON.parse(await readFile(new URL(packageUrl), "utf8"));
+  assert.equal(installed.version, "1.64.1");
+  const source = await readFile(
+    new URL("./lib/coreBundle.js", packageUrl),
+    "utf8",
+  );
+  const block = /disabledFeatures = \[([\s\S]*?)\]\.filter\(Boolean\)/.exec(
+    source,
+  );
+  assert.ok(block, "The pinned SDK must expose its reviewed feature list.");
+  const features = JSON.parse(
+    "[" + block[1].replace(/\/\/[^\n]*/g, "").replace(/,\s*$/, "") + "]",
+  );
+  assert.ok(!features.includes("TcpPortRandomizationWin"));
+  const original = "--disable-features=" + features.join(",");
+  const options = windowsChromiumLaunchOptions("win32");
+  assert.deepEqual(Object.keys(options).sort(), ["args", "ignoreDefaultArgs"]);
+  assert.deepEqual(options.ignoreDefaultArgs, [original]);
+  assert.deepEqual(options.args, [original + ",TcpPortRandomizationWin"]);
+  for (const platform of ["linux", "darwin"])
+    assert.deepEqual(windowsChromiumLaunchOptions(platform), {});
+});
+
+test("Windows feature extension keeps unrelated flags and rejects ambiguous replacements", () => {
+  const flags = Object.freeze([
+    "--enable-automation",
+    "--disable-features=Alpha,Beta",
+    "--headless=new",
+  ]);
+  const extended = windowsChromiumFlags(flags, "win32");
+  assert.deepEqual(extended, [
+    flags[0],
+    flags[1] + ",TcpPortRandomizationWin",
+    flags[2],
+  ]);
+  assert.deepEqual(windowsChromiumFlags(extended, "win32"), extended);
+  assert.equal(flags[1], "--disable-features=Alpha,Beta");
+  for (const platform of ["linux", "darwin"])
+    assert.deepEqual(windowsChromiumFlags(flags, platform), flags);
+  for (const invalid of [[], [flags[1], flags[1]]])
+    assert.throws(() => windowsChromiumFlags(invalid, "win32"), /One existing/);
+});
+
+test("source provenance includes App, providers, fonts and capture inputs without reading private files", async () => {
+  const configuration = [
+    ".nvmrc",
+    "package.json",
+    "package-lock.json",
+    "index.html",
+    "vite.config.ts",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "playwright.visual.config.ts",
+    "scripts/run-visual.mjs",
+    "scripts/visual-environment.mjs",
+    "scripts/stamp-admin-build.mjs",
+    "scripts/validate-production-env.mjs",
+    "scripts/validate-deployment-env.mjs",
+  ];
+  const sourceFiles = [
+    "src/app/App.tsx",
+    "src/app/providers/antd/Antd.tsx",
+    "src/assets/fonts/example.woff2",
+    "src/shared/lib/dialog-focus.ts",
+    "public/logo.svg",
+    "e2e/shared/admin-fixtures.ts",
+  ];
+  const inventory = [
+    ...configuration,
+    ...sourceFiles,
+    "docs/README.md",
+    "e2e/visual/baselines/application/win32/metadata.json",
+  ];
+  assert.deepEqual(
+    visualSourceInputs(inventory),
+    [...configuration, ...sourceFiles].sort(),
+  );
+  for (const unsafe of [
+    "../private",
+    "src/../private",
+    "src\\private",
+    "/private",
+  ])
+    assert.throws(
+      () => visualSourceInputs([...inventory, unsafe]),
+      /safe unique/,
+    );
+  assert.throws(
+    () => visualSourceInputs([...inventory, inventory[0]]),
+    /safe unique/,
+  );
+  assert.throws(() => visualSourceInputs(sourceFiles), /missing/);
+  assert.throws(
+    () => visualSourceInputs([...inventory, "src/.env.local"]),
+    /environment files/,
+  );
+  const directory = await mkdtemp(path.join(tmpdir(), "kernel-visual-inputs-"));
+  try {
+    await mkdir(path.join(directory, ".github"));
+    await writeFile(
+      path.join(directory, ".github/bootstrap-policy.json"),
+      JSON.stringify({ allowedFiles: inventory }),
+    );
+    for (const file of [...configuration, ...sourceFiles]) {
+      await mkdir(path.dirname(path.join(directory, file)), {
+        recursive: true,
+      });
+      await writeFile(path.join(directory, file), `synthetic public ${file}`);
+    }
+    // Neither the private file nor the approved-image metadata needs to exist.
+    const initial = await fingerprintVisualSources(directory);
+    await writeFile(path.join(directory, "src/app/App.tsx"), "changed App");
+    const changedApp = await fingerprintVisualSources(directory);
+    assert.notEqual(changedApp.sourceFingerprint, initial.sourceFingerprint);
+    await writeFile(
+      path.join(directory, "src/assets/fonts/example.woff2"),
+      "changed font",
+    );
+    const changedFont = await fingerprintVisualSources(directory);
+    assert.notEqual(
+      changedFont.sourceFingerprint,
+      changedApp.sourceFingerprint,
+    );
+    assert.deepEqual(changedFont.sourceInputs, initial.sourceInputs);
+    const outside = path.join(directory, "outside");
+    await mkdir(outside);
+    await writeFile(
+      path.join(outside, "not-source.txt"),
+      "synthetic outside file",
+    );
+    await symlink(outside, path.join(directory, "src/redirect"), "junction");
+    await writeFile(
+      path.join(directory, ".github/bootstrap-policy.json"),
+      JSON.stringify({
+        allowedFiles: [...inventory, "src/redirect/not-source.txt"],
+      }),
+    );
+    await assert.rejects(
+      fingerprintVisualSources(directory),
+      /ordinary public file/,
+    );
+  } finally {
+    assert.equal(path.dirname(path.resolve(directory)), path.resolve(tmpdir()));
+    assert.equal(
+      path.basename(directory).startsWith("kernel-visual-inputs-"),
+      true,
+    );
+    await rm(directory, { recursive: true, force: true });
+  }
+});
 
 test("a failed snapshot update leaves pending review and a metadata failure prevents capture", async () => {
   const directory = await mkdtemp(
@@ -229,6 +594,48 @@ test("the actual update command rejects CI before inspecting baselines or starti
   assert.match(result.stderr, /Visual baseline updates are forbidden in CI/);
 });
 
+test("the actual visual config rejects short and long update flags in CI", () => {
+  const configuration = new URL(
+    "../playwright.visual.config.ts",
+    import.meta.url,
+  );
+  for (const flag of [
+    "-u",
+    "-u=all",
+    "-uall",
+    "--update-snapshots",
+    "--update-snapshots=all",
+  ]) {
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "-e",
+        `process.argv.push(${JSON.stringify(flag)}); await import(${JSON.stringify(configuration.href)});`,
+      ],
+      {
+        env: {
+          ...visualEnvironment({
+            PATH: process.env.PATH,
+            SystemRoot: process.env.SystemRoot,
+          }),
+          CI: "1",
+          KERNEL_VISUAL_UPDATE: "0",
+        },
+        encoding: "utf8",
+        windowsHide: true,
+        timeout: 10_000,
+      },
+    );
+    assert.notEqual(result.status, 0, flag);
+    assert.match(
+      result.stderr,
+      /Visual baseline updates are forbidden in CI/,
+      flag,
+    );
+  }
+});
+
 const syntheticVisualDrivers = (failures = {}) => {
   const events = [];
   const act = (name) => {
@@ -239,6 +646,8 @@ const syntheticVisualDrivers = (failures = {}) => {
     platform: "win32",
     playwright: "synthetic-version",
     browserVersion: "synthetic-browser",
+    sourceFingerprint: "a".repeat(64),
+    sourceInputs: ["src/app/App.tsx"],
     review: { status: "pending", reviewer: null, reviewedAt: null },
   };
   return {
@@ -259,6 +668,7 @@ const syntheticVisualDrivers = (failures = {}) => {
           },
         };
       },
+      baselineImages: async () => act("images"),
       lock: async () => {
         act("lock");
         return async () => act("release");
@@ -282,6 +692,289 @@ const syntheticVisualDrivers = (failures = {}) => {
   };
 };
 
+test("comparison verifies approved PNG bytes and inventory before any browser or child", async () => {
+  const directory = await realpath(
+    await mkdtemp(path.join(tmpdir(), "kernel-visual-image-hashes-")),
+  );
+  const image = path.join(directory, "approved.png");
+  const bytes = Buffer.from("synthetic reviewed PNG bytes");
+  const metadata = {
+    images: [
+      {
+        name: "approved.png",
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+      },
+    ],
+  };
+  try {
+    await writeFile(image, bytes);
+    await assertVisualBaselineImages(directory, metadata);
+    await writeFile(image, "unreviewed replacement bytes");
+    const fixture = syntheticVisualDrivers();
+    const baseline = fixture.drivers.baseline;
+    fixture.drivers.baseline = async () => ({
+      ...(await baseline()),
+      ...metadata,
+    });
+    fixture.drivers.baselineImages = async (reviewed) => {
+      fixture.events.push("images");
+      await assertVisualBaselineImages(directory, reviewed);
+    };
+    await assert.rejects(
+      runVisual({ platform: "win32", drivers: fixture.drivers }),
+      /image hash mismatch/,
+    );
+    assert.equal(fixture.events.includes("lock"), false);
+    assert.equal(fixture.events.includes("browser"), false);
+    assert.equal(fixture.events.includes("capture"), false);
+    await writeFile(image, bytes);
+    for (const invalid of [
+      {},
+      { images: [] },
+      { images: [metadata.images[0], metadata.images[0]] },
+      {
+        images: [{ name: "../private.png", sha256: metadata.images[0].sha256 }],
+      },
+    ])
+      await assert.rejects(
+        assertVisualBaselineImages(directory, invalid),
+        /image hashes are required/,
+      );
+    await writeFile(path.join(directory, "unlisted.png"), "unreviewed image");
+    await assert.rejects(
+      assertVisualBaselineImages(directory, metadata),
+      /image inventory mismatch/,
+    );
+  } finally {
+    assert.equal(
+      path.dirname(path.resolve(directory)),
+      await realpath(tmpdir()),
+    );
+    assert.equal(
+      path.basename(directory).startsWith("kernel-visual-image-hashes-"),
+      true,
+    );
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("source edits during comparison or capture reject success and leave captures pending", async () => {
+  const directory = await mkdtemp(
+    path.join(tmpdir(), "kernel-visual-source-mutation-"),
+  );
+  const source = path.join(directory, "App.tsx"),
+    pending = path.join(directory, "metadata.json");
+  try {
+    for (const update of [false, true]) {
+      await writeFile(source, "synthetic source before child");
+      const fixture = syntheticVisualDrivers(),
+        metadata = fixture.drivers.metadata;
+      fixture.drivers.metadata = async () => ({
+        ...(await metadata()),
+        sourceFingerprint: createHash("sha256")
+          .update(await readFile(source))
+          .digest("hex"),
+      });
+      fixture.drivers.markPending = async (value) => {
+        fixture.events.push("pending");
+        await markVisualBaselinePending(pending, value);
+      };
+      fixture.drivers.capture = async () => {
+        fixture.events.push("capture");
+        await writeFile(source, "synthetic source edited while child ran");
+        return 0;
+      };
+      await assert.rejects(
+        runVisual({ update, platform: "win32", drivers: fixture.drivers }),
+        /Visual source changed/,
+      );
+      assert.equal(fixture.events.includes("capture"), true);
+      assert.equal(fixture.events.includes("result"), false);
+      assert.equal(fixture.events.at(-1), "release");
+      if (update)
+        assert.equal(
+          JSON.parse(await readFile(pending, "utf8")).review.status,
+          "pending",
+        );
+    }
+  } finally {
+    assert.equal(path.dirname(path.resolve(directory)), path.resolve(tmpdir()));
+    assert.equal(
+      path.basename(directory).startsWith("kernel-visual-source-mutation-"),
+      true,
+    );
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test(
+  "ordinary Windows short-name aliases retain reviewed image integrity",
+  { skip: process.platform !== "win32" },
+  async (context) => {
+    const directory = await realpath(
+      await mkdtemp(path.join(tmpdir(), "kernel-visual-short-name-")),
+    );
+    const bytes = Buffer.from("synthetic reviewed short-name image");
+    const metadata = {
+      images: [
+        {
+          name: "approved.png",
+          sha256: createHash("sha256").update(bytes).digest("hex"),
+        },
+      ],
+    };
+    try {
+      await writeFile(path.join(directory, "approved.png"), bytes);
+      const result = spawnSync(
+        "cmd.exe",
+        [
+          "/d",
+          "/e:on",
+          "/v:off",
+          "/u",
+          "/c",
+          'for %I in ("%KERNEL_VISUAL_SHORT_QUERY_PATH%") do @echo "%~fsI"',
+        ],
+        {
+          env: {
+            ...visualEnvironment({
+              PATH: process.env.PATH,
+              SystemRoot: process.env.SystemRoot,
+              TEMP: directory,
+              TMP: directory,
+            }),
+            KERNEL_VISUAL_SHORT_QUERY_PATH: directory,
+          },
+          encoding: "utf16le",
+          windowsVerbatimArguments: true,
+          windowsHide: true,
+          timeout: 10_000,
+        },
+      );
+      assert.ifError(result.error);
+      assert.equal(result.status, 0, result.stderr);
+      const quotedAlias = result.stdout.trim();
+      assert.match(quotedAlias, /^".+"$/u);
+      const alias = quotedAlias.slice(1, -1);
+      if (alias.toLowerCase() === directory.toLowerCase()) {
+        context.skip("This Windows volume does not expose an 8.3 alias.");
+        return;
+      }
+      assert.equal(await realpath(alias), directory);
+      await assertVisualBaselineImages(alias, metadata);
+    } finally {
+      assert.equal(path.dirname(directory), await realpath(tmpdir()));
+      assert.ok(
+        path.basename(directory).startsWith("kernel-visual-short-name-"),
+      );
+      await rm(directory, { recursive: true, force: true });
+    }
+  },
+);
+
+test("reviewed baselines reject linked directories, ancestors and images", async () => {
+  const container = await realpath(
+    await mkdtemp(path.join(tmpdir(), "kernel-visual-linked-images-")),
+  );
+  const target = path.join(container, "target"),
+    alias = path.join(container, "alias"),
+    nested = path.join(target, "nested"),
+    images = path.join(container, "images");
+  const bytes = Buffer.from("synthetic reviewed linked image"),
+    metadata = {
+      images: [
+        {
+          name: "approved.png",
+          sha256: createHash("sha256").update(bytes).digest("hex"),
+        },
+      ],
+    };
+  const linkType = process.platform === "win32" ? "junction" : "dir";
+  try {
+    await mkdir(nested, { recursive: true });
+    await mkdir(images);
+    await writeFile(path.join(target, "approved.png"), bytes);
+    await writeFile(path.join(nested, "approved.png"), bytes);
+    await symlink(target, alias, linkType);
+    await assert.rejects(
+      assertVisualBaselineImages(alias, metadata),
+      /ordinary directory/,
+    );
+    await assert.rejects(
+      assertVisualBaselineImages(path.join(alias, "nested"), metadata),
+      /ordinary directory/,
+    );
+    await symlink(target, path.join(images, "approved.png"), linkType);
+    await assert.rejects(
+      assertVisualBaselineImages(images, metadata),
+      /ordinary image/,
+    );
+  } finally {
+    assert.equal(path.dirname(container), await realpath(tmpdir()));
+    assert.ok(
+      path.basename(container).startsWith("kernel-visual-linked-images-"),
+    );
+    await rm(container, { recursive: true, force: true });
+  }
+});
+
+test("comparison rejects baseline hash or inventory edits during its child before writing results", async () => {
+  const directory = await realpath(
+    await mkdtemp(path.join(tmpdir(), "kernel-visual-baseline-mutation-")),
+  );
+  const image = path.join(directory, "approved.png"),
+    extra = path.join(directory, "unlisted.png"),
+    bytes = Buffer.from("synthetic reviewed original image");
+  const metadata = {
+    images: [
+      {
+        name: "approved.png",
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+      },
+    ],
+  };
+  try {
+    for (const kind of ["hash", "inventory"]) {
+      await writeFile(image, bytes);
+      const fixture = syntheticVisualDrivers(),
+        baseline = fixture.drivers.baseline;
+      fixture.drivers.baseline = async () => ({
+        ...(await baseline()),
+        ...metadata,
+      });
+      fixture.drivers.baselineImages = async (reviewed) => {
+        fixture.events.push("images");
+        await assertVisualBaselineImages(directory, reviewed);
+      };
+      fixture.drivers.capture = async () => {
+        fixture.events.push("capture");
+        await writeFile(
+          kind === "hash" ? image : extra,
+          "unreviewed image bytes",
+        );
+        return 0;
+      };
+      await assert.rejects(
+        runVisual({ platform: "win32", drivers: fixture.drivers }),
+        kind === "hash" ? /image hash mismatch/ : /image inventory mismatch/,
+      );
+      assert.equal(
+        fixture.events.filter((event) => event === "images").length,
+        2,
+      );
+      assert.equal(fixture.events.includes("capture"), true);
+      assert.equal(fixture.events.includes("result"), false);
+      assert.equal(fixture.events.at(-1), "release");
+    }
+  } finally {
+    assert.equal(path.dirname(directory), await realpath(tmpdir()));
+    assert.ok(
+      path.basename(directory).startsWith("kernel-visual-baseline-mutation-"),
+    );
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("a visual update marks fresh captures pending before starting and never reads an old approval", async () => {
   const fixture = syntheticVisualDrivers();
   const result = await runVisual({
@@ -299,6 +992,7 @@ test("a visual update marks fresh captures pending before starting and never rea
     "metadata",
     "pending",
     "capture",
+    "metadata",
     "result",
     "release",
   ]);
@@ -550,26 +1244,178 @@ test("repeated visual interrupts retain ownership until child close", async () =
   assert.equal(signals.listenerCount("SIGTERM"), 0);
 });
 
-for (const filename of ["run-lighthouse.mjs", "run-visual.mjs"])
-  test(`${filename} rejects direct use until application CLI admission`, async (context) => {
-    const directory = await mkdtemp(
-      path.join(tmpdir(), "kernel-prep-cli-blocked-"),
-    );
-    context.after(() => rm(directory, { recursive: true, force: true }));
-    const child = spawnSync(
-      process.execPath,
-      [fileURLToPath(new URL(`./${filename}`, import.meta.url))],
-      {
-        cwd: directory,
-        encoding: "utf8",
-        windowsHide: true,
-        timeout: 10_000,
-      },
-    );
-    assert.equal(child.status, 1);
-    assert.match(
-      child.stderr,
-      /CLI integration is not published in this phase/,
-    );
-    assert.deepEqual(await readdir(directory), []);
+test("the visual CLI binds a pending capture to its public sources and synthetic child", async () => {
+  const repository = fileURLToPath(new URL("../", import.meta.url));
+  const script = fileURLToPath(new URL("./run-visual.mjs", import.meta.url));
+  const baseline = path.join(
+    repository,
+    "e2e/visual/baselines/application/win32/metadata.json",
+  );
+  const baselineBefore = await readFile(baseline);
+  const fixtureKey = Symbol.for("kernel-admin.visual-cli.synthetic");
+  const fixture = {
+    children: [],
+    browsers: [],
+    executable: path.join(repository, "synthetic-browser/chrome.exe"),
+  };
+  globalThis[fixtureKey] = fixture;
+  const hooks = registerHooks({
+    resolve(specifier, context, nextResolve) {
+      if (specifier === "node:child_process")
+        return { url: "kernel-visual:child", shortCircuit: true };
+      if (specifier === "@playwright/test")
+        return { url: "kernel-visual:browser", shortCircuit: true };
+      return nextResolve(specifier, context);
+    },
+    load(url, context, nextLoad) {
+      if (url === "kernel-visual:child")
+        return {
+          format: "module",
+          shortCircuit: true,
+          source: [
+            'import { EventEmitter } from "node:events";',
+            'const fixture = globalThis[Symbol.for("kernel-admin.visual-cli.synthetic")];',
+            "export function spawn(command, args, options) {",
+            "  fixture.children.push({ command, args, options });",
+            "  const child = new EventEmitter();",
+            "  child.pid = 123;",
+            "  child.kill = () => true;",
+            '  queueMicrotask(() => child.emit("close", 0));',
+            "  return child;",
+            "}",
+          ].join("\n"),
+        };
+      if (url === "kernel-visual:browser")
+        return {
+          format: "module",
+          shortCircuit: true,
+          source: [
+            'const fixture = globalThis[Symbol.for("kernel-admin.visual-cli.synthetic")];',
+            "export const chromium = {",
+            "  executablePath: () => fixture.executable,",
+            "  launch: async (options) => {",
+            "    const call = { options, closed: false };",
+            "    fixture.browsers.push(call);",
+            "    return {",
+            '      version: () => "synthetic-chromium-version",',
+            "      close: async () => { call.closed = true; },",
+            "    };",
+            "  },",
+            "};",
+          ].join("\n"),
+        };
+      return nextLoad(url, context);
+    },
   });
+  const original = {
+    argv: process.argv,
+    ci: process.env.CI,
+    exitCode: process.exitCode,
+    info: console.info,
+    error: console.error,
+  };
+  const messages = [],
+    errors = [];
+  let captureDirectory, resultDirectory;
+  try {
+    process.argv = [process.execPath, script, "--update"];
+    process.env.CI = "";
+    process.exitCode = undefined;
+    console.info = (message) => messages.push(message);
+    console.error = (message) => errors.push(message);
+    await import(
+      new URL("./run-visual.mjs?synthetic-cli-wiring", import.meta.url)
+    );
+
+    assert.deepEqual(errors, []);
+    assert.equal(process.exitCode, 0);
+    assert.equal(fixture.children.length, 1);
+    assert.equal(fixture.browsers.length, 1);
+    assert.equal(fixture.browsers[0].closed, true);
+    assert.equal(
+      fixture.browsers[0].options.executablePath,
+      fixture.executable,
+    );
+    assert.equal(fixture.browsers[0].options.headless, true);
+    const child = fixture.children[0];
+    assert.equal(child.command, process.execPath);
+    assert.equal(child.options.cwd, repository);
+    assert.equal(child.options.timeout, 900_000);
+    assert.equal(child.options.windowsHide, true);
+    assert.equal(child.options.stdio, "inherit");
+    assert.deepEqual(child.args.slice(1), [
+      "test",
+      "--config=playwright.visual.config.ts",
+      "--update-snapshots",
+    ]);
+    assert.equal(
+      child.options.env.VITE_API_BASE_URL,
+      "https://api.example.com",
+    );
+    assert.equal(child.options.env.KERNEL_SYNTHETIC_ENV, "1");
+    assert.equal(child.options.env.KERNEL_VISUAL_RUNNER, "1");
+    assert.equal(child.options.env.KERNEL_VISUAL_UPDATE, "1");
+    captureDirectory = child.options.env.KERNEL_VISUAL_BASELINES;
+    resultDirectory = child.options.env.KERNEL_VISUAL_RESULTS;
+    const pending = JSON.parse(
+      await readFile(path.join(captureDirectory, "metadata.json"), "utf8"),
+    );
+    const result = JSON.parse(
+      await readFile(path.join(resultDirectory, "environment.json"), "utf8"),
+    );
+    assert.deepEqual(pending.review, {
+      status: "pending",
+      reviewer: null,
+      reviewedAt: null,
+    });
+    assert.equal(result.mode, "update");
+    assert.equal(result.exitCode, 0);
+    assert.equal(result.captureDirectory, captureDirectory);
+    assert.equal(result.browserVersion, "synthetic-chromium-version");
+    assert.deepEqual(result.review, pending.review);
+    assert.equal(result.sourceFingerprint, pending.sourceFingerprint);
+    assert.match(result.sourceFingerprint, /^[a-f0-9]{64}$/);
+    assert.deepEqual(
+      result.sourceInputs,
+      (await fingerprintVisualSources(repository)).sourceInputs,
+    );
+    assert.equal(
+      result.sourceInputs.some((file) => /(?:^|\/)\.env(?:\.|$)/i.test(file)),
+      false,
+    );
+    assert.match(messages.join("\n"), /captures remain pending/);
+    assert.deepEqual(await readFile(baseline), baselineBefore);
+    const release = await acquireVisualLock(
+      path.join(repository, "coverage/visual"),
+    );
+    await release();
+  } finally {
+    process.argv = original.argv;
+    if (original.ci === undefined) delete process.env.CI;
+    else process.env.CI = original.ci;
+    process.exitCode = original.exitCode;
+    console.info = original.info;
+    console.error = original.error;
+    hooks.deregister();
+    delete globalThis[fixtureKey];
+    if (captureDirectory) {
+      assert.equal(
+        path.dirname(path.resolve(captureDirectory)),
+        path.resolve(repository, "coverage/visual/captures"),
+      );
+      assert.equal(
+        path.basename(captureDirectory).startsWith("candidate-"),
+        true,
+      );
+      await rm(captureDirectory, { recursive: true, force: true });
+    }
+    if (resultDirectory) {
+      assert.equal(
+        path.dirname(path.resolve(resultDirectory)),
+        path.resolve(repository, "coverage/visual"),
+      );
+      assert.equal(path.basename(resultDirectory).startsWith("run-"), true);
+      await rm(resultDirectory, { recursive: true, force: true });
+    }
+  }
+});

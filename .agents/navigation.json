@@ -29,7 +29,7 @@
         "storybook-browser"
       ],
       "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
-      "limitations": "The current phase is non-runnable. Browser evidence is limited to isolated synthetic Storybook components; assembled application routes, real API journeys, production application build and visual/performance gates remain future work."
+      "limitations": "The application phase admits composed routes, production build and real browser/visual/performance verification with synthetic fixtures. Actual API-provider compatibility, human visual approval and deployment require separate current evidence."
     },
     {
       "id": "http-contract",
@@ -197,7 +197,7 @@
         "storybook-browser"
       ],
       "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
-      "limitations": "The current phase is non-runnable. Browser evidence is limited to isolated synthetic Storybook components; assembled application routes, real API journeys, production application build and visual/performance gates remain future work."
+      "limitations": "The application phase admits composed routes, production build and real browser/visual/performance verification with synthetic fixtures. Actual API-provider compatibility, human visual approval and deployment require separate current evidence."
     },
     {
       "id": "guidance",
@@ -263,7 +263,7 @@
         ".agents/rules/styling.md",
         ".agents/rules/localization.md"
       ],
-      "limitations": "The current phase is non-runnable. Browser evidence is limited to isolated synthetic Storybook components; assembled application routes, real API journeys, production application build and visual/performance gates remain future work."
+      "limitations": "The application phase admits composed routes, production build and real browser/visual/performance verification with synthetic fixtures. Actual API-provider compatibility, human visual approval and deployment require separate current evidence."
     },
     {
       "id": "release-quality-prerequisites",
@@ -313,9 +313,46 @@
         ".agents/rules/guidance.md",
         ".agents/rules/safety.md"
       ],
-      "limitations": "This phase remains non-runnable. Pure synthetic tests do not execute a production build, deployment, release publication, Lighthouse, mutation testing or current visual approval. Dated Windows images are historical inputs."
+      "limitations": "Pure helper cases remain synthetic; the canonical application gate separately owns real build/browser/visual/Lighthouse execution. Deployment, operator automation and API-provider verification require separate authorization and evidence. Historical Windows images are not fresh approval."
+    },
+    {
+      "id": "application-composition",
+      "when": "Change application startup, composed routes or the runnable verification gate",
+      "owners": [
+        "src/main.tsx",
+        "src/app/App.tsx",
+        "src/app/Routes.tsx",
+        "vite.config.ts"
+      ],
+      "contracts": [".github/bootstrap-policy.json", ".agents/validation.json"],
+      "rules": [
+        ".agents/rules/react.md",
+        ".agents/rules/testing.md",
+        ".agents/rules/safety.md"
+      ],
+      "tests": [
+        "src/app/Routes.test.tsx",
+        "src/test/integration/pages.test.tsx",
+        "contract/api.contract.test.ts",
+        "e2e/auth.spec.ts",
+        "e2e/visual/admin.spec.ts"
+      ],
+      "checks": [
+        "snapshot",
+        "ci-policy",
+        "boundaries",
+        "typecheck",
+        "unit-coverage",
+        "application-build",
+        "bundle",
+        "contract",
+        "application-e2e",
+        "visual",
+        "lighthouse"
+      ],
+      "limitations": "Synthetic consumer fixtures do not verify the separate API provider or deployment. Local/PR Chromium validation, complete browser compatibility, approved-runtime image comparison and time-bounded advisory performance have distinct manifest roles. Reused evidence must match the actual tested head, base and merge tree."
     }
   ],
-  "phase": "assistant-guidance",
-  "applicationReady": false
+  "phase": "application-verification",
+  "applicationReady": true
 }

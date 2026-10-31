@@ -1,5 +1,8 @@
 import { Button, Drawer, type DrawerProps, Space } from "antd";
+import type { FC } from "react";
 import { useTranslation } from "react-i18next";
+
+import { trapDialogFocus } from "@/shared/lib/dialog-focus";
 
 type FormDrawerProps = Omit<DrawerProps, "onClose"> & {
   onClose: NonNullable<DrawerProps["onClose"]>;
@@ -7,13 +10,14 @@ type FormDrawerProps = Omit<DrawerProps, "onClose"> & {
   submitting: boolean;
 };
 
-export const FormDrawer = ({
+export const FormDrawer: FC<FormDrawerProps> = ({
   children,
   onClose,
+  onKeyDown,
   onSubmit,
   submitting,
   ...rest
-}: FormDrawerProps) => {
+}) => {
   const { t } = useTranslation();
 
   return (
@@ -31,6 +35,10 @@ export const FormDrawer = ({
       }
       mask={{ closable: false }}
       onClose={onClose}
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        trapDialogFocus(event);
+      }}
       styles={{ footer: { textAlign: "end" } }}
       {...rest}
     >

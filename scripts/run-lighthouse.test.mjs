@@ -6,6 +6,7 @@ import {
   open,
   readdir,
   readFile,
+  realpath,
   rename,
   rm,
   symlink,
@@ -15,6 +16,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { Launcher } from "chrome-launcher";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -23,8 +25,109 @@ import {
   lighthouseThresholds,
   minimumPerformanceScore,
 } from "./lighthouse-policy.mjs";
-import { launchOwnedChrome, runLighthouse } from "./run-lighthouse.mjs";
+import {
+  createLighthouseChromeOptions,
+  launchOwnedChrome,
+  prepareLighthouseFixture,
+  runLighthouse,
+} from "./run-lighthouse.mjs";
 import { createBuildMetadata, stampAdminBuild } from "./stamp-admin-build.mjs";
+
+const lighthouseFixtureDriver = ({
+  requestSettings = true,
+  visible = true,
+} = {}) => {
+  let routeHandler;
+  const route = (url) => ({
+    request: () => ({ url: () => url, method: () => "GET" }),
+    continue: vi.fn(),
+    fulfill: vi.fn(),
+    abort: vi.fn(),
+  });
+  const ready = vi.fn(async () => {
+    if (!visible)
+      throw new Error("synthetic authentication form is not visible");
+  });
+  const page = {
+    goto: vi.fn(async (_, options) => {
+      if (options?.waitUntil !== "domcontentloaded")
+        throw new Error(
+          "synthetic document load waits on an unrelated subresource",
+        );
+      if (requestSettings)
+        await routeHandler(route("https://api.example.com/settings"));
+      return { status: () => 200 };
+    }),
+    locator: vi.fn(() => ({ first: () => ({ waitFor: ready }) })),
+    getByRole: vi.fn(() => ({ waitFor: ready })),
+    close: vi.fn(async () => undefined),
+  };
+  const context = {
+    route: vi.fn(async (_, handler) => {
+      routeHandler = handler;
+    }),
+    on: vi.fn(),
+    newPage: vi.fn(async () => page),
+  };
+  const browser = {
+    contexts: () => [context],
+    close: vi.fn(async () => undefined),
+  };
+  return {
+    browser,
+    page,
+    ready,
+    chromium: { connectOverCDP: vi.fn(async () => browser) },
+    settings: vi.fn((language) => ({ language })),
+    request: async (url) => {
+      const request = route(url);
+      await routeHandler(request);
+      return request;
+    },
+  };
+};
+
+describe("Lighthouse authentication fixture readiness", () => {
+  it("uses document readiness and the actual settings/form guards without waiting for every subresource", async () => {
+    const fixture = lighthouseFixtureDriver();
+    const prepared = await prepareLighthouseFixture(
+      fixture.chromium,
+      fixture.settings,
+      { port: 9222 },
+      "http://127.0.0.1:4174/auth",
+    );
+    expect(fixture.settings).toHaveBeenCalledExactlyOnceWith("en");
+    expect(fixture.ready).toHaveBeenCalledTimes(2);
+    expect(fixture.page.close).toHaveBeenCalledOnce();
+    expect(() => prepared.verify()).not.toThrow();
+    const foreign = await fixture.request(
+      "https://foreign.example.test/private",
+    );
+    expect(foreign.abort).toHaveBeenCalledExactlyOnceWith("blockedbyclient");
+    expect(() => prepared.verify()).toThrow(/foreign\.example\.test/);
+    await prepared.dispose();
+    expect(fixture.browser.close).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [{ requestSettings: false }, /settings not loaded/],
+    [{ visible: false }, /form is not visible/],
+  ])(
+    "rejects missing application readiness and closes its owned connection",
+    async (options, error) => {
+      const fixture = lighthouseFixtureDriver(options);
+      await expect(
+        prepareLighthouseFixture(
+          fixture.chromium,
+          fixture.settings,
+          { port: 9222 },
+          "http://127.0.0.1:4174/auth",
+        ),
+      ).rejects.toThrow(error);
+      expect(fixture.browser.close).toHaveBeenCalledOnce();
+    },
+  );
+});
 
 const createReport = ({
   audits = {},
@@ -37,6 +140,49 @@ const createReport = ({
     ]),
   ),
   categories: { performance: { score } },
+});
+
+describe("Windows Lighthouse socket workaround", () => {
+  it("extends the public launcher defaults without changing other launch flags", () => {
+    const defaults = Launcher.defaultFlags();
+    const featureFlag = defaults.find((flag) =>
+      flag.startsWith("--disable-features="),
+    );
+    const options = createLighthouseChromeOptions(
+      Launcher,
+      "synthetic-chromium",
+      "win32",
+    );
+    expect(options).toEqual({
+      chromeFlags: [
+        ...defaults.map((flag) =>
+          flag === featureFlag ? flag + ",TcpPortRandomizationWin" : flag,
+        ),
+        "--headless=new",
+        "--disable-background-networking",
+      ],
+      chromePath: "synthetic-chromium",
+      ignoreDefaultFlags: true,
+    });
+    expect(
+      options.chromeFlags.filter((flag) =>
+        flag.startsWith("--disable-features="),
+      ),
+    ).toHaveLength(1);
+    expect(Launcher.defaultFlags()).toEqual(defaults);
+  });
+
+  it.each(["linux", "darwin"])(
+    "keeps the original %s launch options",
+    (platform) => {
+      expect(
+        createLighthouseChromeOptions(Launcher, "synthetic-chromium", platform),
+      ).toEqual({
+        chromeFlags: ["--headless=new", "--disable-background-networking"],
+        chromePath: "synthetic-chromium",
+      });
+    },
+  );
 });
 
 const lifecycle = (failures = {}) => {
@@ -491,8 +637,11 @@ const publicBuildEnvironment = {
   VITE_APP_BASE_URL: "/console/",
   VITE_RELEASE_ID: "synthetic-v1",
 };
-const buildFixture = async () => {
-  const root = await mkdtemp(path.join(tmpdir(), "kernel-build-stamp-test-"));
+const buildFixture = async (temporaryParent = tmpdir()) => {
+  const temporaryRoot = await realpath(temporaryParent);
+  const root = await mkdtemp(
+    path.join(temporaryRoot, "kernel-build-stamp-test-"),
+  );
   const build = path.join(root, "dist");
   await mkdir(build);
   await writeFile(
@@ -503,7 +652,7 @@ const buildFixture = async () => {
     root,
     build,
     cleanup: async () => {
-      expect(path.dirname(path.resolve(root))).toBe(path.resolve(tmpdir()));
+      expect(path.dirname(path.resolve(root))).toBe(temporaryRoot);
       expect(path.basename(root).startsWith("kernel-build-stamp-test-")).toBe(
         true,
       );
@@ -513,6 +662,50 @@ const buildFixture = async () => {
 };
 
 describe("validated build metadata", () => {
+  it("keeps sibling ownership when the temporary parent is an alias", async () => {
+    const temporaryParent = await realpath(tmpdir());
+    const root = await mkdtemp(
+      path.join(temporaryParent, "kernel-build-parent-test-"),
+    );
+    const target = path.join(root, "target");
+    const alias = path.join(root, "alias");
+    let fixture;
+    try {
+      await mkdir(target);
+      await symlink(
+        target,
+        alias,
+        process.platform === "win32" ? "junction" : "dir",
+      );
+      fixture = await buildFixture(alias);
+      const canonicalParent = await realpath(target);
+      expect(path.dirname(fixture.root)).toBe(canonicalParent);
+      const metadata = await stampAdminBuild({
+        environment: publicBuildEnvironment,
+        buildDirectory: fixture.build,
+        openFile: async (file, flags) => {
+          expect(path.dirname(path.dirname(path.dirname(file)))).toBe(
+            fixture.root,
+          );
+          expect(path.relative(fixture.build, file).split(path.sep)[0]).toBe(
+            "..",
+          );
+          expect(flags).toBe("wx");
+          return open(file, flags);
+        },
+      });
+      expect(metadata).toEqual(createBuildMetadata(publicBuildEnvironment));
+      expect(await readdir(target)).toEqual([path.basename(fixture.root)]);
+    } finally {
+      if (fixture) await fixture.cleanup();
+      expect(path.dirname(root)).toBe(temporaryParent);
+      expect(path.basename(root).startsWith("kernel-build-parent-test-")).toBe(
+        true,
+      );
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("publishes only a complete closed identity from its temporary sibling", async () => {
     const fixture = await buildFixture();
     const output = path.join(fixture.build, "_kernel/build.json");
