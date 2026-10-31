@@ -133,8 +133,9 @@ including the genuine static Storybook build and Chromium story tests. Run
 `npm run browser:install` after `npm ci` and before the canonical full command.
 Vitest disables environment-file discovery and uses explicit synthetic values;
 do not read private state or reuse a developer API, credentials or production data.
-Production application build, complete application E2E, field performance and visual
-evidence belong to the later runnable gate with all nineteen genuine application
-checks. See [publication policy](bootstrap.md),
+The manifest separately owns blocking application checks, complete browser and
+applicable visual verification, and performance responsibilities. Module and
+Storybook results cannot substitute for those executions or field measurements.
+See [publication policy](bootstrap.md),
 [HTTP ownership](http-client.md), [request lifecycle](request-lifecycle.md) and
 [Core/auth ownership](core-auth.md).

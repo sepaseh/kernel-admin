@@ -214,7 +214,7 @@ export const verifyCoverageManifest = (manifest, expected, contents) => {
   return true;
 };
 
-const priorVerificationRun = (runs, expected) =>
+const priorVerificationRuns = (runs, expected) =>
   runs
     .filter(
       (run) =>
@@ -229,15 +229,23 @@ const priorVerificationRun = (runs, expected) =>
         return Number.isFinite(value) ? value : 0;
       };
       return time(right) - time(left);
-    })[0];
+    });
 export const reusableCoverageCandidate = (runs, artifacts, expected) => {
   validateCoverageIdentity(expected);
   if (!Array.isArray(runs) || !Array.isArray(artifacts)) return undefined;
-  const latest = priorVerificationRun(runs, expected);
+  const ordered = priorVerificationRuns(runs, expected);
+  const latest = ordered[0];
   if (latest?.status !== "completed" || latest.conclusion !== "success")
     return undefined;
-  for (const run of [latest]) {
-    for (const artifact of artifacts) {
+  const newestArtifacts = [...artifacts].sort(
+    (left, right) =>
+      Date.parse(right.created_at ?? "1970-01-01") -
+      Date.parse(left.created_at ?? "1970-01-01"),
+  );
+  for (const run of ordered) {
+    if (run.status !== "completed" || run.conclusion !== "success") continue;
+
+    for (const artifact of newestArtifacts) {
       const match = /^verification-([1-9]\d*)-([1-9]\d*)$/.exec(
         artifact.name ?? "",
       );
@@ -1055,9 +1063,15 @@ export const createEvidenceRunner = ({
         runs.total_count !== runs.workflow_runs.length
       )
         return;
-      const run = priorVerificationRun(runs.workflow_runs ?? [], identity);
-      if (run) {
-        if (run.status !== "completed" || run.conclusion !== "success") return;
+      const ordered = priorVerificationRuns(runs.workflow_runs, identity);
+      const latest = ordered[0];
+      if (latest?.status !== "completed" || latest.conclusion !== "success")
+        return;
+
+      for (const run of ordered) {
+        if (run.status !== "completed" || run.conclusion !== "success")
+          continue;
+
         const artifacts = await githubJson(
           identity,
           `actions/runs/${run.id}/artifacts?per_page=100`,

@@ -517,26 +517,32 @@ export const UsersPage = () => {
           </Row>
         </Form>
         {(!list.error || list.data) && (
-          <Table<User>
-            columns={tableColumns}
-            dataSource={data}
-            loading={loading}
-            onChange={({ current: page }) =>
-              setFilters({
-                ...filters,
-                offset: String(((page ?? 1) - 1) * defaultPageSize),
-              })
-            }
-            pagination={{
-              current,
-              pageSize: defaultPageSize,
-              showSizeChanger: false,
-              total,
-            }}
-            rowKey="id"
-            scroll={{ x: token.screenXL }}
-            size="small"
-          />
+          <section
+            aria-label={t("users")}
+            style={{ overflowX: "auto" }}
+            tabIndex={0}
+          >
+            <Table<User>
+              columns={tableColumns}
+              dataSource={data}
+              loading={loading}
+              onChange={({ current: page }) =>
+                setFilters({
+                  ...filters,
+                  offset: String(((page ?? 1) - 1) * defaultPageSize),
+                })
+              }
+              pagination={{
+                current,
+                pageSize: defaultPageSize,
+                showSizeChanger: false,
+                total,
+              }}
+              rowKey="id"
+              size="small"
+              styles={{ content: { minWidth: token.screenXL } }}
+            />
+          </section>
         )}
       </div>
       {canCreate && (

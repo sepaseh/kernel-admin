@@ -16,6 +16,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { Launcher } from "chrome-launcher";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -24,8 +25,132 @@ import {
   lighthouseThresholds,
   minimumPerformanceScore,
 } from "./lighthouse-policy.mjs";
-import { launchOwnedChrome, runLighthouse } from "./run-lighthouse.mjs";
+import {
+  createLighthouseChromeOptions,
+  launchOwnedChrome,
+  prepareLighthouseFixture,
+  runLighthouse,
+} from "./run-lighthouse.mjs";
 import { createBuildMetadata, stampAdminBuild } from "./stamp-admin-build.mjs";
+
+const lighthouseFixtureDriver = ({
+  requestSettings = true,
+  visible = true,
+} = {}) => {
+  let routeHandler;
+  const route = (url) => ({
+    request: () => ({ url: () => url, method: () => "GET" }),
+    continue: vi.fn(),
+    fulfill: vi.fn(),
+    abort: vi.fn(),
+  });
+  const ready = vi.fn(async () => {
+    if (!visible)
+      throw new Error("synthetic authentication form is not visible");
+  });
+  const page = {
+    goto: vi.fn(async (_, options) => {
+      if (options?.waitUntil !== "domcontentloaded")
+        throw new Error(
+          "synthetic document load waits on an unrelated subresource",
+        );
+      if (requestSettings)
+        await routeHandler(route("https://api.example.com/settings"));
+      return { status: () => 200 };
+    }),
+    locator: vi.fn(() => ({ first: () => ({ waitFor: ready }) })),
+    getByRole: vi.fn(() => ({ waitFor: ready })),
+    close: vi.fn(async () => undefined),
+  };
+  const context = {
+    route: vi.fn(async (_, handler) => {
+      routeHandler = handler;
+    }),
+    on: vi.fn(),
+    newPage: vi.fn(async () => page),
+  };
+  const auditTarget = {
+    context: () => context,
+    request: async (url) => {
+      expect(page.close).toHaveBeenCalledOnce();
+      expect(auditTarget.context().route).toHaveBeenCalledOnce();
+      const request = route(url);
+      await routeHandler(request);
+      return request;
+    },
+  };
+  context.newPage.mockResolvedValueOnce(page).mockResolvedValue(auditTarget);
+  const browser = {
+    contexts: () => [context],
+    close: vi.fn(async () => undefined),
+  };
+  return {
+    browser,
+    page,
+    ready,
+    chromium: { connectOverCDP: vi.fn(async () => browser) },
+    settings: vi.fn((language) => ({ language })),
+  };
+};
+
+describe("Lighthouse authentication fixture readiness", () => {
+  it("uses document readiness and the actual settings/form guards without waiting for every subresource", async () => {
+    const fixture = lighthouseFixtureDriver();
+    const prepared = await prepareLighthouseFixture(
+      fixture.chromium,
+      fixture.settings,
+      { port: 9222 },
+      "http://127.0.0.1:4174/auth",
+    );
+    expect(fixture.settings).toHaveBeenCalledExactlyOnceWith("en");
+    expect(fixture.ready).toHaveBeenCalledTimes(2);
+    expect(fixture.page.close).toHaveBeenCalledOnce();
+    expect(() => prepared.verify()).not.toThrow();
+    const auditTarget = await fixture.browser.contexts()[0].newPage();
+    expect(auditTarget).not.toBe(fixture.page);
+    const application = await auditTarget.request(
+      "http://127.0.0.1:4174/auth/app.js",
+    );
+    expect(application.continue).toHaveBeenCalledOnce();
+    expect(application.fulfill).not.toHaveBeenCalled();
+    expect(application.abort).not.toHaveBeenCalled();
+    expect(() => prepared.verify()).not.toThrow();
+    const settings = await auditTarget.request(
+      "https://api.example.com/settings",
+    );
+    expect(settings.fulfill).toHaveBeenCalledExactlyOnceWith({
+      json: { language: "en" },
+    });
+    expect(fixture.settings).toHaveBeenCalledTimes(2);
+    expect(() => prepared.verify()).not.toThrow();
+    const foreign = await auditTarget.request(
+      "https://foreign.example.test/private",
+    );
+    expect(foreign.abort).toHaveBeenCalledExactlyOnceWith("blockedbyclient");
+    expect(() => prepared.verify()).toThrow(/foreign\.example\.test/);
+    await prepared.dispose();
+    expect(fixture.browser.close).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [{ requestSettings: false }, /settings not loaded/],
+    [{ visible: false }, /form is not visible/],
+  ])(
+    "rejects missing application readiness and closes its owned connection",
+    async (options, error) => {
+      const fixture = lighthouseFixtureDriver(options);
+      await expect(
+        prepareLighthouseFixture(
+          fixture.chromium,
+          fixture.settings,
+          { port: 9222 },
+          "http://127.0.0.1:4174/auth",
+        ),
+      ).rejects.toThrow(error);
+      expect(fixture.browser.close).toHaveBeenCalledOnce();
+    },
+  );
+});
 
 const createReport = ({
   audits = {},
@@ -38,6 +163,49 @@ const createReport = ({
     ]),
   ),
   categories: { performance: { score } },
+});
+
+describe("Windows Lighthouse socket workaround", () => {
+  it("extends the public launcher defaults without changing other launch flags", () => {
+    const defaults = Launcher.defaultFlags();
+    const featureFlag = defaults.find((flag) =>
+      flag.startsWith("--disable-features="),
+    );
+    const options = createLighthouseChromeOptions(
+      Launcher,
+      "synthetic-chromium",
+      "win32",
+    );
+    expect(options).toEqual({
+      chromeFlags: [
+        ...defaults.map((flag) =>
+          flag === featureFlag ? flag + ",TcpPortRandomizationWin" : flag,
+        ),
+        "--headless=new",
+        "--disable-background-networking",
+      ],
+      chromePath: "synthetic-chromium",
+      ignoreDefaultFlags: true,
+    });
+    expect(
+      options.chromeFlags.filter((flag) =>
+        flag.startsWith("--disable-features="),
+      ),
+    ).toHaveLength(1);
+    expect(Launcher.defaultFlags()).toEqual(defaults);
+  });
+
+  it.each(["linux", "darwin"])(
+    "keeps the original %s launch options",
+    (platform) => {
+      expect(
+        createLighthouseChromeOptions(Launcher, "synthetic-chromium", platform),
+      ).toEqual({
+        chromeFlags: ["--headless=new", "--disable-background-networking"],
+        chromePath: "synthetic-chromium",
+      });
+    },
+  );
 });
 
 const lifecycle = (failures = {}) => {

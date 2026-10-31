@@ -4,11 +4,7 @@
 
 The `assistant-guidance` publication also adds [local development guidance](docs/README.md), canonical English rules/skills, a machine task map and read-only evaluation procedures. Optional hooks and host adapters are not application dependencies or proof of automatic loading.
 
-Kernel Admin is a standalone TypeScript project. The current **assistant-guidance**
-phase retains the static Storybook build and real Chromium interaction/accessibility
-tests to the published providers, authentication/business forms, layouts, widgets,
-HTTP adapters and local translation/date infrastructure. `applicationReady` is
-**false**: the component workshop does not provide an assembled management panel.
+Kernel Admin is one standalone React/Vite TypeScript application using Ant Design/antd-style, React Router and Axios. The current **application-verification** phase admits src/main.tsx, App/Routes composition and the genuine application gate while retaining the published modules and isolated Storybook workshop. Read `applicationReady` and the exact admitted inventory from [the publication policy](.github/bootstrap-policy.json); declarations do not replace actual verification.
 
 ## Current scope
 
@@ -58,7 +54,7 @@ Code normalization only selects a supported catalog; it does not select directio
 or calendar. The translated error helper preserves real `Error` messages.
 Read [UI foundation](docs/ui-foundation.md) for widget, asset and theme ownership.
 This phase contains real provider/form/layout/widget/hook tests with synthetic MSW/jsdom fixtures and isolated Storybook tests in Chromium.
-It has no application entry point, App/Routes composition or complete application browser journey. The separate API owns
+Application startup now belongs to [src/main.tsx](src/main.tsx), [App](src/app/App.tsx) and [Routes](src/app/Routes.tsx); application browser fixtures use synthetic HTTP and reject unexpected requests. The separate API owns
 authentication, database and storage, plus active language, direction and calendar.
 
 ## Install and validate
@@ -72,18 +68,12 @@ npm run browser:install
 npm run validate -- full
 ```
 
-The [validation manifest](.agents/validation.json) owns all required
-current-phase checks: exact snapshot, semantic CI policy, dependency audit, source boundaries,
-types, lint, formatting, measured unit coverage, governance tests, `build-storybook`,
-`test:storybook` and guidance consistency. The browser suite runs all registered stories in headless
-Chromium with interaction assertions and accessibility failures treated as errors.
-Tests use synthetic values and require no operator environment file or running API.
+The [validation manifest](.agents/validation.json) owns blocking local/PR validation, complete compatibility and advisory performance profiles. The seventeen-entry `full` profile retains type/lint/format, audit, boundaries, measured unit/governance coverage, Storybook interaction/accessibility, production build/bundle, contracts and Chromium application journeys. Complete verification substitutes all four browser projects and compares approved images once. Local code checks do not require the CI screenshot OS. Tests use synthetic values and never need an operator environment or real API.
 
 The two test runs produce real `coverage/unit/lcov.info` and
 `coverage/governance/lcov.info` from this checkout. These reports cover the
 published providers, forms, layouts, access metadata, widgets, theme/preferences/observability modules, HTTP modules, lifecycle hooks, catalogs, runtime adapters, calendar data,
-primitives and repository tooling; they are not complete panel
-coverage. Storybook build output and browser results do not replace these measured
+primitives, composed application routes and repository tooling. Synthetic consumer coverage does not verify the independent API provider. Storybook build output and browser results do not replace these measured
 reports. Generated outputs are not committed. See [Sonar setup](docs/sonarqube.md).
 
 ## Contribute
@@ -92,17 +82,12 @@ Read [Contributing](CONTRIBUTING.md) and the
 [publication guide](docs/bootstrap.md). Keep each PR at **100 or fewer GitHub
 changed-file entries** and validate the exact proposed revision.
 
-Use native CI, CodeRabbit and SonarQube Cloud checks with
-[branch protection](docs/branch-protection.md). Configuration is not evidence of
-a completed hosted check. Assistant-guidance protection requires its published CI and
-provider checks. Before any runnable panel merges, genuine build, end-to-end and
-visual jobs must pass and become required checks, and the canonical full gate
-must expand to cover the application.
+Use native CI, CodeRabbit and SonarQube Cloud with [branch protection](docs/branch-protection.md). Configuration is not hosted execution. CI performs each applicable suite once per tested head/base/merge tree and lets the actual scanner consume verified coverage. Preserve current-source passing blocking results, approval and resolved conversations. Remote protection changes still require authorization; source changes alone do not install them.
 
 ## Operational and quality prerequisites
 
-This publication intentionally extends `assistant-guidance` with public configuration examples, deployment/release helpers, pure quality policies and complete [operational guides](docs/deployment.md). The exact [inventory](.github/bootstrap-policy.json) contains 435 maintained paths; the application remains non-runnable.
+The inherited public examples, deployment/release helpers, pure quality policies and [operational guides](docs/deployment.md) remain published. The exact [inventory](.github/bootstrap-policy.json) declares the maintained source paths. Its size is separate from the changed-file count of this PR.
 
 New helper regressions join the existing measured unit/governance suites. They exercise explicit synthetic inputs and owned-resource failure handling; they do not start Docker/Chrome, build the panel or contact a deployed API. [Performance policy](docs/performance.md), [contract preparation](docs/contract-testing.md) and [security review](docs/security/reviews.md) describe their actual scope. The four Windows PNGs and metadata are [dated provenance](docs/visual-regression.md), not a fresh baseline approval.
 
-There is no new operational npm alias or focused profile. Use the existing canonical checks. Real environments, certificates, API data and operator state remain outside source verification; only the three explicitly declared synthetic public example paths are publishable. Future production build, application E2E, visual comparison, Lighthouse, mutation and deployment need genuine activation checks and explicit operational authorization.
+Source publication does not authorize deployment or operator commands. Real environments, certificates, API data and operator state stay outside source verification. Follow the manifest for blocking code checks, hosted image comparisons and complete compatibility; record the time-bounded Lighthouse advisory separately. Independent provider, Docker, mutation, staging and deployment checks need admitted source, authorization and observed evidence.

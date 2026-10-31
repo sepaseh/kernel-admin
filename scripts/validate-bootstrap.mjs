@@ -442,6 +442,43 @@ const publicEnvironmentTemplates = new Set([
   "deploy/docker/.env.example",
   "deploy/native/hosts.env.example",
 ]);
+const applicationFiles = [
+  "src/shared/lib/dialog-focus.ts",
+  "src/shared/lib/dialog-focus.test.tsx",
+  "contract/api.contract.test.ts",
+  "e2e/accessibility.spec.ts",
+  "e2e/auth.spec.ts",
+  "e2e/fixtures.ts",
+  "e2e/font.spec.ts",
+  "e2e/language-authority.spec.ts",
+  "e2e/localization.spec.ts",
+  "e2e/management.spec.ts",
+  "e2e/request-reliability.spec.ts",
+  "e2e/security-headers.spec.ts",
+  "e2e/shared/admin-fixtures.ts",
+  "e2e/visual/admin.spec.ts",
+  "e2e/visual/readiness.ts",
+  "index.html",
+  "knip.json",
+  "playwright.config.ts",
+  "playwright.visual.config.ts",
+  "src/app/App.tsx",
+  "src/app/Routes.test.tsx",
+  "src/app/Routes.tsx",
+  "src/main.tsx",
+  "src/test/integration/pages.test.tsx",
+  "tsconfig.node.json",
+  "vite.config.ts",
+  "vitest.contract.config.ts",
+  "vitest.shims.d.ts",
+  "e2e/visual/baselines/application/win32/admin-login-en-light.png",
+  "e2e/visual/baselines/application/win32/admin-login-fa-dark.png",
+  "e2e/visual/baselines/application/win32/admin-role-drawer-en-dark.png",
+  "e2e/visual/baselines/application/win32/admin-users-fa-light.png",
+  "e2e/visual/baselines/application/win32/admin-forgot-password-en-light.png",
+  "e2e/visual/baselines/application/win32/admin-register-en-light.png",
+  "e2e/visual/baselines/application/win32/metadata.json",
+];
 const phaseOrder = [
   "governance",
   "foundation",
@@ -453,6 +490,7 @@ const phaseOrder = [
   "business-screens",
   "storybook-verification",
   "assistant-guidance",
+  "application-verification",
 ];
 const supportsPhase = (phase, minimum) =>
   phaseOrder.indexOf(phase) >= phaseOrder.indexOf(minimum);
@@ -468,7 +506,9 @@ const publishedSource = (file, phase) =>
     (supportsPhase(phase, "business-screens") &&
       businessFiles.includes(file)) ||
     (supportsPhase(phase, "storybook-verification") &&
-      storybookFiles.includes(file)));
+      storybookFiles.includes(file)) ||
+    (supportsPhase(phase, "application-verification") &&
+      applicationFiles.includes(file)));
 
 const isGuidancePath = (file) =>
   (file.startsWith(".agents/") && file !== ".agents/validation.json") ||
@@ -484,17 +524,26 @@ const isForbiddenPublicationPath = (file, phase) =>
   /^(?:apps|packages|drizzle|collection|node_modules|server|coverage)(?:\/|$)/.test(
     file,
   ) ||
-  (operationsPrerequisiteFiles.has(file) && phase !== "assistant-guidance") ||
+  (operationsPrerequisiteFiles.has(file) &&
+    !supportsPhase(phase, "assistant-guidance")) ||
   (/^scripts\/(?:run-(?:lighthouse|visual)|stamp-admin-build|visual)(?:[.-].*)?\.mjs$/.test(
     file,
   ) &&
-    !operationsPrerequisiteFiles.has(file)) ||
+    !operationsPrerequisiteFiles.has(file) &&
+    !(
+      supportsPhase(phase, "application-verification") &&
+      applicationFiles.includes(file)
+    )) ||
   (/^(?:deploy|e2e|tooling)(?:\/|$)/.test(file) &&
-    !operationsPrerequisiteFiles.has(file)) ||
+    !operationsPrerequisiteFiles.has(file) &&
+    !(
+      supportsPhase(phase, "application-verification") &&
+      applicationFiles.includes(file)
+    )) ||
   file === "stryker.config.json" ||
   file === "drizzle.config.ts" ||
-  file === "index.html" ||
-  file === "vite.config.ts" ||
+  (applicationFiles.includes(file) &&
+    !supportsPhase(phase, "application-verification")) ||
   ((file.startsWith(".storybook/") || file === "vitest.storybook.config.ts") &&
     (!supportsPhase(phase, "storybook-verification") ||
       !storybookFiles.includes(file))) ||
@@ -505,7 +554,8 @@ const isForbiddenPublicationPath = (file, phase) =>
       !guidanceFiles.includes(file))) ||
   (/(?:^|\/)(?:(?:[^/]*\.)?env(?:[./]|$)|settings\.local\.json$)/i.test(file) &&
     !(
-      phase === "assistant-guidance" && publicEnvironmentTemplates.has(file)
+      supportsPhase(phase, "assistant-guidance") &&
+      publicEnvironmentTemplates.has(file)
     )) ||
   /\.(?:pem|key|pfx|p12|sqlite|db)$/.test(file);
 
@@ -525,18 +575,21 @@ const requiredFilesForPhase = (phase) => [
   ...(supportsPhase(phase, "assistant-guidance")
     ? ["AGENTS.md", ...operationsPrerequisiteFiles]
     : []),
+  ...(supportsPhase(phase, "application-verification") ? applicationFiles : []),
 ];
 
 export const validateBootstrapPolicy = (policy) => {
   if (
     policy?.schemaVersion !== 1 ||
     !phaseOrder.includes(policy.phase) ||
-    policy.applicationReady !== false ||
+    policy.applicationReady !== (policy.phase === "application-verification") ||
     policy.maximumChangedFiles !== 100 ||
     !Array.isArray(policy.allowedFiles) ||
     !policy.allowedFiles.length
   )
-    throw new Error("An explicit non-runnable publication phase is required.");
+    throw new Error(
+      "An explicit publication phase and matching readiness are required.",
+    );
   const files = new Set();
   for (const file of policy.allowedFiles) {
     if (isForbiddenPublicationPath(file, policy.phase) || files.has(file))
@@ -582,7 +635,11 @@ export const inspectBootstrap = async (root) => {
         if (relative === ".git") return;
         if (
           policy.phase !== "governance" &&
-          ["node_modules", "coverage"].includes(relative)
+          [
+            "node_modules",
+            "coverage",
+            ...(policy.applicationReady ? ["dist"] : []),
+          ].includes(relative)
         ) {
           if (entry.isSymbolicLink() || !entry.isDirectory())
             throw new Error(
@@ -630,6 +687,8 @@ export const inspectBootstrap = async (root) => {
     }),
   );
   const scopeByPhase = {
+    "application-verification":
+      "Published standalone React/Vite application composition with one core gate, genuine browser/accessibility and consumer-contract checks, scheduled cross-browser verification, conditional visual provenance and an explicitly bounded Lighthouse advisory. Source admission is not a provider-contract result, human visual approval, deployment or production API authorization; record actual current-revision execution separately.",
     "assistant-guidance":
       "Published assistant-neutral instructions, safe optional hooks, current-source navigation, static comprehension cases and finite release/quality prerequisites alongside the isolated Storybook workshop; no application entry point, assembled routes, production application build, external API journey or visual gate is published. Import-safe verification runners, pure helper tests and public deployment templates do not execute deployment, release publication, Lighthouse, mutation testing or visual approval. Static inventory checks do not establish automatic host instruction loading or benchmark improvement.",
     "storybook-verification":
@@ -652,7 +711,7 @@ export const inspectBootstrap = async (root) => {
       "Published admin primitives and complete local catalog data; runtime translation adapters, UI, API integration and browser behavior are not published or validated.",
   };
   return {
-    applicationReady: false,
+    applicationReady: policy.applicationReady,
     files: found.size,
     phase: policy.phase,
     scope: scopeByPhase[policy.phase],

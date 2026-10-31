@@ -27,6 +27,11 @@ describe("accessible default Ant Design theme", () => {
           expect(
             contrastRatio(components.Input!.colorBorder!, surface),
           ).toBeGreaterThanOrEqual(3);
+          for (const color of [
+            components.Pagination!.itemActiveColor!,
+            components.Pagination!.itemActiveColorHover!,
+          ])
+            expect(contrastRatio(color, surface)).toBeGreaterThanOrEqual(4.5);
           for (const fill of [
             components.Checkbox!.colorPrimary!,
             components.Radio!.colorPrimary!,

@@ -33,6 +33,43 @@ const policy = (overrides = {}) => ({
   schemaVersion: 1,
   ...overrides,
 });
+const applicationFiles = [
+  "src/shared/lib/dialog-focus.ts",
+  "src/shared/lib/dialog-focus.test.tsx",
+  "contract/api.contract.test.ts",
+  "e2e/accessibility.spec.ts",
+  "e2e/auth.spec.ts",
+  "e2e/fixtures.ts",
+  "e2e/font.spec.ts",
+  "e2e/language-authority.spec.ts",
+  "e2e/localization.spec.ts",
+  "e2e/management.spec.ts",
+  "e2e/request-reliability.spec.ts",
+  "e2e/security-headers.spec.ts",
+  "e2e/shared/admin-fixtures.ts",
+  "e2e/visual/admin.spec.ts",
+  "e2e/visual/readiness.ts",
+  "index.html",
+  "knip.json",
+  "playwright.config.ts",
+  "playwright.visual.config.ts",
+  "src/app/App.tsx",
+  "src/app/Routes.test.tsx",
+  "src/app/Routes.tsx",
+  "src/main.tsx",
+  "src/test/integration/pages.test.tsx",
+  "tsconfig.node.json",
+  "vite.config.ts",
+  "vitest.contract.config.ts",
+  "vitest.shims.d.ts",
+  "e2e/visual/baselines/application/win32/admin-login-en-light.png",
+  "e2e/visual/baselines/application/win32/admin-login-fa-dark.png",
+  "e2e/visual/baselines/application/win32/admin-role-drawer-en-dark.png",
+  "e2e/visual/baselines/application/win32/admin-users-fa-light.png",
+  "e2e/visual/baselines/application/win32/admin-forgot-password-en-light.png",
+  "e2e/visual/baselines/application/win32/admin-register-en-light.png",
+  "e2e/visual/baselines/application/win32/metadata.json",
+];
 const isCoreAuthPhaseFile = (file) =>
   /^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|register))\/|docs\/(?:core-auth|admin-request-reliability|adr\/|architecture|security\/authentication-review))/.test(
     file,
@@ -152,6 +189,10 @@ const operationsPrerequisiteFiles = [
   "tooling/paths.ts",
 ];
 
+const historicalPublicationFiles = (latest) => [
+  ...new Set([...latest.allowedFiles, ".github/workflows/sonar.yml"]),
+];
+
 const historicalStorybookPolicy = async () => {
   const latest = JSON.parse(
     await readFile(
@@ -162,12 +203,29 @@ const historicalStorybookPolicy = async () => {
   return {
     ...latest,
     phase: "storybook-verification",
-    allowedFiles: [
-      ...new Set([...latest.allowedFiles, ".github/workflows/sonar.yml"]),
-    ].filter(
+    applicationReady: false,
+    allowedFiles: historicalPublicationFiles(latest).filter(
       (file) =>
         !isGuidancePhaseFile(file) &&
+        !applicationFiles.includes(file) &&
         !operationsPrerequisiteFiles.includes(file),
+    ),
+  };
+};
+
+const historicalGuidancePolicy = async () => {
+  const latest = JSON.parse(
+    await readFile(
+      new URL("../.github/bootstrap-policy.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  return {
+    ...latest,
+    phase: "assistant-guidance",
+    applicationReady: false,
+    allowedFiles: historicalPublicationFiles(latest).filter(
+      (file) => !applicationFiles.includes(file),
     ),
   };
 };
@@ -735,14 +793,9 @@ test("Storybook verification requires every explicit story, isolated configurati
 });
 
 test("assistant guidance retains the complete workshop and requires every declared guidance artifact", async (context) => {
-  const current = JSON.parse(
-    await readFile(
-      new URL("../.github/bootstrap-policy.json", import.meta.url),
-      "utf8",
-    ),
-  );
+  const current = await historicalGuidancePolicy();
   assert.equal(current.phase, "assistant-guidance");
-  assert.equal(validateBootstrapPolicy(current).size, 435);
+  assert.equal(validateBootstrapPolicy(current).size, 436);
   const additions = current.allowedFiles.filter(isGuidancePhaseFile);
   assert.equal(additions.length, 63);
   for (const missing of [
@@ -783,7 +836,7 @@ test("assistant guidance retains the complete workshop and requires every declar
   );
   const { root } = await fixture(context, current);
   const result = await inspectBootstrap(root);
-  assert.equal(result.files, 435);
+  assert.equal(result.files, 436);
   assert.equal(result.applicationReady, false);
   assert.match(result.scope, /assistant-neutral instructions/);
   assert.match(result.scope, /no application entry point/);
@@ -822,12 +875,7 @@ test("guidance artifacts cannot be backported into earlier publication phases", 
 });
 
 test("release and quality prerequisites require their complete finite closure in the current non-runnable phase", async () => {
-  const current = JSON.parse(
-    await readFile(
-      new URL("../.github/bootstrap-policy.json", import.meta.url),
-      "utf8",
-    ),
-  );
+  const current = await historicalGuidancePolicy();
   assert.equal(operationsPrerequisiteFiles.length, 70);
   for (const missing of operationsPrerequisiteFiles)
     assert.throws(
@@ -873,17 +921,55 @@ test("release and quality prerequisites require their complete finite closure in
 });
 
 test("current prerequisites retain only the three synthetic public template names and reject ambient private files", async (context) => {
+  const current = await historicalGuidancePolicy();
+  const { root, put } = await fixture(context, current);
+  assert.equal((await inspectBootstrap(root)).files, 436);
+  await put(
+    "deploy/native/.env.local",
+    "synthetic forbidden contents must never be parsed",
+  );
+  await assert.rejects(inspectBootstrap(root), /Unexpected bootstrap path/);
+});
+
+test("application admission requires the exact runnable closure and matching readiness", async (context) => {
   const current = JSON.parse(
     await readFile(
       new URL("../.github/bootstrap-policy.json", import.meta.url),
       "utf8",
     ),
   );
-  const { root, put } = await fixture(context, current);
-  assert.equal((await inspectBootstrap(root)).files, 435);
-  await put(
-    "deploy/native/.env.local",
-    "synthetic forbidden contents must never be parsed",
+  assert.equal(current.phase, "application-verification");
+  assert.equal(current.applicationReady, true);
+  assert.equal(
+    validateBootstrapPolicy(current).size,
+    current.allowedFiles.length,
   );
+  for (const missing of applicationFiles)
+    assert.throws(
+      () =>
+        validateBootstrapPolicy({
+          ...current,
+          allowedFiles: current.allowedFiles.filter((file) => file !== missing),
+        }),
+      /mandatory/,
+    );
+  assert.throws(() =>
+    validateBootstrapPolicy({ ...current, applicationReady: false }),
+  );
+  const historical = await historicalGuidancePolicy();
+  for (const file of applicationFiles)
+    assert.throws(
+      () =>
+        validateBootstrapPolicy({
+          ...historical,
+          allowedFiles: [...historical.allowedFiles, file],
+        }),
+      /unique, exact/,
+    );
+  const { root, put } = await fixture(context, current);
+  await mkdir(path.join(root, "dist"));
+  await put("dist/index.html", "<html>synthetic generated output</html>");
+  assert.equal((await inspectBootstrap(root)).applicationReady, true);
+  await put("e2e/undeclared.spec.ts", "// synthetic undeclared fixture");
   await assert.rejects(inspectBootstrap(root), /Unexpected bootstrap path/);
 });

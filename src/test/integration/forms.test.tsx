@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import type * as ReactI18next from "react-i18next";
 import { MemoryRouter, useNavigate } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -20,6 +20,10 @@ const mocks = vi.hoisted(() => ({
   messageSuccess: vi.fn(),
   notificationSuccess: vi.fn(),
   currentUser: { id: "admin-1", isSystemAdmin: true, permissions: [] },
+  deferDrawerOpening: false,
+  drawerOpening: null as (() => void) | null,
+  deferDrawerClosing: false,
+  drawerClosing: null as (() => void) | null,
 }));
 
 vi.mock("@/features/roles/api", () => ({
@@ -56,6 +60,26 @@ vi.mock("react-i18next", async (importOriginal) => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/shared/ui/form-drawer")>();
+  return {
+    ...actual,
+    FormDrawer: (props: ComponentProps<typeof actual.FormDrawer>) => (
+      <actual.FormDrawer
+        {...props}
+        afterOpenChange={(open) => {
+          if (open && mocks.deferDrawerOpening)
+            mocks.drawerOpening = () => props.afterOpenChange?.(open);
+          else if (!open && mocks.deferDrawerClosing)
+            mocks.drawerClosing = () => props.afterOpenChange?.(open);
+          else props.afterOpenChange?.(open);
+        }}
+      />
+    ),
+  };
+});
+
 const userData: User = {
   email: "ada@example.com",
   firstName: "Ada",
@@ -81,6 +105,13 @@ const LeaveCreateForm = () => {
   return <button onClick={() => void navigate("/")}>Leave creation</button>;
 };
 
+const ReopenCreateForm = () => {
+  const navigate = useNavigate();
+  return (
+    <button onClick={() => void navigate("/#create")}>Reopen creation</button>
+  );
+};
+
 const beginUserCreation = async (onFinish: () => void) => {
   const view = renderAtHash(
     <>
@@ -101,6 +132,10 @@ const beginUserCreation = async (onFinish: () => void) => {
 };
 
 beforeEach(() => {
+  mocks.deferDrawerOpening = false;
+  mocks.drawerOpening = null;
+  mocks.deferDrawerClosing = false;
+  mocks.drawerClosing = null;
   mocks.currentUser.isSystemAdmin = true;
   clearAccessToken();
   vi.mocked(api.createRole)
@@ -123,6 +158,85 @@ beforeEach(() => {
 });
 
 describe("user identity form", () => {
+  it("resets creation values and initial focus when reopening", async () => {
+    mocks.deferDrawerOpening = true;
+    mocks.deferDrawerClosing = true;
+    const { user } = renderAtHash(
+      <>
+        <LeaveCreateForm />
+        <ReopenCreateForm />
+        <UserForm onFinish={vi.fn()} />
+      </>,
+      "#create",
+    );
+    await waitFor(() => expect(mocks.drawerOpening).not.toBeNull());
+    act(() => mocks.drawerOpening?.());
+    await user.type(screen.getByLabelText("firstName"), "Ada");
+    await user.click(screen.getByRole("button", { name: "Leave creation" }));
+    await waitFor(() => expect(mocks.drawerClosing).not.toBeNull());
+    mocks.drawerOpening = null;
+    await user.click(screen.getByRole("button", { name: "Reopen creation" }));
+    await waitFor(() => expect(mocks.drawerOpening).not.toBeNull());
+    act(() => mocks.drawerOpening?.());
+
+    expect(screen.getByLabelText("firstName")).toHaveValue("");
+    expect(screen.getByLabelText("firstName")).toHaveFocus();
+  });
+
+  it("preserves the user's focused field when the creation drawer finishes opening", async () => {
+    mocks.deferDrawerOpening = true;
+    const onFinish = vi.fn();
+    const { user } = renderAtHash(<UserForm onFinish={onFinish} />, "#create");
+    const firstName = await screen.findByLabelText("firstName");
+    const lastName = screen.getByLabelText("lastName");
+
+    await user.type(firstName, "Ada");
+    await user.click(lastName);
+    await waitFor(() => expect(mocks.drawerOpening).not.toBeNull());
+    act(() => mocks.drawerOpening?.());
+    expect(lastName).toHaveFocus();
+    await user.keyboard("Lovelace");
+    expect(firstName).toHaveValue("Ada");
+    expect(lastName).toHaveValue("Lovelace");
+    await user.type(screen.getByLabelText("mobile"), "09120000000");
+    await user.click(screen.getByRole("button", { name: "submit" }));
+
+    await waitFor(() => expect(api.createUser).toHaveBeenCalledOnce());
+    expect(api.createUser).toHaveBeenCalledWith(
+      {
+        firstName: "Ada",
+        lastName: "Lovelace",
+        mobile: "09120000000",
+        password: expect.any(String),
+      },
+      expect.any(AbortSignal),
+    );
+    expect(mocks.messageSuccess).toHaveBeenCalledWith("userCreated");
+    expect(onFinish).toHaveBeenCalledOnce();
+  });
+
+  it("keeps an early edit when the update drawer finishes opening", async () => {
+    mocks.deferDrawerOpening = true;
+    const { user } = renderAtHash(
+      <UserForm data={userData} onFinish={vi.fn()} />,
+      "#update",
+    );
+    const firstName = await screen.findByLabelText("firstName");
+    await waitFor(() => expect(firstName).toHaveValue("Ada"));
+    fireEvent.change(firstName, { target: { value: "Augusta" } });
+    await waitFor(() => expect(mocks.drawerOpening).not.toBeNull());
+    act(() => mocks.drawerOpening?.());
+    expect(firstName).toHaveValue("Augusta");
+    await user.click(screen.getByRole("button", { name: "submit" }));
+    await waitFor(() =>
+      expect(api.updateUser).toHaveBeenCalledWith(
+        "user-1",
+        expect.objectContaining({ firstName: "Augusta" }),
+        expect.any(AbortSignal),
+      ),
+    );
+  });
+
   it("validates and creates a user", async () => {
     const onFinish = vi.fn();
     const { user } = renderAtHash(<UserForm onFinish={onFinish} />, "#create");

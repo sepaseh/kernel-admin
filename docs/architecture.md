@@ -2,16 +2,15 @@
 
 [English](architecture.md) · [فارسی](architecture.fa.md)
 
-The current `assistant-guidance` phase adds local rules, navigation and evaluation procedures to this ownership model. Those optional assistant capabilities do not become runtime dependencies or imply a completed host evaluation.
+Scope updated: 29 October 2026. The application-verification phase admits a standalone React/Vite panel, src/main.tsx startup, App/provider/error-boundary composition and Routes with lazy feature/layout modules. Ant Design/antd-style, React Router, Axios and complete local language adapters remain the foundations. Every inherited component/HTTP/workshop check remains in the full gate, supplemented by genuine production build, consumer contracts, application browser/accessibility/visual and Lighthouse checks.
 
-Scope updated: 28 October 2026. The published `assistant-guidance` phase has
-`applicationReady: false`. It contains independent React source using Ant
-Design/antd-style, React Router and Axios, with Core/Ant Design providers,
-authentication forms, layout modules, business screen/form modules and typed navigation/access metadata. There
-is no application entry point, App/Routes composition,
-production panel build or complete application browser journey. Isolated Storybook
-stories now have a real Chromium play/accessibility suite and static workshop build.
-Module, jsdom and component-workshop tests do not establish a runnable React/Vite panel.
+Actual execution is recorded per exact revision. API-provider compatibility, fresh human visual approval, deployment and optional host evaluation are separate evidence; a readiness declaration or synthetic fixture cannot establish them.
+
+Before settings and appearance modules are ready, App renders a localized native status. Ant Design route loaders remain inside the themed application, avoiding an initial default-theme spinner mount.
+
+For public routes, the data router resolves the matched layout and page through route-object `lazy` functions in parallel. Its initial `HydrateFallback` uses the existing themed loading status while the provider stays mounted, so unresolved public page modules do not discard initial theme calculations through nested React Suspense retries. Protected pages use stable React.lazy components inside the access guard and its Suspense boundary; a denied page is neither imported nor mounted, so an unavailable denied chunk cannot replace the redirect with an error. Layouts remain data-router lazy. Static matching, basename and the existing error fallback stay in place. Public-route module matching can start during bootstrap error handling, without mounting a page or calling its API. Later public lazy navigation retains the current route until the next modules are ready.
+
+Date plugins and all ten locales register at startup; localized Jalali month names are cached per locale on first access, so Gregorian startup does not build unused month labels.
 
 Each feature owns its published HTTP types, endpoints and helpers. Authentication
 forms call the auth owner; the default layout reads the account owner; the
