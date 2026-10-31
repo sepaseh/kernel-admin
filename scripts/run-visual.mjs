@@ -181,16 +181,23 @@ async function verificationSourceIdentity(repository, environment) {
   ]);
   const inputs = [...new Set([inventoryName, ...inventory.allowedFiles])]
     .filter((filename) => !excluded.has(filename))
-    .sort();
+    .sort((left, right) => {
+      if (left < right) return -1;
+      if (left > right) return 1;
+      return 0;
+    });
   const hash = createHash("sha256");
-  for (const filename of inputs) {
-    const bytes = await ordinaryFile(path.join(root, filename));
+  const contents = await Promise.all(
+    inputs.map((filename) => ordinaryFile(path.join(root, filename))),
+  );
+  inputs.forEach((filename, index) => {
+    const bytes = contents[index];
     hash.update(filename);
     hash.update("\0");
     hash.update(String(bytes.length));
     hash.update("\0");
     hash.update(bytes);
-  }
+  });
   return {
     environment: verificationEnvironment(environment),
     sourceFingerprint: hash.digest("hex"),
@@ -201,29 +208,33 @@ async function verificationSourceIdentity(repository, environment) {
 async function verificationIdentity(repository, environment) {
   const root = await realpath(repository);
   const source = await verificationSourceIdentity(root, environment);
-  const distribution = [];
   const buildRoot = path.join(root, "dist");
   const visit = async (directory, prefix = "") => {
     const status = await lstat(directory);
     if (!status.isDirectory() || status.isSymbolicLink())
       throw new Error("Verification output must use ordinary directories.");
-    for (const entry of (
-      await readdir(directory, { withFileTypes: true })
-    ).sort((left, right) => left.name.localeCompare(right.name, "en"))) {
-      const relative = prefix + entry.name;
-      const filename = path.join(directory, entry.name);
-      if (entry.isDirectory()) await visit(filename, relative + "/");
-      else {
+    const entries = (await readdir(directory, { withFileTypes: true })).sort(
+      (left, right) => left.name.localeCompare(right.name, "en"),
+    );
+    const files = await Promise.all(
+      entries.map(async (entry) => {
+        const relative = prefix + entry.name;
+        const filename = path.join(directory, entry.name);
+        if (entry.isDirectory()) return visit(filename, relative + "/");
+
         const bytes = await ordinaryFile(filename);
-        distribution.push({
-          path: relative,
-          bytes: bytes.length,
-          sha256: createHash("sha256").update(bytes).digest("hex"),
-        });
-      }
-    }
+        return [
+          {
+            path: relative,
+            bytes: bytes.length,
+            sha256: createHash("sha256").update(bytes).digest("hex"),
+          },
+        ];
+      }),
+    );
+    return files.flat();
   };
-  await visit(buildRoot);
+  const distribution = await visit(buildRoot);
   if (!distribution.some((file) => file.path === "index.html"))
     throw new Error(
       "Verification reuse requires a completed application build.",

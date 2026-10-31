@@ -152,6 +152,79 @@ test("verification reuse binds the public source, build bytes and synthetic envi
   });
 });
 
+test("verification keeps ordinal source fingerprints and ordered nested output inventories", async () => {
+  await withBuildFixture(async (directory, environment) => {
+    const inventoryPath = path.join(directory, ".github/bootstrap-policy.json");
+    const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
+    const extraSources = ["src/alpha.ts", "src/Zebra.ts"];
+    inventory.allowedFiles.push(...extraSources);
+    await writeFile(inventoryPath, JSON.stringify(inventory));
+    for (const filename of extraSources)
+      await writeFile(path.join(directory, filename), `synthetic ${filename}`);
+    await mkdir(path.join(directory, "dist/assets/chunks"), {
+      recursive: true,
+    });
+    for (const filename of [
+      "assets/chunks/last.js",
+      "assets/chunks/first.js",
+      "assets/a.css",
+    ])
+      await writeFile(
+        path.join(directory, "dist", filename),
+        `synthetic output ${filename}`,
+      );
+
+    const identity = await buildVerification({
+      repository: directory,
+      environment,
+      build: async () => 0,
+    });
+    assert.ok(
+      identity.sourceInputs.indexOf("src/Zebra.ts") <
+        identity.sourceInputs.indexOf("src/alpha.ts"),
+    );
+    assert.deepEqual(
+      identity.distribution.map((file) => file.path),
+      [
+        "_kernel/build.json",
+        "app.js",
+        "assets/a.css",
+        "assets/chunks/first.js",
+        "assets/chunks/last.js",
+        "index.html",
+      ],
+    );
+    assert.deepEqual(
+      await verifyVerificationBuild(directory, environment),
+      identity,
+    );
+  });
+});
+
+test("a missing admitted source rejects the build before execution or evidence publication", async () => {
+  await withBuildFixture(async (directory, environment) => {
+    let builds = 0;
+    await rm(path.join(directory, "docs/public.md"));
+
+    await assert.rejects(
+      buildVerification({
+        repository: directory,
+        environment,
+        build: async () => {
+          builds++;
+          return 0;
+        },
+      }),
+      { code: "ENOENT" },
+    );
+    assert.equal(builds, 0);
+    await assert.rejects(
+      readFile(path.join(directory, "coverage/verification-build.json")),
+      { code: "ENOENT" },
+    );
+  });
+});
+
 test("a failed build or concurrent source edit never publishes reusable evidence", async () => {
   await withBuildFixture(async (directory, environment) => {
     const proof = path.join(directory, "coverage/verification-build.json");
