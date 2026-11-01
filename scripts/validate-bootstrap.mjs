@@ -562,17 +562,27 @@ const publishedSharedDocument = (file, phase) =>
   (file.startsWith("docs/") || file === "SECURITY.md") &&
   publishedSource(file, phase);
 
-const isForbiddenPublicationPath = (file, phase) =>
+const isUnsafePublicationPath = (file, phase) =>
   typeof file !== "string" ||
   !file ||
-  (phase === "application-verification" &&
-    /\.fa\.(?:md|markdown|mdx)$/i.test(file)) ||
   file.includes("\\") ||
   file.split("/").some((part) => !part || part === "." || part === "..") ||
   /[*?[\]{}:\r\n]/.test(file) ||
   /^(?:apps|packages|drizzle|collection|node_modules|server|coverage)(?:\/|$)/.test(
     file,
   ) ||
+  file === "drizzle.config.ts" ||
+  (/(?:^|\/)(?:(?:[^/]*\.)?env(?:[./]|$)|settings\.local\.json$)/i.test(file) &&
+    !(
+      supportsPhase(phase, "release-prerequisites") &&
+      publicEnvironmentTemplates.has(file)
+    )) ||
+  /\.(?:pem|key|pfx|p12|sqlite|db)$/.test(file);
+
+const isForbiddenPublicationPath = (file, phase) =>
+  isUnsafePublicationPath(file, phase) ||
+  (phase === "application-verification" &&
+    /\.fa\.(?:md|markdown|mdx)$/i.test(file)) ||
   (deferredApplicationPrerequisites.has(file) &&
     !supportsPhase(phase, "application-verification")) ||
   (operationsPrerequisiteFiles.has(file) &&
@@ -595,7 +605,6 @@ const isForbiddenPublicationPath = (file, phase) =>
     )) ||
   (file === "stryker.config.json" &&
     !supportsPhase(phase, "release-prerequisites")) ||
-  file === "drizzle.config.ts" ||
   (applicationFiles.includes(file) &&
     !supportsPhase(phase, "application-verification") &&
     !publishedSource(file, phase) &&
@@ -610,37 +619,38 @@ const isForbiddenPublicationPath = (file, phase) =>
   (phase === "governance" && /^package(?:-lock)?\.json$/.test(file)) ||
   (isGuidancePath(file) &&
     !publishedSharedDocument(file, phase) &&
-    !publishedGuidance(file, phase)) ||
-  (/(?:^|\/)(?:(?:[^/]*\.)?env(?:[./]|$)|settings\.local\.json$)/i.test(file) &&
-    !(
-      supportsPhase(phase, "release-prerequisites") &&
-      publicEnvironmentTemplates.has(file)
-    )) ||
-  /\.(?:pem|key|pfx|p12|sqlite|db)$/.test(file);
+    !publishedGuidance(file, phase));
 
-const requiredFilesForPhase = (phase) => [
-  ...coreFiles,
-  ...(phase === "governance"
-    ? [".github/workflows/bootstrap.yml"]
-    : phase === "repository-foundation"
-      ? foundationFiles.filter((file) => !file.startsWith("src/"))
-      : foundationFiles),
-  ...(supportsPhase(phase, "catalogs") ? catalogFiles : []),
-  ...(supportsPhase(phase, "runtime-localization") ? runtimeFiles : []),
-  ...(supportsPhase(phase, "http-lifecycle") ? httpFiles : []),
-  ...(supportsPhase(phase, "ui-foundation") ? uiFiles : []),
-  ...(supportsPhase(phase, "core-auth") ? coreAuthFiles : []),
-  ...(supportsPhase(phase, "business-screens") ? businessFiles : []),
-  ...(supportsPhase(phase, "storybook-verification") ? storybookFiles : []),
-  ...(supportsPhase(phase, "assistant-guidance") ? guidanceFiles : []),
-  ...(supportsPhase(phase, "assistant-guidance") ? ["AGENTS.md"] : []),
-  ...(supportsPhase(phase, "application-verification")
-    ? [...operationsPrerequisiteFiles]
-    : supportsPhase(phase, "release-prerequisites")
-      ? releasePrerequisiteFiles
-      : []),
-  ...(supportsPhase(phase, "application-verification") ? applicationFiles : []),
+const phaseRequirements = [
+  ["catalogs", catalogFiles],
+  ["runtime-localization", runtimeFiles],
+  ["http-lifecycle", httpFiles],
+  ["ui-foundation", uiFiles],
+  ["core-auth", coreAuthFiles],
+  ["business-screens", businessFiles],
+  ["storybook-verification", storybookFiles],
+  ["assistant-guidance", [...guidanceFiles, "AGENTS.md"]],
+  ["release-prerequisites", releasePrerequisiteFiles],
+  [
+    "application-verification",
+    [...operationsPrerequisiteFiles, ...applicationFiles],
+  ],
 ];
+const requiredFilesForPhase = (phase) => {
+  let initialFiles = foundationFiles;
+  if (phase === "governance") {
+    initialFiles = [".github/workflows/bootstrap.yml"];
+  } else if (phase === "repository-foundation") {
+    initialFiles = foundationFiles.filter((file) => !file.startsWith("src/"));
+  }
+  return [
+    ...coreFiles,
+    ...initialFiles,
+    ...phaseRequirements.flatMap(([minimum, files]) =>
+      supportsPhase(phase, minimum) ? files : [],
+    ),
+  ];
+};
 
 export const validateBootstrapPolicy = (policy) => {
   if (
