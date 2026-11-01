@@ -1,0 +1,51 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "commandRunner": {
+    "command": "node node_modules/vitest/vitest.mjs run --config vitest.config.ts --maxWorkers=1 src/shared/api/token.test.ts src/shared/storage/state.test.ts src/shared/lib/error.test.ts src/shared/lib/transform.test.ts"
+  },
+  "concurrency": 2,
+  "coverageAnalysis": "off",
+  "dryRunTimeoutMinutes": 5,
+  "htmlReporter": {
+    "fileName": "coverage/mutation/index.html"
+  },
+  "ignorePatterns": [
+    "**/.env",
+    "**/.env.*",
+    "**/*.env",
+    "**/*.env.*",
+    "**/*.pem",
+    "**/*.key",
+    "**/*.p12",
+    "**/*.pfx",
+    "**/*.{db,sqlite,sqlite3}",
+    "deploy/**/tls/**",
+    "deploy/**/bootstrap-admin.json",
+    "coverage/**",
+    "dist/**",
+    "dist-ssr/**",
+    "reports/**",
+    "test-results/**",
+    "playwright-report/**",
+    "storybook-static/**",
+    "releases/**",
+    "data/**",
+    "uploads/**"
+  ],
+  "jsonReporter": {
+    "fileName": "coverage/mutation/mutation.json"
+  },
+  "mutate": [
+    "src/shared/api/token.ts",
+    "src/shared/storage/state.ts",
+    "src/shared/lib/error.ts",
+    "src/shared/lib/transform.ts"
+  ],
+  "reporters": ["clear-text", "progress", "html", "json"],
+  "tempDirName": "coverage/stryker-tmp",
+  "thresholds": {
+    "break": 80,
+    "high": 90,
+    "low": 80
+  }
+}

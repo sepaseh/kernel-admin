@@ -23,7 +23,7 @@ Never commit real environment files, tokens, private keys, operator certificates
 
 Keep TLS material outside images/build contexts and mount it read-only. Maintain explicit allowed origins and CSP, trusted template inputs, immutable release identity and path/link protection. Packaging and configured controls do not establish a trusted certificate, safe artifact or deployed availability.
 
-Use synthetic disposable data for source checks. Real deployment, Docker, staging, smoke, DAST or external reporting requires explicit target/operation authorization. Preserve first failures and residual limits instead of claiming desired controls are already implemented. See deployment (`docs/deployment.md`, planned for a later PR) and [validation](docs/validation.md).
+Use synthetic disposable data for source checks. Real deployment, Docker, staging, smoke, DAST or external reporting requires explicit target/operation authorization. Preserve first failures and residual limits instead of claiming desired controls are already implemented. See [deployment](docs/deployment.md) and [validation](docs/validation.md).
 
 ## Review a security-sensitive change
 

@@ -24,6 +24,9 @@ export default defineConfig({
       "src/**/*.test.tsx",
       ".storybook/request-guard.test.ts",
       "scripts/run-audit.test.mjs",
+      "scripts/check-bundle-size.test.mjs",
+      "scripts/lighthouse-policy.test.mjs",
+      "scripts/stamp-admin-build.test.mjs",
     ],
     restoreMocks: true,
     coverage: {
@@ -147,6 +150,8 @@ export default defineConfig({
         "src/shared/ui/route-loading/RouteLoading.tsx",
         "src/shared/ui/route-loading/index.ts",
         "scripts/run-audit.mjs",
+        "scripts/check-bundle-size.mjs",
+        "scripts/lighthouse-policy.mjs",
       ],
       provider: "v8",
       reporter: ["text", "json-summary", "lcov"],
