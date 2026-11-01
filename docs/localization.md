@@ -25,7 +25,7 @@ To change a product message:
 2. Update that key in every registered catalog, preserving interpolation names and genuine translations.
 3. Exercise the affected control with long text and both text directions. Use [testing](testing.md) to select the closest component, provider or browser case.
 
-For a new supported code, update the registered catalogs, language validation and both vendor adapters together. Follow the localization rule (`.agents/rules/localization.md`, planned for a later PR) and the installed-adapter tests rather than treating an English fallback as completed support.
+For a new supported code, update the registered catalogs, language validation and both vendor adapters together. Follow the [localization rule](../.agents/rules/localization.md) and the installed-adapter tests rather than treating an English fallback as completed support.
 
 ## Runtime metadata
 

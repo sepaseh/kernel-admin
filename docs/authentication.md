@@ -2,13 +2,13 @@
 
 Use this reference when changing an HTTP adapter, session transition or asynchronous screen. Start with the relevant owner and its tests:
 
-| Change                                        | Owner                                                                                   | Regression examples                                                                          |
-| --------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Dispatch, refresh, replay or transport errors | [`client.ts`](../src/shared/api/client.ts)                                              | [`client.test.ts`](../src/shared/api/client.test.ts)                                         |
-| Credential lifetime or generation             | [`token.ts`](../src/shared/api/token.ts)                                                | [`token.test.ts`](../src/shared/api/token.test.ts)                                           |
-| Login, registration or logout                 | [Authentication API](../src/features/auth/api.ts)                                       | [Logout lifecycle](../src/features/auth/logout.test.ts)                                      |
-| Read cancellation and replacement             | [`useReadResource`](../src/shared/hooks/useReadResource.ts)                             | [Read lifecycles](../src/shared/hooks/useReadResource.test.ts)                               |
-| Mutation identity and continuation            | `useMutationRequest` (`src/shared/hooks/useMutationRequest.ts`, planned for a later PR) | Mutation lifecycles (`src/shared/hooks/useMutationRequest.test.tsx`, planned for a later PR) |
+| Change                                        | Owner                                                             | Regression examples                                                    |
+| --------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Dispatch, refresh, replay or transport errors | [`client.ts`](../src/shared/api/client.ts)                        | [`client.test.ts`](../src/shared/api/client.test.ts)                   |
+| Credential lifetime or generation             | [`token.ts`](../src/shared/api/token.ts)                          | [`token.test.ts`](../src/shared/api/token.test.ts)                     |
+| Login, registration or logout                 | [Authentication API](../src/features/auth/api.ts)                 | [Logout lifecycle](../src/features/auth/logout.test.ts)                |
+| Read cancellation and replacement             | [`useReadResource`](../src/shared/hooks/useReadResource.ts)       | [Read lifecycles](../src/shared/hooks/useReadResource.test.ts)         |
+| Mutation identity and continuation            | [`useMutationRequest`](../src/shared/hooks/useMutationRequest.ts) | [Mutation lifecycles](../src/shared/hooks/useMutationRequest.test.tsx) |
 
 Feature HTTP owners consume the configured backend. Database operations, authorization, session revocation and cookie/CORS policy belong to that service. Client presentation checks do not enforce server authorization.
 

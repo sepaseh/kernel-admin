@@ -10,4 +10,4 @@ Use repository-relative machine paths and document-relative Markdown links. Link
 
 The [manifest](../validation.json) owns profiles; settings project it. Guidance and portable hook tests remain within their declared suites. Optional host adapters/hooks need actual integration and do not grant authorization, register themselves automatically or establish comprehension.
 
-For a requested read-only evaluation (`docs/comprehension-evaluation.md`, planned for a later PR), keep prompts separate from oracle answers and distinguish host-reported loading from manual reads. Never inspect secrets or owner data. Report actual results and limitations in the handoff rather than inventing capability claims.
+For a requested [read-only evaluation](../../docs/comprehension-evaluation.md), keep prompts separate from oracle answers and distinguish host-reported loading from manual reads. Never inspect secrets or owner data. Report actual results and limitations in the handoff rather than inventing capability claims.

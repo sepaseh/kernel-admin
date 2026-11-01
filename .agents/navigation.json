@@ -2,6 +2,98 @@
   "schemaVersion": 1,
   "tasks": [
     {
+      "id": "http-contract",
+      "when": "Change a request/response field, HTTP method, endpoint path or status.",
+      "owners": [
+        "src/features",
+        "src/shared/api",
+        "src/shared/contracts/index.ts"
+      ],
+      "contracts": [
+        "src/shared/api/types.ts",
+        "src/features/settings/types.ts",
+        "docs/authentication.md"
+      ],
+      "tests": [
+        "src/shared/api/client.test.ts",
+        "src/features/settings/api.test.ts",
+        "src/features/users/api.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Synthetic consumer/transport tests establish local HTTP expectations; they do not verify a deployed backend. The consuming developer chooses a compatible implementation."
+    },
+    {
+      "id": "auth-session",
+      "when": "Trace login, refresh, logout, password changes or session cookie handling.",
+      "owners": [
+        "src/shared/api/client.ts",
+        "src/shared/api/token.ts",
+        "src/features/auth/api.ts"
+      ],
+      "contracts": ["src/features/auth/types.ts", "src/shared/api/types.ts"],
+      "tests": [
+        "src/shared/api/client.test.ts",
+        "src/shared/api/token.test.ts",
+        "src/features/auth/logout.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Authentication execution and server-session revocation occur behind HTTP; client token clearing is not server revocation."
+    },
+    {
+      "id": "shared-translation",
+      "when": "Reuse or add a semantic UI meaning in all ten complete flat local catalogs.",
+      "owners": [
+        "src/shared/i18n/catalogs.ts",
+        "src/shared/i18n/locales",
+        "src/shared/i18n/locales.ts"
+      ],
+      "contracts": [
+        "src/shared/i18n/locales.ts",
+        ".agents/rules/localization.md"
+      ],
+      "tests": [
+        "src/shared/i18n/catalogs.test.ts",
+        "src/shared/i18n/index.test.ts",
+        "src/shared/i18n/dayjs.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"],
+      "rules": [".agents/rules/localization.md", ".agents/rules/imports.md"],
+      "limitations": "Runtime fallback does not excuse a missing translation; all catalog source and integrity evidence belong to this frontend."
+    },
+    {
+      "id": "guidance",
+      "when": "Change assistant instructions, navigation, decision records, validation policy or evaluation cases.",
+      "owners": [
+        "AGENTS.md",
+        ".agents",
+        ".claude",
+        "CLAUDE.md",
+        "scripts/check-guidance.mjs"
+      ],
+      "contracts": [
+        ".agents/validation.json",
+        ".agents/settings.json",
+        ".agents/navigation.json",
+        "docs/validation.md"
+      ],
+      "tests": [
+        "scripts/check-guidance.test.mjs",
+        "scripts/block-dangerous.test.mjs",
+        "scripts/post-edit-format.test.mjs",
+        "scripts/quality-gate.test.mjs",
+        "scripts/validate.test.mjs"
+      ],
+      "checks": ["guidance", "guidance-tests", "governance-coverage", "format"],
+      "rules": [
+        ".agents/rules/guidance.md",
+        ".agents/rules/git.md",
+        ".agents/rules/safety.md"
+      ],
+      "limitations": "Static inventory/link checks do not prove automatic host loading or improved assistant comprehension; optional Bash host prerequisites must be reported."
+    },
+    {
       "id": "publication-validation",
       "when": "Change published repository rules, review policy, CI or validation tooling.",
       "owners": [
@@ -33,6 +125,6 @@
       "limitations": "Only admitted source is verified. No application activation, external review, deployed target or provider compatibility follows from configuration alone."
     }
   ],
-  "phase": "http-lifecycle",
+  "phase": "ui-foundation",
   "applicationReady": false
 }
