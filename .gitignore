@@ -1,0 +1,60 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+node_modules
+dist
+dist-ssr
+coverage
+.lighthouseci
+playwright-report
+pacts
+reports/mutation
+.stryker-tmp
+test-results
+storybook-static
+blob-report
+*.local
+.vitest-cache
+.vitest
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# AI assistant local settings
+.agents/settings.local.json
+
+# Generated outputs
+**/*.tsbuildinfo
+
+# Operator-managed deployment configuration, credentials and certificates
+deploy/**/.env
+deploy/**/*.env
+deploy/**/tls/
+deploy/**/*.pem
+deploy/**/*.key
+deploy/**/bootstrap-admin.json
+
+# Independent hosting operator state
+.env
+.env.*
+!.env.example
+!**/.env.example
+deploy/**/.env*
+!deploy/**/.env.example
+deploy/**/tls/
+deploy/**/*.conf
+# Packaged immutable admin releases
+releases/

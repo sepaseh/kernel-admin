@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "tasks": [
+    {
+      "id": "publication-validation",
+      "when": "Change published repository rules, review policy, CI or validation tooling.",
+      "owners": [
+        "scripts/check-ci.mjs",
+        "scripts/validate-bootstrap.mjs",
+        "scripts/check-guidance.mjs"
+      ],
+      "contracts": [
+        ".github/bootstrap-policy.json",
+        ".agents/validation.json",
+        "package.json"
+      ],
+      "tests": [
+        "scripts/check-ci.test.mjs",
+        "scripts/validate-bootstrap.test.mjs",
+        "scripts/check-guidance.test.mjs"
+      ],
+      "checks": [
+        "snapshot",
+        "ci-policy",
+        "guidance",
+        "boundaries",
+        "typecheck",
+        "lint",
+        "unit-coverage",
+        "governance-coverage"
+      ],
+      "rules": [".agents/rules/git.md", ".agents/rules/safety.md"],
+      "limitations": "Only admitted source is verified. No application activation, external review, deployed target or provider compatibility follows from configuration alone."
+    }
+  ],
+  "phase": "repository-foundation",
+  "applicationReady": false
+}
