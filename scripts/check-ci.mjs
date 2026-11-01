@@ -74,9 +74,7 @@ export const requiredCheckCommands = (manifest) => {
     count === undefined ||
     typeof manifest.applicationReady !== "boolean" ||
     manifest.applicationReady !==
-      (manifest.phase === "application-verification") ||
-    (manifest.bootstrapBaseSha !== undefined &&
-      manifest.phase !== "repository-foundation")
+      (manifest.phase === "application-verification")
   )
     throw new Error(
       "Verification phase and application readiness must describe the published capability",
@@ -638,71 +636,6 @@ const setup = (value, { ref } = {}) => {
   return node.index;
 };
 
-const inspectBootstrapFileLimit = (workflow, manifest) => {
-  const value = workflow.jobs?.["file-limit"];
-  if (value === undefined && manifest.bootstrapBaseSha === undefined)
-    return false;
-  if (
-    manifest.phase !== "repository-foundation" ||
-    !sha(manifest.bootstrapBaseSha) ||
-    !isRecord(value) ||
-    value.name !== "PR file limit" ||
-    value["runs-on"] !== "ubuntu-latest" ||
-    value["timeout-minutes"] !== 5 ||
-    value.if !==
-      `github.event_name == 'pull_request' && github.event.pull_request.base.sha == '${manifest.bootstrapBaseSha}'` ||
-    value.permissions?.contents !== "read" ||
-    value.permissions?.["pull-requests"] !== "read" ||
-    Object.keys(value.permissions).length !== 2 ||
-    Object.keys(value).some(
-      (key) =>
-        ![
-          "name",
-          "runs-on",
-          "timeout-minutes",
-          "if",
-          "permissions",
-          "steps",
-        ].includes(key),
-    ) ||
-    !Array.isArray(value.steps) ||
-    value.steps.length !== 3
-  )
-    throw new Error(
-      "The bootstrap PR file limit needs its initial base, read-only ownership and repository-foundation phase",
-    );
-  const ready = setup(value, {
-    ref: "${{ github.event.pull_request.head.sha }}",
-  });
-  const execute = commandStep(value, "node scripts/check-pr-size.mjs");
-  if (
-    ready !== 1 ||
-    execute !== 2 ||
-    value.steps.some((step, index) =>
-      Object.keys(step).some(
-        (key) =>
-          !(
-            index === execute
-              ? ["name", "run", "env"]
-              : ["name", "uses", "with"]
-          ).includes(key),
-      ),
-    ) ||
-    Object.keys(value.steps[0].with).some(
-      (key) => !["ref", "persist-credentials", "fetch-depth"].includes(key),
-    ) ||
-    Object.keys(value.steps[1].with).some(
-      (key) => key !== "node-version-file",
-    ) ||
-    JSON.stringify(value.steps[execute].env) !==
-      '{"GITHUB_TOKEN":"${{ github.token }}"}'
-  )
-    throw new Error(
-      "The bootstrap PR file limit must execute only its exact head with the read-only GitHub token",
-    );
-  return true;
-};
-
 const inspectLegacyTrigger = (events) => {
   let names = Object.keys(events ?? {});
   if (typeof events === "string") names = [events];
@@ -1024,7 +957,6 @@ export const inspectCi = (content, manifest) => {
     return inspectLegacyWorkflow(workflow, manifest, false);
   triggerPolicy(workflow);
   const requiredChecks = manifestPolicy(manifest);
-  const bootstrapFileLimit = inspectBootstrapFileLimit(workflow, manifest);
   if (
     workflow.permissions?.contents !== "read" ||
     workflow.permissions?.actions !== "read" ||
@@ -1039,27 +971,11 @@ export const inspectCi = (content, manifest) => {
       "Metadata runs need minimal read-only evidence access and coalesced event/ref/profile queues that must not cancel active verification",
     );
   if (
-    Object.entries(workflow.jobs ?? {}).some(
-      ([name, value]) =>
-        !(bootstrapFileLimit && name === "file-limit") &&
-        value.steps?.some(
-          (step) =>
-            typeof step.run === "string" && /check-pr-size\.mjs/.test(step.run),
-        ),
-    )
-  )
-    throw new Error(
-      "PR size must be checked only by its trusted pull-request policy workflow",
-    );
-  if (
     JSON.stringify(
       Object.keys(workflow.jobs ?? {}).sort((left, right) =>
         left.localeCompare(right),
       ),
-    ) !==
-    (bootstrapFileLimit
-      ? '["analysis","check","file-limit","scope"]'
-      : '["analysis","check","scope"]')
+    ) !== '["analysis","check","scope"]'
   )
     throw new Error(
       "Each suite must have one execution owner; duplicate build/browser/image jobs are not allowed",

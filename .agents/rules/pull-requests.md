@@ -7,9 +7,11 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
 
 - Verify the intended base from the request or repository metadata and review the
   complete base-to-head diff for unrelated work; do not assume a base branch.
-- Target 80 or fewer GitHub changed-file entries when opening a PR, reserving
-  20 entries for review fixes under the hard 100-entry limit. Count additions,
-  deletions, renames and binaries. A rename counts as one GitHub entry.
+- Before opening a PR, aim for 80 or fewer GitHub changed-file entries initially.
+  Split independent changes when useful and explain why a larger cohesive change
+  belongs together. Count additions, deletions, renames and binaries; a rename
+  counts as one GitHub entry. File count is advisory: exceeding 100 files alone
+  must not fail CI or require deleting and recreating a PR.
 - Run the declared phase's required gate on an isolated checkout/export of the
   exact proposed commit snapshot. Record the phase, commit/tree and actual checks.
   A full pass over local untracked source does not validate a partial published PR.

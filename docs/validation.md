@@ -30,7 +30,7 @@ A complete local pass applies only to that exact snapshot and phase. It does not
 
 ## Hosted checks and review
 
-Protected `main` retains these five provider-bound contexts: `check`, `PR file limit`, `SonarQube Cloud analysis`, `SonarCloud Code Analysis` and `CodeRabbit`. Keep strict up-to-date checks, one native approving review, stale-review dismissal, resolved conversations, linear history, administrator enforcement, and blocked force pushes/deletions. Verify live protection and provider application bindings; a declaration is not proof of server enforcement.
+Protected `main` retains its provider-bound correctness and security checks, including `check`, `SonarQube Cloud analysis`, `SonarCloud Code Analysis` and `CodeRabbit`. Keep strict up-to-date checks, one native approving review, stale-review dismissal, resolved conversations, linear history, administrator enforcement, and blocked force pushes/deletions. Verify live protection and provider application bindings; a declaration is not proof of server enforcement.
 
 Before an authorized review request or merge:
 
@@ -42,10 +42,8 @@ Before an authorized review request or merge:
 
 Keep Sonar project binding and source scope accurate. The scanner imports genuinely measured LCOV from the same tested revision and reports only that scope. Scanner execution and the quality gate are separate results. Inspect secret names only during setup; never read or print token values. Provider classification requires its own authorization; do not replace real fixes with exclusions or suppressions.
 
-## Bootstrap PR file limit
+## Review PR scope before opening
 
-The first PR cannot use a trusted default-branch guard before that workflow has entered `main`. Its temporary, read-only `PR file limit` job is restricted to the declared initial base and the PR's verified current head. It counts the real GitHub changed-file entries and cannot approve, merge or write repository contents.
+Before opening a PR, review its complete base-to-head diff and aim for at most 80 GitHub changed-file entries initially. Count additions, deletions, renames and binaries; a rename counts as one entry. Split independent changes when useful and explain why a larger cohesive change belongs together.
 
-Remove that temporary job in PR 2. The normal [PR policy workflow](../.github/workflows/pr-policy.yml) uses `pull_request_target` with trusted default-branch code pinned to `github.workflow_sha`. It must never execute unreviewed PR head or base code in that context.
-
-That trusted guard becomes available after PR 1 is merged through its required review process. Later stacked PRs may retain a pending `PR file limit` context until then. Pending protection is a dependency to resolve, not permission to bypass the requirement. Initial PRs target at most 80 changed-file entries with 20 reserved for fixes under the hard 100-entry maximum.
+This is advisory guidance, outside CI and required checks. Exceeding 100 files alone must not fail CI or require deleting and recreating a PR. Keep the actual correctness, security, coverage and review requirements intact.

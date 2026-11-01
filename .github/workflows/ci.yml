@@ -223,27 +223,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} -Dsonar.scm.revision=${{ needs.scope.outputs.head }} -Dsonar.coverageReportPaths=${{ steps.coverage.outputs.powershell_report }}
-  file-limit:
-    name: PR file limit
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    if: github.event_name == 'pull_request' && github.event.pull_request.base.sha == 'f7f82fa0b9fe09f21959dd42188979a12233eaa7'
-    permissions:
-      contents: read
-      pull-requests: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-      - name: Count every GitHub changed-file entry
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/check-pr-size.mjs
-
 env:
   KERNEL_SYNTHETIC_ENV: "1"
   STORYBOOK_DISABLE_TELEMETRY: "1"

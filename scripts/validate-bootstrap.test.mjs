@@ -19,16 +19,12 @@ import {
 const coreFiles = [
   ".github/bootstrap-policy.json",
   ".github/workflows/bootstrap.yml",
-  ".github/workflows/pr-policy.yml",
-  "scripts/check-pr-size.mjs",
-  "scripts/check-pr-size.test.mjs",
   "scripts/validate-bootstrap.mjs",
   "scripts/validate-bootstrap.test.mjs",
 ];
 const policy = (overrides = {}) => ({
   allowedFiles: coreFiles,
   applicationReady: false,
-  maximumChangedFiles: 100,
   phase: "governance",
   schemaVersion: 1,
   ...overrides,
@@ -84,7 +80,6 @@ const completeApplicationFiles = [
   ".github/workflows/dast.yml",
   ".github/workflows/deployment-smoke.yml",
   ".github/workflows/mutation.yml",
-  ".github/workflows/pr-policy.yml",
   ".github/workflows/release.yml",
   ".github/workflows/staging.yml",
   ".gitignore",
@@ -174,8 +169,6 @@ const completeApplicationFiles = [
   "scripts/check-guidance.mjs",
   "scripts/check-guidance.test-support.mjs",
   "scripts/check-guidance.test.mjs",
-  "scripts/check-pr-size.mjs",
-  "scripts/check-pr-size.test.mjs",
   "scripts/dependency-compatibility.test.mjs",
   "scripts/deploy-runtime.test.mjs",
   "scripts/deployment.integration.test.mjs",
@@ -819,12 +812,11 @@ const fixture = async (context, declaredPolicy = policy()) => {
   return { put, root };
 };
 
-test("accepts only the declared governance phase and immutable 100-file maximum", () => {
+test("accepts only the declared governance phase and publication schema", () => {
   assert.equal(validateBootstrapPolicy(policy()).size, coreFiles.length);
   for (const overrides of [
     { phase: "application" },
     { applicationReady: true },
-    { maximumChangedFiles: 101 },
     { schemaVersion: 2 },
     { allowedFiles: [] },
     { allowedFiles: coreFiles.slice(1) },
@@ -963,7 +955,7 @@ test("repository foundation requires its verification toolchain and canonical Gi
     validateBootstrapPolicy(current).size,
     current.allowedFiles.length,
   );
-  assert.equal(repositoryFoundationFiles.length, 15);
+  assert.equal(repositoryFoundationFiles.length, 12);
   assert.ok(current.allowedFiles.every((file) => !file.startsWith("src/")));
   for (const missing of repositoryFoundationFiles)
     assert.throws(
@@ -1132,7 +1124,7 @@ test("catalog publication inspects its exact non-runnable snapshot and ignores o
   await assert.rejects(inspectBootstrap(root), /Unexpected bootstrap path/);
 });
 
-test("the 100-file limit applies to a PR delta rather than the total published inventory", () => {
+test("publication inventories have no file-count cap", () => {
   const files = [
     ...foundationFiles,
     ...Array.from({ length: 110 }, (_, index) => `docs/topic-${index}.md`),
@@ -1140,9 +1132,6 @@ test("the 100-file limit applies to a PR delta rather than the total published i
   assert.equal(
     validateBootstrapPolicy(foundationPolicy({ allowedFiles: files })).size,
     files.length,
-  );
-  assert.throws(() =>
-    validateBootstrapPolicy(foundationPolicy({ maximumChangedFiles: 101 })),
   );
 });
 

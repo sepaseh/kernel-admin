@@ -112,12 +112,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "ci"
-    },
-    {
-      "path": ".github/workflows/pr-policy.yml",
-      "mode": "ci"
     }
   ],
-  "verificationModel": "single-pass-v1",
-  "bootstrapBaseSha": "f7f82fa0b9fe09f21959dd42188979a12233eaa7"
+  "verificationModel": "single-pass-v1"
 }

@@ -127,8 +127,6 @@ export const phaseFixture = (phase) => {
       "utf8",
     ),
   );
-  // Phase fixtures use ordinary CI; the live initial-PR guard is tested separately.
-  delete state.ci.jobs["file-limit"];
   state.sonar = structuredClone(state.ci);
   return state;
 };

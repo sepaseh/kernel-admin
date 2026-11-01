@@ -6,9 +6,6 @@ import { fileURLToPath } from "node:url";
 const policyPath = ".github/bootstrap-policy.json";
 const coreFiles = [
   policyPath,
-  ".github/workflows/pr-policy.yml",
-  "scripts/check-pr-size.mjs",
-  "scripts/check-pr-size.test.mjs",
   "scripts/validate-bootstrap.mjs",
   "scripts/validate-bootstrap.test.mjs",
 ];
@@ -657,7 +654,6 @@ export const validateBootstrapPolicy = (policy) => {
     policy?.schemaVersion !== 1 ||
     !phaseOrder.includes(policy.phase) ||
     policy.applicationReady !== (policy.phase === "application-verification") ||
-    policy.maximumChangedFiles !== 100 ||
     !Array.isArray(policy.allowedFiles) ||
     !policy.allowedFiles.length
   )

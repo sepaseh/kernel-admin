@@ -38,7 +38,6 @@ const install = "npm ci --strict-peer-deps --no-audit --no-fund";
 const analysisInstall = "npm ci --ignore-scripts --no-audit --no-fund";
 const applicationManifest = () => {
   const value = manifest();
-  delete value.bootstrapBaseSha;
   value.applicationReady = true;
   value.phase = "application-verification";
   for (const [id, command, kind] of [
@@ -92,11 +91,7 @@ const phaseManifest = (phase, count) => {
   value.profiles.full = [...required];
   return value;
 };
-const phaseWorkflow = () => {
-  const value = workflow();
-  delete value.jobs["file-limit"];
-  return stringify(value);
-};
+const phaseWorkflow = () => stringify(workflow());
 const changedWorkflow = (change) => {
   const value = workflow();
   change(value);
@@ -118,7 +113,6 @@ test("the actual workflow runs core verification once and reuses measured covera
   assert.deepEqual(Object.keys(workflow().jobs).sort(), [
     "analysis",
     "check",
-    ...(manifest().bootstrapBaseSha ? ["file-limit"] : []),
     "scope",
   ]);
 });
@@ -193,102 +187,6 @@ test("phase check selection does not expose mutable policy definitions", () => {
     "snapshot",
     "npm run check:snapshot",
   ]);
-});
-
-test("only the initial repository foundation can own a read-only bootstrap PR file-limit job", () => {
-  const fixture = phaseManifest("repository-foundation", 10);
-  fixture.bootstrapBaseSha = "a".repeat(40);
-  const value = parse(phaseWorkflow());
-  value.jobs["file-limit"] = {
-    name: "PR file limit",
-    "runs-on": "ubuntu-latest",
-    "timeout-minutes": 5,
-    if: `github.event_name == 'pull_request' && github.event.pull_request.base.sha == '${fixture.bootstrapBaseSha}'`,
-    permissions: { contents: "read", "pull-requests": "read" },
-    steps: [
-      {
-        uses: value.jobs.scope.steps[0].uses,
-        with: {
-          ref: "${{ github.event.pull_request.head.sha }}",
-          "persist-credentials": false,
-        },
-      },
-      {
-        uses: value.jobs.scope.steps[1].uses,
-        with: { "node-version-file": ".nvmrc" },
-      },
-      {
-        run: "node scripts/check-pr-size.mjs",
-        env: { GITHUB_TOKEN: "${{ github.token }}" },
-      },
-    ],
-  };
-  assert.deepEqual(inspectCi(stringify(value), fixture), {
-    requiredChecks: 10,
-  });
-  for (const change of [
-    (workflow) => {
-      delete workflow.jobs["file-limit"];
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].if = "always()";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].permissions.contents = "write";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].permissions.actions = "read";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].needs = "check";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"]["continue-on-error"] = true;
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].steps[0].with.ref =
-        "${{ github.event.pull_request.head.ref }}";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].steps[0].with.token =
-        "${{ secrets.UNRELATED_TOKEN }}";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].steps[1].env = {
-        SECRET: "${{ secrets.UNRELATED_TOKEN }}",
-      };
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].steps[2].env.GITHUB_TOKEN =
-        "${{ secrets.UNRELATED_TOKEN }}";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].steps.push({ run: "node other.mjs" });
-    },
-    (workflow) => {
-      workflow.jobs.check.steps.push({ run: "node scripts/check-pr-size.mjs" });
-    },
-  ]) {
-    const invalid = structuredClone(value);
-    change(invalid);
-    assert.throws(
-      () => inspectCi(stringify(invalid), fixture),
-      /bootstrap PR file limit|exact tested revision|trusted pull-request policy/,
-    );
-  }
-  for (const phase of ["foundation", "application-verification"]) {
-    const later = phaseManifest(phase, phase === "foundation" ? 10 : 17);
-    assert.throws(
-      () => inspectCi(stringify(value), later),
-      /bootstrap PR file limit/,
-    );
-  }
-  for (const base of [undefined, "", "0".repeat(40), "not a commit"]) {
-    assert.throws(
-      () => inspectCi(stringify(value), { ...fixture, bootstrapBaseSha: base }),
-      /bootstrap PR file limit/,
-    );
-  }
 });
 
 test("CI preserves PR lifecycle and base retargeting, scheduled compatibility and manual release verification", () => {
@@ -2478,30 +2376,6 @@ test("each CI stage retains its declared execution budget and cannot expand toke
   assert.throws(
     () => inspectCi(stringify(privileged), manifest()),
     /read-only evidence/,
-  );
-});
-
-test("PR size has only the immutable trusted policy owner", () => {
-  const value = workflow();
-  assert.ok(
-    value.jobs.check.steps.every(
-      (step) => !step.run?.includes("check-pr-size.mjs"),
-    ),
-  );
-  const policy = parse(read(".github/workflows/pr-policy.yml"));
-  const checkout = policy.jobs["file-limit"].steps.find((step) =>
-    step.uses?.startsWith("actions/checkout@"),
-  );
-  assert.equal(checkout.with.ref, "${{ github.workflow_sha }}");
-  assert.ok(
-    policy.jobs["file-limit"].steps.some(
-      (step) => step.run === "node scripts/check-pr-size.mjs",
-    ),
-  );
-  value.jobs.check.steps.push({ run: "node scripts/check-pr-size.mjs" });
-  assert.throws(
-    () => inspectCi(stringify(value), manifest()),
-    /trusted pull-request policy/,
   );
 });
 

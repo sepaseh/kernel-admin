@@ -6,7 +6,7 @@ This snapshot contains the capabilities admitted by the [publication policy](.gi
 
 Start with [Contributing](CONTRIBUTING.md) for the Git and review workflow, [development](docs/development.md) for source changes, [validation](docs/validation.md) for the exact required gate and the [documentation map](docs/README.md) for the current guides.
 
-Every change to protected `main` goes through a PR. Initial PRs target at most 80 changed files, with 20 entries reserved for review fixes under the hard 100-file limit. CodeRabbit and Sonar requirements remain mandatory; a configured provider is not evidence of a completed review or analysis.
+Every change to protected `main` goes through a PR. Before opening a PR, aim for at most 80 changed-file entries initially, split independent changes when useful and explain larger cohesive changes. File count is advisory; exceeding 100 files alone must not fail CI or require deleting and recreating a PR. CodeRabbit and Sonar requirements remain mandatory; a configured provider is not evidence of a completed review or analysis.
 
 The project uses one root package and the Node version pinned in [`.nvmrc`](.nvmrc). Install the locked dependencies with `npm ci --strict-peer-deps --no-audit --no-fund` before running the phase's declared checks. Run commands from the repository root and use synthetic inputs rather than private operator state.
 
