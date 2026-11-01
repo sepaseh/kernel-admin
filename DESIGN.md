@@ -4,12 +4,12 @@ Use this guide when designing or reviewing an administration screen. The existin
 
 ## Reuse current owners
 
-| Design concern                                                         | Existing owner                                                                                                                           |
-| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Light/dark/compact algorithms, semantic colors and contrast correction | [`theme.ts`](src/shared/config/theme.ts), using the selected API palette                                                                 |
-| Typography, visible keyboard focus and reduced motion                  | [`src/assets/styles`](src/assets/styles) and the licensed local Vazirmatn font                                                           |
-| Reusable controls and form containers                                  | [`src/shared/ui`](src/shared/ui); feature-specific forms stay with their feature                                                         |
-| Route vocabulary and presentation permissions                          | Route metadata (`src/app/config/routes.ts`, planned for a later PR) and access helpers (`src/app/lib/access.ts`, planned for a later PR) |
+| Design concern                                                         | Existing owner                                                                         |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Light/dark/compact algorithms, semantic colors and contrast correction | [`theme.ts`](src/shared/config/theme.ts), using the selected API palette               |
+| Typography, visible keyboard focus and reduced motion                  | [`src/assets/styles`](src/assets/styles) and the licensed local Vazirmatn font         |
+| Reusable controls and form containers                                  | [`src/shared/ui`](src/shared/ui); feature-specific forms stay with their feature       |
+| Route vocabulary and presentation permissions                          | [Route metadata](src/app/config/routes.ts) and [access helpers](src/app/lib/access.ts) |
 
 Prefer Ant Design props and tokens. Use antd-style for owned custom styles, logical spacing for RTL/LTR and direct named Lucide icons with explicit size/currentColor. Decorative icons use `aria-hidden`; controls need translated accessible names. Use named props types and `FC<Props>` with type-only React imports.
 

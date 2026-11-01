@@ -63,6 +63,44 @@
       "limitations": "Runtime fallback does not excuse a missing translation; all catalog source and integrity evidence belong to this frontend."
     },
     {
+      "id": "deployment-recovery",
+      "when": "Plan future deployment/recovery work while preserving current publication boundaries.",
+      "owners": [
+        "docs/development.md",
+        "docs/architecture.md",
+        "docs/README.md"
+      ],
+      "contracts": ["docs/validation.md"],
+      "tests": ["scripts/validate-bootstrap.test.mjs"],
+      "checks": ["snapshot", "guidance", "format"],
+      "rules": [".agents/rules/safety.md", ".agents/rules/guidance.md"],
+      "limitations": "Published synthetic deployment and release helpers do not establish a production build, released artifact, deployed target or real recovery. Read the actual publication inventory and require explicit operational authorization."
+    },
+    {
+      "id": "admin-request-reliability",
+      "when": "Change cancellation, obsolete-read handling, manual retry/error states, timeouts, shared refresh, generation guards or logout completion.",
+      "owners": [
+        "src/shared/hooks/useReadRequest.ts",
+        "src/shared/hooks/useReadResource.ts",
+        "src/shared/api/client.ts",
+        "src/shared/api/token.ts",
+        "src/features/auth/api.ts",
+        "src/app/providers/core/Core.tsx",
+        "src/layouts/default/Default.tsx",
+        "src/shared/ui/request-feedback/RequestFeedback.tsx"
+      ],
+      "contracts": ["docs/authentication.md"],
+      "tests": [
+        "src/shared/hooks/useReadResource.test.ts",
+        "src/shared/api/client.test.ts",
+        "src/layouts/default/Default.test.tsx",
+        "src/features/auth/logout.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Read retry is an explicit user action; one eligible protected-401 replay after successful same-generation refresh is a separate mechanism. Synthetic tests are not a real API/browser journey."
+    },
+    {
       "id": "guidance",
       "when": "Change assistant instructions, navigation, decision records, validation policy or evaluation cases.",
       "owners": [
@@ -125,6 +163,6 @@
       "limitations": "Only admitted source is verified. No application activation, external review, deployed target or provider compatibility follows from configuration alone."
     }
   ],
-  "phase": "ui-foundation",
+  "phase": "core-auth",
   "applicationReady": false
 }
