@@ -136,9 +136,78 @@ test("portable safety policy protects secret paths, environment output and produ
   for (const payload of [
     { command: "curl https://production.example.com" },
     { command: "curl https://api.etherscan.io" },
-    { content: "mainnet" },
+    { content: "https://rpc.mainnet.example.com" },
   ])
     assert.match(inspectSafetyPayload(payload), /Production endpoint/);
+});
+
+test("production and mainnet prose remains editable without bypassing endpoint checks", () => {
+  for (const payload of [
+    { file_path: "README.md", content: "Create a production build." },
+    {
+      file_path: "docs/production.md",
+      content: "Ask before contacting production or mainnet endpoints.",
+    },
+    { command: "npm run build:production" },
+    { command: "cat docs/production.md" },
+    { command: "printf '%s' 'production build and mainnet access'" },
+  ])
+    assert.equal(inspectSafetyPayload(payload), null);
+
+  for (const endpoint of [
+    "http://production.example.com",
+    "https://rpc.mainnet.example.com",
+    "ws://production.example.com",
+    "wss://rpc.mainnet.example.com",
+    "HTTPS://PRODUCTION.EXAMPLE.COM",
+    "WSS://RPC.MAINNET.EXAMPLE.COM",
+    "api.etherscan.io",
+  ]) {
+    assert.match(
+      inspectSafetyPayload({
+        file_path: "docs/production.md",
+        content: `Endpoint: ${endpoint}`,
+      }),
+      /Production endpoint/,
+      endpoint,
+    );
+    assert.match(
+      inspectSafetyPayload({ command: `curl ${endpoint}` }),
+      /Production endpoint/,
+      endpoint,
+    );
+  }
+});
+
+test("scheme-less production hostname operands retain command protection", () => {
+  for (const command of [
+    "curl production.example.com",
+    "curl rpc.mainnet.example.com",
+    'curl "PRODUCTION.EXAMPLE.COM:443/status"',
+    "wget rpc.mainnet.example.com/status",
+    "bash -c 'curl production.example.com'",
+    "env TEST_MODE=synthetic curl rpc.mainnet.example.com",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Production endpoint/,
+      command,
+    );
+
+  for (const command of [
+    "git push --force origin production.example.com",
+    "curl production.example.com; git push --force origin feature",
+    "bash -c 'curl production.example.com; git push --force origin feature'",
+  ])
+    assert.match(inspectSafetyPayload({ command }), /Dangerous git/, command);
+
+  assert.match(
+    inspectSafetyPayload({
+      file_path: ".env.local",
+      command: "curl production.example.com",
+    }),
+    /secret or credential/,
+  );
 });
 
 test("portable safety policy accepts safe checks and fails closed on malformed input", () => {

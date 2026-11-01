@@ -11,6 +11,7 @@ const environmentError = "Environment variable exposure blocked.";
 const secretError =
   "Editing secret or credential files is blocked. Ask the user first.";
 const dangerousGit = "Dangerous git command blocked. Ask the user first.";
+const productionError = "Production endpoint detected. Ask the user first.";
 const rejectShell = () => {
   throw new Error(shellError);
 };
@@ -412,6 +413,10 @@ const inspectExecutable = (name, segment, words, depth) => {
     return inspectWrapper(segment, words, depth);
   return null;
 };
+const productionHostOperand = ({ value }) => {
+  const hostname = URL.parse("https://" + value)?.hostname;
+  return hostname?.includes(".") && /production|mainnet/i.test(hostname);
+};
 const inspectSegment = (segment, depth) => {
   if (depth > 4) return shellError;
   const words = executableWords(segment.words);
@@ -422,16 +427,21 @@ const inspectSegment = (segment, depth) => {
   const name = commandName(words[0].value);
   if (secretOperands(segment, name)) return secretError;
   if (exposesEnvironment(name, words)) return environmentError;
-  return inspectExecutable(name, segment, words, depth);
+  const executableMessage = inspectExecutable(name, segment, words, depth);
+  if (executableMessage) return executableMessage;
+
+  return words.slice(1).some(productionHostOperand) ? productionError : null;
 };
 const inspectCommand = (command, depth = 0) => {
   if (command.length > 65_536 || depth > 4) return shellError;
   try {
+    let endpointMessage = null;
     for (const segment of shellSegments(command)) {
       const message = inspectSegment(segment, depth);
-      if (message) return message;
+      if (message === productionError) endpointMessage = message;
+      else if (message) return message;
     }
-    return null;
+    return endpointMessage;
   } catch {
     return shellError;
   }
@@ -447,14 +457,13 @@ export const inspectSafetyPayload = (payload) => {
   const content = String(input.content ?? "");
   const filePath = String(input.file_path ?? "");
   const commandMessage = inspectCommand(command);
-  if (commandMessage) return commandMessage;
+  if (commandMessage && commandMessage !== productionError)
+    return commandMessage;
   if (sensitivePath(filePath)) return secretError;
-  if (
-    /production|api\.etherscan\.io|mainnet/i.test(
-      command + " " + filePath + " " + content,
-    )
-  )
-    return "Production endpoint detected. Ask the user first.";
+  const endpoint =
+    /(?:https?|wss?):\/\/[^\s"'`]*(?:production|mainnet)|api\.etherscan\.io/i;
+  if (commandMessage || endpoint.test(command + " " + filePath + " " + content))
+    return productionError;
   return null;
 };
 export const inspectSafetyJson = (input) => {
