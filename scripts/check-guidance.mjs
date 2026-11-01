@@ -910,7 +910,7 @@ const markdownProse = (markdown, { includeRaw = false } = {}) => {
 };
 const hasTranslatedDocumentationProse = (prose) => {
   const decoded = prose.replace(
-    /&#(?:x([0-9a-f]+)|([0-9]+));?/gi,
+    /&#(?:x([\da-f]+)|(\d+));?/gi,
     (reference, hexadecimal, decimal) => {
       const codePoint = Number.parseInt(
         hexadecimal ?? decimal,
