@@ -33,6 +33,6 @@
       "limitations": "Only admitted source is verified. No application activation, external review, deployed target or provider compatibility follows from configuration alone."
     }
   ],
-  "phase": "repository-foundation",
+  "phase": "runtime-localization",
   "applicationReady": false
 }
