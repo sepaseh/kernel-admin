@@ -5,7 +5,7 @@ Use this guide to open the panel against a compatible backend you choose and are
 ## Before you start
 
 - Install the Node version in [`.nvmrc`](../.nvmrc) and its bundled npm.
-- Choose a backend compatible with the local HTTP contracts and examples (`docs/authentication.md`, planned for a later PR), its public address and an account managed by that service. No particular backend repository or tooling is required.
+- Choose a backend compatible with the local [HTTP contracts and examples](authentication.md#backend-integration), its public address and an account managed by that service. No particular backend repository or tooling is required.
 - Allow the intended frontend origin in the API's CORS configuration, including credential support. The origin includes the scheme, host and port.
 
 Run the commands below from this repository's root. Filesystem examples use PowerShell; the npm and Vite commands also work in a POSIX shell.
@@ -85,8 +85,8 @@ A preview still uses the configured API for authentication and data. Rebuild aft
 | Vite refuses to start because the port is occupied                       | Stop only a server you own, or choose a free port and update the URL and API's allowed origin together. `--strictPort` prevents silently switching ports. |
 | Initial settings show an error or the browser reports connection refused | Confirm the API is running at the configured address. Inspect the public `/settings` request and retry after correcting the problem.                      |
 | The browser reports a CORS error                                         | Allow the exact frontend origin in the API, with credentials. `localhost` and `127.0.0.1` are different origins.                                          |
-| `/settings` succeeds but the panel rejects its response                  | Check API compatibility and the required settings metadata in authentication and requests (`docs/authentication.md`, planned for a later PR).             |
-| Protected requests repeatedly return 401                                 | Check the configured backend's session/refresh behavior against authentication and requests (`docs/authentication.md`, planned for a later PR).           |
+| `/settings` succeeds but the panel rejects its response                  | Check API compatibility and the required settings metadata in [authentication and requests](authentication.md).                                           |
+| Protected requests repeatedly return 401                                 | Check the configured backend's session/refresh behavior against [authentication and requests](authentication.md).                                         |
 | An operation returns 403                                                 | Check the account's server-assigned permissions. The API authorizes every operation independently of visible menus and controls.                          |
 | Configuration changes have no effect                                     | Restart the development server, or rebuild before restarting preview.                                                                                     |
 
