@@ -287,7 +287,7 @@ const storybookFiles = [
   "src/test/storybook/Transport.stories.tsx",
   "vitest.storybook.config.ts",
 ];
-const guidanceFiles = [
+const guidanceFiles = new Set([
   ".agents/README.md",
   ".agents/evaluation/cases.json",
   ".agents/evaluation/run-template.json",
@@ -341,7 +341,7 @@ const guidanceFiles = [
   "scripts/hooks.test-support.mjs",
   "scripts/check-guidance.mjs",
   "scripts/check-guidance.test.mjs",
-];
+]);
 const guidanceDependencies = new Map([
   [".agents/hooks/block-dangerous.sh", [".agents/hooks/block-dangerous.mjs"]],
   [
@@ -461,7 +461,7 @@ const publicEnvironmentTemplates = new Set([
   "deploy/docker/compose.env.example",
   "deploy/native/nginx.env.example",
 ]);
-const applicationFiles = [
+const applicationFiles = new Set([
   ".github/workflows/codeql.yml",
   ".github/workflows/dast.yml",
   ".github/workflows/release.yml",
@@ -513,7 +513,7 @@ const applicationFiles = [
   "e2e/visual/baselines/application/win32/admin-forgot-password-en-light.png",
   "e2e/visual/baselines/application/win32/admin-register-en-light.png",
   "e2e/visual/baselines/application/win32/metadata.json",
-];
+]);
 const phaseOrder = [
   "governance",
   "repository-foundation",
@@ -545,16 +545,16 @@ const publishedSource = (file, phase) =>
     (supportsPhase(phase, "storybook-verification") &&
       storybookFiles.includes(file)) ||
     (supportsPhase(phase, "application-verification") &&
-      applicationFiles.includes(file)));
+      applicationFiles.has(file)));
 
 const isGuidancePath = (file) =>
   (file.startsWith(".agents/") && file !== ".agents/validation.json") ||
   file.startsWith(".claude/") ||
-  guidanceFiles.includes(file);
+  guidanceFiles.has(file);
 
 const publishedGuidance = (file, phase) =>
   supportsPhase(phase, "repository-foundation") &&
-  (guidanceFiles.includes(file) ||
+  (guidanceFiles.has(file) ||
     file === "scripts/check-guidance.test-support.mjs" ||
     file === "scripts/check-guidance.integration.test.mjs");
 
@@ -595,17 +595,17 @@ const isForbiddenPublicationPath = (file, phase) =>
     !operationsPrerequisiteFiles.has(file) &&
     !(
       supportsPhase(phase, "application-verification") &&
-      applicationFiles.includes(file)
+      applicationFiles.has(file)
     )) ||
   (/^(?:deploy|e2e|tooling)(?:\/|$)/.test(file) &&
     !operationsPrerequisiteFiles.has(file) &&
     !(
       supportsPhase(phase, "application-verification") &&
-      applicationFiles.includes(file)
+      applicationFiles.has(file)
     )) ||
   (file === "stryker.config.json" &&
     !supportsPhase(phase, "release-prerequisites")) ||
-  (applicationFiles.includes(file) &&
+  (applicationFiles.has(file) &&
     !supportsPhase(phase, "application-verification") &&
     !publishedSource(file, phase) &&
     !(
