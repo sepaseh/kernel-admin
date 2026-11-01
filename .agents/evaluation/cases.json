@@ -25,6 +25,39 @@
       "checks": ["boundaries", "typecheck", "unit-coverage"]
     },
     {
+      "id": "shared-label",
+      "prompt": {
+        "en": "Without editing, plan a local admin UI label. Locate the one code-named catalog per language, its flat root keys, the local i18next adapter and integrity tests. Reuse an existing semantic key before adding one, remove duplicate aliases and preserve {{variable}} interpolation. Explain that catalog source and integrity evidence belong entirely to this frontend."
+      },
+      "taskIds": ["shared-translation"],
+      "evidence": [
+        "src/shared/i18n/catalogs.ts",
+        "src/shared/i18n/locales/en.ts",
+        "src/shared/i18n/locales/fa.ts",
+        "src/shared/i18n/locales.ts",
+        "src/shared/i18n/catalogs.test.ts",
+        "src/shared/i18n/index.ts",
+        "src/app/providers/core/Core.tsx",
+        "src/app/providers/antd/Antd.tsx",
+        "src/features/settings/api.ts",
+        "src/features/calendar/Calendar.tsx"
+      ],
+      "mustExplain": [
+        "All translation source and the i18next adapter are local under src/shared/i18n.",
+        "Each locale has one code-named flat Record<string, string> catalog; messages use direct root keys without nested objects, common prefixes or duplicate aliases.",
+        "All ten languages require genuine nonempty keys and matching i18next placeholders.",
+        "All catalog source and integrity evidence are local; translation work requires no external project source or documentation.",
+        "Public API settings alone select the active language; fixed Persian bootstrap is not a remembered visitor preference, and only the system super-admin can change the global setting.",
+        "Core retains validated server direction/calendar/names alongside the normalized supported code. Ant Design/HTML and Day.js/Calendar consume that metadata; local maps only select vendor adapters. Invalid metadata is a settings error."
+      ],
+      "mustNot": [
+        "Reintroduce a shared translation package or external project source dependency.",
+        "Accept empty catalogs or English copies as translations.",
+        "Initialize engines in pure catalog data modules."
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"]
+    },
+    {
       "id": "admin-read-and-session-generation",
       "prompt": {
         "en": "Without editing or running services, trace a cancelled/obsolete admin read and an old protected mutation receiving 401 after logout and a new login. Explain current generation guards across refresh, retry and logout, bounded timeout/error behavior and StrictMode cleanup; cite regression tests and explicitly identify any unguarded branch instead of assuming safety. State whether canceling one reader can abort the shared refresh needed by another reader."

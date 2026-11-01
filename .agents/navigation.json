@@ -42,6 +42,40 @@
       "limitations": "Authentication execution and server-session revocation occur behind HTTP; client token clearing is not server revocation."
     },
     {
+      "id": "active-language",
+      "when": "Trace validated API language code/direction/calendar/names, fixed bootstrap, vendor adapters, calendar display or super-admin language changes.",
+      "owners": [
+        "src/app/providers/core/Core.tsx",
+        "src/app/providers/antd/Antd.tsx",
+        "src/features/calendar/Calendar.tsx",
+        "src/shared/i18n/index.ts",
+        "src/features/settings/Settings.tsx",
+        "src/features/settings/api.ts",
+        "src/shared/i18n/date.ts"
+      ],
+      "contracts": [
+        "src/features/settings/types.ts",
+        "src/shared/i18n/locales.ts",
+        ".agents/rules/localization.md"
+      ],
+      "tests": [
+        "src/app/providers/core/Core.test.tsx",
+        "src/app/providers/antd/Antd.test.tsx",
+        "src/features/calendar/Calendar.test.tsx",
+        "src/features/settings/api.test.ts",
+        "src/shared/i18n/index.test.ts",
+        "src/features/settings/Settings.test.tsx",
+        "src/shared/i18n/date.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [
+        ".agents/rules/localization.md",
+        ".agents/rules/react.md",
+        ".agents/rules/imports.md"
+      ],
+      "limitations": "Validated API metadata owns active language, direction, calendar and names. Local code maps select catalogs/vendor adapters only; toolbar choices are synthetic fixtures."
+    },
+    {
       "id": "shared-translation",
       "when": "Reuse or add a semantic UI meaning in all ten complete flat local catalogs.",
       "owners": [
@@ -163,6 +197,6 @@
       "limitations": "Only admitted source is verified. No application activation, external review, deployed target or provider compatibility follows from configuration alone."
     }
   ],
-  "phase": "core-auth",
+  "phase": "business-screens",
   "applicationReady": false
 }

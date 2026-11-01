@@ -39,7 +39,7 @@ Core applies accepted metadata to i18next and Day.js. Ant Design selects the mat
 
 `date.ts` registers the matching Day.js locales and Jalaliday; English uses the vendor name `en-gb`. Gregorian Persian month names and Jalali month names remain distinct. Callers explicitly select the API-provided calendar, resetting retained date instances when it changes.
 
-The calendar screen (`src/features/calendar/Calendar.tsx`, planned for a later PR) formats HTTP keys as Gregorian `YYYY-MM-DD` even when the displayed calendar is Jalali. Keep this wire format separate from localized display formatting.
+The [calendar screen](../src/features/calendar/Calendar.tsx) formats HTTP keys as Gregorian `YYYY-MM-DD` even when the displayed calendar is Jalali. Keep this wire format separate from localized display formatting.
 
 ## Fixtures and checks
 
