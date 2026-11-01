@@ -22,6 +22,7 @@ export default defineConfig({
     include: [
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
+      ".storybook/request-guard.test.ts",
       "scripts/run-audit.test.mjs",
     ],
     restoreMocks: true,

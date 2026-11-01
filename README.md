@@ -12,4 +12,4 @@ The project uses one root package and the Node version pinned in [`.nvmrc`](.nvm
 
 Application run and deployment instructions belong with the phases that admit their complete source and verification. No backend source checkout is required to validate the frontend's local contracts.
 
-Current publication phase: `business-screens`. Application readiness: `false`.
+Current publication phase: `storybook-verification`. Application readiness: `false`.
