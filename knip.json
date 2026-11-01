@@ -1,0 +1,19 @@
+{
+  "entry": [
+    "e2e/visual/**/*.ts",
+    "playwright.visual.config.ts",
+    "scripts/*.mjs"
+  ],
+  "playwright": {
+    "config": ["playwright.config.ts", "smoke.config.ts", "staging.config.ts"]
+  },
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "scripts/**/*.mjs",
+    "e2e/**/*.ts",
+    "contract/**/*.ts",
+    "tooling/**/*.ts",
+    ".storybook/**/*.{ts,tsx,mdx}",
+    "*.ts"
+  ]
+}

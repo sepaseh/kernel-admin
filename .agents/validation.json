@@ -1,98 +1,261 @@
 {
   "schemaVersion": 1,
-  "phase": "release-prerequisites",
-  "applicationReady": false,
+  "phase": "application-verification",
+  "applicationReady": true,
   "checks": [
     {
       "id": "snapshot",
       "command": "npm run check:snapshot",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": [
+        "http-lifecycle",
+        "ui-foundation",
+        "core-auth",
+        "business-screens",
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "ci-policy",
       "command": "npm run check:ci",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": [
+        "http-lifecycle",
+        "ui-foundation",
+        "core-auth",
+        "business-screens",
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "guidance",
       "command": "npm run check:guidance",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": ["assistant-guidance", "application-verification"]
     },
     {
       "id": "audit",
       "command": "npm run audit",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": [
+        "http-lifecycle",
+        "ui-foundation",
+        "core-auth",
+        "business-screens",
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "boundaries",
       "command": "npm run check:boundaries",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": [
+        "http-lifecycle",
+        "ui-foundation",
+        "core-auth",
+        "business-screens",
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "typecheck",
       "command": "npm run typecheck",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": [
+        "http-lifecycle",
+        "ui-foundation",
+        "core-auth",
+        "business-screens",
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "lint",
       "command": "npm run lint",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": [
+        "http-lifecycle",
+        "ui-foundation",
+        "core-auth",
+        "business-screens",
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "format",
       "command": "npm run format:check",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": [
+        "http-lifecycle",
+        "ui-foundation",
+        "core-auth",
+        "business-screens",
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "unit-coverage",
       "command": "npm run test:coverage",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": [
+        "http-lifecycle",
+        "ui-foundation",
+        "core-auth",
+        "business-screens",
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "governance-coverage",
       "command": "npm run test:governance",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": [
+        "http-lifecycle",
+        "ui-foundation",
+        "core-auth",
+        "business-screens",
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "storybook-build",
       "command": "npm run build-storybook",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": [
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "storybook-browser",
       "command": "npm run test:storybook",
       "kind": "required",
       "ciJobs": ["check"],
-      "scopes": ["release-prerequisites"]
+      "scopes": [
+        "storybook-verification",
+        "assistant-guidance",
+        "application-verification"
+      ]
     },
     {
       "id": "guidance-tests",
       "command": "npm run test:guidance",
       "kind": "advisory",
       "ciJobs": [],
-      "scopes": ["release-prerequisites"]
+      "scopes": ["assistant-guidance", "application-verification"]
+    },
+    {
+      "id": "unused",
+      "command": "npm run check:unused",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "application-build",
+      "command": "npm run build:verification",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "bundle",
+      "command": "npm run check:bundle",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "contract",
+      "command": "npm run test:contract",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "application-e2e",
+      "command": "npm run test:e2e",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "visual",
+      "command": "npm run test:visual",
+      "kind": "manual",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "lighthouse",
+      "command": "npm run test:lighthouse:verified",
+      "kind": "advisory",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"],
+      "exception": {
+        "owner": "Kernel Admin frontend/test maintainer",
+        "reviewBy": "2026-11-07",
+        "expiresAt": "2026-11-07T00:00:00Z",
+        "reason": "Investigate Lighthouse fixture startup independently of blocking application correctness; preserve numerical budgets and reports."
+      }
+    },
+    {
+      "id": "browser-compatibility",
+      "command": "npm run test:e2e:complete",
+      "kind": "manual",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "mutation",
+      "command": "npm run test:mutation",
+      "kind": "manual",
+      "ciJobs": [],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "staging",
+      "command": "npm run test:staging",
+      "kind": "manual",
+      "ciJobs": [],
+      "scopes": ["application-verification"]
+    },
+    {
+      "id": "smoke",
+      "command": "npm run test:smoke",
+      "kind": "manual",
+      "ciJobs": [],
+      "scopes": ["application-verification"]
     }
   ],
   "profiles": {
@@ -108,7 +271,12 @@
       "unit-coverage",
       "governance-coverage",
       "storybook-build",
-      "storybook-browser"
+      "storybook-browser",
+      "unused",
+      "application-build",
+      "bundle",
+      "contract",
+      "application-e2e"
     ],
     "guidance": ["guidance", "guidance-tests"],
     "complete": [
@@ -123,8 +291,19 @@
       "unit-coverage",
       "governance-coverage",
       "storybook-build",
-      "storybook-browser"
-    ]
+      "storybook-browser",
+      "unused",
+      "application-build",
+      "bundle",
+      "contract",
+      "browser-compatibility",
+      "visual"
+    ],
+    "visual": ["visual"],
+    "performance": ["lighthouse"],
+    "mutation": ["mutation"],
+    "staging": ["staging"],
+    "smoke": ["smoke"]
   },
   "externalWorkflows": [
     {
@@ -140,8 +319,20 @@
       "mode": "scheduled"
     },
     {
+      "path": ".github/workflows/staging.yml",
+      "mode": "manual"
+    },
+    {
+      "path": ".github/workflows/deployment-smoke.yml",
+      "mode": "manual"
+    },
+    {
       "path": ".github/workflows/codeql.yml",
       "mode": "ci"
+    },
+    {
+      "path": ".github/workflows/dast.yml",
+      "mode": "manual"
     },
     {
       "path": ".github/workflows/release.yml",

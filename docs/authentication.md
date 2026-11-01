@@ -16,7 +16,7 @@ Feature HTTP owners consume the configured backend. Database operations, authori
 
 Developers choose a compatible backend through `VITE_API_BASE_URL`. The local feature `api.ts` and `types.ts` files define this frontend's requests and expected responses; no particular backend implementation, repository, request collection or tooling is required. Adapt this project's HTTP boundary when integrating a service with a different contract.
 
-Use the synthetic settings response (`e2e/fixtures.ts`, planned for a later PR), application HTTP handlers (`e2e/shared/admin-fixtures.ts`, planned for a later PR) and consumer request/response examples (`contract/api.contract.test.ts`, planned for a later PR) as local integration references. They cover the current consumer expectations and remain fixtures, not real accounts or services. Initial startup needs a valid `/settings` response before routes render; authenticated features also require compatible login, refresh and permission behavior. Builds and synthetic checks need no running backend. Verify a chosen service separately when real integration testing is authorized.
+Use the [synthetic settings response](../e2e/fixtures.ts), [application HTTP handlers](../e2e/shared/admin-fixtures.ts) and [consumer request/response examples](../contract/api.contract.test.ts) as local integration references. They cover the current consumer expectations and remain fixtures, not real accounts or services. Initial startup needs a valid `/settings` response before routes render; authenticated features also require compatible login, refresh and permission behavior. Builds and synthetic checks need no running backend. Verify a chosen service separately when real integration testing is authorized.
 
 ## Transport contract
 

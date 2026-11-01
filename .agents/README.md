@@ -1,15 +1,13 @@
 # Assistant guidance
 
-Start with [AGENTS](../AGENTS.md), the [settings index](settings.json), [source navigation](../docs/source-navigation.md) and the relevant rules. Read current source and nearby tests before editing. Preserve unrelated tracked, staged and untracked work.
+Start with [AGENTS](../AGENTS.md), [source navigation](../docs/source-navigation.md) and the rules indexed in [settings](settings.json). Read current source before changing it and preserve unrelated user work.
 
-The [publication policy](../.github/bootstrap-policy.json) declares the admitted files, phase and application readiness. Describe only the capabilities present in that snapshot. An incomplete application inventory must not claim an assembled or runnable application.
+The [validation manifest](validation.json) owns commands and profiles. Start with a focused check, then run its full profile on the exact isolated proposed source before an authorized commit, push or handoff. Use [validation](../docs/validation.md) and honest current-revision results; optional hooks and host adapters are not substitutes.
 
-Git and remote work starts with [Git workflow](rules/git.md). Use a verified `codex/<purpose>` branch and PRs for every change to `main`; never push directly to the protected branch. Publication, provider review requests and merging each need authorization covering that action. Existing authorization remains valid within its scope.
+Ordinary local and PR verification uses Chromium. The complete profile substitutes the full browser matrix and adds approved-runtime image comparison; performance follows its separate, time-bounded advisory policy. Preserve these manifest responsibilities and source-bound measured reports when reorganizing checks.
 
-The [validation manifest](validation.json) owns the complete required gate for the actual phase. Run it on an exact verification-only export under ignored `coverage/` before an authorized commit, push or PR handoff. Follow [validation](../docs/validation.md); do not substitute whole-workspace results for a partial PR.
+Interface work starts with [DESIGN](../DESIGN.md) and [design-ui](skills/design-ui/SKILL.md). Git/remote work starts with [Git workflow](rules/git.md). Current human docs and active assistant instructions are English. Keep application translations and API-owned language metadata intact.
 
-Use the existing checkout. Additional worktrees, clones or copied implementation checkouts require prior explicit authorization. Verification exports are disposable evidence, not implementation workspaces.
+Never use real environments, credentials, certificates, databases, uploads or browser state as fixtures. Existing authorization persists within scope; source preparation does not authorize real operations or publication.
 
-Never read real environments, credentials, databases, uploads or browser state as fixtures. Keep documentation English. Preserve every application translation and server-owned language, direction and calendar contract when those files are admitted.
-
-Optional host adapters and hooks do not grant permission, prove automatic loading or replace the required gate. Use [Contributing](../CONTRIBUTING.md) for publication and documentation responsibilities.
+Read [deployment](../docs/deployment.md) before invoking helpers that may write files, start resources or contact targets. Only reviewed synthetic public examples at `.env.example`, `deploy/docker/compose.env.example` and `deploy/native/nginx.env.example` are source exceptions; private counterparts remain unread.

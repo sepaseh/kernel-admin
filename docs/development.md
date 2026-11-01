@@ -1,17 +1,51 @@
-# Develop a source change
+# Develop a feature
 
-Use this guide to prepare a focused change in the existing checkout. [Contributing](../CONTRIBUTING.md) owns publication, [source navigation](source-navigation.md) identifies current owners and [validation](validation.md) owns the required evidence.
+Use this workflow for a change to an existing screen, form or frontend contract. Complete [local setup](usage.md) first, then work in the existing checkout under the [working-checkout rule](../.agents/rules/branches.md#working-checkout). Inspect the current branch and changes before editing; preserve unrelated tracked, staged and untracked work.
 
-1. Read [AGENTS](../AGENTS.md), the relevant rules in the [settings index](../.agents/settings.json) and the current [publication policy](../.github/bootstrap-policy.json). Determine which capabilities and files this snapshot actually admits.
-2. Inspect the branch, working tree and staged changes. Reuse a suitable checkout and preserve unrelated work. Additional worktrees, clones and copied implementation checkouts require prior explicit authorization.
-3. Read the owner source and nearby tests before editing. Keep one coherent change on a verified `codex/<purpose>` branch. Changes to `main` require a PR.
-4. Add a meaningful regression for changed behavior and run focused checks. Use deterministic readiness, completion or cancellation for test coordination; preserve intentional product timing.
-5. Prepare an exact verification-only export and run the phase's complete `full` profile before an authorized commit, push or handoff. Report actual outcomes and remaining provider evidence separately.
+Keep one root npm project with source in `src/`. Developers choose the backend through the local [HTTP integration boundary](authentication.md#backend-integration); do not add workspaces, backend SDKs, local-package links or source imports from another checkout.
 
-Keep one root package, locked registry dependencies and local frontend contracts. The consuming developer chooses a compatible backend; do not import another project's source or SDK as a prerequisite.
+## 1. Define the behavior and find its owner
 
-As feature source is admitted, keep feature API/types with that feature, shared transport/session state in `src/shared/api` and request hooks in `src/shared/hooks`. Preserve memory-only tokens, login/logout generations, bounded shared refresh, cancellation and stale-result guards. Runtime source changes require reading the corresponding admitted contracts and tests first.
+Describe the user-visible result and the failure it must handle. For example, a list refresh failure should keep accepted rows and offer retry. Read the closest implementation and tests before selecting an abstraction.
 
-When UI and localization source is admitted, use the existing React, Ant Design, router and Axios owners. Preserve all ten catalogs, Persian calendar data, keyboard/contrast/motion behavior and RTL/LTR support. The API owns language, direction and calendar; browser preferences own theme and compact mode.
+Use [source navigation](source-navigation.md) to locate startup/routes, feature API/types, shared requests, reusable controls, appearance and catalogs. Feature-specific forms and helpers stay beside their feature. Cross-feature vocabulary such as the profile-name limit belongs in `src/shared/contracts`.
 
-Use synthetic fixtures only. Do not read private environments, credentials, databases, uploads or browser state. Optional host hooks do not prove automatic loading or replace validation. Operational source must be read and its real target separately authorized before execution.
+## 2. Change the owning contract and interaction
+
+Keep endpoint paths and HTTP request/response types in the feature's `api.ts` and `types.ts`. Normalize nullable data at that boundary. Keep transport/session behavior in `src/shared/api`; document incompatible HTTP or permission changes and the requirements for a compatible backend.
+
+Before importing from another feature or app module, check the [dependency boundaries](architecture.md#feature-dependency-boundaries) and the exact approved edges in [the checker](../scripts/check-boundaries.mjs). Use the declared authentication or roles API, hook or type leaf and the approved app hooks, route configuration or access policy. Keep another feature's UI/private helpers and app composition internals out of the dependency. A new dependency needs a reviewed ownership requirement and positive/negative boundary regressions. Keep a feature-specific abstraction local until a real shared contract is needed.
+
+Reuse the existing request hooks for loading, retained-data failure and retry. Keep loaders stable with `useCallback`, include their filters/identifiers and forward the supplied cancellation signal to the feature API. Preserve session generations and stale-result guards described in [authentication and requests](authentication.md).
+
+For interface changes, read [DESIGN](../DESIGN.md), the closest `*.stories.tsx`, and the canonical [React](../.agents/rules/react.md) and [styling](../.agents/rules/styling.md) rules. Keep React, Ant Design/antd-style, React Router and Axios. Reuse component props and semantic tokens before adding custom styling.
+
+Cover the relevant populated, empty, loading, initial failure, retained-data refresh failure, validation, submitting and permitted/read-only states. Preserve keyboard focus, reduced motion, narrow layouts, RTL/LTR and light/dark/compact behavior.
+
+## 3. Connect routes, permissions and labels
+
+When adding a route, define its path, layout and access metadata in [route configuration](../src/app/config/routes.ts), then connect its page importer in [Routes](../src/app/Routes.tsx). Add a navigation entry only when the product needs one. Keep access decisions in the existing [pure policy](../src/app/lib/access.ts). Client visibility and guards do not enforce server authorization.
+
+Reuse translated labels where their meaning matches. Add a new key to every registered catalog when needed, preserving interpolation names and genuine translations. Follow [localization](localization.md); language, direction and calendar remain API-owned, while theme and compact mode are browser preferences.
+
+## 4. Verify the behavior
+
+Add or update tests beside the changed owner. Cross-module cases belong in `src/test/integration`; shared render helpers live in `src/test/render.tsx`. Use complete feature API/client mocks or the declared synthetic HTTP fixtures, and make unexpected requests fail. [Testing](testing.md) explains which evidence each suite supplies.
+
+Run the smallest relevant cases first. For a user-list change, for example:
+
+```sh
+npx vitest run src/features/users/Users.test.tsx src/features/users/api.test.ts
+```
+
+Run this and other commands from the repository root after installing locked dependencies. The command executes the selected tests using the repository's isolated Vitest configuration. Check the affected happy path, failure path, cancellation and permission behavior; a passing test count alone does not demonstrate those cases.
+
+Run `npm run check:boundaries` after changing imports or ownership. When extending an approved edge, also run its focused [boundary tests](../scripts/check-boundaries.test.mjs) and confirm that unrelated feature internals and upward shared imports still fail.
+
+Use the current type, lint and broader check commands from [the manifest](../.agents/validation.json). Follow [validation](validation.md) for the complete required gate before an authorized commit, push or handoff. A focused run does not replace that gate.
+
+## 5. Update the guide that owns the change
+
+Update the existing usage, contract, testing or deployment guide when its instructions or behavior change. Link to configuration and command owners instead of copying another complete inventory. Keep documentation in English and product catalogs complete.
+
+Keep scratch exports, generated evidence and recovery files in ignored directories inside this repository. Keep real local configuration out of source fixtures and commits. Use [Contributing](../CONTRIBUTING.md) for review and publication; preparing or testing a change does not grant permission to publish it.

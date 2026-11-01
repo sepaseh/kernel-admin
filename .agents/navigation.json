@@ -260,37 +260,103 @@
       "limitations": "The application phase admits composed routes, production build and real browser/visual/performance verification with synthetic fixtures. Actual API-provider compatibility, human visual approval and deployment require separate current evidence."
     },
     {
-      "id": "publication-validation",
-      "when": "Change published repository rules, review policy, CI or validation tooling.",
+      "id": "release-quality-prerequisites",
+      "when": "Change pure release packaging, deployment rendering, environment validation or quality report policy without activating the application.",
       "owners": [
-        "scripts/check-ci.mjs",
-        "scripts/validate-bootstrap.mjs",
-        "scripts/check-guidance.mjs"
+        "scripts/package-release.mjs",
+        "scripts/render-deployment.mjs",
+        "scripts/validate-deployment-env.mjs",
+        "scripts/validate-production-env.mjs",
+        "scripts/check-bundle-size.mjs",
+        "scripts/lighthouse-policy.mjs",
+        "scripts/validate-workflow-targets.mjs",
+        "scripts/test-docker-release.mjs",
+        "scripts/docker-smoke-resources.mjs",
+        "tooling/paths.ts",
+        "scripts/run-lighthouse.mjs",
+        "scripts/run-visual.mjs",
+        "scripts/stamp-admin-build.mjs",
+        "scripts/visual-environment.mjs",
+        "scripts/stop-visual-process-tree.ps1"
       ],
       "contracts": [
         ".github/bootstrap-policy.json",
-        ".agents/validation.json",
-        "package.json"
+        "docs/deployment.md",
+        "docs/testing.md"
       ],
       "tests": [
-        "scripts/check-ci.test.mjs",
-        "scripts/validate-bootstrap.test.mjs",
-        "scripts/check-guidance.test.mjs"
+        "scripts/package-release.test.mjs",
+        "scripts/validate-deployment-env.test.mjs",
+        "scripts/render-deployment.test.mjs",
+        "scripts/render-deployment.integration.test.mjs",
+        "scripts/healthcheck.test.mjs",
+        "scripts/deployment.integration.test.mjs",
+        "scripts/docker-smoke-resources.test.mjs",
+        "scripts/check-bundle-size.test.mjs",
+        "scripts/run-lighthouse.test.mjs",
+        "scripts/validate-production-env.test.mjs",
+        "scripts/validate-workflow-targets.test.mjs",
+        "scripts/visual-environment.test.mjs",
+        "scripts/run-visual.test.mjs",
+        "scripts/run-visual.integration.test.mjs",
+        "scripts/stop-visual-process-tree.test.ps1",
+        "scripts/test-docker-release.test.mjs",
+        "scripts/lighthouse-policy.test.mjs",
+        "scripts/stamp-admin-build.test.mjs"
       ],
       "checks": [
         "snapshot",
-        "ci-policy",
         "guidance",
-        "boundaries",
         "typecheck",
         "lint",
         "unit-coverage",
         "governance-coverage"
       ],
-      "rules": [".agents/rules/git.md", ".agents/rules/safety.md"],
-      "limitations": "Only admitted source is verified. No application activation, external review, deployed target or provider compatibility follows from configuration alone."
+      "rules": [
+        ".agents/rules/testing.md",
+        ".agents/rules/guidance.md",
+        ".agents/rules/safety.md"
+      ],
+      "limitations": "Pure helper cases remain synthetic; the canonical application gate separately owns real build/browser/visual/Lighthouse execution. Deployment, operator automation and API-provider verification require separate authorization and evidence. Historical Windows images are not fresh approval."
+    },
+    {
+      "id": "application-composition",
+      "when": "Change application startup, composed routes or the runnable verification gate",
+      "owners": [
+        "src/main.tsx",
+        "src/app/App.tsx",
+        "src/app/Routes.tsx",
+        "vite.config.ts"
+      ],
+      "contracts": [".github/bootstrap-policy.json", ".agents/validation.json"],
+      "rules": [
+        ".agents/rules/react.md",
+        ".agents/rules/testing.md",
+        ".agents/rules/safety.md"
+      ],
+      "tests": [
+        "src/app/Routes.test.tsx",
+        "src/test/integration/pages.test.tsx",
+        "contract/api.contract.test.ts",
+        "e2e/auth.spec.ts",
+        "e2e/visual/admin.spec.ts"
+      ],
+      "checks": [
+        "snapshot",
+        "ci-policy",
+        "boundaries",
+        "typecheck",
+        "unit-coverage",
+        "application-build",
+        "bundle",
+        "contract",
+        "application-e2e",
+        "visual",
+        "lighthouse"
+      ],
+      "limitations": "Synthetic consumer fixtures do not verify a deployed backend or deployment. Local/PR Chromium validation, complete browser compatibility, approved-runtime image comparison and time-bounded advisory performance have distinct manifest roles. Reused evidence must match the actual tested head, base and merge tree."
     }
   ],
-  "phase": "release-prerequisites",
-  "applicationReady": false
+  "phase": "application-verification",
+  "applicationReady": true
 }

@@ -21,9 +21,9 @@
     "types": ["node"]
   },
   "include": [
-    "vitest.config.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
+    "vitest.config.ts",
     ".storybook/**/*.ts",
     ".storybook/**/*.tsx",
     "vitest.storybook.config.ts"

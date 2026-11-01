@@ -61,7 +61,7 @@ Stop the server with `Ctrl+C`. Restart it after changing configuration.
 | `VITE_RELEASE_ID`        | Public build identifier. Production releases use a new immutable identifier.    |
 | `VITE_OBSERVABILITY_URL` | Optional public reporting endpoint; blank disables reporting.                   |
 
-The example and Vite configuration (`vite.config.ts`, planned for a later PR) are the configuration owners. Production input validation and deployment configuration are described in [deployment](deployment.md).
+The example and [Vite configuration](../vite.config.ts) are the configuration owners. Production input validation and deployment configuration are described in [deployment](deployment.md).
 
 Values already set in the process environment override values loaded from local files. Synthetic validation also disables local environment-file discovery. Use a separate terminal for an API-backed local run after working with the synthetic setup in [validation](validation.md).
 

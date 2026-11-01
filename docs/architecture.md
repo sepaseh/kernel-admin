@@ -6,10 +6,10 @@ Kernel Admin is one independent React/Vite TypeScript application. Developers se
 
 ## Follow startup
 
-1. `src/main.tsx` (`src/main.tsx`, planned for a later PR) initializes observability and mounts `App` (`src/app/App.tsx`, planned for a later PR).
+1. [`src/main.tsx`](../src/main.tsx) initializes observability and mounts [`App`](../src/app/App.tsx).
 2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings through the shared read lifecycle. The settings adapter validates language, logos and both palettes before Core accepts them. Bootstrap loading remains outside Ant Design.
 3. `App` loads the Ant Design provider, settings feedback and routes together when settings are ready or a bootstrap error needs themed retry feedback. Routes mount only after validated palettes are available. Later settings refresh failures retain the accepted application.
-4. `Routes.tsx` (`src/app/Routes.tsx`, planned for a later PR) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. Protected page access is checked before its lazy importer runs; allowed import failures reach the route error fallback.
+4. [`Routes.tsx`](../src/app/Routes.tsx) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. Protected page access is checked before its lazy importer runs; allowed import failures reach the route error fallback.
 
 The [default layout](../src/layouts/default/Default.tsx) loads the current account before rendering protected children. Menu and route checks describe what the client presents; the API authorizes each request independently.
 
@@ -34,6 +34,6 @@ Features may consume another feature only through the exact authentication API/O
 
 ## Trace a change
 
-Use the [source map](source-navigation.md) to find the nearest implementation and tests. Startup and lazy-route behavior are exercised in route tests (`src/app/Routes.test.tsx`, planned for a later PR); settings acceptance belongs to [Core tests](../src/app/providers/core/Core.test.tsx). Feature behavior stays with the feature's tests and stories.
+Use the [source map](source-navigation.md) to find the nearest implementation and tests. Startup and lazy-route behavior are exercised in [route tests](../src/app/Routes.test.tsx); settings acceptance belongs to [Core tests](../src/app/providers/core/Core.test.tsx). Feature behavior stays with the feature's tests and stories.
 
 [Testing](testing.md) explains what each kind of evidence establishes. Component, consumer-contract and application-browser results cover different boundaries; provider compatibility and deployed behavior require their own results.
