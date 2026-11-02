@@ -642,7 +642,10 @@ const requiredFilesForPhase = (phase) => {
   if (phase === "governance") {
     initialFiles = [".github/workflows/bootstrap.yml"];
   } else if (phase === "repository-foundation") {
-    initialFiles = foundationFiles.filter((file) => !file.startsWith("src/"));
+    initialFiles = [
+      ...foundationFiles.filter((file) => !file.startsWith("src/")),
+      ".github/workflows/codeql.yml",
+    ];
   }
   return [
     ...coreFiles,

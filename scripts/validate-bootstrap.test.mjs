@@ -770,9 +770,10 @@ const foundationPolicy = (overrides = {}) =>
     phase: "foundation",
     ...overrides,
   });
-const repositoryFoundationFiles = foundationFiles.filter(
-  (file) => !file.startsWith("src/"),
-);
+const repositoryFoundationFiles = [
+  ...foundationFiles.filter((file) => !file.startsWith("src/")),
+  ".github/workflows/codeql.yml",
+];
 const catalogFiles = [
   "src/shared/i18n/catalogs.ts",
   "src/shared/i18n/catalogs.test.ts",
@@ -935,7 +936,7 @@ test("repository foundation admits standalone CodeQL without admitting applicati
   const security = ".github/workflows/codeql.yml";
   const current = foundationPolicy({
     phase: "repository-foundation",
-    allowedFiles: [...repositoryFoundationFiles, security],
+    allowedFiles: repositoryFoundationFiles,
   });
   assert.ok(validateBootstrapPolicy(current).has(security));
   assert.equal(current.applicationReady, false);
@@ -950,6 +951,22 @@ test("repository foundation admits standalone CodeQL without admitting applicati
         allowedFiles: [...current.allowedFiles, file],
       }),
     );
+});
+
+test("repository foundation rejects snapshots omitting the CodeQL workflow and its declaration", async (context) => {
+  const omitted = foundationPolicy({
+    phase: "repository-foundation",
+    allowedFiles: repositoryFoundationFiles.filter(
+      (file) => file !== ".github/workflows/codeql.yml",
+    ),
+  });
+
+  assert.throws(
+    () => validateBootstrapPolicy(omitted),
+    /mandatory guard files/,
+  );
+  const { root } = await fixture(context, omitted);
+  await assert.rejects(inspectBootstrap(root), /mandatory guard files/);
 });
 
 test("repository foundation requires its verification toolchain and canonical Git guidance without application source", async (context) => {
@@ -976,7 +993,7 @@ test("repository foundation requires its verification toolchain and canonical Gi
     validateBootstrapPolicy(current).size,
     current.allowedFiles.length,
   );
-  assert.equal(repositoryFoundationFiles.length, 12);
+  assert.equal(repositoryFoundationFiles.length, 13);
   assert.ok(current.allowedFiles.every((file) => !file.startsWith("src/")));
   for (const missing of repositoryFoundationFiles)
     assert.throws(
