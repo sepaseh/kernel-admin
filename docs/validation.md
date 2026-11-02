@@ -46,16 +46,16 @@ Before an authorized review request or merge:
 
 Keep Sonar project binding and source scope accurate. The scanner imports genuinely measured LCOV from the same tested revision and reports only that scope. Scanner execution and the quality gate are separate results. Inspect secret names only during setup; never read or print token values. Provider classification requires its own authorization; do not replace real fixes with exclusions or suppressions.
 
-CI exposes the actual PR1 checks independently. These disjoint profiles partition the complete local `full` profile; every required check executes once:
+CI exposes the current `runtime-localization` checks independently. These disjoint profiles partition the complete local `full` profile; every required check executes once:
 
 | GitHub job   | Display name     | Manifest profile | Actual scope                                                                          |
 | ------------ | ---------------- | ---------------- | ------------------------------------------------------------------------------------- |
 | `quality`    | Static checks    | `ci-quality`     | Snapshot, CI policy, actionlint, guidance, boundaries, typecheck, lint and formatting |
 | `audit`      | Dependency audit | `ci-audit`       | Locked dependency audit                                                               |
-| `unit`       | Unit tests       | `ci-unit`        | Measured tests for the published audit tool                                           |
+| `unit`       | Unit tests       | `ci-unit`        | Measured tests for admitted shared runtime/localization modules and the audit tool    |
 | `governance` | Governance tests | `ci-governance`  | Measured repository-policy and tooling regressions                                    |
 
-The required `check` runs after every producer, including failures, and succeeds only when all four jobs succeeded. It executes no tests. Missing, failed, cancelled or skipped jobs fail the aggregate. CodeQL remains its separate security workflow. PR1 contains no application build, E2E, browser, visual or performance job; those require admitted application source and genuine tests in a later PR.
+The required `check` runs after every producer, including failures, and succeeds only when all four jobs succeeded. It executes no tests. Missing, failed, cancelled or skipped jobs fail the aggregate. CodeQL remains its separate security workflow. The `runtime-localization` snapshot retains `applicationReady: false` and contains no application build, E2E, browser, visual or performance job; those require admitted application source and genuine tests in a later PR.
 
 Each test suite publishes its own immutable run/attempt artifact. The [coverage evidence owner](../scripts/ci-evidence.mjs) binds the suite and LCOV hash to the repository, PR head/base, tested commit/tree, workflow, run and producing attempt. Sonar depends on the successful aggregate and receives both suites' outputs directly. It verifies each report independently before scanning, so a rerun uses each successful producer's actual attempt without combining or rerunning suites. Missing configuration, reports or mismatched evidence blocks analysis. Analysis installs locked dependencies with package scripts disabled; scanner execution and the native provider quality gate remain separate results.
 

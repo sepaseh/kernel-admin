@@ -37,8 +37,43 @@
       ],
       "rules": [".agents/rules/git.md", ".agents/rules/safety.md"],
       "limitations": "Only admitted source is verified. No application activation, external review, deployed target or provider compatibility follows from configuration alone."
+    },
+    {
+      "id": "runtime-localization",
+      "when": "Change admitted shared runtime helpers, language catalogs or date adapters.",
+      "owners": [
+        "src/shared/api/token.ts",
+        "src/shared/config/language.ts",
+        "src/shared/i18n/catalogs.ts",
+        "src/shared/i18n/index.ts",
+        "src/shared/i18n/date.ts",
+        "src/shared/i18n/dayjs/fa.ts",
+        "src/shared/lib/transform.ts",
+        "src/shared/lib/error.ts",
+        "src/shared/lib/color-contrast.ts"
+      ],
+      "contracts": [
+        "src/shared/api/types.ts",
+        "src/shared/contracts/index.ts",
+        "src/shared/i18n/locales.ts",
+        "docs/localization.md"
+      ],
+      "tests": [
+        "src/shared/api/token.test.ts",
+        "src/shared/config/language.test.ts",
+        "src/shared/i18n/catalogs.test.ts",
+        "src/shared/i18n/index.test.ts",
+        "src/shared/i18n/date.test.ts",
+        "src/shared/i18n/dayjs.test.ts",
+        "src/shared/lib/transform.test.ts",
+        "src/shared/lib/error.test.ts",
+        "src/shared/lib/color-contrast.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [".agents/rules/code-quality.md", ".agents/rules/safety.md"],
+      "limitations": "Module tests do not establish an assembled application, HTTP integration, browser journeys or a production build. Preserve all ten catalogs, Persian date data and server-owned language, direction and calendar."
     }
   ],
-  "phase": "repository-foundation",
+  "phase": "runtime-localization",
   "applicationReady": false
 }

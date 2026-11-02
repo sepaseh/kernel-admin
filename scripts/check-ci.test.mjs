@@ -119,7 +119,7 @@ const browsers = "npm run ${{ needs.scope.outputs.browser_install }}";
 const actualWorkflow = () => parse(read(".github/workflows/ci.yml"));
 const actualManifest = () => JSON.parse(read(".agents/validation.json"));
 
-test("PR1 independently exposes only actual static, audit, unit and governance checks", () => {
+test("split CI independently exposes only actual static, audit, unit and governance checks", () => {
   assert.deepEqual(inspectCi(stringify(actualWorkflow()), actualManifest()), {
     requiredChecks: 11,
   });
@@ -143,7 +143,46 @@ test("PR1 independently exposes only actual static, audit, unit and governance c
   assert.deepEqual(new Set(partitions), new Set(selected.profiles.full));
 });
 
-test("PR1 suites cannot skip checks, duplicate execution, replace source or weaken coverage transport", () => {
+test("split CI retains the complete gate for repository and runtime localization phases", () => {
+  for (const phase of ["repository-foundation", "runtime-localization"]) {
+    const selected = actualManifest();
+    selected.phase = phase;
+    for (const check of selected.checks) check.scopes = [phase];
+
+    assert.deepEqual(inspectCi(stringify(actualWorkflow()), selected), {
+      requiredChecks: 11,
+    });
+    assert.deepEqual(
+      inspectSonarWorkflow(stringify(actualWorkflow()), selected),
+      { requiredChecks: 11 },
+    );
+  }
+});
+
+test("split CI rejects unknown, unadmitted and runnable application phases", () => {
+  for (const [phase, applicationReady] of [
+    ["unknown", false],
+    ["governance", false],
+    ["foundation", false],
+    ["http-lifecycle", false],
+    ["application-verification", true],
+    ["repository-foundation", true],
+    ["runtime-localization", true],
+  ]) {
+    const selected = { ...actualManifest(), phase, applicationReady };
+
+    assert.throws(
+      () => inspectCi(stringify(actualWorkflow()), selected),
+      /owns only repository-foundation and runtime-localization/,
+    );
+    assert.throws(
+      () => inspectSonarWorkflow(stringify(actualWorkflow()), selected),
+      /owns only repository-foundation and runtime-localization/,
+    );
+  }
+});
+
+test("split suites cannot skip checks, duplicate execution, replace source or weaken coverage transport", () => {
   for (const change of [
     (value) => {
       value.jobs.unit.if = "false";

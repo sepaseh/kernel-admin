@@ -700,14 +700,16 @@ const inspectSuiteJob = (workflow, id, budget, condition) => {
   return value;
 };
 const inspectSplitManifest = (manifest) => {
-  const count = manifestPolicy(manifest);
   if (
-    manifest.phase !== "repository-foundation" ||
+    !["repository-foundation", "runtime-localization"].includes(
+      manifest.phase,
+    ) ||
     manifest.applicationReady !== false
   )
     throw new Error(
-      "Split suite verification currently owns only repository-foundation",
+      "Split suite verification currently owns only repository-foundation and runtime-localization",
     );
+  const count = manifestPolicy(manifest);
   const partitions = [];
   for (const id of suiteJobs) {
     const expected = manifest.profiles.full.filter(
@@ -831,7 +833,7 @@ const inspectSplitCi = (workflow, manifest) => {
   requireEqual(
     Object.keys(workflow.jobs),
     [...suiteJobs, "check", "analysis"],
-    "Only actual PR1 suites, aggregate and scanner are admitted",
+    "Only admitted suites, aggregate and scanner are allowed",
   );
   for (const [id, budget] of [
     ["quality", 15],
