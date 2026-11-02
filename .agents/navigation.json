@@ -2,6 +2,127 @@
   "schemaVersion": 1,
   "tasks": [
     {
+      "id": "publication-validation",
+      "when": "Change published repository rules, review policy, CI or validation tooling.",
+      "owners": [
+        "scripts/check-ci.mjs",
+        "scripts/run-actionlint.mjs",
+        "scripts/ci-evidence.mjs",
+        ".github/workflows/codeql.yml",
+        "scripts/validate-bootstrap.mjs",
+        "scripts/check-guidance.mjs"
+      ],
+      "contracts": [
+        ".github/bootstrap-policy.json",
+        ".agents/validation.json",
+        "package.json"
+      ],
+      "tests": [
+        "scripts/check-ci.test.mjs",
+        "scripts/run-actionlint.test.mjs",
+        "scripts/ci-evidence.test.mjs",
+        "scripts/validate-bootstrap.test.mjs",
+        "scripts/check-guidance.test.mjs"
+      ],
+      "checks": [
+        "snapshot",
+        "ci-policy",
+        "actions-lint",
+        "guidance",
+        "boundaries",
+        "typecheck",
+        "lint",
+        "unit-coverage",
+        "governance-coverage"
+      ],
+      "rules": [".agents/rules/git.md", ".agents/rules/safety.md"],
+      "limitations": "Only admitted source is verified. No application activation, external review, deployed target or provider compatibility follows from configuration alone."
+    },
+    {
+      "id": "runtime-localization",
+      "when": "Change admitted shared runtime helpers, language catalogs or date adapters.",
+      "owners": [
+        "src/shared/api/token.ts",
+        "src/shared/config/language.ts",
+        "src/shared/i18n/catalogs.ts",
+        "src/shared/i18n/index.ts",
+        "src/shared/i18n/date.ts",
+        "src/shared/i18n/dayjs/fa.ts",
+        "src/shared/lib/transform.ts",
+        "src/shared/lib/error.ts",
+        "src/shared/lib/color-contrast.ts"
+      ],
+      "contracts": [
+        "src/shared/api/types.ts",
+        "src/shared/contracts/index.ts",
+        "src/shared/i18n/locales.ts",
+        "docs/localization.md"
+      ],
+      "tests": [
+        "src/shared/api/token.test.ts",
+        "src/shared/config/language.test.ts",
+        "src/shared/i18n/catalogs.test.ts",
+        "src/shared/i18n/index.test.ts",
+        "src/shared/i18n/date.test.ts",
+        "src/shared/i18n/dayjs.test.ts",
+        "src/shared/lib/transform.test.ts",
+        "src/shared/lib/error.test.ts",
+        "src/shared/lib/color-contrast.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [".agents/rules/code-quality.md", ".agents/rules/safety.md"],
+      "limitations": "Module tests do not establish an assembled application, HTTP integration, browser journeys or a production build. Preserve all ten catalogs, Persian date data and server-owned language, direction and calendar."
+    },
+    {
+      "id": "http-lifecycle",
+      "when": "Change admitted HTTP adapters, session generations, settings validation or cancellable read resources.",
+      "owners": [
+        "src/shared/api/client.ts",
+        "src/shared/api/config.ts",
+        "src/shared/api/path.ts",
+        "src/shared/api/token-response.ts",
+        "src/shared/hooks/useReadRequest.ts",
+        "src/shared/hooks/useReadResource.ts",
+        "src/features/account/api.ts",
+        "src/features/auth/api.ts",
+        "src/features/calendar/api.ts",
+        "src/features/roles/api.ts",
+        "src/features/settings/api.ts",
+        "src/features/settings/components/logo-upload/api.ts",
+        "src/features/users/api.ts"
+      ],
+      "contracts": [
+        "src/shared/api/types.ts",
+        "src/features/account/types.ts",
+        "src/features/auth/types.ts",
+        "src/features/roles/types.ts",
+        "src/features/settings/types.ts",
+        "src/features/users/types.ts",
+        "src/shared/contracts/appearance.ts",
+        "docs/authentication.md"
+      ],
+      "tests": [
+        "src/shared/api/client.test.ts",
+        "src/shared/api/transport.test.ts",
+        "src/shared/api/config.test.ts",
+        "src/shared/api/path.test.ts",
+        "src/shared/api/token-response.test.ts",
+        "src/shared/hooks/useReadResource.test.ts",
+        "src/features/account/api.test.ts",
+        "src/features/auth/api.test.ts",
+        "src/features/auth/logout.test.ts",
+        "src/features/calendar/api.test.ts",
+        "src/features/roles/api.test.ts",
+        "src/features/settings/api.test.ts",
+        "src/features/settings/components/logo-upload/api.test.ts",
+        "src/features/users/api.helpers.test.ts",
+        "src/features/users/api.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [".agents/rules/code-quality.md", ".agents/rules/safety.md"],
+      "limitations": "Synthetic HTTP and jsdom hook tests do not establish an assembled application, live backend compatibility, browser journeys or a production build. Preserve memory-only credentials, session generations, cancellation and API-owned settings metadata."
+    },
+    {
       "id": "http-contract",
       "when": "Change a request/response field, HTTP method, endpoint path or status.",
       "owners": [
@@ -64,7 +185,7 @@
     },
     {
       "id": "guidance",
-      "when": "Change assistant instructions, navigation, decision records, validation policy or evaluation cases.",
+      "when": "Change assistant instructions, navigation, validation policy or evaluation cases.",
       "owners": [
         "AGENTS.md",
         ".agents",
@@ -94,35 +215,64 @@
       "limitations": "Static inventory/link checks do not prove automatic host loading or improved assistant comprehension; optional Bash host prerequisites must be reported."
     },
     {
-      "id": "publication-validation",
-      "when": "Change published repository rules, review policy, CI or validation tooling.",
+      "id": "ui-foundation",
+      "when": "Change admitted shared UI controls, themes, browser preferences, mutation hooks, observability or local assets.",
       "owners": [
-        "scripts/check-ci.mjs",
-        "scripts/validate-bootstrap.mjs",
-        "scripts/check-guidance.mjs"
+        "src/shared/config/theme.ts",
+        "src/shared/storage/state.ts",
+        "src/shared/storage/theme.ts",
+        "src/shared/storage/compact.ts",
+        "src/shared/storage/hooks/useLocalStorageWatcher.ts",
+        "src/shared/hooks/useMutationRequest.ts",
+        "src/shared/hooks/useGoBack.ts",
+        "src/shared/lib/dialog-focus.ts",
+        "src/shared/lib/observability.ts",
+        "src/shared/ui/digits-input/DigitsInput.tsx",
+        "src/shared/ui/otp-input/OtpInput.tsx",
+        "src/shared/ui/password-fields/PasswordFields.tsx",
+        "src/shared/ui/form-drawer/FormDrawer.tsx",
+        "src/shared/ui/error-boundary/ErrorBoundary.tsx",
+        "src/shared/ui/request-feedback/RequestFeedback.tsx",
+        "src/shared/ui/route-loading/RouteLoading.tsx",
+        "src/assets/styles/index.css",
+        "src/assets/styles/vazirmatn.css",
+        "src/assets/fonts/vazirmatn",
+        "public"
       ],
       "contracts": [
-        ".github/bootstrap-policy.json",
-        ".agents/validation.json",
-        "package.json"
+        "src/shared/contracts/appearance.ts",
+        "src/shared/config/constants.ts",
+        "DESIGN.md",
+        ".agents/rules/react.md",
+        ".agents/rules/styling.md"
       ],
       "tests": [
-        "scripts/check-ci.test.mjs",
-        "scripts/validate-bootstrap.test.mjs",
-        "scripts/check-guidance.test.mjs"
+        "src/shared/config/theme.test.ts",
+        "src/shared/storage/state.test.ts",
+        "src/shared/storage/preferences.test.ts",
+        "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
+        "src/shared/hooks/useMutationRequest.test.tsx",
+        "src/shared/hooks/useGoBack.test.tsx",
+        "src/shared/lib/dialog-focus.test.tsx",
+        "src/shared/lib/observability.test.ts",
+        "src/shared/lib/observability.vitals.test.ts",
+        "src/shared/ui/digits-input/DigitsInput.test.tsx",
+        "src/shared/ui/otp-input/OtpInput.test.tsx",
+        "src/shared/ui/password-fields/PasswordFields.test.tsx",
+        "src/shared/ui/form-drawer/FormDrawer.test.tsx",
+        "src/shared/ui/error-boundary/ErrorBoundary.test.tsx",
+        "src/shared/ui/request-feedback/RequestFeedback.test.tsx",
+        "src/shared/ui/route-loading/RouteLoading.test.tsx",
+        "src/assets/assets.test.ts"
       ],
-      "checks": [
-        "snapshot",
-        "ci-policy",
-        "guidance",
-        "boundaries",
-        "typecheck",
-        "lint",
-        "unit-coverage",
-        "governance-coverage"
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [
+        ".agents/rules/react.md",
+        ".agents/rules/styling.md",
+        ".agents/rules/localization.md",
+        ".agents/rules/testing.md"
       ],
-      "rules": [".agents/rules/git.md", ".agents/rules/safety.md"],
-      "limitations": "Only admitted source is verified. No application activation, external review, deployed target or provider compatibility follows from configuration alone."
+      "limitations": "Unit and jsdom component tests do not establish application providers, route composition, Storybook browser execution, a production build or visual approval. Keep API-owned language, direction and calendar separate from browser-owned theme and compact mode."
     }
   ],
   "phase": "ui-foundation",

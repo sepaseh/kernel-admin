@@ -1,6 +1,8 @@
-# Run Kernel Admin
+# Prepare to run Kernel Admin
 
-Use this guide to open the panel against a compatible backend you choose and are authorized to use. Kernel Admin is a standalone React/Vite frontend; its configured HTTP service supplies authentication, settings and application data.
+The current `ui-foundation` snapshot admits shared controls, theme and preference helpers, guarded mutation hooks, HTTP/session lifecycles and localization modules with `applicationReady: false`. Application composition, the Vite entry point, public environment example and build/preview commands are planned for later phases. The steps below describe the prerequisites and workflow after that source and its complete verification are admitted; they are not runnable instructions for this snapshot.
+
+For that later phase, choose a compatible backend you are authorized to use. Kernel Admin's local HTTP contract lets that service supply authentication, settings and application data without requiring a particular backend repository or tooling.
 
 ## Before you start
 
@@ -10,7 +12,7 @@ Use this guide to open the panel against a compatible backend you choose and are
 
 Run the commands below from this repository's root. Filesystem examples use PowerShell; the npm and Vite commands also work in a POSIX shell.
 
-## Run locally
+## Run locally after application admission
 
 1. Install the locked dependencies:
 
@@ -52,7 +54,7 @@ The API selects language, direction, calendar and color palettes. The browser st
 
 Stop the server with `Ctrl+C`. Restart it after changing configuration.
 
-## Public configuration reference
+## Application configuration reference
 
 | Name                     | Purpose                                                                         |
 | ------------------------ | ------------------------------------------------------------------------------- |
@@ -65,7 +67,7 @@ The example and Vite configuration (`vite.config.ts`, planned for a later PR) ar
 
 Values already set in the process environment override values loaded from local files. Synthetic validation also disables local environment-file discovery. Use a separate terminal for an API-backed local run after working with the synthetic setup in [validation](validation.md).
 
-## Preview a production build locally
+## Preview after build tooling is admitted
 
 Use the same public configuration to build the frontend, then serve the result on a fixed loopback port:
 
@@ -78,7 +80,7 @@ The build writes static assets to `dist/` and public build identity to `dist/_ke
 
 A preview still uses the configured API for authentication and data. Rebuild after changing values embedded in a production build. Use deployment (`docs/deployment.md`, planned for a later PR) to package or publish a release.
 
-## Troubleshoot a local run
+## Troubleshoot an admitted application
 
 | Symptom                                                                  | Check next                                                                                                                                                |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -90,6 +92,6 @@ A preview still uses the configured API for authentication and data. Rebuild aft
 | An operation returns 403                                                 | Check the account's server-assigned permissions. The API authorizes every operation independently of visible menus and controls.                          |
 | Configuration changes have no effect                                     | Restart the development server, or rebuild before restarting preview.                                                                                     |
 
-For a failure report, retain the HTTP status and safe `X-Request-Id`. Do not share tokens, cookies or request payloads. Accepted read data remains visible after a refresh failure; use the affected resource's retry control.
+For a failure report, retain the HTTP status and safe `X-Request-Id`. Do not share tokens, cookies or request payloads.
 
 Continue with [development](development.md) to change the panel, or [validation](validation.md) to verify source using synthetic fixtures.

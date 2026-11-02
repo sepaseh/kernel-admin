@@ -2,6 +2,10 @@
 
 These Ant Design, i18next, icon and React Router conventions apply to this standalone admin. Keep components, hooks and accessibility consistent with the existing source.
 
+The `ui-foundation` snapshot admits shared controls and hooks with jsdom tests.
+Feature screens, route composition and application providers remain later owners;
+the form and routing requirements below apply as those sources are admitted.
+
 ## Components
 
 - Keep one exported React component per `.tsx` file when practical.

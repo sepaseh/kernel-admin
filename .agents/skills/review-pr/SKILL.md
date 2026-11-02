@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: Review a Kernel Admin pull request for actionable defects using the complete diff, current source and actual phase evidence.
+description: Review a Kernel pull request for actionable defects using the complete diff, current source and actual phase evidence.
 ---
 
 # Review a pull request

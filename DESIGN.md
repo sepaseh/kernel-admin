@@ -1,6 +1,8 @@
 # Design conventions
 
-Use this guide when designing or reviewing an administration screen. The existing stack is React/Vite, Ant Design/antd-style, React Router and Axios. Read the closest component, story and feature contract before choosing a new abstraction or styling approach. [Development](docs/development.md) describes the implementation workflow.
+Use this guide when designing or reviewing an administration screen. The existing stack is React/Vite, Ant Design/antd-style, React Router and Axios. Read the closest admitted component and feature contract before choosing a new abstraction or styling approach, plus stories when available. [Development](docs/development.md) describes the implementation workflow.
+
+The `ui-foundation` phase admits shared controls, theme and preference helpers, mutation hooks, local assets and jsdom component tests with `applicationReady: false`. Application providers, screens, routes and Storybook/browser suites remain later integration requirements.
 
 ## Reuse current owners
 
@@ -17,9 +19,9 @@ The API chooses language, direction, calendar and palettes. A browser preference
 
 ## Review the interaction
 
-1. Define the task, required permission and expected result. Identify the existing control or story to reuse.
+1. Define the task, required permission and expected result. Identify the existing control to reuse, or its story when admitted.
 2. Check populated screens and the states below with translated labels and realistic content lengths.
-3. Use the affected component story and application tests for the evidence they provide. Review image candidates and assistive-technology behavior separately where applicable.
+3. Use the affected unit or jsdom component tests for their admitted scope. Use component stories and application tests when their owners are admitted. Review image candidates and assistive-technology behavior separately where applicable.
 
 | State or condition                    | Expected behavior                                                                                                |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -31,6 +33,6 @@ The API chooses language, direction, calendar and palettes. A browser preference
 | Narrow layout, RTL/LTR or long labels | Controls remain operable, content remains readable and spacing uses logical directions.                          |
 | Light/dark/compact or reduced motion  | Semantic contrast and focus indicators remain visible, with the existing motion preference respected.            |
 
-Storybook offers synthetic component interaction and accessibility checks. Application browser tests, reviewed image comparison and manual assistive-technology review provide separate evidence. Use [testing](docs/testing.md) and [validation](docs/validation.md); do not treat a design image or workshop pass as a deployed implementation.
+Storybook will offer synthetic component interaction and accessibility checks when admitted. Application browser tests, reviewed image comparison and manual assistive-technology review require separate evidence. Use [testing](docs/testing.md) and [validation](docs/validation.md); do not treat a design image or component pass as a deployed implementation.
 
 The [design skill](.agents/skills/design-ui/SKILL.md) describes optional concept/asset/tool handoffs. Use only available tools and authorized uploads/publication. Keep source, assets and licenses intact; a hosted artifact does not change this repository by itself.
