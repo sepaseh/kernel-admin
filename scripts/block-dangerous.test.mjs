@@ -179,6 +179,41 @@ test("production and mainnet prose remains editable without bypassing endpoint c
   }
 });
 
+test("quoted hostname fragments retain endpoint protection for absolute URLs", () => {
+  for (const command of [
+    'curl https://prod"uction".example.com',
+    "curl http://prod'uction'.example.com/status",
+    'curl ws://rpc.main"net".example.com',
+    'curl WSS://RPC.MAIN"NET".EXAMPLE.COM:443/status',
+    'curl prod"uction".example.com:443/status',
+    "bash -c 'curl https://prod\"uction\".example.com'",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Production endpoint/,
+      command,
+    );
+
+  assert.equal(
+    inspectSafetyPayload({ command: 'curl https://exa"mple".com/status' }),
+    null,
+  );
+  assert.match(
+    inspectSafetyPayload({
+      command:
+        'curl https://prod"uction".example.com; git push --force origin feature',
+    }),
+    /Dangerous git/,
+  );
+  assert.match(
+    inspectSafetyPayload({
+      file_path: ".env.local",
+      command: 'curl https://prod"uction".example.com',
+    }),
+    /secret or credential/,
+  );
+});
+
 test("scheme-less production hostname operands retain command protection", () => {
   for (const command of [
     "curl production.example.com",

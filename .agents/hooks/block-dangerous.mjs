@@ -414,7 +414,8 @@ const inspectExecutable = (name, segment, words, depth) => {
   return null;
 };
 const productionHostOperand = ({ value }) => {
-  const hostname = URL.parse("https://" + value)?.hostname;
+  const hostname =
+    URL.parse(value)?.hostname || URL.parse("https://" + value)?.hostname;
   return hostname?.includes(".") && /production|mainnet/i.test(hostname);
 };
 const inspectSegment = (segment, depth) => {

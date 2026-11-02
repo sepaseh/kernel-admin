@@ -79,9 +79,9 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
   real fix followed by fresh analysis, never exclusions, suppressions or weaker
   checks used to bypass this prerequisite.
 - Only after this preflight passes and remote-request authorization exists, request
-  one manual `@coderabbitai review`. Do not duplicate an in-flight request for the
-  same head. Respect the provider's actual allowance; wait for capacity rather
-  than repeatedly requesting reviews or assuming an hourly reset.
+  one manual review by posting only `@coderabbitai review`. Do not duplicate an
+  in-flight request for the same head. Wait at least one hour after the last
+  CodeRabbit review request and respect the provider's actual allowance.
 
 See [validation](../../docs/validation.md),
 [testing](../../docs/testing.md),
