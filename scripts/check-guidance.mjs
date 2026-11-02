@@ -1075,7 +1075,7 @@ const markdownCdataEndings = (text, barriers) => {
 };
 const closesMarkdownInline = (marker, offset, state) => {
   const closes = state.comment
-    ? marker[0].endsWith("-->")
+    ? /--!?>$/.test(marker[0])
     : offset + marker.index + marker[0].length === state.inlineEnd;
   if (closes) {
     state.comment = null;
@@ -1108,7 +1108,7 @@ const openingMarkdownInline = (
   return null;
 };
 const markdownInlineProse = (line, offset, state, codeEndings, container) => {
-  const markers = /<!\[CDATA\[|\]\]>|<!---?>|<!--|-->|`+|</g,
+  const markers = /<!\[CDATA\[|\]\]>|<!---?>|<!--|--!?>|`+|</g,
     parts = [];
   let visible = 0,
     hidden = state.comment || state.inlineEnd > offset ? 0 : null,

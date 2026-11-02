@@ -4,8 +4,10 @@ import { readFileSync } from "node:fs";
 import {
   mkdir,
   mkdtemp,
+  open,
   readFile,
   realpath,
+  rename,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -2615,6 +2617,84 @@ test("fresh scanner and evidence publication fail closed on invalid identity, ch
     execute("--verify-coverage"),
     /provenance must be an ordinary artifact file/,
   );
+});
+
+test("coverage verification reads the validated descriptor after a pathname replacement", async (context) => {
+  for (const file of [
+    "coverage/unit/lcov.info",
+    "coverage/verification-coverage.json",
+  ]) {
+    const fixture = await evidenceFixture(context);
+    await fixture.runner()("--record-coverage");
+    const target = path.join(fixture.directory, file);
+    let replaced = false;
+    let closed = false;
+    const execute = fixture.runner({
+      openFile: async (filename, flags) => {
+        const handle = await open(filename, flags);
+        if (filename !== target) return handle;
+
+        return {
+          stat: () => handle.stat(),
+          readFile: async () => {
+            await rename(filename, `${filename}.previous`);
+            await writeFile(filename, "untrusted replacement");
+            replaced = true;
+            return handle.readFile();
+          },
+          close: async () => {
+            closed = true;
+            await handle.close();
+          },
+        };
+      },
+    });
+
+    await execute("--verify-coverage");
+    assert.equal(replaced, true, file);
+    assert.equal(closed, true, file);
+    assert.equal(await readFile(target, "utf8"), "untrusted replacement");
+  }
+});
+
+test("coverage verification rejects a replacement before pathname validation and closes the handle", async (context) => {
+  for (const file of [
+    "coverage/unit/lcov.info",
+    "coverage/verification-coverage.json",
+  ]) {
+    const fixture = await evidenceFixture(context);
+    await fixture.runner()("--record-coverage");
+    const target = path.join(fixture.directory, file);
+    let read = false;
+    let closed = false;
+    const execute = fixture.runner({
+      openFile: async (filename, flags) => {
+        const handle = await open(filename, flags);
+        if (filename !== target) return handle;
+
+        return {
+          stat: async () => {
+            const info = await handle.stat();
+            await rename(filename, `${filename}.previous`);
+            await writeFile(filename, "untrusted replacement");
+            return info;
+          },
+          readFile: async () => {
+            read = true;
+            return handle.readFile();
+          },
+          close: async () => {
+            closed = true;
+            await handle.close();
+          },
+        };
+      },
+    });
+
+    await assert.rejects(execute("--verify-coverage"), /ordinary/);
+    assert.equal(read, false, file);
+    assert.equal(closed, true, file);
+  }
 });
 
 test("application phase mismatch cannot reuse otherwise valid measured evidence", () => {

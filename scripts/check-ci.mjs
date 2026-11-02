@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFile, lstat, readFile, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { appendFile, lstat, open, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
@@ -1439,6 +1440,31 @@ export const inspectSonarWorkflow = (content, manifest) => {
   return { requiredChecks };
 };
 
+const readArtifact = async (filename, message, openFile) => {
+  const handle = await openFile(
+    filename,
+    constants.O_RDONLY |
+      (constants.O_NOFOLLOW ?? 0) |
+      (constants.O_NONBLOCK ?? 0),
+  );
+  try {
+    const opened = await handle.stat();
+    const current = await lstat(filename);
+    if (
+      !opened.isFile() ||
+      !current.isFile() ||
+      current.isSymbolicLink() ||
+      opened.dev !== current.dev ||
+      opened.ino !== current.ino
+    )
+      throw new Error(message);
+
+    return await handle.readFile();
+  } finally {
+    await handle.close();
+  }
+};
+
 export const createEvidenceRunner = ({
   directory = repository,
   environment = process.env,
@@ -1446,6 +1472,7 @@ export const createEvidenceRunner = ({
   request = fetch,
   now = () => new Date(),
   logger = console,
+  openFile = open,
 } = {}) => {
   const expectedIdentity = () =>
     validateCoverageIdentity({
@@ -1513,10 +1540,13 @@ export const createEvidenceRunner = ({
       directory,
       "coverage/verification-coverage.json",
     );
-    const status = await lstat(filename);
-    if (!status.isFile() || status.isSymbolicLink())
-      throw new Error("Coverage provenance must be an ordinary artifact file");
-    return JSON.parse(await readFile(filename, "utf8"));
+    return JSON.parse(
+      await readArtifact(
+        filename,
+        "Coverage provenance must be an ordinary artifact file",
+        openFile,
+      ),
+    );
   };
   const reusePolicy = async () => ({
     applicationReady:
@@ -1531,10 +1561,14 @@ export const createEvidenceRunner = ({
       await Promise.all(
         coverageFiles(applicationReady).map(async (file) => {
           const filename = path.join(directory, file);
-          const status = await lstat(filename);
-          if (!status.isFile() || status.isSymbolicLink())
-            throw new Error("Coverage must be ordinary measured files");
-          return [file, await readFile(filename)];
+          return [
+            file,
+            await readArtifact(
+              filename,
+              "Coverage must be ordinary measured files",
+              openFile,
+            ),
+          ];
         }),
       ),
     );

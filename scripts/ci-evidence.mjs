@@ -179,6 +179,22 @@ export const evidenceManifest = (identity, reports, suite) => ({
   })),
 });
 
+const publishEvidence = async (filename, evidence, { environment, output }) => {
+  await writeFile(filename, JSON.stringify(evidence, null, 2) + "\n", "utf8");
+  const { suite, identity } = evidence;
+  const values = {
+    artifact: `coverage-${suite}-${identity.runId}-${identity.attempt}`,
+    attempt: identity.attempt,
+  };
+  if (output) await output(values);
+  else {
+    await appendFile(
+      environment.GITHUB_OUTPUT,
+      `artifact=${values.artifact}\nattempt=${values.attempt}\n`,
+    );
+  }
+};
+
 export const runEvidence = async (
   mode,
   { root = repository, environment = process.env, event, git, output } = {},
@@ -228,18 +244,7 @@ export const runEvidence = async (
         "Coverage evidence does not match the exact source, workflow, producer or measured bytes",
       );
   } else {
-    await writeFile(filename, JSON.stringify(expected, null, 2) + "\n", "utf8");
-    const values = {
-      artifact: `coverage-${suite}-${identity.runId}-${identity.attempt}`,
-      attempt: identity.attempt,
-    };
-    if (output) await output(values);
-    else {
-      await appendFile(
-        environment.GITHUB_OUTPUT,
-        `artifact=${values.artifact}\nattempt=${values.attempt}\n`,
-      );
-    }
+    await publishEvidence(filename, expected, { environment, output });
   }
   return identity;
 };

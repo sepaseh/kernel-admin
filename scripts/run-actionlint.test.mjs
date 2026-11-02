@@ -4,8 +4,10 @@ import { writeFileSync } from "node:fs";
 import {
   mkdir,
   mkdtemp,
+  open,
   readdir,
   readFile,
+  rename,
   rm,
   symlink,
   writeFile,
@@ -137,6 +139,59 @@ test("tampered downloads and cached archives cannot reach extraction", async (co
   value.executions.length = 0;
   await writeFile(path.join(value.cache, value.asset.name), "tampered cache");
   await assert.rejects(runActionlint(value), /pinned SHA-256/);
+  assert.equal(value.executions.length, 0);
+});
+
+test("reads the validated open archive even when its pathname is replaced", async (context) => {
+  const value = await fixture(context);
+  await runActionlint(value);
+  value.executions.length = 0;
+  const filename = path.join(value.cache, value.asset.name);
+  const probe = await open(filename, "r");
+  const prototype = Object.getPrototypeOf(probe);
+  await probe.close();
+  const originalRead = prototype.readFile;
+  let replaced = false;
+  context.mock.method(prototype, "readFile", async function (...args) {
+    await rename(filename, `${filename}.previous`);
+    await writeFile(filename, "unvalidated replacement");
+    replaced = true;
+    return originalRead.apply(this, args);
+  });
+
+  assert.equal(await runActionlint(value), 0);
+  assert.equal(replaced, true);
+  assert.equal(value.executions.length, 2);
+  assert.equal(value.requests.length, 1);
+});
+
+test("exclusive cache creation preserves a file that appears during download", async (context) => {
+  const value = await fixture(context);
+  const filename = path.join(value.cache, value.asset.name);
+  const racedBytes = Buffer.from("raced cache file");
+  const request = async (url) => {
+    await writeFile(filename, racedBytes);
+    return value.request(url);
+  };
+
+  await assert.rejects(
+    runActionlint({ ...value, request }),
+    (error) => error.code === "EEXIST",
+  );
+  assert.deepEqual(await readFile(filename), racedBytes);
+  assert.equal(value.executions.length, 0);
+});
+
+test("rejects oversized and non-file cache entries before extraction", async (context) => {
+  const value = await fixture(context);
+  await mkdir(value.cache, { recursive: true });
+  const filename = path.join(value.cache, value.asset.name);
+  await writeFile(filename, Buffer.alloc(17 * 1024 * 1024));
+  await assert.rejects(runActionlint(value), /size limit/);
+  await rm(filename);
+  await mkdir(filename);
+  await assert.rejects(runActionlint(value), /ordinary file/);
+  assert.equal(value.requests.length, 0);
   assert.equal(value.executions.length, 0);
 });
 
