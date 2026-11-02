@@ -79,6 +79,7 @@
       "owners": [
         "src/shared/api/client.ts",
         "src/shared/api/config.ts",
+        "src/shared/api/path.ts",
         "src/shared/api/token-response.ts",
         "src/shared/hooks/useReadRequest.ts",
         "src/shared/hooks/useReadResource.ts",
@@ -104,6 +105,7 @@
         "src/shared/api/client.test.ts",
         "src/shared/api/transport.test.ts",
         "src/shared/api/config.test.ts",
+        "src/shared/api/path.test.ts",
         "src/shared/api/token-response.test.ts",
         "src/shared/hooks/useReadResource.test.ts",
         "src/features/account/api.test.ts",

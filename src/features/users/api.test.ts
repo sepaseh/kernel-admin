@@ -10,6 +10,19 @@ vi.mock("../../shared/i18n/index.ts", () => ({
 }));
 
 describe("users API", () => {
+  it.each([".", ".."])(
+    'rejects URL dot segment "%s" without an HTTP request',
+    async (id) => {
+      const dispatch = vi.fn(() => new HttpResponse(null, { status: 204 }));
+      server.use(http.all(/^http:\/\/localhost\//, dispatch));
+
+      await expect(fetchUser(id)).rejects.toThrow(
+        i18nInstance.t("unexpectedError"),
+      );
+      expect(dispatch).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([
     ["member/#? 1", "member%2F%23%3F%201"],
     ["عضو آبی", "%D8%B9%D8%B6%D9%88%20%D8%A2%D8%A8%DB%8C"],

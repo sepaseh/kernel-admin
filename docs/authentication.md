@@ -24,6 +24,8 @@ Use the admitted [synthetic HTTP handlers](../src/test/mocks/handlers.ts) and ne
 
 The shared client configures Axios with credentials, a 15-second timeout and explicit cancellation. [`config.ts`](../src/shared/api/config.ts) reads the public `VITE_API_BASE_URL`, falling back to the browser origin when that value is absent. See [usage](usage.md) for configuration.
 
+User and role adapters pass IDs through the shared [path validator](../src/shared/api/path.ts) before constructing a request URL. It rejects only the exact IDs `.` and `..`, which URL normalization would treat as dot segments, with a translated validation error before transport. Other IDs remain opaque and are encoded as one path segment; ordinary dots and literal percent sequences are preserved as identifier data.
+
 JSON request keys become snake case and response keys become camel case. FormData and binary payloads keep their identity. Key conversion returns `unknown`; it does not validate a generic DTO. Authentication replies and application settings receive explicit runtime validation before changing session or application state.
 
 `AdminApiError` preserves the HTTP status, a nonempty API message and its structured cause when supplied. Other failures use translated timeout, network or unexpected-error text. Only bounded safe request IDs are retained. Cancellation remains an Axios cancellation. Keep credentials and request payloads out of diagnostics.

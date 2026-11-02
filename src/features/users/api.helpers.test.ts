@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiClient } from "../../shared/api/index.ts";
+import { i18nInstance } from "../../shared/i18n/index.ts";
 import * as users from "./api.ts";
 
 vi.mock("../../shared/api/index.ts", () => ({
@@ -22,6 +23,57 @@ beforeEach(() => {
 });
 
 describe("user API helper contracts", () => {
+  describe.each([".", ".."])('URL dot segment "%s"', (id) => {
+    it.each([
+      ["read", (signal: AbortSignal) => users.fetchUser(id, signal)],
+      ["delete", (signal: AbortSignal) => users.deleteUser(id, signal)],
+      [
+        "update",
+        (signal: AbortSignal) =>
+          users.updateUser(
+            id,
+            { firstName: "Ada", lastName: "Lovelace", mobile: "09120000000" },
+            signal,
+          ),
+      ],
+      [
+        "password",
+        (signal: AbortSignal) =>
+          users.updateUserPassword(
+            id,
+            { password: "synthetic-password" },
+            signal,
+          ),
+      ],
+      [
+        "roles",
+        (signal: AbortSignal) =>
+          users.updateUserRoles(id, { roleIds: ["role-1"] }, signal),
+      ],
+      [
+        "status",
+        (signal: AbortSignal) =>
+          users.updateUserStatus(id, { status: "inactive" }, signal),
+      ],
+      [
+        "system admin",
+        (signal: AbortSignal) =>
+          users.updateUserSystemAdmin(id, { isSystemAdmin: true }, signal),
+      ],
+    ] as const)(
+      "rejects %s before any HTTP client call",
+      async (_name, run) => {
+        const controller = new AbortController();
+
+        await expect(run(controller.signal)).rejects.toThrow(
+          i18nInstance.t("unexpectedError"),
+        );
+        for (const method of Object.values(apiClient))
+          expect(method).not.toHaveBeenCalled();
+      },
+    );
+  });
+
   it.each([
     ["member/#? 1", "member%2F%23%3F%201"],
     ["عضو آبی", "%D8%B9%D8%B6%D9%88%20%D8%A2%D8%A8%DB%8C"],

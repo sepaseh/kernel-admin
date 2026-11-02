@@ -1,4 +1,5 @@
 import { apiClient } from "../../shared/api/index.ts";
+import { encodeIdPathSegment } from "../../shared/api/path.ts";
 import { toSnakeCase } from "../../shared/lib/transform.ts";
 import type {
   User,
@@ -23,7 +24,7 @@ export const deleteUser = async (
   id: User["id"],
   signal?: AbortSignal,
 ): Promise<void> => {
-  return apiClient.del<void>(`${basePath}/${encodeURIComponent(id)}`, {
+  return apiClient.del<void>(`${basePath}/${encodeIdPathSegment(id)}`, {
     signal,
   });
 };
@@ -32,7 +33,7 @@ export const fetchUser = async (
   id: User["id"],
   signal?: AbortSignal,
 ): Promise<User> => {
-  return apiClient.get<User>(`${basePath}/${encodeURIComponent(id)}`, {
+  return apiClient.get<User>(`${basePath}/${encodeIdPathSegment(id)}`, {
     signal,
   });
 };
@@ -53,7 +54,7 @@ export const updateUser = async (
   signal?: AbortSignal,
 ): Promise<User> => {
   return apiClient.patch<User>(
-    `${basePath}/${encodeURIComponent(id)}`,
+    `${basePath}/${encodeIdPathSegment(id)}`,
     params,
     { signal },
   );
@@ -65,7 +66,7 @@ export const updateUserPassword = async (
   signal?: AbortSignal,
 ): Promise<void> => {
   return apiClient.put<void>(
-    `${basePath}/${encodeURIComponent(id)}/password`,
+    `${basePath}/${encodeIdPathSegment(id)}/password`,
     params,
     { signal },
   );
@@ -77,7 +78,7 @@ export const updateUserRoles = async (
   signal?: AbortSignal,
 ): Promise<void> => {
   return apiClient.put<void>(
-    `${basePath}/${encodeURIComponent(id)}/roles`,
+    `${basePath}/${encodeIdPathSegment(id)}/roles`,
     params,
     { signal },
   );
@@ -89,7 +90,7 @@ export const updateUserStatus = async (
   signal?: AbortSignal,
 ): Promise<void> => {
   return apiClient.patch<void>(
-    `${basePath}/${encodeURIComponent(id)}/status`,
+    `${basePath}/${encodeIdPathSegment(id)}/status`,
     params,
     { signal },
   );
@@ -101,7 +102,7 @@ export const updateUserSystemAdmin = async (
   signal?: AbortSignal,
 ): Promise<void> => {
   return apiClient.patch<void>(
-    `${basePath}/${encodeURIComponent(id)}/system-admin`,
+    `${basePath}/${encodeIdPathSegment(id)}/system-admin`,
     params,
     { signal },
   );

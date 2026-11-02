@@ -87,6 +87,8 @@ const httpFiles = [
   "src/shared/api/config.test.ts",
   "src/shared/api/config.ts",
   "src/shared/api/index.ts",
+  "src/shared/api/path.test.ts",
+  "src/shared/api/path.ts",
   "src/shared/api/token-response.test.ts",
   "src/shared/api/token-response.ts",
   "src/shared/api/transport.test.ts",

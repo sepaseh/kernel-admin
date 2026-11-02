@@ -338,6 +338,8 @@ const completeApplicationFiles = [
   "src/shared/api/config.test.ts",
   "src/shared/api/config.ts",
   "src/shared/api/index.ts",
+  "src/shared/api/path.test.ts",
+  "src/shared/api/path.ts",
   "src/shared/api/token-response.test.ts",
   "src/shared/api/token-response.ts",
   "src/shared/api/token.test.ts",
@@ -1242,6 +1244,8 @@ test("runtime-localization requires the complete adapters, catalogs and their te
     "src/main.tsx",
     "src/app/App.tsx",
     "src/shared/api/client.ts",
+    "src/shared/api/path.ts",
+    "src/shared/api/path.test.ts",
     "src/shared/i18n/unpublished.ts",
   ])
     assert.throws(() =>
@@ -1296,7 +1300,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 93);
+  assert.equal(required.length, 95);
   for (const missing of required)
     assert.throws(
       () =>
