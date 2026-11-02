@@ -116,6 +116,43 @@ const dependencyForms = [
   (specifier) => `import type Value = require("${specifier}");`,
 ];
 
+test("HTTP path validation stays inside the shared production boundary", () => {
+  const helper = path.join(root, "src/shared/api/path.ts");
+  for (const source of ["users", "roles"])
+    assert.equal(
+      check(
+        "../../shared/api/path.ts",
+        helper,
+        path.join(root, `src/features/${source}/api.ts`),
+      ),
+      undefined,
+    );
+  assert.equal(
+    check(
+      "../i18n/index.ts",
+      path.join(root, "src/shared/i18n/index.ts"),
+      helper,
+    ),
+    undefined,
+  );
+  assert.match(
+    check(
+      "../../features/users/api.ts",
+      path.join(root, "src/features/users/api.ts"),
+      helper,
+    ),
+    /Shared source may depend only on shared production modules/,
+  );
+  assert.match(
+    check("node:path", path.join(root, "node_modules/node/path"), helper),
+    /packages and Node builtins/,
+  );
+  assert.match(
+    check("./path.test.ts", path.join(root, "src/shared/api/path.test.ts")),
+    /published production modules/,
+  );
+});
+
 test("shared source rejects every upward dependency form, including the application entrypoint", () => {
   const source = path.join(root, "src/shared/lib/error.ts");
   for (const target of [
@@ -687,7 +724,7 @@ test("the published phase retains every admitted production module", async () =>
   );
   assert.equal(
     result.files,
-    publication.applicationReady ? 121 : production.length,
+    publication.applicationReady ? 122 : production.length,
   );
   assert.deepEqual(result.violations, []);
 });

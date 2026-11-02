@@ -72,8 +72,57 @@
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [".agents/rules/code-quality.md", ".agents/rules/safety.md"],
       "limitations": "Module tests do not establish an assembled application, HTTP integration, browser journeys or a production build. Preserve all ten catalogs, Persian date data and server-owned language, direction and calendar."
+    },
+    {
+      "id": "http-lifecycle",
+      "when": "Change admitted HTTP adapters, session generations, settings validation or cancellable read resources.",
+      "owners": [
+        "src/shared/api/client.ts",
+        "src/shared/api/config.ts",
+        "src/shared/api/path.ts",
+        "src/shared/api/token-response.ts",
+        "src/shared/hooks/useReadRequest.ts",
+        "src/shared/hooks/useReadResource.ts",
+        "src/features/account/api.ts",
+        "src/features/auth/api.ts",
+        "src/features/calendar/api.ts",
+        "src/features/roles/api.ts",
+        "src/features/settings/api.ts",
+        "src/features/settings/components/logo-upload/api.ts",
+        "src/features/users/api.ts"
+      ],
+      "contracts": [
+        "src/shared/api/types.ts",
+        "src/features/account/types.ts",
+        "src/features/auth/types.ts",
+        "src/features/roles/types.ts",
+        "src/features/settings/types.ts",
+        "src/features/users/types.ts",
+        "src/shared/contracts/appearance.ts",
+        "docs/authentication.md"
+      ],
+      "tests": [
+        "src/shared/api/client.test.ts",
+        "src/shared/api/transport.test.ts",
+        "src/shared/api/config.test.ts",
+        "src/shared/api/path.test.ts",
+        "src/shared/api/token-response.test.ts",
+        "src/shared/hooks/useReadResource.test.ts",
+        "src/features/account/api.test.ts",
+        "src/features/auth/api.test.ts",
+        "src/features/auth/logout.test.ts",
+        "src/features/calendar/api.test.ts",
+        "src/features/roles/api.test.ts",
+        "src/features/settings/api.test.ts",
+        "src/features/settings/components/logo-upload/api.test.ts",
+        "src/features/users/api.helpers.test.ts",
+        "src/features/users/api.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [".agents/rules/code-quality.md", ".agents/rules/safety.md"],
+      "limitations": "Synthetic HTTP and jsdom hook tests do not establish an assembled application, live backend compatibility, browser journeys or a production build. Preserve memory-only credentials, session generations, cancellation and API-owned settings metadata."
     }
   ],
-  "phase": "runtime-localization",
+  "phase": "http-lifecycle",
   "applicationReady": false
 }

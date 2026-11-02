@@ -701,13 +701,15 @@ const inspectSuiteJob = (workflow, id, budget, condition) => {
 };
 const inspectSplitManifest = (manifest) => {
   if (
-    !["repository-foundation", "runtime-localization"].includes(
-      manifest.phase,
-    ) ||
+    ![
+      "repository-foundation",
+      "runtime-localization",
+      "http-lifecycle",
+    ].includes(manifest.phase) ||
     manifest.applicationReady !== false
   )
     throw new Error(
-      "Split suite verification currently owns only repository-foundation and runtime-localization",
+      "Split suite verification currently owns only repository-foundation, runtime-localization and http-lifecycle",
     );
   const count = manifestPolicy(manifest);
   const partitions = [];
