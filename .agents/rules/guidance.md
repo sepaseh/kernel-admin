@@ -1,13 +1,53 @@
 # Guidance and documentation
 
-Use [AGENTS](../../AGENTS.md), the [settings index](../settings.json) and [source navigation](../../docs/source-navigation.md) for progressive reading. Read the owner source and tests; index entries and static links do not prove behavior or successful execution.
+Use [AGENTS](../../AGENTS.md), the [settings index](../settings.json) and
+[source navigation](../../docs/source-navigation.md) for progressive reading.
+Read the owner source and tests; index entries and static links do not prove
+behavior or successful execution.
 
-Keep documentation English, current and organized by reader task. Follow the [documentation workflow](../../CONTRIBUTING.md#documentation) and use the [documentation map](../../docs/README.md) to select its existing owner. Procedures state prerequisites, actions, expected results and relevant recovery; reference sections define contracts; explanations describe ownership and reasoning. Verify changed claims against the actual source and closest tests. Update the owning guide alongside behavior, configuration, test or workflow changes. Do not add routine dated QA reports, archives, architecture-decision records, translated companions or bilingual navigation. Preserve all ten UI catalogs, Persian calendar data, runtime language metadata and dated UI evidence. Clearly identified localized product strings, date examples and synthetic UI fixtures may retain their language; surrounding documentation prose and assistant instructions stay English.
+Keep assistant instructions and maintained documentation English, current and
+organized by reader task. Use [source navigation](../../docs/source-navigation.md)
+to select the existing owner. Update that owner alongside behavior, configuration,
+test or workflow changes. Procedures state prerequisites, actions, expected
+results and relevant recovery; references define contracts; explanations describe
+ownership and reasoning. Verify changed claims against source and nearby tests.
+Do not add routine dated QA reports, archives, ADRs, translated companion guides
+or bilingual navigation. Application localization remains a separate concern.
 
-The guidance check rejects Persian Markdown companion filenames recursively and non-Latin prose in Markdown admitted by the publication inventory. Put localized product examples in inline code or fenced/indented code blocks. This static check cannot classify the language of Latin-script sentences; review their prose for English. Unadmitted files, generated output and private runtime state are never read as documentation.
+Use repository-relative machine paths and document-relative Markdown links.
+Link maintained current files, not future or deleted paths. Register only
+published owners, tests, rules, skills and actual check IDs. The publication
+inventory owns admitted paths; generated output and private runtime state are
+never documentation fixtures. Keep human guides flat and task-oriented.
 
-Use repository-relative machine paths and document-relative Markdown links. Link maintained current files, not future or deleted paths. Keep source ownership and verification commands in their canonical owners rather than duplicating check lists or fixed counts.
+The [manifest](../validation.json) owns commands and profiles; settings project
+that inventory. Do not duplicate an independent complete gate or fixed count.
+Optional host adapters and hooks need actual integration; they do not grant
+authorization, install themselves automatically or replace the full gate.
 
-The [manifest](../validation.json) owns profiles; settings project it. Guidance and portable hook tests remain within their declared suites. Optional host adapters/hooks need actual integration and do not grant authorization, register themselves automatically or establish comprehension.
+Report execution outcomes and evidence limits in the current task or terminal.
+Do not commit execution reports. Create a local report only when explicitly
+requested, under ignored `test-results/`; required coverage stays in its configured
+location. Keep repository-specific scratch exports, validation evidence and
+recovery files inside ignored repository-local directories.
 
-For a requested read-only evaluation (`docs/comprehension-evaluation.md`, planned for a later PR), keep prompts separate from oracle answers and distinguish host-reported loading from manual reads. Never inspect secrets or owner data. Report actual results and limitations in the handoff rather than inventing capability claims.
+Static checks establish paths, indexes and command consistency. They do not prove
+that a host loaded instructions, that an assistant understood them, that a
+provider completed analysis or review, or that an application ran. Record actual
+host-reported loading where available and otherwise mark discovery unknown.
+Keep evaluation prompts separate from oracle answers. Use only synthetic
+fixtures; never inspect secrets or owner data to answer evaluation questions.
+Do not claim portability or improved performance without measured evidence.
+
+Preserve all ten UI catalogs, Persian calendar data, server-owned language,
+direction and calendar metadata, and dated UI evidence when those files are
+admitted. Clearly identified localized product strings, date examples and
+synthetic UI fixtures may retain their language; surrounding prose stays English.
+The guidance check rejects Persian Markdown companion filenames recursively and
+non-Latin prose in admitted Markdown. Put localized product examples in inline
+code or fenced/indented code blocks. Review Latin-script prose for English;
+static checks cannot classify its language.
+
+Follow the [documentation workflow](../../CONTRIBUTING.md#documentation).
+Read-only comprehension evaluation is planned for a later publication; an index
+or blank template does not establish execution.

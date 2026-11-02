@@ -10,8 +10,10 @@ Use this guide to prepare a focused change in the existing checkout. [Contributi
 
 Keep one root package, locked registry dependencies and local frontend contracts. The consuming developer chooses a compatible backend; do not import another project's source or SDK as a prerequisite.
 
+The `runtime-localization` phase admits shared token helpers, contract types, language normalization, catalog initialization, date adapters and utility modules. Read their owners and nearby unit tests through [source navigation](source-navigation.md). Token state stays in memory; preserve the generation changes that distinguish login/logout from refresh rotation. Use [localization](localization.md) when changing any of the ten catalogs, interpolation names or Persian date data.
+
 As feature source is admitted, keep feature API/types with that feature, shared transport/session state in `src/shared/api` and request hooks in `src/shared/hooks`. Preserve memory-only tokens, login/logout generations, bounded shared refresh, cancellation and stale-result guards. Runtime source changes require reading the corresponding admitted contracts and tests first.
 
-When UI and localization source is admitted, use the existing React, Ant Design, router and Axios owners. Preserve all ten catalogs, Persian calendar data, keyboard/contrast/motion behavior and RTL/LTR support. The API owns language, direction and calendar; browser preferences own theme and compact mode.
+When UI source is admitted, use its React, Ant Design, router and Axios owners. Preserve keyboard/contrast/motion behavior and RTL/LTR support. The API owns language, direction and calendar; browser preferences own theme and compact mode. Application composition, HTTP integration and browser journeys require their own admitted source and verification; current module tests do not establish those capabilities.
 
 Use synthetic fixtures only. Do not read private environments, credentials, databases, uploads or browser state. Optional host hooks do not prove automatic loading or replace validation. Operational source must be read and its real target separately authorized before execution.

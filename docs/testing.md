@@ -16,6 +16,8 @@ Never use real environments, credentials, databases, uploads or browser state as
 
 Unit LCOV measures the configured admitted unit sources; governance LCOV measures the executed tooling and policy sources. Import measured reports from the exact tested revision into Sonar. Neither report establishes coverage of unpublished UI, routing or application behavior.
 
+For `runtime-localization`, unit tests exercise memory-only token generations, language normalization, all ten catalogs and interpolation names, i18n initialization, date adapters, Persian date data, shared utilities and the audit tool. Governance tests separately exercise repository checks and optional hooks. Select the applicable suite from the [manifest](../.agents/validation.json); both measured suites participate in the complete `full` profile and publish separate source-bound reports for Sonar.
+
 When a later phase admits component workshops or application journeys, execute their real declared browser checks with synthetic APIs and report their scope. Component tests do not establish assembled routes, a production application or backend compatibility. New visual captures require explicit human approval before becoming approved baselines.
 
 Keep meaningful regressions and existing thresholds. Source configuration and a named test are not execution evidence. Keep generated reports under ignored `coverage/` and report current results in the PR rather than creating dated QA documents.

@@ -462,6 +462,9 @@ test("a foundation without source still rejects workspaces, linked dependencies 
     { workspaces: [] },
     { dependencies: { "external-backend": "1.0.0" } },
     { devDependencies: { tooling: "file:../other-project" } },
+    { optionalDependencies: { tooling: "file:../other-project" } },
+    { peerDependencies: { tooling: "file:../other-project" } },
+    { overrides: { parent: { tooling: "file:../other-project" } } },
   ]) {
     await put("package.json", JSON.stringify(manifest));
     const result = await checkBoundaries(directory);
@@ -1113,7 +1116,13 @@ test("registry aliases and local dependency protocols cannot escape the standalo
     "../source",
     "C:/source",
   ]) {
-    for (const field of ["dependencies", "devDependencies"]) {
+    for (const field of [
+      "dependencies",
+      "devDependencies",
+      "optionalDependencies",
+      "peerDependencies",
+      "overrides",
+    ]) {
       await put(
         "package.json",
         JSON.stringify({
@@ -1126,18 +1135,72 @@ test("registry aliases and local dependency protocols cannot escape the standalo
         /(?:registry|workspaces)/,
       );
     }
+    await put(
+      "package.json",
+      JSON.stringify({ overrides: { parent: { child: { ".": version } } } }),
+    );
+    assert.match(
+      (await checkBoundaries(directory)).violations.join("\n"),
+      /registry versions/,
+    );
   }
 });
 
-test("development tooling accepts valid registry semver ranges", async (context) => {
+test("dependency fields and nested overrides accept valid registry semver ranges", async (context) => {
   const { directory, put } = await fixture(context);
   for (const version of ["7.8.5", "^7.8.5", "~6.0.3", ">=6 <8", "7.x"]) {
     await put(
       "package.json",
-      JSON.stringify({ devDependencies: { typescript: version } }),
+      JSON.stringify({
+        devDependencies: { typescript: version },
+        optionalDependencies: { axios: version },
+        peerDependencies: { axios: version },
+        overrides: { parent: { ".": version, child: { leaf: version } } },
+      }),
     );
     assert.deepEqual((await checkBoundaries(directory)).violations, []);
   }
+});
+
+test("override references must resolve to a declared registry dependency", async (context) => {
+  const { directory, put } = await fixture(context);
+  for (const field of [
+    "dependencies",
+    "devDependencies",
+    "optionalDependencies",
+    "peerDependencies",
+  ]) {
+    await put(
+      "package.json",
+      JSON.stringify({
+        [field]: { axios: "^1.0.0" },
+        overrides: { axios: "$axios", parent: { child: "$axios" } },
+      }),
+    );
+    assert.deepEqual((await checkBoundaries(directory)).violations, []);
+  }
+
+  for (const value of ["$missing", "$toString", null, false, 1, ["1.0.0"]]) {
+    await put(
+      "package.json",
+      JSON.stringify({ overrides: { parent: { child: value } } }),
+    );
+    assert.match(
+      (await checkBoundaries(directory)).violations.join("\n"),
+      /registry versions/,
+    );
+  }
+  await put(
+    "package.json",
+    JSON.stringify({
+      optionalDependencies: { axios: "file:../other-project" },
+      overrides: { parent: "$axios" },
+    }),
+  );
+  assert.match(
+    (await checkBoundaries(directory)).violations.join("\n"),
+    /registry versions/,
+  );
 });
 
 test("application composition admits only its explicit runtime and type package edges", () => {

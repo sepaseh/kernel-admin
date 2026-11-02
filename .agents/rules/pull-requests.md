@@ -7,9 +7,11 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
 
 - Verify the intended base from the request or repository metadata and review the
   complete base-to-head diff for unrelated work; do not assume a base branch.
-- Target 80 or fewer GitHub changed-file entries when opening a PR, reserving
-  20 entries for review fixes under the hard 100-entry limit. Count additions,
-  deletions, renames and binaries. A rename counts as one GitHub entry.
+- Before opening a PR, aim for 80 or fewer GitHub changed-file entries initially.
+  Split independent changes when useful and explain why a larger cohesive change
+  belongs together. Count additions, deletions, renames and binaries; a rename
+  counts as one GitHub entry. File count is advisory: exceeding 100 files alone
+  must not fail CI or require deleting and recreating a PR.
 - Run the declared phase's required gate on an isolated checkout/export of the
   exact proposed commit snapshot. Record the phase, commit/tree and actual checks.
   A full pass over local untracked source does not validate a partial published PR.
@@ -30,7 +32,7 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
 
 ## Provider evidence and required checks
 
-- Merging requires the ordinary native CI, CodeRabbit and SonarCloud checks,
+- Merging requires the ordinary native CI, CodeQL, CodeRabbit and SonarCloud checks,
   at least one approving review and resolved review conversations. Apply
   protection to administrators, dismiss stale approvals and require an up-to-date
   branch. Use the native approval count; no separate publisher or custom approval
@@ -40,7 +42,7 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
   completed review or passing analysis. Do not remove checks to hide a failure.
 - Match protection to the declared published phase, changing remote requirements
   only with explicit authorization. A foundation with `applicationReady: false`
-  requires its actual phase CI, scanner, Sonar quality gate and CodeRabbit; it
+  requires its actual phase CI, CodeQL, scanner, Sonar quality gate and CodeRabbit; it
   must not claim unpublished application checks. Before any runnable application
   merge, introduce real build, end-to-end and visual jobs, observe them pass, add
   them to required checks and expand the full canonical application gate.
@@ -77,13 +79,17 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
   real fix followed by fresh analysis, never exclusions, suppressions or weaker
   checks used to bypass this prerequisite.
 - Only after this preflight passes and remote-request authorization exists, request
-  one manual `@coderabbitai review`. Do not duplicate an in-flight request for the
-  same head. Respect the provider's actual allowance; wait for capacity rather
-  than repeatedly requesting reviews or assuming an hourly reset.
+  one manual review by posting only `@coderabbitai review`. Do not duplicate an
+  in-flight request for the same head. Wait at least one hour after the last
+  CodeRabbit review request and respect the provider's actual allowance.
 
 See [validation](../../docs/validation.md),
 [testing](../../docs/testing.md),
 [Sonar guidance](../../docs/validation.md) and [safety](safety.md).
+
+Post standalone PR comments only with prior explicit user authorization.
+Authorization to fix, commit, push or reply to review threads does not authorize
+a standalone comment.
 
 Do not create, update, mark ready, merge or close a pull request without explicit
 authorization covering that action. Honor authorization and preferences already
