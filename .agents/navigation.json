@@ -6,6 +6,9 @@
       "when": "Change published repository rules, review policy, CI or validation tooling.",
       "owners": [
         "scripts/check-ci.mjs",
+        "scripts/run-actionlint.mjs",
+        "scripts/ci-evidence.mjs",
+        ".github/workflows/codeql.yml",
         "scripts/validate-bootstrap.mjs",
         "scripts/check-guidance.mjs"
       ],
@@ -16,12 +19,15 @@
       ],
       "tests": [
         "scripts/check-ci.test.mjs",
+        "scripts/run-actionlint.test.mjs",
+        "scripts/ci-evidence.test.mjs",
         "scripts/validate-bootstrap.test.mjs",
         "scripts/check-guidance.test.mjs"
       ],
       "checks": [
         "snapshot",
         "ci-policy",
+        "actions-lint",
         "guidance",
         "boundaries",
         "typecheck",

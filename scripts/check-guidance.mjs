@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import semver from "semver";
 
 import {
+  ciOwner,
   inspectCi,
   inspectSonarWorkflow,
   requiredCheckCommands,
@@ -91,7 +92,7 @@ export const validateStandaloneLockfile = (lock, pkg) => {
   return errors;
 };
 
-const checkDefinitions = (definitions, application = false) => {
+const checkDefinitions = (definitions, application = false, manifest = {}) => {
   const errors = [];
   const ids = definitions.map((check) => check?.id);
   if (!isStrings(ids) || !ids.length || duplicates(ids))
@@ -114,7 +115,7 @@ const checkDefinitions = (definitions, application = false) => {
     const jobs =
       check.kind === "required" ||
       (application && scheduledApplicationChecks.has(check.id))
-        ? ["check"]
+        ? [ciOwner(manifest, check.id)]
         : [];
     if (!same(check.ciJobs, jobs))
       errors.push(`Canonical CI ownership differs for ${check.id}`);
@@ -180,6 +181,7 @@ export const validateManifest = (manifest, settings, workflows) => {
   const definitions = checkDefinitions(
     manifest.checks,
     manifest.applicationReady === true,
+    manifest,
   );
   const checks = new Map(manifest.checks.map((check) => [check?.id, check]));
   const errors = [
@@ -188,7 +190,9 @@ export const validateManifest = (manifest, settings, workflows) => {
     ...checkSettings(manifest, settings, checks),
   ];
   if (
-    manifest.verificationModel === "single-pass-v1" ||
+    ["single-pass-v1", "split-suites-v1"].includes(
+      manifest.verificationModel,
+    ) ||
     manifest.applicationReady === true
   ) {
     try {
@@ -1314,7 +1318,9 @@ export const checkGuidance = async (directory = repository) => {
     readSource(root, ".github/workflows/ci.yml"),
   ]);
   const sonar =
-    manifest.verificationModel === "single-pass-v1" || manifest.applicationReady
+    ["single-pass-v1", "split-suites-v1"].includes(
+      manifest.verificationModel,
+    ) || manifest.applicationReady
       ? ci
       : await readSource(root, ".github/workflows/sonar.yml");
   const errors = [

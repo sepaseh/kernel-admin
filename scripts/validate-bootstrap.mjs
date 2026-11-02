@@ -603,6 +603,10 @@ const isForbiddenPublicationPath = (file, phase) =>
   (file === "stryker.config.json" &&
     !supportsPhase(phase, "release-prerequisites")) ||
   (applicationFiles.has(file) &&
+    !(
+      file === ".github/workflows/codeql.yml" &&
+      supportsPhase(phase, "repository-foundation")
+    ) &&
     !supportsPhase(phase, "application-verification") &&
     !publishedSource(file, phase) &&
     !(

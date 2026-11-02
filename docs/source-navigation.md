@@ -12,3 +12,9 @@ Use this table to find the current repository controls and nearby tests. The [ma
 | Check guidance, links and package boundaries | [Guidance checker](../scripts/check-guidance.mjs), [boundary checker](../scripts/check-boundaries.mjs)                                       | [Guidance tests](../scripts/check-guidance.test.mjs), [integration tests](../scripts/check-guidance.integration.test.mjs), [boundary tests](../scripts/check-boundaries.test.mjs) |
 
 Extend the machine task map as additional source owners are published. Read the files and assertions before claiming behavior. Existing configuration, test filenames and optional hooks do not prove execution, provider approval or automatic assistant loading.
+
+The [CodeQL security workflow](../.github/workflows/codeql.yml) is validated by the CI policy checker and its regressions. Its native security result remains separate from scanner execution; see [hosted checks and review](validation.md#hosted-checks-and-review).
+
+The [actionlint runner](../scripts/run-actionlint.mjs) and [its regressions](../scripts/run-actionlint.test.mjs) own pinned workflow syntax and expression validation. The manifest runs it once in Static checks and the complete local gate.
+
+The current PR1 workflow exposes Static checks, Dependency audit, Unit tests and Governance tests independently. The required `check` aggregates their real results. Use [suite coverage evidence](../scripts/ci-evidence.mjs), [its regressions](../scripts/ci-evidence.test.mjs) and [validation](validation.md) when changing producer artifacts or Sonar handoff. Historical workflow policy tests use [explicit test data](../scripts/ci-single-pass.test.yml); they do not declare application execution.

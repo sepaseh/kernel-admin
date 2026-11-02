@@ -32,7 +32,7 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
 
 ## Provider evidence and required checks
 
-- Merging requires the ordinary native CI, CodeRabbit and SonarCloud checks,
+- Merging requires the ordinary native CI, CodeQL, CodeRabbit and SonarCloud checks,
   at least one approving review and resolved review conversations. Apply
   protection to administrators, dismiss stale approvals and require an up-to-date
   branch. Use the native approval count; no separate publisher or custom approval
@@ -42,7 +42,7 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
   completed review or passing analysis. Do not remove checks to hide a failure.
 - Match protection to the declared published phase, changing remote requirements
   only with explicit authorization. A foundation with `applicationReady: false`
-  requires its actual phase CI, scanner, Sonar quality gate and CodeRabbit; it
+  requires its actual phase CI, CodeQL, scanner, Sonar quality gate and CodeRabbit; it
   must not claim unpublished application checks. Before any runnable application
   merge, introduce real build, end-to-end and visual jobs, observe them pass, add
   them to required checks and expand the full canonical application gate.

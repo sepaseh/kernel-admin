@@ -931,6 +931,27 @@ test("foundation allows its pure source and toolchain, while rejecting runnable 
   );
 });
 
+test("repository foundation admits standalone CodeQL without admitting application or release workflows", () => {
+  const security = ".github/workflows/codeql.yml";
+  const current = foundationPolicy({
+    phase: "repository-foundation",
+    allowedFiles: [...repositoryFoundationFiles, security],
+  });
+  assert.ok(validateBootstrapPolicy(current).has(security));
+  assert.equal(current.applicationReady, false);
+  for (const file of [
+    ".github/workflows/release.yml",
+    ".github/workflows/dast.yml",
+    "src/main.tsx",
+  ])
+    assert.throws(() =>
+      validateBootstrapPolicy({
+        ...current,
+        allowedFiles: [...current.allowedFiles, file],
+      }),
+    );
+});
+
 test("repository foundation requires its verification toolchain and canonical Git guidance without application source", async (context) => {
   const guidance = [
     "AGENTS.md",
@@ -1734,7 +1755,9 @@ test("application admission requires the exact runnable closure and matching rea
   );
   const historical = await historicalGuidancePolicy();
   for (const file of applicationFiles.filter(
-    (entry) => !earlyApplicationSources.has(entry),
+    (entry) =>
+      !earlyApplicationSources.has(entry) &&
+      entry !== ".github/workflows/codeql.yml",
   ))
     assert.throws(
       () =>

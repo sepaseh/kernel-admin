@@ -12,6 +12,7 @@ Explain the concrete problem, change and any prerequisite PR.
 
 - Exact committed snapshot checked:
 - Commands actually run and results:
+- Native CodeQL result and analysis execution, or hosted-evidence blocker:
 - CodeRabbit findings and their disposition:
 - Sonar project and actual analysis/quality-gate status, or setup blocker:
 

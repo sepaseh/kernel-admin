@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Prepare or create a focused Kernel Admin pull request with exact-snapshot validation and explicit publication authorization.
+description: Prepare or create a focused Kernel pull request with exact-snapshot validation and explicit publication authorization.
 ---
 
 # Create a pull request

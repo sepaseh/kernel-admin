@@ -37,8 +37,8 @@ Write self-documenting code. Add comments only for:
 - Add a blank line only when the code changes responsibility or begins an
   independently meaningful phase. If a function needs many such phases,
   consider extracting a focused helper instead of adding more visual sections.
-- Apply this to changed handlers, hooks, helpers and tests as well as components;
-  arrange/act/assert are useful test phases. Review the semantic grouping directly:
+- Apply this to changed functions, helpers and tests; arrange/act/assert are useful
+  test phases. Review the semantic grouping directly:
   a formatter passing does not prove that phase boundaries are readable.
 - Keep consecutive request steps together, such as setting the busy flag,
   awaiting the request and applying its result. Avoid a new padding rule or
