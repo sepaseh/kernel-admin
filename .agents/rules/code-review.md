@@ -25,3 +25,9 @@ separate from concrete behavioral defects.
 Check affected behavior, security, local HTTP-contract alignment, state lifecycle,
 failure-path tests, accessibility, localization, visible UI evidence, and the
 documentation map. If no finding remains, say so and disclose checks not run.
+
+Local tests, hosted checks, provider analysis and substantive current-head approval
+are separate evidence. Follow [review preflight](pull-requests.md#coderabbit-request-preflight);
+skipped or conversational provider replies do not establish a completed review.
+Submit remote comments or reviews, resolve conversations and merge only with
+authorization for the corresponding action.

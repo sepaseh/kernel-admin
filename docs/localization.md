@@ -2,6 +2,8 @@
 
 Use this reference when changing translated text, language settings or displayed dates. The API owns the active language, direction, calendar and public/native language names. Only a system super-admin changes the global language. There is no visitor language selector, browser-language inference or stored language preference. Theme and compact mode are separate browser preferences.
 
+The `http-lifecycle` snapshot admits catalogs, normalization, i18next initialization, date adapters and settings HTTP validation. Core and Ant Design providers, application screens and Storybook fixtures are later integration requirements. Their descriptions below define the intended ownership; current module tests do not establish those application flows.
+
 ## Find the owner
 
 | Responsibility                                  | Source                                                                                                                                     |
@@ -23,26 +25,26 @@ To change a product message:
 
 1. Find an existing semantic key before adding another label.
 2. Update that key in every registered catalog, preserving interpolation names and genuine translations.
-3. Exercise the affected control with long text and both text directions. Use [testing](testing.md) to select the closest component, provider or browser case.
+3. Run the admitted catalog, initialization and date tests through [testing](testing.md). When UI source is admitted, also exercise the affected control with long text and both text directions using its component, provider or browser cases.
 
-For a new supported code, update the registered catalogs, language validation and both vendor adapters together. Follow the localization rule (`.agents/rules/localization.md`, planned for a later PR) and the installed-adapter tests rather than treating an English fallback as completed support.
+For a new supported code, update the registered catalogs, language validation and both vendor adapters together. Use the installed-adapter tests rather than treating an English fallback as completed support.
 
 ## Runtime metadata
 
 [`index.ts`](../src/shared/i18n/index.ts) initializes i18next/react-i18next with the local catalogs and fixed Persian bootstrap/fallback. Module loading awaits initialization. Missing keys retain their identity and produce a diagnostic; fallback does not excuse an incomplete catalog.
 
-`config/language.ts` normalizes supported regional code prefixes to a catalog code only. It does not infer direction or calendar. The settings HTTP adapter requires a supported code, explicit `ltr`/`rtl`, Gregorian/Jalali calendar and nonblank names. It preserves server direction/calendar even when they differ from code conventions. Malformed metadata produces a controlled translated error.
+`config/language.ts` normalizes supported regional code prefixes to a catalog code only. It does not infer direction or calendar. The settings HTTP adapter requires a supported code, explicit `ltr`/`rtl`, Gregorian/Jalali calendar and nonblank names. It preserves server direction/calendar even when they differ from code conventions and rejects malformed metadata with a controlled translated error.
 
-Core applies accepted metadata to i18next and Day.js. Ant Design selects the matching vendor locale and applies server language/direction to the document. Window focus refreshes public settings. Ordinary settings editors retain theme/logo rights and omit `languageCode`; only a system super-admin changes it.
+The later Core provider must apply accepted metadata to i18next and Day.js. The Ant Design provider must select the matching vendor locale and apply server language/direction to the document. Application integration must refresh public settings on window focus. Ordinary settings editors retain theme/logo rights and omit `languageCode`; only a system super-admin changes it.
 
 ## Dates
 
-`date.ts` registers the matching Day.js locales and Jalaliday; English uses the vendor name `en-gb`. Gregorian Persian month names and Jalali month names remain distinct. Callers explicitly select the API-provided calendar, resetting retained date instances when it changes.
+`date.ts` registers the matching Day.js locales and Jalaliday. Callers pass the supported product code through `dayjsLocaleName(code)` before selecting a Day.js locale; English `en` resolves to the vendor name `en-gb`. Gregorian Persian month names and Jalali month names remain distinct. Callers explicitly select the API-provided calendar, resetting retained date instances when it changes.
 
 The calendar screen (`src/features/calendar/Calendar.tsx`, planned for a later PR) formats HTTP keys as Gregorian `YYYY-MM-DD` even when the displayed calendar is Jalali. Keep this wire format separate from localized display formatting.
 
 ## Fixtures and checks
 
-Storybook controls select complete synthetic language metadata, independently exercising direction and theme without creating production preferences. Its preview, Core fixture, document, Ant Design, i18next and Day.js stay synchronized. All production catalogs remain complete.
+Later Storybook controls must select complete synthetic language metadata, independently exercising direction and theme without creating production preferences. Their preview, Core fixture, document, Ant Design, i18next and Day.js must stay synchronized. All production catalogs remain complete.
 
-If text, direction or dates disagree, inspect the accepted settings metadata before changing a catalog or vendor adapter. The [settings tests](../src/features/settings/api.test.ts), Core tests (`src/app/providers/core/Core.test.tsx`, planned for a later PR) and [date tests](../src/shared/i18n/date.test.ts) cover these boundaries separately. Key/interpolation parity, pure-data imports and catalog registration are also checked by the existing source gates. See [validation](validation.md) for the applicable commands and required gate.
+If text, direction or dates disagree, inspect the accepted settings metadata before changing a catalog or vendor adapter. The [settings tests](../src/features/settings/api.test.ts) and [date tests](../src/shared/i18n/date.test.ts) cover the admitted boundaries separately. Core tests (`src/app/providers/core/Core.test.tsx`, planned for a later PR) must cover application integration when admitted. Key/interpolation parity, pure-data imports and catalog registration are also checked by the existing source gates. See [validation](validation.md) for the applicable commands and required gate.

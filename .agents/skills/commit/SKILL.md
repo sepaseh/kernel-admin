@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Prepare a coherent Kernel Admin commit or create it when explicitly requested, including scope, final-tree checks and staged-diff review.
+description: Prepare a coherent Kernel commit or create it when explicitly requested, including scope, final-tree checks and staged-diff review.
 ---
 
 # Commit changes

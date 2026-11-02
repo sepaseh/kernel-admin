@@ -14,7 +14,7 @@ The [publication policy](.github/bootstrap-policy.json) identifies the actual so
 
 Use a verified feature branch and PR for every change to `main`. Never push directly to protected `main`, force-push it or bypass protection. Honor existing authorization; committing, publishing, requesting a provider review and merging are distinct action boundaries.
 
-Target at most 80 changed-file entries initially, reserving 20 for review fixes under the hard 100-entry limit. Count additions, deletions, renames and binaries. Follow [Git workflow](.agents/rules/git.md), [PR policy](.agents/rules/pull-requests.md) and the [review skill](.agents/skills/review-pr/SKILL.md).
+Before opening a PR, review its scope and aim for at most 80 GitHub changed-file entries initially. Split independent changes when useful and explain why a larger cohesive change belongs together. Count additions, deletions, renames and binaries. File count is advisory: exceeding 100 files alone must not fail CI or require deleting and recreating a PR. Follow [Git workflow](.agents/rules/git.md), [PR policy](.agents/rules/pull-requests.md) and the [review skill](.agents/skills/review-pr/SKILL.md).
 
 ## Verification and documentation
 
