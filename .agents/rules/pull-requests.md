@@ -87,6 +87,10 @@ See [validation](../../docs/validation.md),
 [testing](../../docs/testing.md),
 [Sonar guidance](../../docs/validation.md) and [safety](safety.md).
 
+Post standalone PR comments only with prior explicit user authorization.
+Authorization to fix, commit, push or reply to review threads does not authorize
+a standalone comment.
+
 Do not create, update, mark ready, merge or close a pull request without explicit
 authorization covering that action. Honor authorization and preferences already
 provided in the conversation; do not introduce another approval step for the same
