@@ -82,13 +82,21 @@
         "src/shared/api/token-response.ts",
         "src/shared/hooks/useReadRequest.ts",
         "src/shared/hooks/useReadResource.ts",
+        "src/features/account/api.ts",
         "src/features/auth/api.ts",
-        "src/features/settings/api.ts"
+        "src/features/calendar/api.ts",
+        "src/features/roles/api.ts",
+        "src/features/settings/api.ts",
+        "src/features/settings/components/logo-upload/api.ts",
+        "src/features/users/api.ts"
       ],
       "contracts": [
         "src/shared/api/types.ts",
+        "src/features/account/types.ts",
         "src/features/auth/types.ts",
+        "src/features/roles/types.ts",
         "src/features/settings/types.ts",
+        "src/features/users/types.ts",
         "src/shared/contracts/appearance.ts",
         "docs/authentication.md"
       ],
@@ -98,9 +106,15 @@
         "src/shared/api/config.test.ts",
         "src/shared/api/token-response.test.ts",
         "src/shared/hooks/useReadResource.test.ts",
+        "src/features/account/api.test.ts",
         "src/features/auth/api.test.ts",
         "src/features/auth/logout.test.ts",
-        "src/features/settings/api.test.ts"
+        "src/features/calendar/api.test.ts",
+        "src/features/roles/api.test.ts",
+        "src/features/settings/api.test.ts",
+        "src/features/settings/components/logo-upload/api.test.ts",
+        "src/features/users/api.helpers.test.ts",
+        "src/features/users/api.test.ts"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [".agents/rules/code-quality.md", ".agents/rules/safety.md"],

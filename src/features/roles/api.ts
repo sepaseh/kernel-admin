@@ -14,7 +14,9 @@ export const deleteRole = async (
   id: Role["id"],
   signal?: AbortSignal,
 ): Promise<void> => {
-  return apiClient.del<void>(`${basePath}/${id}`, { signal });
+  return apiClient.del<void>(`${basePath}/${encodeURIComponent(id)}`, {
+    signal,
+  });
 };
 
 export const fetchPermissions = async (
@@ -29,7 +31,9 @@ export const fetchRole = async (
   id: Role["id"],
   signal?: AbortSignal,
 ): Promise<Role> => {
-  return apiClient.get<Role>(`${basePath}/${id}`, { signal });
+  return apiClient.get<Role>(`${basePath}/${encodeURIComponent(id)}`, {
+    signal,
+  });
 };
 
 export const fetchRoles = async (signal?: AbortSignal): Promise<Role[]> => {
@@ -41,5 +45,9 @@ export const updateRole = async (
   params: RoleRequest,
   signal?: AbortSignal,
 ): Promise<Role> => {
-  return apiClient.patch<Role>(`${basePath}/${id}`, params, { signal });
+  return apiClient.patch<Role>(
+    `${basePath}/${encodeURIComponent(id)}`,
+    params,
+    { signal },
+  );
 };

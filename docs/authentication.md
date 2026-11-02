@@ -85,4 +85,4 @@ The [settings adapter](../src/features/settings/api.ts) validates the complete e
 | A request returns 403                                 | Check the API's permission decision and the current account; changing a menu guard cannot grant access.                                |
 | A completed request changes the wrong screen or login | Check loader dependencies, mutation identity, signal forwarding and post-fulfillment guards.                                           |
 
-Record the URL, HTTP status and safe `X-Request-Id`, without credentials or payloads. Document changed HTTP/session expectations at the local integration boundary and use the synthetic fixtures described in [testing](testing.md).
+Record a sanitized route template such as `/users/:id`, with query values and user identifiers removed, plus the HTTP status and safe `X-Request-Id`. Exclude credentials and payloads. Document changed HTTP/session expectations at the local integration boundary and use the synthetic fixtures described in [testing](testing.md).

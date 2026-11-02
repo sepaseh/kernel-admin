@@ -23,14 +23,18 @@ export const deleteUser = async (
   id: User["id"],
   signal?: AbortSignal,
 ): Promise<void> => {
-  return apiClient.del<void>(`${basePath}/${id}`, { signal });
+  return apiClient.del<void>(`${basePath}/${encodeURIComponent(id)}`, {
+    signal,
+  });
 };
 
 export const fetchUser = async (
   id: User["id"],
   signal?: AbortSignal,
 ): Promise<User> => {
-  return apiClient.get<User>(`${basePath}/${id}`, { signal });
+  return apiClient.get<User>(`${basePath}/${encodeURIComponent(id)}`, {
+    signal,
+  });
 };
 
 export const fetchUsers = async (
@@ -48,7 +52,11 @@ export const updateUser = async (
   params: UserRequest,
   signal?: AbortSignal,
 ): Promise<User> => {
-  return apiClient.patch<User>(`${basePath}/${id}`, params, { signal });
+  return apiClient.patch<User>(
+    `${basePath}/${encodeURIComponent(id)}`,
+    params,
+    { signal },
+  );
 };
 
 export const updateUserPassword = async (
@@ -56,7 +64,11 @@ export const updateUserPassword = async (
   params: UserPasswordRequest,
   signal?: AbortSignal,
 ): Promise<void> => {
-  return apiClient.put<void>(`${basePath}/${id}/password`, params, { signal });
+  return apiClient.put<void>(
+    `${basePath}/${encodeURIComponent(id)}/password`,
+    params,
+    { signal },
+  );
 };
 
 export const updateUserRoles = async (
@@ -64,7 +76,11 @@ export const updateUserRoles = async (
   params: UserRoleRequest,
   signal?: AbortSignal,
 ): Promise<void> => {
-  return apiClient.put<void>(`${basePath}/${id}/roles`, params, { signal });
+  return apiClient.put<void>(
+    `${basePath}/${encodeURIComponent(id)}/roles`,
+    params,
+    { signal },
+  );
 };
 
 export const updateUserStatus = async (
@@ -72,7 +88,11 @@ export const updateUserStatus = async (
   params: UserStatusRequest,
   signal?: AbortSignal,
 ): Promise<void> => {
-  return apiClient.patch<void>(`${basePath}/${id}/status`, params, { signal });
+  return apiClient.patch<void>(
+    `${basePath}/${encodeURIComponent(id)}/status`,
+    params,
+    { signal },
+  );
 };
 
 export const updateUserSystemAdmin = async (
@@ -80,7 +100,9 @@ export const updateUserSystemAdmin = async (
   params: UserSystemAdminRequest,
   signal?: AbortSignal,
 ): Promise<void> => {
-  return apiClient.patch<void>(`${basePath}/${id}/system-admin`, params, {
-    signal,
-  });
+  return apiClient.patch<void>(
+    `${basePath}/${encodeURIComponent(id)}/system-admin`,
+    params,
+    { signal },
+  );
 };

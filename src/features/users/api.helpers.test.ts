@@ -22,6 +22,56 @@ beforeEach(() => {
 });
 
 describe("user API helper contracts", () => {
+  it.each([
+    ["member/#? 1", "member%2F%23%3F%201"],
+    ["عضو آبی", "%D8%B9%D8%B6%D9%88%20%D8%A2%D8%A8%DB%8C"],
+    ["encoded%2Fid", "encoded%252Fid"],
+  ])("keeps the opaque ID %s inside each user route", async (id, segment) => {
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
+    const user = {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      mobile: "09120000000",
+    };
+    const password = { password: "synthetic-password" };
+    const roles = { roleIds: ["role/#? 1"] };
+    const status = { status: "inactive" } as const;
+    const systemAdmin = { isSystemAdmin: true };
+    const path = `/users/${segment}`;
+
+    await users.fetchUser(id, controller.signal);
+    expect(apiClient.get).toHaveBeenLastCalledWith(path, options);
+    await users.deleteUser(id, controller.signal);
+    expect(apiClient.del).toHaveBeenLastCalledWith(path, options);
+    await users.updateUser(id, user, controller.signal);
+    expect(apiClient.patch).toHaveBeenLastCalledWith(path, user, options);
+    await users.updateUserPassword(id, password, controller.signal);
+    expect(apiClient.put).toHaveBeenLastCalledWith(
+      `${path}/password`,
+      password,
+      options,
+    );
+    await users.updateUserRoles(id, roles, controller.signal);
+    expect(apiClient.put).toHaveBeenLastCalledWith(
+      `${path}/roles`,
+      roles,
+      options,
+    );
+    await users.updateUserStatus(id, status, controller.signal);
+    expect(apiClient.patch).toHaveBeenLastCalledWith(
+      `${path}/status`,
+      status,
+      options,
+    );
+    await users.updateUserSystemAdmin(id, systemAdmin, controller.signal);
+    expect(apiClient.patch).toHaveBeenLastCalledWith(
+      `${path}/system-admin`,
+      systemAdmin,
+      options,
+    );
+  });
+
   it("maps create, read, update, and delete operations", async () => {
     const controller = new AbortController();
     await users.createUser(
