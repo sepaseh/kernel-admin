@@ -2,7 +2,7 @@
 
 Use this reference when changing translated text, language settings or displayed dates. The API owns the active language, direction, calendar and public/native language names. Only a system super-admin changes the global language. There is no visitor language selector, browser-language inference or stored language preference. Theme and compact mode are separate browser preferences.
 
-The `http-lifecycle` snapshot admits catalogs, normalization, i18next initialization, date adapters and settings HTTP validation. Core and Ant Design providers, application screens and Storybook fixtures are later integration requirements. Their descriptions below define the intended ownership; current module tests do not establish those application flows.
+The `ui-foundation` snapshot admits catalogs, normalization, i18next initialization, date adapters, settings HTTP validation and shared translated controls. Core and Ant Design application providers, feature screens and Storybook fixtures are later integration requirements. Their descriptions below define the intended ownership; current module tests do not establish those application flows.
 
 ## Find the owner
 
@@ -27,7 +27,7 @@ To change a product message:
 2. Update that key in every registered catalog, preserving interpolation names and genuine translations.
 3. Run the admitted catalog, initialization and date tests through [testing](testing.md). When UI source is admitted, also exercise the affected control with long text and both text directions using its component, provider or browser cases.
 
-For a new supported code, update the registered catalogs, language validation and both vendor adapters together. Use the installed-adapter tests rather than treating an English fallback as completed support.
+For a new supported code, update the registered catalogs, language validation and both vendor adapters together. Follow the admitted [localization rule](../.agents/rules/localization.md) and installed-adapter tests rather than treating an English fallback as completed support.
 
 ## Runtime metadata
 

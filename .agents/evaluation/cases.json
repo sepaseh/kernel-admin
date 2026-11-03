@@ -24,6 +24,29 @@
         "Treat a successful CodeRabbit status as proof of its approval."
       ],
       "checks": ["snapshot", "ci-policy", "guidance"]
+    },
+    {
+      "id": "admin-session-lifecycle",
+      "prompt": {
+        "en": "Without editing files, trace admin login, refresh, logout and session generations. Where are credentials stored and why does terminal client refresh failure not itself revoke server sessions? Give current source evidence and relevant checks."
+      },
+      "taskIds": ["auth-session"],
+      "evidence": [
+        "src/shared/api/client.ts",
+        "src/shared/api/token.ts",
+        "src/features/auth/api.ts"
+      ],
+      "mustExplain": [
+        "Bearer credentials remain in memory.",
+        "Single-flight refresh and originating request generation protect new logins.",
+        "Terminal refresh failure clears client state; server revocation is an API responsibility."
+      ],
+      "mustNot": [
+        "Claim JWT rotation/reuse detection exists.",
+        "Read secrets or owner data.",
+        "Import or move API runtime into the admin."
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"]
     }
   ]
 }

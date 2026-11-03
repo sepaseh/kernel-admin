@@ -14,7 +14,7 @@ Select current commands from [the manifest](../validation.json). Start with focu
 
 ## Autofix workflow
 
-- Let ESLint handle import sorting. Check style-object property order directly, as described in styling (`.agents/rules/styling.md`, planned for a later PR).
+- Let ESLint handle import sorting. Check style-object property order directly, as described in [styling](styling.md).
 - Use `npm run lint:fix` when safe to auto-fix formatting/lint issues.
 - Never sort imports manually if ESLint can do it.
 - Do not introduce a formatter or new tooling unless the user asks.

@@ -2,15 +2,15 @@
 
 Use this reference when changing an HTTP adapter, session transition or asynchronous screen. Start with the relevant owner and its tests:
 
-The `http-lifecycle` snapshot admits transport, feature HTTP adapters, settings validation and cancellable read hooks with `applicationReady: false`. Forms, mutation hooks, Core, layouts and application journeys remain later integration requirements. Descriptions of those future consumers below define the required boundaries; module tests do not establish an assembled application or live backend compatibility.
+The `ui-foundation` snapshot admits transport, feature HTTP adapters, settings validation and guarded read/mutation hooks with `applicationReady: false`. Feature forms, Core, layouts and application journeys remain later integration requirements. Descriptions of those future consumers below define the required boundaries; module tests do not establish an assembled application or live backend compatibility.
 
-| Change                                        | Owner                                                                                   | Regression examples                                                                          |
-| --------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Dispatch, refresh, replay or transport errors | [`client.ts`](../src/shared/api/client.ts)                                              | [`client.test.ts`](../src/shared/api/client.test.ts)                                         |
-| Credential lifetime or generation             | [`token.ts`](../src/shared/api/token.ts)                                                | [`token.test.ts`](../src/shared/api/token.test.ts)                                           |
-| Login, registration or logout                 | [Authentication API](../src/features/auth/api.ts)                                       | [Logout lifecycle](../src/features/auth/logout.test.ts)                                      |
-| Read cancellation and replacement             | [`useReadResource`](../src/shared/hooks/useReadResource.ts)                             | [Read lifecycles](../src/shared/hooks/useReadResource.test.ts)                               |
-| Mutation identity and continuation            | `useMutationRequest` (`src/shared/hooks/useMutationRequest.ts`, planned for a later PR) | Mutation lifecycles (`src/shared/hooks/useMutationRequest.test.tsx`, planned for a later PR) |
+| Change                                        | Owner                                                             | Regression examples                                                    |
+| --------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Dispatch, refresh, replay or transport errors | [`client.ts`](../src/shared/api/client.ts)                        | [`client.test.ts`](../src/shared/api/client.test.ts)                   |
+| Credential lifetime or generation             | [`token.ts`](../src/shared/api/token.ts)                          | [`token.test.ts`](../src/shared/api/token.test.ts)                     |
+| Login, registration or logout                 | [Authentication API](../src/features/auth/api.ts)                 | [Logout lifecycle](../src/features/auth/logout.test.ts)                |
+| Read cancellation and replacement             | [`useReadResource`](../src/shared/hooks/useReadResource.ts)       | [Read lifecycles](../src/shared/hooks/useReadResource.test.ts)         |
+| Mutation identity and continuation            | [`useMutationRequest`](../src/shared/hooks/useMutationRequest.ts) | [Mutation lifecycles](../src/shared/hooks/useMutationRequest.test.tsx) |
 
 Feature HTTP owners consume the configured backend. Database operations, authorization, session revocation and cookie/CORS policy belong to that service. Client presentation checks do not enforce server authorization.
 
@@ -66,9 +66,11 @@ To connect a feature read:
 
 Disabled resources expose no stale data, loading or error. Keep independent list and lookup resources separate so an optional lookup failure does not erase a usable list. The hook's resource identity and the client's authentication generation protect different boundaries; both remain necessary.
 
-## Future forms and privileged screens
+## Mutation guards and future privileged screens
 
-When forms are admitted, they must own cancellation and submitting state. The planned shared mutation hook must bind work to its identity, enabled state and initiating authentication generation. Its `isCurrent()` and `isCurrentMutationError` guards must protect success effects and failure presentation. Unmounting or changing that scope must invalidate pending continuation.
+The shared `useMutationRequest` hook binds work to its identity, enabled state and initiating authentication generation. Its `run` method forwards an owned cancellation signal and returns accepted data with an `isCurrent()` guard. Use that guard before success effects and `isCurrentMutationError` before failure presentation. Unmounting or changing the scope invalidates pending continuation; stale or cancelled work returns no accepted result.
+
+When feature forms are admitted, they must connect the hook's cancellation and submitting state to the owning form.
 
 An admitted authentication form must cancel its OTP request and clear old OTP/cooldown state when the mobile number changes. Its pending-operation guard must bind the intent before asynchronous OTP validation. Enter and button submission must use the same form validation and duplicate-request guard. The current login and registration APIs already guard credential installation after transport fulfillment.
 

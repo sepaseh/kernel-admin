@@ -121,8 +121,160 @@
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [".agents/rules/code-quality.md", ".agents/rules/safety.md"],
       "limitations": "Synthetic HTTP and jsdom hook tests do not establish an assembled application, live backend compatibility, browser journeys or a production build. Preserve memory-only credentials, session generations, cancellation and API-owned settings metadata."
+    },
+    {
+      "id": "http-contract",
+      "when": "Change a request/response field, HTTP method, endpoint path or status.",
+      "owners": [
+        "src/features",
+        "src/shared/api",
+        "src/shared/contracts/index.ts"
+      ],
+      "contracts": [
+        "src/shared/api/types.ts",
+        "src/features/settings/types.ts",
+        "docs/authentication.md"
+      ],
+      "tests": [
+        "src/shared/api/client.test.ts",
+        "src/features/settings/api.test.ts",
+        "src/features/users/api.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Synthetic consumer/transport tests establish local HTTP expectations; they do not verify a deployed backend. The consuming developer chooses a compatible implementation."
+    },
+    {
+      "id": "auth-session",
+      "when": "Trace login, refresh, logout, password changes or session cookie handling.",
+      "owners": [
+        "src/shared/api/client.ts",
+        "src/shared/api/token.ts",
+        "src/features/auth/api.ts"
+      ],
+      "contracts": ["src/features/auth/types.ts", "src/shared/api/types.ts"],
+      "tests": [
+        "src/shared/api/client.test.ts",
+        "src/shared/api/token.test.ts",
+        "src/features/auth/logout.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Authentication execution and server-session revocation occur behind HTTP; client token clearing is not server revocation."
+    },
+    {
+      "id": "shared-translation",
+      "when": "Reuse or add a semantic UI meaning in all ten complete flat local catalogs.",
+      "owners": [
+        "src/shared/i18n/catalogs.ts",
+        "src/shared/i18n/locales",
+        "src/shared/i18n/locales.ts"
+      ],
+      "contracts": [
+        "src/shared/i18n/locales.ts",
+        ".agents/rules/localization.md"
+      ],
+      "tests": [
+        "src/shared/i18n/catalogs.test.ts",
+        "src/shared/i18n/index.test.ts",
+        "src/shared/i18n/dayjs.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"],
+      "rules": [".agents/rules/localization.md", ".agents/rules/imports.md"],
+      "limitations": "Runtime fallback does not excuse a missing translation; all catalog source and integrity evidence belong to this frontend."
+    },
+    {
+      "id": "guidance",
+      "when": "Change assistant instructions, navigation, validation policy or evaluation cases.",
+      "owners": [
+        "AGENTS.md",
+        ".agents",
+        ".claude",
+        "CLAUDE.md",
+        "scripts/check-guidance.mjs"
+      ],
+      "contracts": [
+        ".agents/validation.json",
+        ".agents/settings.json",
+        ".agents/navigation.json",
+        "docs/validation.md"
+      ],
+      "tests": [
+        "scripts/check-guidance.test.mjs",
+        "scripts/block-dangerous.test.mjs",
+        "scripts/post-edit-format.test.mjs",
+        "scripts/quality-gate.test.mjs",
+        "scripts/validate.test.mjs"
+      ],
+      "checks": ["guidance", "guidance-tests", "governance-coverage", "format"],
+      "rules": [
+        ".agents/rules/guidance.md",
+        ".agents/rules/git.md",
+        ".agents/rules/safety.md"
+      ],
+      "limitations": "Static inventory/link checks do not prove automatic host loading or improved assistant comprehension; optional Bash host prerequisites must be reported."
+    },
+    {
+      "id": "ui-foundation",
+      "when": "Change admitted shared UI controls, themes, browser preferences, mutation hooks, observability or local assets.",
+      "owners": [
+        "src/shared/config/theme.ts",
+        "src/shared/storage/state.ts",
+        "src/shared/storage/theme.ts",
+        "src/shared/storage/compact.ts",
+        "src/shared/storage/hooks/useLocalStorageWatcher.ts",
+        "src/shared/hooks/useMutationRequest.ts",
+        "src/shared/hooks/useGoBack.ts",
+        "src/shared/lib/dialog-focus.ts",
+        "src/shared/lib/observability.ts",
+        "src/shared/ui/digits-input/DigitsInput.tsx",
+        "src/shared/ui/otp-input/OtpInput.tsx",
+        "src/shared/ui/password-fields/PasswordFields.tsx",
+        "src/shared/ui/form-drawer/FormDrawer.tsx",
+        "src/shared/ui/error-boundary/ErrorBoundary.tsx",
+        "src/shared/ui/request-feedback/RequestFeedback.tsx",
+        "src/shared/ui/route-loading/RouteLoading.tsx",
+        "src/assets/styles/index.css",
+        "src/assets/styles/vazirmatn.css",
+        "src/assets/fonts/vazirmatn",
+        "public"
+      ],
+      "contracts": [
+        "src/shared/contracts/appearance.ts",
+        "src/shared/config/constants.ts",
+        "DESIGN.md",
+        ".agents/rules/react.md",
+        ".agents/rules/styling.md"
+      ],
+      "tests": [
+        "src/shared/config/theme.test.ts",
+        "src/shared/storage/state.test.ts",
+        "src/shared/storage/preferences.test.ts",
+        "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
+        "src/shared/hooks/useMutationRequest.test.tsx",
+        "src/shared/hooks/useGoBack.test.tsx",
+        "src/shared/lib/dialog-focus.test.tsx",
+        "src/shared/lib/observability.test.ts",
+        "src/shared/lib/observability.vitals.test.ts",
+        "src/shared/ui/digits-input/DigitsInput.test.tsx",
+        "src/shared/ui/otp-input/OtpInput.test.tsx",
+        "src/shared/ui/password-fields/PasswordFields.test.tsx",
+        "src/shared/ui/form-drawer/FormDrawer.test.tsx",
+        "src/shared/ui/error-boundary/ErrorBoundary.test.tsx",
+        "src/shared/ui/request-feedback/RequestFeedback.test.tsx",
+        "src/shared/ui/route-loading/RouteLoading.test.tsx",
+        "src/assets/assets.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [
+        ".agents/rules/react.md",
+        ".agents/rules/styling.md",
+        ".agents/rules/localization.md",
+        ".agents/rules/testing.md"
+      ],
+      "limitations": "Unit and jsdom component tests do not establish application providers, route composition, Storybook browser execution, a production build or visual approval. Keep API-owned language, direction and calendar separate from browser-owned theme and compact mode."
     }
   ],
-  "phase": "http-lifecycle",
+  "phase": "ui-foundation",
   "applicationReady": false
 }

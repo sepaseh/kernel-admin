@@ -49,5 +49,6 @@ code or fenced/indented code blocks. Review Latin-script prose for English;
 static checks cannot classify its language.
 
 Follow the [documentation workflow](../../CONTRIBUTING.md#documentation).
-Read-only comprehension evaluation is planned for a later publication; an index
-or blank template does not establish execution.
+Use the optional [read-only comprehension evaluation](../../docs/comprehension-evaluation.md)
+only when requested. An index, procedure or blank template does not establish
+execution.

@@ -1,6 +1,6 @@
 # Prepare to run Kernel Admin
 
-The current `http-lifecycle` snapshot admits HTTP adapters, session and read-resource lifecycles, shared runtime and localization modules with `applicationReady: false`. Application composition, the Vite entry point, public environment example and build/preview commands are planned for later phases. The steps below describe the prerequisites and workflow after that source and its complete verification are admitted; they are not runnable instructions for this snapshot.
+The current `ui-foundation` snapshot admits shared controls, theme and preference helpers, guarded mutation hooks, HTTP/session lifecycles and localization modules with `applicationReady: false`. Application composition, the Vite entry point, public environment example and build/preview commands are planned for later phases. The steps below describe the prerequisites and workflow after that source and its complete verification are admitted; they are not runnable instructions for this snapshot.
 
 For that later phase, choose a compatible backend you are authorized to use. Kernel Admin's local HTTP contract lets that service supply authentication, settings and application data without requiring a particular backend repository or tooling.
 
