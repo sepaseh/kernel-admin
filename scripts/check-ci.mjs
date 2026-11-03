@@ -644,7 +644,11 @@ export const ciOwner = (manifest, id) => {
   );
 };
 const suiteJobs = ["quality", "audit", "unit", "governance"];
-const suiteConcurrencyGroup = "ci-${{ github.event_name }}-${{ github.ref }}";
+const suiteEventCondition =
+  "github.event_name != 'pull_request' || github.event.action != 'edited' || github.event.changes.base.ref.from != ''";
+const suiteConcurrencyGroup = `\${{ (${suiteEventCondition}) && 'ci' || 'ci-metadata' }}-\${{ github.event_name }}-\${{ github.ref }}`;
+const suiteCheckName = (name, metadataName) =>
+  `\${{ (${suiteEventCondition}) && '${name}' || '${metadataName}' }}`;
 const suiteNames = {
   quality: "Static checks",
   audit: "Dependency audit",
@@ -736,16 +740,16 @@ const inspectSplitAnalysis = (workflow) => {
     workflow,
     "analysis",
     15,
-    "needs.check.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+    `needs.aggregate.result == 'success' && (${suiteEventCondition}) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)`,
   );
   requireEqual(
     analysis.name,
-    "SonarQube Cloud analysis",
-    "Keep the native Sonar scanner check name",
+    suiteCheckName("SonarQube Cloud analysis", "Metadata only (analysis)"),
+    "Keep the native Sonar scanner check name exclusive to validation events",
   );
   requireEqual(
     analysis.needs,
-    ["check", "unit", "governance"],
+    ["aggregate", "unit", "governance"],
     "Analysis requires successful aggregate and direct suite producer outputs",
   );
   for (const key of ["permissions", "outputs"])
@@ -803,18 +807,12 @@ const inspectSplitCi = (workflow, manifest) => {
     {
       push: { branches: ["main"] },
       pull_request: {
-        types: [
-          "opened",
-          "synchronize",
-          "reopened",
-          "edited",
-          "ready_for_review",
-        ],
+        types: ["opened", "synchronize", "reopened", "edited"],
       },
       schedule: [{ cron: "30 1 * * *" }],
       workflow_dispatch: null,
     },
-    "Keep all PR events, main pushes, daily and manual verification without filters",
+    "Keep PR creation, source updates, reopening and retargeting alongside main pushes, daily and manual verification",
   );
   requireEqual(
     workflow.permissions,
@@ -824,7 +822,7 @@ const inspectSplitCi = (workflow, manifest) => {
   requireEqual(
     workflow.concurrency,
     { group: suiteConcurrencyGroup, "cancel-in-progress": false },
-    "Keep active verification and coalesce pending events by event and ref",
+    "Keep active verification and coalesce pending events separately from metadata edits",
   );
   requireEqual(
     workflow.env,
@@ -835,7 +833,7 @@ const inspectSplitCi = (workflow, manifest) => {
     throw new Error("Suite verification cannot override execution defaults");
   requireEqual(
     Object.keys(workflow.jobs),
-    [...suiteJobs, "check", "analysis"],
+    [...suiteJobs, "aggregate", "analysis"],
     "Only admitted suites, aggregate and scanner are allowed",
   );
   for (const [id, budget] of [
@@ -844,7 +842,7 @@ const inspectSplitCi = (workflow, manifest) => {
     ["unit", 15],
     ["governance", 30],
   ]) {
-    const value = inspectSuiteJob(workflow, id, budget);
+    const value = inspectSuiteJob(workflow, id, budget, suiteEventCondition);
     requireEqual(
       value.name,
       suiteNames[id],
@@ -896,7 +894,17 @@ const inspectSplitCi = (workflow, manifest) => {
       "Each suite must execute its declared profile exactly once and publish only its measured coverage",
     );
   }
-  const aggregate = inspectSuiteJob(workflow, "check", 5, "always()");
+  const aggregate = inspectSuiteJob(
+    workflow,
+    "aggregate",
+    5,
+    `always() && (${suiteEventCondition})`,
+  );
+  requireEqual(
+    aggregate.name,
+    suiteCheckName("check", "Metadata only (aggregate)"),
+    "Keep the native aggregate check name exclusive to validation events",
+  );
   requireEqual(
     aggregate.needs,
     suiteJobs,

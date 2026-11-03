@@ -132,7 +132,7 @@ test("split CI independently exposes only actual static, audit, unit and governa
     "audit",
     "unit",
     "governance",
-    "check",
+    "aggregate",
     "analysis",
   ]);
   const selected = actualManifest();
@@ -185,6 +185,61 @@ test("split CI rejects unknown, unadmitted and runnable application phases", () 
       () => inspectSonarWorkflow(stringify(actualWorkflow()), selected),
       /owns only repository-foundation, runtime-localization, http-lifecycle and ui-foundation/,
     );
+  }
+});
+
+test("split CI preserves retarget validation and isolates metadata edits from required checks", () => {
+  for (const [change, error] of [
+    [
+      (value) => {
+        value.on.pull_request.types = value.on.pull_request.types.filter(
+          (type) => type !== "edited",
+        );
+      },
+      /reopening and retargeting/,
+    ],
+    [
+      (value) => {
+        value.on.pull_request.types.push("ready_for_review");
+      },
+      /reopening and retargeting/,
+    ],
+    [
+      (value) => {
+        value.jobs.quality.if =
+          "github.event_name != 'pull_request' || github.event.action != 'edited'";
+      },
+      /declared condition/,
+    ],
+    [
+      (value) => {
+        value.jobs.aggregate.if = "always()";
+      },
+      /declared condition/,
+    ],
+    [
+      (value) => {
+        value.jobs.aggregate.name = "check";
+      },
+      /aggregate check name exclusive/,
+    ],
+    [
+      (value) => {
+        value.jobs.analysis.name = "SonarQube Cloud analysis";
+      },
+      /scanner check name exclusive/,
+    ],
+    [
+      (value) => {
+        value.concurrency.group =
+          "ci-${{ github.event_name }}-${{ github.ref }}";
+      },
+      /separately from metadata edits/,
+    ],
+  ]) {
+    const value = actualWorkflow();
+    change(value);
+    assert.throws(() => inspectCi(stringify(value), actualManifest()), error);
   }
 });
 
@@ -263,8 +318,8 @@ test("split suites cannot skip checks, duplicate execution, replace source or we
 });
 
 test("the required aggregate runs after failure and rejects unsuccessful or missing suite results", () => {
-  const aggregate = actualWorkflow().jobs.check;
-  assert.equal(aggregate.if, "always()");
+  const aggregate = actualWorkflow().jobs.aggregate;
+  assert.match(aggregate.if, /^always\(\) && /);
   const commandText = aggregate.steps[0].run;
   const source = commandText.slice('node -e "'.length, -1);
   const successful = Object.fromEntries(
@@ -292,13 +347,13 @@ test("the required aggregate runs after failure and rejects unsuccessful or miss
   }
   for (const change of [
     (value) => {
-      delete value.jobs.check.if;
+      delete value.jobs.aggregate.if;
     },
     (value) => {
-      value.jobs.check.needs.pop();
+      value.jobs.aggregate.needs.pop();
     },
     (value) => {
-      value.jobs.check.steps[0].run = 'node -e "process.exit(0)"';
+      value.jobs.aggregate.steps[0].run = 'node -e "process.exit(0)"';
     },
   ]) {
     const value = actualWorkflow();

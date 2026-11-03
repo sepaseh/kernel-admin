@@ -59,7 +59,9 @@ The required `check` runs after every producer, including failures, and succeeds
 
 Each test suite publishes its own immutable run/attempt artifact. The [coverage evidence owner](../scripts/ci-evidence.mjs) binds the suite and LCOV hash to the repository, PR head/base, tested commit/tree, workflow, run and producing attempt. Sonar depends on the successful aggregate and receives both suites' outputs directly. It verifies each report independently before scanning, so a rerun uses each successful producer's actual attempt without combining or rerunning suites. Missing configuration, reports or mismatched evidence blocks analysis. Analysis installs locked dependencies with package scripts disabled; scanner execution and the native provider quality gate remain separate results.
 
-CI keeps active verification running and coalesces pending events by event and ref. The [single-pass test fixture](../scripts/ci-single-pass.test.yml) preserves existing policy regressions; it is test data outside `.github/workflows/` and does not represent current jobs or application execution.
+CI verifies opened and reopened PRs, new commits, and changes to the target branch. Draft PRs receive the same checks, so marking one ready for review does not repeat them. Comments, review requests, reviews, labels and assignments do not trigger CI. GitHub also delivers title and description edits through the same `edited` event as target-branch changes. For these metadata edits, GitHub can show a skipped run without allocating runners, starting analysis or publishing the required aggregate and scanner check names.
+
+CI keeps active verification running and coalesces pending events by event and ref. Metadata edits have a separate queue so they cannot replace pending verification. The [single-pass test fixture](../scripts/ci-single-pass.test.yml) preserves existing policy regressions; it is test data outside `.github/workflows/` and does not represent current jobs or application execution.
 
 ## Review PR scope before opening
 
