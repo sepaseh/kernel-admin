@@ -169,7 +169,17 @@ export const DefaultLayout = () => {
 
   if (session.loading) return <Spin fullscreen />;
   if (session.error)
-    return <RequestFeedback error={session.error} retry={session.reload} />;
+    return (
+      <>
+        <RequestFeedback error={session.error} retry={session.reload} />
+        {session.error instanceof AdminApiError &&
+          session.error.status === 403 && (
+            <Button danger loading={loggingOut} onClick={handleLogout}>
+              {t("logout")}
+            </Button>
+          )}
+      </>
+    );
   if (!user) return <Spin fullscreen />;
 
   const userName = `${user.firstName} ${user.lastName}`.trim();

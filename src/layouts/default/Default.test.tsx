@@ -337,6 +337,23 @@ describe("DefaultLayout", () => {
     );
   });
 
+  it("lets the user log out after an account permission denial", async () => {
+    vi.mocked(getAccount).mockRejectedValueOnce(
+      new AdminApiError("Forbidden", 403),
+    );
+    const { user } = renderLayout();
+
+    const logoutButton = await screen.findByRole("button", { name: "logout" });
+    expect(clearAccessToken).not.toHaveBeenCalled();
+    await user.click(logoutButton);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("location")).toHaveTextContent("/auth"),
+    );
+    expect(logout).toHaveBeenCalledOnce();
+    expect(clearAccessToken).toHaveBeenCalledOnce();
+  });
+
   it.each([
     new Error("Temporarily offline"),
     new AdminApiError("Forbidden", 403),
