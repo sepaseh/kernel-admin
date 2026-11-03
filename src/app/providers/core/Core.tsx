@@ -1,5 +1,3 @@
-import "@/shared/i18n/date";
-
 import dayjs from "dayjs";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -13,6 +11,7 @@ import type { Theme } from "@/shared/contracts/appearance";
 import { defaultLanguage, defaultLogos, storageKeys } from "@/shared/config";
 import { useReadResource } from "@/shared/hooks";
 import { i18nInstance } from "@/shared/i18n";
+import { dayjsLocaleName } from "@/shared/i18n/date";
 import {
   getCompact,
   getTheme,
@@ -136,7 +135,7 @@ export const CoreProvider = ({ children }: CoreProviderProps) => {
     dayjs.calendar(
       language.calendar === "gregorian" ? "gregory" : language.calendar,
     );
-    dayjs.locale(language.code === "en" ? "en-gb" : language.code);
+    dayjs.locale(dayjsLocaleName(language.code));
   }, [language.calendar, language.code]);
 
   useEffect(() => {

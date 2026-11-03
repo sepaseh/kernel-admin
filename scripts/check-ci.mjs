@@ -1,8 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFile, lstat, readFile, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { appendFile, lstat, open, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const isRecord = (value) =>
@@ -19,7 +21,10 @@ const executionModes = new Set([
   "--performance-scope",
 ]);
 const installCommand = "npm ci --strict-peer-deps --no-audit --no-fund";
-const analysisInstallCommand = "npm ci --ignore-scripts --no-audit --no-fund";
+const analysisInstallCommand =
+  "npm ci --strict-peer-deps --ignore-scripts --no-audit --no-fund";
+const analysisConfigurationCommand =
+  'if ($env:SONAR_TOKEN_CONFIGURED -ne "true" -or [string]::IsNullOrWhiteSpace($env:SONAR_PROJECT_KEY)) { throw "Configure SONAR_TOKEN and SONAR_PROJECT_KEY before analysis. No Sonar analysis was performed." }';
 const downloadAction =
   "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333";
 const concurrencyGroup =
@@ -74,14 +79,15 @@ export const requiredCheckCommands = (manifest) => {
     count === undefined ||
     typeof manifest.applicationReady !== "boolean" ||
     manifest.applicationReady !==
-      (manifest.phase === "application-verification") ||
-    (manifest.bootstrapBaseSha !== undefined &&
-      manifest.phase !== "repository-foundation")
+      (manifest.phase === "application-verification")
   )
     throw new Error(
       "Verification phase and application readiness must describe the published capability",
     );
-  return requiredCommands.slice(0, count).map((check) => [...check]);
+  const checks = requiredCommands.slice(0, count).map((check) => [...check]);
+  if (manifest.verificationModel === "split-suites-v1")
+    checks.splice(2, 0, ["actions-lint", "npm run check:actions"]);
+  return checks;
 };
 const sha = (value) =>
   typeof value === "string" &&
@@ -428,6 +434,64 @@ const parseWorkflow = (content) => {
   if (!isRecord(workflow)) throw new Error("CI must be a workflow mapping");
   return workflow;
 };
+
+export const inspectCodeqlWorkflow = (content) => {
+  const workflow = parseWorkflow(content);
+  if (
+    workflow.name !== "CodeQL" ||
+    !isDeepStrictEqual(workflow.on, {
+      push: { branches: ["main"] },
+      pull_request: null,
+      schedule: [{ cron: "30 3 * * 1" }],
+      workflow_dispatch: null,
+    }) ||
+    !isDeepStrictEqual(workflow.permissions, { contents: "read" }) ||
+    !isDeepStrictEqual(workflow.concurrency, {
+      group: "${{ github.workflow }}-${{ github.ref }}",
+      "cancel-in-progress": "${{ github.ref != 'refs/heads/main' }}",
+    }) ||
+    !isDeepStrictEqual(Object.keys(workflow.jobs ?? {}), ["analyze"]) ||
+    workflow.env !== undefined ||
+    workflow.defaults !== undefined
+  )
+    throw new Error(
+      "CodeQL must retain unfiltered PR analysis, main pushes, scheduled/manual execution and minimal permissions",
+    );
+  const analyze = workflow.jobs.analyze;
+  blocking(analyze);
+  if (
+    analyze.name !== "Analyze JavaScript, TypeScript and GitHub Actions" ||
+    analyze["runs-on"] !== "ubuntu-latest" ||
+    analyze["timeout-minutes"] !== 60 ||
+    ["needs", "strategy", "container", "services", "env", "defaults"].some(
+      (key) => Object.hasOwn(analyze, key),
+    ) ||
+    !isDeepStrictEqual(analyze.permissions, {
+      contents: "read",
+      "security-events": "write",
+    }) ||
+    !isDeepStrictEqual(analyze.steps, [
+      {
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        with: { "persist-credentials": false },
+      },
+      {
+        uses: "github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938",
+        with: {
+          languages: "javascript-typescript,actions",
+          queries: "security-extended",
+        },
+      },
+      {
+        uses: "github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938",
+      },
+    ])
+  )
+    throw new Error(
+      "CodeQL must run blocking pinned security analysis with only security-events upload permission",
+    );
+  return { requiredContext: "CodeQL" };
+};
 const rootExecution = (value) => {
   if (
     value?.["working-directory"] !== undefined &&
@@ -569,6 +633,293 @@ const inspectHostedManifest = (manifest) => {
       "The Lighthouse advisory exception needs its bounded expiry, owner and reason",
     );
 };
+export const ciOwner = (manifest, id) => {
+  if (manifest.verificationModel !== "split-suites-v1") return "check";
+  return (
+    {
+      audit: "audit",
+      "unit-coverage": "unit",
+      "governance-coverage": "governance",
+    }[id] ?? "quality"
+  );
+};
+const suiteJobs = ["quality", "audit", "unit", "governance"];
+const suiteConcurrencyGroup = "ci-${{ github.event_name }}-${{ github.ref }}";
+const suiteNames = {
+  quality: "Static checks",
+  audit: "Dependency audit",
+  unit: "Unit tests",
+  governance: "Governance tests",
+};
+const aggregateCommand = `node -e "const needs = JSON.parse(process.env.CI_NEEDS); const required = ['quality', 'audit', 'unit', 'governance']; if (required.some(id => needs[id]?.result !== 'success')) process.exit(1);"`;
+const suiteAction = {
+  checkout: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+  node: "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+  upload: "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+  scan: "SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9",
+};
+const requireEqual = (actual, expected, message) => {
+  if (!isDeepStrictEqual(actual, expected)) throw new Error(message);
+};
+const suiteSetup = () => [
+  {
+    uses: suiteAction.checkout,
+    with: {
+      ref: "${{ github.sha }}",
+      "fetch-depth": 0,
+      "persist-credentials": false,
+    },
+  },
+  {
+    uses: suiteAction.node,
+    with: { "node-version-file": ".nvmrc", cache: "npm" },
+  },
+];
+const withoutStepNames = (steps) =>
+  steps?.map((step) => {
+    const execution = { ...step };
+    delete execution.name;
+    return execution;
+  });
+const inspectSuiteJob = (workflow, id, budget, condition) => {
+  const value = workflow.jobs[id];
+  blocking(value, condition === undefined ? undefined : { condition });
+  rootExecution(value?.defaults?.run);
+  if (
+    value?.["runs-on"] !== "windows-2025" ||
+    value["timeout-minutes"] !== budget ||
+    !Array.isArray(value.steps) ||
+    ["strategy", "container", "services", "env", "defaults"].some((key) =>
+      Object.hasOwn(value, key),
+    )
+  )
+    throw new Error(
+      "Suite jobs require their declared Windows execution and budget: " + id,
+    );
+  for (const step of value.steps) blocking(step);
+  return value;
+};
+const inspectSplitManifest = (manifest) => {
+  if (
+    ![
+      "repository-foundation",
+      "runtime-localization",
+      "http-lifecycle",
+      "ui-foundation",
+      "core-auth",
+      "business-screens",
+    ].includes(manifest.phase) ||
+    manifest.applicationReady !== false
+  )
+    throw new Error(
+      "Split suite verification currently owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth and business-screens",
+    );
+  const count = manifestPolicy(manifest);
+  const partitions = [];
+  for (const id of suiteJobs) {
+    const expected = manifest.profiles.full.filter(
+      (check) => ciOwner(manifest, check) === id,
+    );
+    requireEqual(
+      manifest.profiles["ci-" + id],
+      expected,
+      "CI profiles must partition every full check once under its actual owner",
+    );
+    partitions.push(...expected);
+  }
+  if (new Set(partitions).size !== manifest.profiles.full.length)
+    throw new Error(
+      "CI profiles must partition every full check once under its actual owner",
+    );
+  return count;
+};
+const inspectSplitAnalysis = (workflow) => {
+  const analysis = inspectSuiteJob(
+    workflow,
+    "analysis",
+    15,
+    "needs.check.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+  );
+  requireEqual(
+    analysis.name,
+    "SonarQube Cloud analysis",
+    "Keep the native Sonar scanner check name",
+  );
+  requireEqual(
+    analysis.needs,
+    ["check", "unit", "governance"],
+    "Analysis requires successful aggregate and direct suite producer outputs",
+  );
+  for (const key of ["permissions", "outputs"])
+    if (Object.hasOwn(analysis, key))
+      throw new Error("Analysis must keep minimal inherited read permission");
+  requireEqual(
+    withoutStepNames(analysis.steps),
+    [
+      ...suiteSetup(),
+      {
+        env: {
+          SONAR_TOKEN_CONFIGURED: "${{ secrets.SONAR_TOKEN != '' }}",
+          SONAR_PROJECT_KEY: "${{ vars.SONAR_PROJECT_KEY }}",
+        },
+        run: analysisConfigurationCommand,
+      },
+      ...["unit", "governance"].flatMap((suite) => [
+        {
+          uses: downloadAction,
+          with: {
+            name: "${{ needs." + suite + ".outputs.artifact }}",
+            path: "coverage/" + suite,
+            "digest-mismatch": "error",
+          },
+        },
+        {
+          env: {
+            CI_EVIDENCE_SUITE: suite,
+            CI_EVIDENCE_PRODUCER_ATTEMPT:
+              "${{ needs." + suite + ".outputs.attempt }}",
+          },
+          run: "node scripts/ci-evidence.mjs --verify-coverage",
+        },
+      ]),
+      { run: analysisInstallCommand },
+      {
+        uses: suiteAction.scan,
+        env: {
+          SONAR_HOST_URL:
+            "${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}",
+          SONAR_TOKEN: "${{ secrets.SONAR_TOKEN }}",
+        },
+        with: {
+          args: "-Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} -Dsonar.scm.revision=${{ github.event.pull_request.head.sha || github.sha }}",
+        },
+      },
+    ],
+    "Analysis must verify separate source-bound coverage before scanning, without repeating tests",
+  );
+};
+const inspectSplitCi = (workflow, manifest) => {
+  const requiredChecks = inspectSplitManifest(manifest);
+  requireEqual(
+    workflow.on,
+    {
+      push: { branches: ["main"] },
+      pull_request: {
+        types: [
+          "opened",
+          "synchronize",
+          "reopened",
+          "edited",
+          "ready_for_review",
+        ],
+      },
+      schedule: [{ cron: "30 1 * * *" }],
+      workflow_dispatch: null,
+    },
+    "Keep all PR events, main pushes, daily and manual verification without filters",
+  );
+  requireEqual(
+    workflow.permissions,
+    { contents: "read" },
+    "Suite verification requires minimal read permission",
+  );
+  requireEqual(
+    workflow.concurrency,
+    { group: suiteConcurrencyGroup, "cancel-in-progress": false },
+    "Keep active verification and coalesce pending events by event and ref",
+  );
+  requireEqual(
+    workflow.env,
+    { KERNEL_SYNTHETIC_ENV: "1" },
+    "Suite verification uses only declared synthetic environment",
+  );
+  if (workflow.defaults !== undefined)
+    throw new Error("Suite verification cannot override execution defaults");
+  requireEqual(
+    Object.keys(workflow.jobs),
+    [...suiteJobs, "check", "analysis"],
+    "Only admitted suites, aggregate and scanner are allowed",
+  );
+  for (const [id, budget] of [
+    ["quality", 15],
+    ["audit", 10],
+    ["unit", 15],
+    ["governance", 30],
+  ]) {
+    const value = inspectSuiteJob(workflow, id, budget);
+    requireEqual(
+      value.name,
+      suiteNames[id],
+      "Keep independently visible suite display names",
+    );
+    for (const key of ["permissions", "needs"])
+      if (Object.hasOwn(value, key))
+        throw new Error(
+          "Each suite executes independently with minimal permission",
+        );
+    const measured = id === "unit" || id === "governance";
+    requireEqual(
+      value.outputs,
+      measured
+        ? {
+            artifact: "${{ steps.evidence.outputs.artifact }}",
+            attempt: "${{ steps.evidence.outputs.attempt }}",
+          }
+        : undefined,
+      "Each measured suite publishes its actual producer identity",
+    );
+    requireEqual(
+      withoutStepNames(value.steps),
+      [
+        ...suiteSetup(),
+        ...(id === "audit" ? [] : [{ run: installCommand }]),
+        { run: "npm run validate -- ci-" + id },
+        ...(measured
+          ? [
+              {
+                id: "evidence",
+                env: { CI_EVIDENCE_SUITE: id },
+                run: "node scripts/ci-evidence.mjs --record",
+              },
+              {
+                uses: suiteAction.upload,
+                with: {
+                  name: "${{ steps.evidence.outputs.artifact }}",
+                  path: `coverage/${id}/lcov.info\ncoverage/${id}/ci-evidence.json\n`,
+                  "if-no-files-found": "error",
+                  "retention-days": 3,
+                  overwrite: false,
+                  "include-hidden-files": false,
+                },
+              },
+            ]
+          : []),
+      ],
+      "Each suite must execute its declared profile exactly once and publish only its measured coverage",
+    );
+  }
+  const aggregate = inspectSuiteJob(workflow, "check", 5, "always()");
+  requireEqual(
+    aggregate.needs,
+    suiteJobs,
+    "The aggregate requires every actual validation job",
+  );
+  requireEqual(
+    aggregate.permissions,
+    {},
+    "The aggregate does not need a token",
+  );
+  if (aggregate.outputs !== undefined)
+    throw new Error("The aggregate must not fabricate suite evidence");
+  requireEqual(
+    withoutStepNames(aggregate.steps),
+    [{ env: { CI_NEEDS: "${{ toJSON(needs) }}" }, run: aggregateCommand }],
+    "The check aggregate must reject every failed, cancelled or skipped suite without rerunning tests",
+  );
+  inspectSplitAnalysis(workflow);
+  return { requiredChecks };
+};
+
 const manifestPolicy = (manifest) => {
   if (
     !Array.isArray(manifest.checks) ||
@@ -587,7 +938,8 @@ const manifestPolicy = (manifest) => {
       ([id, command], index) =>
         required[index]?.id !== id ||
         required[index]?.command !== command ||
-        JSON.stringify(required[index]?.ciJobs) !== '["check"]',
+        JSON.stringify(required[index]?.ciJobs) !==
+          JSON.stringify([ciOwner(manifest, id)]),
     )
   )
     throw new Error(
@@ -636,71 +988,6 @@ const setup = (value, { ref } = {}) => {
       "CI checkout must retain the exact tested revision and root in the current repository; Node must use .nvmrc before execution",
     );
   return node.index;
-};
-
-const inspectBootstrapFileLimit = (workflow, manifest) => {
-  const value = workflow.jobs?.["file-limit"];
-  if (value === undefined && manifest.bootstrapBaseSha === undefined)
-    return false;
-  if (
-    manifest.phase !== "repository-foundation" ||
-    !sha(manifest.bootstrapBaseSha) ||
-    !isRecord(value) ||
-    value.name !== "PR file limit" ||
-    value["runs-on"] !== "ubuntu-latest" ||
-    value["timeout-minutes"] !== 5 ||
-    value.if !==
-      `github.event_name == 'pull_request' && github.event.pull_request.base.sha == '${manifest.bootstrapBaseSha}'` ||
-    value.permissions?.contents !== "read" ||
-    value.permissions?.["pull-requests"] !== "read" ||
-    Object.keys(value.permissions).length !== 2 ||
-    Object.keys(value).some(
-      (key) =>
-        ![
-          "name",
-          "runs-on",
-          "timeout-minutes",
-          "if",
-          "permissions",
-          "steps",
-        ].includes(key),
-    ) ||
-    !Array.isArray(value.steps) ||
-    value.steps.length !== 3
-  )
-    throw new Error(
-      "The bootstrap PR file limit needs its initial base, read-only ownership and repository-foundation phase",
-    );
-  const ready = setup(value, {
-    ref: "${{ github.event.pull_request.head.sha }}",
-  });
-  const execute = commandStep(value, "node scripts/check-pr-size.mjs");
-  if (
-    ready !== 1 ||
-    execute !== 2 ||
-    value.steps.some((step, index) =>
-      Object.keys(step).some(
-        (key) =>
-          !(
-            index === execute
-              ? ["name", "run", "env"]
-              : ["name", "uses", "with"]
-          ).includes(key),
-      ),
-    ) ||
-    Object.keys(value.steps[0].with).some(
-      (key) => !["ref", "persist-credentials", "fetch-depth"].includes(key),
-    ) ||
-    Object.keys(value.steps[1].with).some(
-      (key) => key !== "node-version-file",
-    ) ||
-    JSON.stringify(value.steps[execute].env) !==
-      '{"GITHUB_TOKEN":"${{ github.token }}"}'
-  )
-    throw new Error(
-      "The bootstrap PR file limit must execute only its exact head with the read-only GitHub token",
-    );
-  return true;
 };
 
 const inspectLegacyTrigger = (events) => {
@@ -1016,6 +1303,8 @@ const inspectCoveragePublication = (check, visual, performance, fresh) => {
 
 export const inspectCi = (content, manifest) => {
   const workflow = parseWorkflow(content);
+  if (manifest.verificationModel === "split-suites-v1")
+    return inspectSplitCi(workflow, manifest);
   if (
     manifest.verificationModel !== "single-pass-v1" &&
     manifest.applicationReady !== true &&
@@ -1024,7 +1313,6 @@ export const inspectCi = (content, manifest) => {
     return inspectLegacyWorkflow(workflow, manifest, false);
   triggerPolicy(workflow);
   const requiredChecks = manifestPolicy(manifest);
-  const bootstrapFileLimit = inspectBootstrapFileLimit(workflow, manifest);
   if (
     workflow.permissions?.contents !== "read" ||
     workflow.permissions?.actions !== "read" ||
@@ -1039,27 +1327,11 @@ export const inspectCi = (content, manifest) => {
       "Metadata runs need minimal read-only evidence access and coalesced event/ref/profile queues that must not cancel active verification",
     );
   if (
-    Object.entries(workflow.jobs ?? {}).some(
-      ([name, value]) =>
-        !(bootstrapFileLimit && name === "file-limit") &&
-        value.steps?.some(
-          (step) =>
-            typeof step.run === "string" && /check-pr-size\.mjs/.test(step.run),
-        ),
-    )
-  )
-    throw new Error(
-      "PR size must be checked only by its trusted pull-request policy workflow",
-    );
-  if (
     JSON.stringify(
       Object.keys(workflow.jobs ?? {}).sort((left, right) =>
         left.localeCompare(right),
       ),
-    ) !==
-    (bootstrapFileLimit
-      ? '["analysis","check","file-limit","scope"]'
-      : '["analysis","check","scope"]')
+    ) !== '["analysis","check","scope"]'
   )
     throw new Error(
       "Each suite must have one execution owner; duplicate build/browser/image jobs are not allowed",
@@ -1078,6 +1350,11 @@ export const inspectCi = (content, manifest) => {
 
 export const inspectSonarWorkflow = (content, manifest) => {
   const workflow = parseWorkflow(content);
+  if (manifest.verificationModel === "split-suites-v1") {
+    const requiredChecks = inspectSplitManifest(manifest);
+    inspectSplitAnalysis(workflow);
+    return { requiredChecks };
+  }
   if (
     manifest.verificationModel !== "single-pass-v1" &&
     manifest.applicationReady !== true &&
@@ -1111,6 +1388,16 @@ export const inspectSonarWorkflow = (content, manifest) => {
       "Sonar coverage identity must bind the tested scope and producer attempt",
     );
   const download = pinnedAction(analysis, "actions/download-artifact");
+  const configured = commandStep(analysis, analysisConfigurationCommand);
+  if (
+    analysis.steps[configured].env?.SONAR_TOKEN_CONFIGURED !==
+      "${{ secrets.SONAR_TOKEN != '' }}" ||
+    analysis.steps[configured].env?.SONAR_PROJECT_KEY !==
+      "${{ vars.SONAR_PROJECT_KEY }}"
+  )
+    throw new Error(
+      "Sonar must require configured credentials and project binding before analysis",
+    );
   const verify = commandStep(
     analysis,
     "node scripts/check-ci.mjs --verify-coverage",
@@ -1124,7 +1411,8 @@ export const inspectSonarWorkflow = (content, manifest) => {
   );
   if (
     !(
-      ready < download.index &&
+      ready < configured &&
+      configured < download.index &&
       download.index < verify &&
       verify < analysisInstall &&
       analysisInstall < scan.index
@@ -1159,6 +1447,31 @@ export const inspectSonarWorkflow = (content, manifest) => {
   return { requiredChecks };
 };
 
+const readArtifact = async (filename, message, openFile) => {
+  const handle = await openFile(
+    filename,
+    constants.O_RDONLY |
+      (constants.O_NOFOLLOW ?? 0) |
+      (constants.O_NONBLOCK ?? 0),
+  );
+  try {
+    const opened = await handle.stat();
+    const current = await lstat(filename);
+    if (
+      !opened.isFile() ||
+      !current.isFile() ||
+      current.isSymbolicLink() ||
+      opened.dev !== current.dev ||
+      opened.ino !== current.ino
+    )
+      throw new Error(message);
+
+    return await handle.readFile();
+  } finally {
+    await handle.close();
+  }
+};
+
 export const createEvidenceRunner = ({
   directory = repository,
   environment = process.env,
@@ -1166,6 +1479,7 @@ export const createEvidenceRunner = ({
   request = fetch,
   now = () => new Date(),
   logger = console,
+  openFile = open,
 } = {}) => {
   const expectedIdentity = () =>
     validateCoverageIdentity({
@@ -1233,10 +1547,13 @@ export const createEvidenceRunner = ({
       directory,
       "coverage/verification-coverage.json",
     );
-    const status = await lstat(filename);
-    if (!status.isFile() || status.isSymbolicLink())
-      throw new Error("Coverage provenance must be an ordinary artifact file");
-    return JSON.parse(await readFile(filename, "utf8"));
+    return JSON.parse(
+      await readArtifact(
+        filename,
+        "Coverage provenance must be an ordinary artifact file",
+        openFile,
+      ),
+    );
   };
   const reusePolicy = async () => ({
     applicationReady:
@@ -1251,10 +1568,14 @@ export const createEvidenceRunner = ({
       await Promise.all(
         coverageFiles(applicationReady).map(async (file) => {
           const filename = path.join(directory, file);
-          const status = await lstat(filename);
-          if (!status.isFile() || status.isSymbolicLink())
-            throw new Error("Coverage must be ordinary measured files");
-          return [file, await readFile(filename)];
+          return [
+            file,
+            await readArtifact(
+              filename,
+              "Coverage must be ordinary measured files",
+              openFile,
+            ),
+          ];
         }),
       ),
     );
@@ -1511,15 +1832,18 @@ if (isMain && executionModes.has(process.argv[2])) {
   ({ parseDocument } = await import("yaml"));
   if (isMain) {
     try {
-      const [content, manifest] = await Promise.all([
+      const [content, manifest, codeql] = await Promise.all([
         readFile(path.join(repository, ".github/workflows/ci.yml"), "utf8"),
         readFile(path.join(repository, ".agents/validation.json"), "utf8"),
+        readFile(path.join(repository, ".github/workflows/codeql.yml"), "utf8"),
       ]);
+      inspectCodeqlWorkflow(codeql);
       console.log(
         JSON.stringify({
           status: "passed",
           ...inspectCi(content, JSON.parse(manifest)),
           scannerValidated: true,
+          securityValidated: true,
         }),
       );
     } catch (error) {

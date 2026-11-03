@@ -227,8 +227,7 @@ export const DefaultLayout = () => {
                   ),
                   key: "1",
                   label: t("account"),
-                  onClick: () =>
-                    void navigate(routeTree.account.path, { replace: true }),
+                  onClick: () => void navigate(routeTree.account.path),
                 },
                 {
                   icon: darkMode ? (

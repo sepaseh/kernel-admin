@@ -1,4 +1,5 @@
 import { apiClient } from "../../shared/api/index.ts";
+import { encodeIdPathSegment } from "../../shared/api/path.ts";
 import type { PermissionGroup, Role, RoleRequest } from "./types.ts";
 
 const basePath = "/roles";
@@ -14,7 +15,9 @@ export const deleteRole = async (
   id: Role["id"],
   signal?: AbortSignal,
 ): Promise<void> => {
-  return apiClient.del<void>(`${basePath}/${id}`, { signal });
+  return apiClient.del<void>(`${basePath}/${encodeIdPathSegment(id)}`, {
+    signal,
+  });
 };
 
 export const fetchPermissions = async (
@@ -29,7 +32,9 @@ export const fetchRole = async (
   id: Role["id"],
   signal?: AbortSignal,
 ): Promise<Role> => {
-  return apiClient.get<Role>(`${basePath}/${id}`, { signal });
+  return apiClient.get<Role>(`${basePath}/${encodeIdPathSegment(id)}`, {
+    signal,
+  });
 };
 
 export const fetchRoles = async (signal?: AbortSignal): Promise<Role[]> => {
@@ -41,5 +46,9 @@ export const updateRole = async (
   params: RoleRequest,
   signal?: AbortSignal,
 ): Promise<Role> => {
-  return apiClient.patch<Role>(`${basePath}/${id}`, params, { signal });
+  return apiClient.patch<Role>(
+    `${basePath}/${encodeIdPathSegment(id)}`,
+    params,
+    { signal },
+  );
 };

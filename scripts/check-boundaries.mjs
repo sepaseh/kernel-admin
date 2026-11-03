@@ -74,6 +74,7 @@ const productionPaths = [
   "src/shared/api/client.ts",
   "src/shared/api/config.ts",
   "src/shared/api/index.ts",
+  "src/shared/api/path.ts",
   "src/shared/api/token-response.ts",
   "src/shared/api/token.ts",
   "src/shared/api/types.ts",
@@ -593,6 +594,28 @@ const sourceFiles = async (directory, testRoot) => {
   return files.flat();
 };
 
+const registryRange = (version) =>
+  typeof version === "string" &&
+  version.trim() !== "" &&
+  semver.validRange(version) !== null;
+
+const registryOverrides = (value, dependencyFields) => {
+  if (typeof value === "string" && value.startsWith("$")) {
+    const reference = value.slice(1);
+    return dependencyFields.some(
+      (field) =>
+        Object.hasOwn(field ?? {}, reference) &&
+        registryRange(field[reference]),
+    );
+  }
+  if (value !== null && typeof value === "object" && !Array.isArray(value))
+    return Object.values(value).every((child) =>
+      registryOverrides(child, dependencyFields),
+    );
+
+  return registryRange(value);
+};
+
 export const checkBoundaries = async (requestedRoot = repository) => {
   const root = await realpath(requestedRoot);
   const manifest = JSON.parse(
@@ -612,16 +635,22 @@ export const checkBoundaries = async (requestedRoot = repository) => {
     violations.push(
       "The published phase must use one root package with only declared registry runtime dependencies and no workspaces",
     );
+  const dependencyFields = [
+    manifest.dependencies,
+    manifest.devDependencies,
+    manifest.optionalDependencies,
+    manifest.peerDependencies,
+  ];
   if (
-    Object.values(manifest.devDependencies ?? {}).some(
-      (version) =>
-        typeof version !== "string" ||
-        !version.trim() ||
-        semver.validRange(version) === null,
-    )
+    dependencyFields
+      .slice(1)
+      .some((field) =>
+        Object.values(field ?? {}).some((version) => !registryRange(version)),
+      ) ||
+    !registryOverrides(manifest.overrides ?? {}, dependencyFields)
   )
     violations.push(
-      "Development dependencies must use registry versions without aliases or local source links",
+      "Dependencies and overrides must use registry versions without aliases or local source links",
     );
 
   const entries = await readdir(root);

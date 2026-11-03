@@ -6,10 +6,12 @@ Kernel Admin is one independent React/Vite TypeScript application. Developers se
 
 ## Follow startup
 
-1. `src/main.tsx` (`src/main.tsx`, planned for a later PR) initializes observability and mounts `App` (`src/app/App.tsx`, planned for a later PR).
+The `core-auth` phase admits the providers, route metadata and layouts linked below. Startup composition joins them in a later phase.
+
+1. The planned entry point `src/main.tsx` initializes observability and mounts the planned `App` in `src/app/App.tsx`.
 2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings through the shared read lifecycle. The settings adapter validates language, logos and both palettes before Core accepts them. Bootstrap loading remains outside Ant Design.
 3. `App` loads the Ant Design provider, settings feedback and routes together when settings are ready or a bootstrap error needs themed retry feedback. Routes mount only after validated palettes are available. Later settings refresh failures retain the accepted application.
-4. `Routes.tsx` (`src/app/Routes.tsx`, planned for a later PR) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. Protected page access is checked before its lazy importer runs; allowed import failures reach the route error fallback.
+4. The planned router in `src/app/Routes.tsx` builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.
 
 The [default layout](../src/layouts/default/Default.tsx) loads the current account before rendering protected children. Menu and route checks describe what the client presents; the API authorizes each request independently.
 

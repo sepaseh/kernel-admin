@@ -7,70 +7,77 @@
       "id": "snapshot",
       "command": "npm run check:snapshot",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["business-screens"]
     },
     {
       "id": "ci-policy",
       "command": "npm run check:ci",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
+      "scopes": ["business-screens"]
+    },
+    {
+      "id": "actions-lint",
+      "command": "npm run check:actions",
+      "kind": "required",
+      "ciJobs": ["quality"],
       "scopes": ["business-screens"]
     },
     {
       "id": "guidance",
       "command": "npm run check:guidance",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["business-screens"]
     },
     {
       "id": "audit",
       "command": "npm run audit",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["audit"],
       "scopes": ["business-screens"]
     },
     {
       "id": "boundaries",
       "command": "npm run check:boundaries",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["business-screens"]
     },
     {
       "id": "typecheck",
       "command": "npm run typecheck",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["business-screens"]
     },
     {
       "id": "lint",
       "command": "npm run lint",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["business-screens"]
     },
     {
       "id": "format",
       "command": "npm run format:check",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["business-screens"]
     },
     {
       "id": "unit-coverage",
       "command": "npm run test:coverage",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["unit"],
       "scopes": ["business-screens"]
     },
     {
       "id": "governance-coverage",
       "command": "npm run test:governance",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["governance"],
       "scopes": ["business-screens"]
     },
     {
@@ -85,6 +92,7 @@
     "full": [
       "snapshot",
       "ci-policy",
+      "actions-lint",
       "guidance",
       "audit",
       "boundaries",
@@ -98,6 +106,7 @@
     "complete": [
       "snapshot",
       "ci-policy",
+      "actions-lint",
       "guidance",
       "audit",
       "boundaries",
@@ -106,7 +115,20 @@
       "format",
       "unit-coverage",
       "governance-coverage"
-    ]
+    ],
+    "ci-quality": [
+      "snapshot",
+      "ci-policy",
+      "actions-lint",
+      "guidance",
+      "boundaries",
+      "typecheck",
+      "lint",
+      "format"
+    ],
+    "ci-audit": ["audit"],
+    "ci-unit": ["unit-coverage"],
+    "ci-governance": ["governance-coverage"]
   },
   "externalWorkflows": [
     {
@@ -114,9 +136,9 @@
       "mode": "ci"
     },
     {
-      "path": ".github/workflows/pr-policy.yml",
-      "mode": "ci"
+      "path": ".github/workflows/codeql.yml",
+      "mode": "security"
     }
   ],
-  "verificationModel": "single-pass-v1"
+  "verificationModel": "split-suites-v1"
 }
