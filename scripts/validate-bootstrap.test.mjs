@@ -528,7 +528,7 @@ const isCoreAuthPhaseFile = (file) =>
   ].includes(file);
 
 const isBusinessPhaseFile = (file) =>
-  /^scripts\/(?:healthcheck|validate-deployment-env)(?:\.test)?\.mjs$/.test(
+  /^scripts\/(?:(?:healthcheck|validate-deployment-env)(?:\.test)?|deployment\.test-support)\.mjs$/.test(
     file,
   ) ||
   (/^src\/features\/(?:account|calendar|dashboard|roles|settings|users)\//.test(
@@ -687,6 +687,7 @@ const earlyApplicationSources = new Set([
   "src/shared/lib/dialog-focus.test.tsx",
 ]);
 const earlierOperationsSources = new Set([
+  "scripts/deployment.test-support.mjs",
   "tooling/paths.ts",
   "scripts/healthcheck.mjs",
   "scripts/healthcheck.test.mjs",
@@ -1406,6 +1407,7 @@ test("business screens require the complete prior closure and all guarded form m
   const required = current.allowedFiles.filter(
     (file) => isBusinessPhaseFile(file) || isCoreAuthPhaseFile(file),
   );
+  assert.ok(required.includes("scripts/deployment.test-support.mjs"));
   for (const missing of required)
     assert.throws(
       () =>

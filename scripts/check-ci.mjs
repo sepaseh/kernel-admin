@@ -707,11 +707,12 @@ const inspectSplitManifest = (manifest) => {
       "http-lifecycle",
       "ui-foundation",
       "core-auth",
+      "business-screens",
     ].includes(manifest.phase) ||
     manifest.applicationReady !== false
   )
     throw new Error(
-      "Split suite verification currently owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation and core-auth",
+      "Split suite verification currently owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth and business-screens",
     );
   const count = manifestPolicy(manifest);
   const partitions = [];

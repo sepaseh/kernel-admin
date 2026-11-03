@@ -203,6 +203,7 @@ const coreAuthFiles = [
   "src/layouts/default/index.ts",
 ];
 const businessFiles = [
+  "scripts/deployment.test-support.mjs",
   "scripts/healthcheck.mjs",
   "scripts/healthcheck.test.mjs",
   "scripts/validate-deployment-env.mjs",

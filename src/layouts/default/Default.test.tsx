@@ -337,12 +337,30 @@ describe("DefaultLayout", () => {
     );
   });
 
-  it("keeps a transient session-read failure retryable and hides protected content", async () => {
+  it("lets the user log out after an account permission denial", async () => {
     vi.mocked(getAccount).mockRejectedValueOnce(
-      new Error("Temporarily offline"),
+      new AdminApiError("Forbidden", 403),
     );
     const { user } = renderLayout();
-    await screen.findByText("Temporarily offline");
+
+    const logoutButton = await screen.findByRole("button", { name: "logout" });
+    expect(clearAccessToken).not.toHaveBeenCalled();
+    await user.click(logoutButton);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("location")).toHaveTextContent("/auth"),
+    );
+    expect(logout).toHaveBeenCalledOnce();
+    expect(clearAccessToken).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    new Error("Temporarily offline"),
+    new AdminApiError("Forbidden", 403),
+  ])("keeps the session and offers retry after $message", async (error) => {
+    vi.mocked(getAccount).mockRejectedValueOnce(error);
+    const { user } = renderLayout();
+    await screen.findByText(error.message);
     expect(clearAccessToken).not.toHaveBeenCalled();
     expect(
       screen.queryByRole("heading", { name: "Dashboard content" }),
