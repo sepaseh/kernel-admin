@@ -7,84 +7,91 @@
       "id": "snapshot",
       "command": "npm run check:snapshot",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["storybook-verification"]
     },
     {
       "id": "ci-policy",
       "command": "npm run check:ci",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
+      "scopes": ["storybook-verification"]
+    },
+    {
+      "id": "actions-lint",
+      "command": "npm run check:actions",
+      "kind": "required",
+      "ciJobs": ["quality"],
       "scopes": ["storybook-verification"]
     },
     {
       "id": "guidance",
       "command": "npm run check:guidance",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["storybook-verification"]
     },
     {
       "id": "audit",
       "command": "npm run audit",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["audit"],
       "scopes": ["storybook-verification"]
     },
     {
       "id": "boundaries",
       "command": "npm run check:boundaries",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["storybook-verification"]
     },
     {
       "id": "typecheck",
       "command": "npm run typecheck",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["storybook-verification"]
     },
     {
       "id": "lint",
       "command": "npm run lint",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["storybook-verification"]
     },
     {
       "id": "format",
       "command": "npm run format:check",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["storybook-verification"]
     },
     {
       "id": "unit-coverage",
       "command": "npm run test:coverage",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["unit"],
       "scopes": ["storybook-verification"]
     },
     {
       "id": "governance-coverage",
       "command": "npm run test:governance",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["governance"],
       "scopes": ["storybook-verification"]
     },
     {
       "id": "storybook-build",
       "command": "npm run build-storybook",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["storybook-verification"]
     },
     {
       "id": "storybook-browser",
       "command": "npm run test:storybook",
       "kind": "required",
-      "ciJobs": ["check"],
+      "ciJobs": ["quality"],
       "scopes": ["storybook-verification"]
     },
     {
@@ -99,6 +106,7 @@
     "full": [
       "snapshot",
       "ci-policy",
+      "actions-lint",
       "guidance",
       "audit",
       "boundaries",
@@ -114,6 +122,7 @@
     "complete": [
       "snapshot",
       "ci-policy",
+      "actions-lint",
       "guidance",
       "audit",
       "boundaries",
@@ -124,7 +133,22 @@
       "governance-coverage",
       "storybook-build",
       "storybook-browser"
-    ]
+    ],
+    "ci-quality": [
+      "snapshot",
+      "ci-policy",
+      "actions-lint",
+      "guidance",
+      "boundaries",
+      "typecheck",
+      "lint",
+      "format",
+      "storybook-build",
+      "storybook-browser"
+    ],
+    "ci-audit": ["audit"],
+    "ci-unit": ["unit-coverage"],
+    "ci-governance": ["governance-coverage"]
   },
   "externalWorkflows": [
     {
@@ -132,9 +156,9 @@
       "mode": "ci"
     },
     {
-      "path": ".github/workflows/pr-policy.yml",
-      "mode": "ci"
+      "path": ".github/workflows/codeql.yml",
+      "mode": "security"
     }
   ],
-  "verificationModel": "single-pass-v1"
+  "verificationModel": "split-suites-v1"
 }

@@ -5,13 +5,14 @@ Explain the concrete problem, change and any prerequisite PR.
 ## Published scope
 
 - Phase:
-- GitHub changed-file count (initial target 80, reserve 20 for review fixes, hard maximum 100; including deletions/renames/binaries):
+- GitHub changed-file count and scope rationale (advisory initial target 80; explain larger cohesive changes, including deletions/renames/binaries):
 - Application readiness and limitations:
 
 ## Verification
 
 - Exact committed snapshot checked:
 - Commands actually run and results:
+- Native CodeQL result and analysis execution, or hosted-evidence blocker:
 - CodeRabbit findings and their disposition:
 - Sonar project and actual analysis/quality-gate status, or setup blocker:
 

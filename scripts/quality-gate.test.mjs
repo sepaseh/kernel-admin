@@ -23,13 +23,10 @@ const fixtureGit = (root, args) => {
   );
   assert.equal(result.status, 0, result.stderr);
 };
-const qualityFixture = async (context) => {
+const qualityFixture = async (context, trackedPath = "src/tracked.ts") => {
   const root = await fixture(context);
   await mkdir(path.join(root, "src"));
-  await writeFile(
-    path.join(root, "src/tracked.ts"),
-    "export const value = 1;\n",
-  );
+  await writeFile(path.join(root, trackedPath), "export const value = 1;\n");
   await writeFile(
     path.join(root, "checks.cjs"),
     `const fs = require("node:fs");
@@ -50,13 +47,7 @@ if (name === "typecheck" && fs.existsSync("fail-typecheck")) process.exit(1);
     }),
   );
   fixtureGit(root, ["init", "--initial-branch=main"]);
-  fixtureGit(root, [
-    "add",
-    "--",
-    "src/tracked.ts",
-    "checks.cjs",
-    "package.json",
-  ]);
+  fixtureGit(root, ["add", "--", trackedPath, "checks.cjs", "package.json"]);
   fixtureGit(root, [
     "-c",
     "user.name=Kernel Hook Test",
@@ -127,6 +118,29 @@ test(
       const result = runOptionalHook(root, "quality-gate.sh", "");
       assert.equal(result.status, 0, result.stderr);
       assert.deepEqual(await checkedCommands(root), ["lint", "typecheck"]);
+    }
+  },
+);
+
+test(
+  "quality hook runs for tracked and untracked non-ASCII TypeScript paths",
+  optionalBash,
+  async (context) => {
+    for (const filename of ["src/café.ts", "src/داده.tsx"]) {
+      for (const tracked of [false, true]) {
+        const root = await qualityFixture(
+          context,
+          tracked ? filename : undefined,
+        );
+        await writeFile(
+          path.join(root, filename),
+          "export const changed = true;\n",
+        );
+
+        const result = runOptionalHook(root, "quality-gate.sh", "");
+        assert.equal(result.status, 0, result.stderr);
+        assert.deepEqual(await checkedCommands(root), ["lint", "typecheck"]);
+      }
     }
   },
 );

@@ -2,6 +2,9 @@
 
 These Ant Design, i18next, icon and React Router conventions apply to this standalone admin. Keep components, hooks and accessibility consistent with the existing source.
 
+The `core-auth` snapshot admits shared controls, hooks, core providers and authentication screens with jsdom tests.
+Route composition and the remaining feature screens are planned for later phases.
+
 ## Components
 
 - Keep one exported React component per `.tsx` file when practical.

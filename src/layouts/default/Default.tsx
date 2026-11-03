@@ -163,16 +163,23 @@ export const DefaultLayout = () => {
   }, [clearSession]);
 
   useEffect(() => {
-    if (
-      session.error instanceof AdminApiError &&
-      [401, 403].includes(session.error.status ?? 0)
-    )
+    if (session.error instanceof AdminApiError && session.error.status === 401)
       clearSession();
   }, [clearSession, session.error]);
 
   if (session.loading) return <Spin fullscreen />;
   if (session.error)
-    return <RequestFeedback error={session.error} retry={session.reload} />;
+    return (
+      <>
+        <RequestFeedback error={session.error} retry={session.reload} />
+        {session.error instanceof AdminApiError &&
+          session.error.status === 403 && (
+            <Button danger loading={loggingOut} onClick={handleLogout}>
+              {t("logout")}
+            </Button>
+          )}
+      </>
+    );
   if (!user) return <Spin fullscreen />;
 
   const userName = `${user.firstName} ${user.lastName}`.trim();
@@ -227,8 +234,7 @@ export const DefaultLayout = () => {
                   ),
                   key: "1",
                   label: t("account"),
-                  onClick: () =>
-                    void navigate(routeTree.account.path, { replace: true }),
+                  onClick: () => void navigate(routeTree.account.path),
                 },
                 {
                   icon: darkMode ? (

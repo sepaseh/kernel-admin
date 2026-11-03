@@ -302,6 +302,19 @@ test("HTML comments hide only commented links, including an unfinished comment",
   );
 });
 
+test("HTML comment end variants preserve links after the first terminator", () => {
+  for (const closing of ["-->", "--!>"])
+    for (const text of [
+      `[before](owner.ts) <!-- [example](ignored.md) ${closing} [after](test.ts)`,
+      `[before](owner.ts)\n<!--\n[example](ignored.md)\n${closing}\n[after](test.ts)`,
+      `> [before](owner.ts) <!-- [example](ignored.md) ${closing} [after](test.ts)`,
+      `- [before](owner.ts) <!-- [example](ignored.md) ${closing} [after](test.ts)`,
+      `[before](owner.ts) <!-- <!-- ${closing} [after](test.ts) -->`,
+      `[before](owner.ts) <!-- \x60\x60\x60\n[example](ignored.md)\n${closing}\n[after](test.ts)`,
+    ])
+      assert.deepEqual(markdownLinks(text), ["owner.ts", "test.ts"], text);
+});
+
 test("list padding keeps five-column residual indentation as code", () => {
   for (const marker of ["-", "1.", "123456789."])
     for (const padding of [" ", "  ", "   ", "    "])

@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { waitFor, within } from "@testing-library/react";
 import type * as ReactI18next from "react-i18next";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getAccount } from "@/features/account/api.ts";
@@ -96,6 +102,15 @@ const Location = () => {
   return <output aria-label="location">{location.pathname}</output>;
 };
 
+const AccountPage = () => {
+  const navigate = useNavigate();
+  return (
+    <button onClick={() => void navigate(-1)} type="button">
+      Back
+    </button>
+  );
+};
+
 const renderLayout = () =>
   render(
     <MemoryRouter initialEntries={["/"]}>
@@ -103,6 +118,7 @@ const renderLayout = () =>
       <Routes>
         <Route element={<DefaultLayout />} path="/">
           <Route index element={<h1>Dashboard content</h1>} />
+          <Route element={<AccountPage />} path="account" />
           <Route element={<h1>Users content</h1>} path="users" />
         </Route>
         <Route element={<h1>Authentication</h1>} path="/auth" />
@@ -225,6 +241,18 @@ describe("DefaultLayout", () => {
     expect(setUnauthorizedHandler).toHaveBeenLastCalledWith(null);
   });
 
+  it("returns to the previous page after opening the account menu item", async () => {
+    const { user } = await renderLoadedLayout();
+
+    await user.click(screen.getByRole("button", { name: "account" }));
+    await user.click(await screen.findByRole("menuitem", { name: "account" }));
+    await user.click(await screen.findByRole("button", { name: "Back" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Dashboard content" }),
+    ).toBeVisible();
+  });
+
   it("shows the account name beside the user icon as a tooltip", async () => {
     const { user } = await renderLoadedLayout();
 
@@ -309,12 +337,30 @@ describe("DefaultLayout", () => {
     );
   });
 
-  it("keeps a transient session-read failure retryable and hides protected content", async () => {
+  it("lets the user log out after an account permission denial", async () => {
     vi.mocked(getAccount).mockRejectedValueOnce(
-      new Error("Temporarily offline"),
+      new AdminApiError("Forbidden", 403),
     );
     const { user } = renderLayout();
-    await screen.findByText("Temporarily offline");
+
+    const logoutButton = await screen.findByRole("button", { name: "logout" });
+    expect(clearAccessToken).not.toHaveBeenCalled();
+    await user.click(logoutButton);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("location")).toHaveTextContent("/auth"),
+    );
+    expect(logout).toHaveBeenCalledOnce();
+    expect(clearAccessToken).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    new Error("Temporarily offline"),
+    new AdminApiError("Forbidden", 403),
+  ])("keeps the session and offers retry after $message", async (error) => {
+    vi.mocked(getAccount).mockRejectedValueOnce(error);
+    const { user } = renderLayout();
+    await screen.findByText(error.message);
     expect(clearAccessToken).not.toHaveBeenCalled();
     expect(
       screen.queryByRole("heading", { name: "Dashboard content" }),

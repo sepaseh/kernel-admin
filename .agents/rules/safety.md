@@ -12,6 +12,10 @@ force pushes and recursive moves/deletes against computed paths. Inspect status
 and relevant diffs before changing Git state. Existing authorization in the current
 conversation remains valid; do not ask again for the same authorized action.
 
+Before recursive cleanup, verify the resolved target stays within the owned root.
+Delete only resources created for the task and preserve operation and cleanup
+failures rather than suppressing either.
+
 ## Secrets and local state
 
 Do not read, print, edit or commit secrets without explicit authorization for that
@@ -20,10 +24,10 @@ passwords, databases and uploads as sensitive. Never dump the full environment o
 run broad secret searches. Authentication tools may use existing credentials
 without exposing their values; status checks need names and metadata only.
 
-Preserve ignored legacy `.env.local` and `server/data` in place. They are operator
-state, outside this frontend's source, and cannot be used as test fixtures. Keep
-machine-specific tool settings in ignored `.agents/settings.local.json` rather
-than changing shared product rules.
+Never use operator environments, existing services, databases, buckets or uploads
+as test fixtures. Use synthetic disposable resources. Keep machine-specific tool
+settings in ignored `.agents/settings.local.json` rather than changing shared
+product rules; do not read or publish that local file while reviewing guidance.
 
 ## External systems
 
@@ -33,7 +37,13 @@ remote configuration require explicit authorization covering that action. Honor
 existing session authorization and user preferences without inventing additional
 approval steps; preparation alone does not authorize remote effects.
 
-Keep files outside the authorized project scope untouched. Use
-synthetic disposable fixtures and clean only resources created for the task.
-Optional safety hooks are a host convenience, not a complete security boundary,
-permission grant, runtime dependency or substitute for the full validation gate.
+Post standalone PR comments only with prior explicit user authorization.
+Authorization to fix, commit, push or reply to review threads does not authorize
+a standalone comment.
+
+Keep files outside the authorized project scope untouched. Optional safety hooks
+are a host convenience, not a complete security boundary, permission grant,
+runtime dependency or substitute for the full validation gate.
+
+Preserve ignored legacy `.env.local` and `server/data` in place. They are operator
+state, outside this frontend's source, and cannot be used as test fixtures.

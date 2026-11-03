@@ -147,7 +147,11 @@ describe("authentication API", () => {
       otp: "123456",
       password: replacementCredential,
     });
-    await requestOtp({ mobile: "09120000000", purpose: "login" });
+    const otpResponse = { expiresIn: 120, remainingSeconds: 0 };
+    vi.mocked(apiClient.post).mockResolvedValueOnce(otpResponse);
+    await expect(
+      requestOtp({ mobile: "09120000000", purpose: "login" }),
+    ).resolves.toEqual(otpResponse);
 
     expect(apiClient.post).toHaveBeenNthCalledWith(
       1,
@@ -174,5 +178,39 @@ describe("authentication API", () => {
       { mobile: "09120000000", purpose: "login" },
       { signal: undefined },
     );
+  });
+
+  it.each([
+    { label: "null", response: null },
+    { label: "a primitive", response: "invalid" },
+    { label: "an array", response: [] },
+    { label: "a missing expiry", response: { remainingSeconds: 30 } },
+    { label: "a missing cooldown", response: { expiresIn: 120 } },
+    {
+      label: "a string expiry",
+      response: { expiresIn: "120", remainingSeconds: 30 },
+    },
+    {
+      label: "an infinite expiry",
+      response: { expiresIn: Infinity, remainingSeconds: 30 },
+    },
+    {
+      label: "a string cooldown",
+      response: { expiresIn: 120, remainingSeconds: "30" },
+    },
+    {
+      label: "a non-finite cooldown",
+      response: { expiresIn: 120, remainingSeconds: NaN },
+    },
+    {
+      label: "a negative cooldown",
+      response: { expiresIn: 120, remainingSeconds: -1 },
+    },
+  ])("rejects an OTP reply with $label", async ({ response }) => {
+    vi.mocked(apiClient.post).mockResolvedValueOnce(response);
+
+    await expect(
+      requestOtp({ mobile: "09120000000", purpose: "login" }),
+    ).rejects.toThrow();
   });
 });

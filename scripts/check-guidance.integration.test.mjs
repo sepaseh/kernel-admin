@@ -260,6 +260,7 @@ test("translated prose in raw HTML and numeric character references is rejected"
     allowedFiles: ["future/handbook.md"],
   });
   for (const content of [
+    "<!-- Hidden comment --!> راهنمای پروژه\n",
     "<div>\nراهنمای پروژه\n</div>\n",
     "<div>\n`راهنما`\n</div>\n",
     '<p title="راهنما">English text</p>\n',
@@ -556,6 +557,7 @@ test("unsafe existing destinations fail for safety while missing targets retain 
       "prefix <![CDATA[[example](ignored.md)]]> [unsafe](" +
         destination +
         ")\n",
+      "<!-- [example](ignored.md) --!> [unsafe](" + destination + ")\n",
     ]) {
       await write("docs/source-navigation.md", text);
       assert.ok(
