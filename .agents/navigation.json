@@ -184,18 +184,20 @@
     },
     {
       "id": "providers-and-access",
-      "when": "Change Core settings, Ant Design configuration, route metadata or client access rules.",
+      "when": "Change Core settings, Ant Design configuration, route metadata, client access rules or not-found behavior.",
       "owners": [
         "src/app/providers/core/Core.tsx",
         "src/app/providers/antd/Antd.tsx",
         "src/app/config/routes.ts",
-        "src/app/lib/access.ts"
+        "src/app/lib/access.ts",
+        "src/app/not-found/NotFound.tsx"
       ],
       "contracts": ["docs/architecture.md", "docs/localization.md"],
       "tests": [
         "src/app/providers/core/Core.test.tsx",
         "src/app/providers/antd/Antd.test.tsx",
         "src/app/lib/access.test.ts",
+        "src/app/not-found/NotFound.test.tsx",
         "src/layouts/default/Default.test.tsx"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
