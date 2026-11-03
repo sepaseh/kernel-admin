@@ -8,6 +8,7 @@ import {
   setAccessToken,
 } from "../../shared/api/index.ts";
 import { parseAccessToken } from "../../shared/api/token-response.ts";
+import { i18nInstance } from "../../shared/i18n/index.ts";
 import type {
   ChangePasswordParams,
   ForgotPasswordParams,
@@ -91,7 +92,29 @@ export const requestOtp = async (
   params: OtpRequestParams,
   signal?: AbortSignal,
 ): Promise<OtpRequestProps> => {
-  return apiClient.post<OtpRequestProps>(`${basePath}/otp-request`, params, {
-    signal,
-  });
+  const response = await apiClient.post<unknown>(
+    `${basePath}/otp-request`,
+    params,
+    {
+      signal,
+    },
+  );
+  if (
+    typeof response !== "object" ||
+    response === null ||
+    Array.isArray(response) ||
+    !("expiresIn" in response) ||
+    !("remainingSeconds" in response) ||
+    typeof response.expiresIn !== "number" ||
+    !Number.isFinite(response.expiresIn) ||
+    typeof response.remainingSeconds !== "number" ||
+    !Number.isFinite(response.remainingSeconds) ||
+    response.remainingSeconds < 0
+  )
+    throw new Error(i18nInstance.t("unexpectedError"));
+
+  return {
+    expiresIn: response.expiresIn,
+    remainingSeconds: response.remainingSeconds,
+  };
 };

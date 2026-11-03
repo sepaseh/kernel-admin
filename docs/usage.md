@@ -1,6 +1,6 @@
 # Prepare to run Kernel Admin
 
-The current `ui-foundation` snapshot admits shared controls, theme and preference helpers, guarded mutation hooks, HTTP/session lifecycles and localization modules with `applicationReady: false`. Application composition, the Vite entry point, public environment example and build/preview commands are planned for later phases. The steps below describe the prerequisites and workflow after that source and its complete verification are admitted; they are not runnable instructions for this snapshot.
+The `core-auth` snapshot admits providers, access rules, authentication screens and layouts alongside shared controls, HTTP/session lifecycles and localization modules. It declares `applicationReady: false`. The steps below apply after later phases admit application composition, the Vite entry point, the public environment example, build and preview commands, and their complete verification.
 
 For that later phase, choose a compatible backend you are authorized to use. Kernel Admin's local HTTP contract lets that service supply authentication, settings and application data without requiring a particular backend repository or tooling.
 

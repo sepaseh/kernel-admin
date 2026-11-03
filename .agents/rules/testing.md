@@ -2,7 +2,7 @@
 
 Use the [manifest](../validation.json) and [validation policy](../../docs/validation.md). Start with the smallest relevant check, then run the declared full profile on the exact isolated proposed snapshot before an authorized commit, push or handoff. Focused profiles do not replace required checks.
 
-The `ui-foundation` phase admits unit, jsdom component and governance tests.
+The `core-auth` phase admits unit, jsdom component and governance tests.
 Storybook, application browser, visual, Pact and operational suites remain
 later-phase requirements; the procedures below apply when their owners are admitted.
 

@@ -2,13 +2,15 @@
 
 Use this reference when changing an HTTP adapter, session transition or asynchronous screen. Start with the relevant owner and its tests:
 
-The `ui-foundation` snapshot admits transport, feature HTTP adapters, settings validation and guarded read/mutation hooks with `applicationReady: false`. Feature forms, Core, layouts and application journeys remain later integration requirements. Descriptions of those future consumers below define the required boundaries; module tests do not establish an assembled application or live backend compatibility.
+The `core-auth` snapshot admits transport, feature HTTP adapters, settings validation, guarded read and mutation hooks, Core, layouts and authentication forms. Application composition and live backend integration require separate verification.
 
 | Change                                        | Owner                                                             | Regression examples                                                    |
 | --------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | Dispatch, refresh, replay or transport errors | [`client.ts`](../src/shared/api/client.ts)                        | [`client.test.ts`](../src/shared/api/client.test.ts)                   |
 | Credential lifetime or generation             | [`token.ts`](../src/shared/api/token.ts)                          | [`token.test.ts`](../src/shared/api/token.test.ts)                     |
 | Login, registration or logout                 | [Authentication API](../src/features/auth/api.ts)                 | [Logout lifecycle](../src/features/auth/logout.test.ts)                |
+| OTP cancellation and cooldown                 | [OTP request hook](../src/features/auth/useOtpRequest.ts)         | [OTP lifecycle](../src/features/auth/useOtpRequest.test.tsx)           |
+| Account loading and logout in protected UI    | [Default layout](../src/layouts/default/Default.tsx)              | [Layout lifecycle](../src/layouts/default/Default.test.tsx)            |
 | Read cancellation and replacement             | [`useReadResource`](../src/shared/hooks/useReadResource.ts)       | [Read lifecycles](../src/shared/hooks/useReadResource.test.ts)         |
 | Mutation identity and continuation            | [`useMutationRequest`](../src/shared/hooks/useMutationRequest.ts) | [Mutation lifecycles](../src/shared/hooks/useMutationRequest.test.tsx) |
 
@@ -70,17 +72,17 @@ Disabled resources expose no stale data, loading or error. Keep independent list
 
 The shared `useMutationRequest` hook binds work to its identity, enabled state and initiating authentication generation. Its `run` method forwards an owned cancellation signal and returns accepted data with an `isCurrent()` guard. Use that guard before success effects and `isCurrentMutationError` before failure presentation. Unmounting or changing the scope invalidates pending continuation; stale or cancelled work returns no accepted result.
 
-When feature forms are admitted, they must connect the hook's cancellation and submitting state to the owning form.
+When adding a feature form that uses this hook, connect cancellation and submitting state to the owning form.
 
 An admitted authentication form must cancel its OTP request and clear old OTP/cooldown state when the mobile number changes. Its pending-operation guard must bind the intent before asynchronous OTP validation. Enter and button submission must use the same form validation and duplicate-request guard. The current login and registration APIs already guard credential installation after transport fulfillment.
 
 The user form (`src/features/users/components/user-form/UserForm.tsx`, planned for a later PR) and password reset (`src/features/users/Users.tsx`, planned for a later PR) must reveal a generated password only after a successful API response and while the initiating login is current. They must display a notification and attempt to copy the value to the clipboard; clipboard failure must not prevent the notification. The form's navigation and completion callbacks must also require the mutation to remain current. Preserve those separate guards and reuse `profileNameMaxLength` from `src/shared/contracts` rather than inventing another limit.
 
-The later default layout must check the account before rendering protected children and retain explicit loading/error/retry states. The API independently enforces administrator safeguards and every mutation. Cancellation protects client continuation; it cannot undo a server mutation or a browser cookie side effect.
+The default layout checks the account before rendering protected children and exposes explicit loading, error and retry states. The API independently enforces administrator safeguards and authorizes each mutation. Cancellation protects client continuation. Server mutations and browser cookie effects can persist after cancellation.
 
 ## Settings and troubleshooting
 
-The [settings adapter](../src/features/settings/api.ts) validates the complete envelope, the required palette fields, optional logos and complete language metadata. The later Core provider must preserve accepted settings across refresh failures and replace older reads when a save succeeds. Language authority is described in [localization](localization.md).
+The settings adapter validates the complete envelope, the required palette fields, optional logos and complete language metadata. Core preserves accepted settings across refresh failures and replaces older reads when a save succeeds. [Settings adapter](../src/features/settings/api.ts) and [localization](localization.md).
 
 | Symptom                                               | First check                                                                                                                            |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |

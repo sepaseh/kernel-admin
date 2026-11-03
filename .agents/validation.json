@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "phase": "ui-foundation",
+  "phase": "core-auth",
   "applicationReady": false,
   "checks": [
     {
@@ -8,84 +8,84 @@
       "command": "npm run check:snapshot",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     },
     {
       "id": "ci-policy",
       "command": "npm run check:ci",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     },
     {
       "id": "actions-lint",
       "command": "npm run check:actions",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     },
     {
       "id": "guidance",
       "command": "npm run check:guidance",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     },
     {
       "id": "audit",
       "command": "npm run audit",
       "kind": "required",
       "ciJobs": ["audit"],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     },
     {
       "id": "boundaries",
       "command": "npm run check:boundaries",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     },
     {
       "id": "typecheck",
       "command": "npm run typecheck",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     },
     {
       "id": "lint",
       "command": "npm run lint",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     },
     {
       "id": "format",
       "command": "npm run format:check",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     },
     {
       "id": "unit-coverage",
       "command": "npm run test:coverage",
       "kind": "required",
       "ciJobs": ["unit"],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     },
     {
       "id": "governance-coverage",
       "command": "npm run test:governance",
       "kind": "required",
       "ciJobs": ["governance"],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     },
     {
       "id": "guidance-tests",
       "command": "npm run test:guidance",
       "kind": "advisory",
       "ciJobs": [],
-      "scopes": ["ui-foundation"]
+      "scopes": ["core-auth"]
     }
   ],
   "profiles": {

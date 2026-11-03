@@ -143,12 +143,13 @@ test("split CI independently exposes only actual static, audit, unit and governa
   assert.deepEqual(new Set(partitions), new Set(selected.profiles.full));
 });
 
-test("split CI retains the complete gate for repository, localization, HTTP and UI phases", () => {
+test("split CI retains the complete gate through the core authentication phase", () => {
   for (const phase of [
     "repository-foundation",
     "runtime-localization",
     "http-lifecycle",
     "ui-foundation",
+    "core-auth",
   ]) {
     const selected = actualManifest();
     selected.phase = phase;
@@ -174,16 +175,17 @@ test("split CI rejects unknown, unadmitted and runnable application phases", () 
     ["runtime-localization", true],
     ["http-lifecycle", true],
     ["ui-foundation", true],
+    ["core-auth", true],
   ]) {
     const selected = { ...actualManifest(), phase, applicationReady };
 
     assert.throws(
       () => inspectCi(stringify(actualWorkflow()), selected),
-      /owns only repository-foundation, runtime-localization, http-lifecycle and ui-foundation/,
+      /owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation and core-auth/,
     );
     assert.throws(
       () => inspectSonarWorkflow(stringify(actualWorkflow()), selected),
-      /owns only repository-foundation, runtime-localization, http-lifecycle and ui-foundation/,
+      /owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation and core-auth/,
     );
   }
 });

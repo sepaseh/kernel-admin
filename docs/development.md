@@ -10,7 +10,7 @@ Use this guide to prepare a focused change in the existing checkout. [Contributi
 
 Keep one root package, locked registry dependencies and local frontend contracts. The consuming developer chooses a compatible backend; do not import another project's source or SDK as a prerequisite.
 
-The `ui-foundation` phase admits shared UI controls, theme and preference helpers, guarded mutation hooks, observability and local assets alongside the HTTP, session, runtime and localization modules. Read their owners and nearby unit tests through [source navigation](source-navigation.md). Use [authentication and requests](authentication.md) for transport, session and request-hook changes, [localization](localization.md) for any of the ten catalogs or Persian date data, and [DESIGN](../DESIGN.md) for UI behavior and styling.
+The `core-auth` phase adds settings and Ant Design providers, access rules, authentication screens and layouts to the existing HTTP, session, localization and shared UI modules. Read their owners and nearby unit tests through [source navigation](source-navigation.md). Use [authentication and requests](authentication.md) for transport, session and request-hook changes, [localization](localization.md) for any of the ten catalogs or Persian date data, and [DESIGN](../DESIGN.md) for UI behavior and styling.
 
 Keep feature API/types with that feature, shared transport/session state in `src/shared/api` and request hooks in `src/shared/hooks`. Preserve memory-only tokens, login/logout generations, bounded shared refresh, cancellation and stale-result guards. Runtime source changes require reading the corresponding admitted contracts and tests first.
 

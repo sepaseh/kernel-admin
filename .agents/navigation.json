@@ -163,6 +163,48 @@
       "limitations": "Authentication execution and server-session revocation occur behind HTTP; client token clearing is not server revocation."
     },
     {
+      "id": "auth-screens",
+      "when": "Change login, registration, password recovery or OTP form behavior.",
+      "owners": [
+        "src/features/login/Login.tsx",
+        "src/features/register/Register.tsx",
+        "src/features/forgot-pass/ForgotPass.tsx",
+        "src/features/auth/useOtpRequest.ts"
+      ],
+      "contracts": ["src/features/auth/types.ts", "docs/authentication.md"],
+      "tests": [
+        "src/features/login/Login.test.tsx",
+        "src/features/register/Register.test.tsx",
+        "src/features/forgot-pass/ForgotPass.test.tsx",
+        "src/features/auth/useOtpRequest.test.tsx"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/testing.md"],
+      "limitations": "Component tests exercise form and request behavior with synthetic responses. Server authentication remains behind HTTP."
+    },
+    {
+      "id": "providers-and-access",
+      "when": "Change Core settings, Ant Design configuration, route metadata, client access rules or not-found behavior.",
+      "owners": [
+        "src/app/providers/core/Core.tsx",
+        "src/app/providers/antd/Antd.tsx",
+        "src/app/config/routes.ts",
+        "src/app/lib/access.ts",
+        "src/app/not-found/NotFound.tsx"
+      ],
+      "contracts": ["docs/architecture.md", "docs/localization.md"],
+      "tests": [
+        "src/app/providers/core/Core.test.tsx",
+        "src/app/providers/antd/Antd.test.tsx",
+        "src/app/lib/access.test.ts",
+        "src/app/not-found/NotFound.test.tsx",
+        "src/layouts/default/Default.test.tsx"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/localization.md"],
+      "limitations": "Client access rules control UI visibility. The HTTP API enforces authorization."
+    },
+    {
       "id": "shared-translation",
       "when": "Reuse or add a semantic UI meaning in all ten complete flat local catalogs.",
       "owners": [
@@ -182,6 +224,44 @@
       "checks": ["boundaries", "typecheck", "unit-coverage"],
       "rules": [".agents/rules/localization.md", ".agents/rules/imports.md"],
       "limitations": "Runtime fallback does not excuse a missing translation; all catalog source and integrity evidence belong to this frontend."
+    },
+    {
+      "id": "deployment-recovery",
+      "when": "Plan future deployment/recovery work while preserving current publication boundaries.",
+      "owners": [
+        "docs/development.md",
+        "docs/architecture.md",
+        "docs/README.md"
+      ],
+      "contracts": ["docs/validation.md"],
+      "tests": ["scripts/validate-bootstrap.test.mjs"],
+      "checks": ["snapshot", "guidance", "format"],
+      "rules": [".agents/rules/safety.md", ".agents/rules/guidance.md"],
+      "limitations": "Published synthetic deployment and release helpers do not establish a production build, released artifact, deployed target or real recovery. Read the actual publication inventory and require explicit operational authorization."
+    },
+    {
+      "id": "admin-request-reliability",
+      "when": "Change cancellation, obsolete-read handling, manual retry/error states, timeouts, shared refresh, generation guards or logout completion.",
+      "owners": [
+        "src/shared/hooks/useReadRequest.ts",
+        "src/shared/hooks/useReadResource.ts",
+        "src/shared/api/client.ts",
+        "src/shared/api/token.ts",
+        "src/features/auth/api.ts",
+        "src/app/providers/core/Core.tsx",
+        "src/layouts/default/Default.tsx",
+        "src/shared/ui/request-feedback/RequestFeedback.tsx"
+      ],
+      "contracts": ["docs/authentication.md"],
+      "tests": [
+        "src/shared/hooks/useReadResource.test.ts",
+        "src/shared/api/client.test.ts",
+        "src/layouts/default/Default.test.tsx",
+        "src/features/auth/logout.test.ts"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Read retry is an explicit user action; one eligible protected-401 replay after successful same-generation refresh is a separate mechanism. Synthetic tests are not a real API/browser journey."
     },
     {
       "id": "guidance",
@@ -272,9 +352,9 @@
         ".agents/rules/localization.md",
         ".agents/rules/testing.md"
       ],
-      "limitations": "Unit and jsdom component tests do not establish application providers, route composition, Storybook browser execution, a production build or visual approval. Keep API-owned language, direction and calendar separate from browser-owned theme and compact mode."
+      "limitations": "Unit and jsdom component tests cover admitted providers and screens in isolation. Route composition, Storybook browser execution, a production build and visual approval require separate evidence. Keep API-owned language, direction and calendar separate from browser-owned theme and compact mode."
     }
   ],
-  "phase": "ui-foundation",
+  "phase": "core-auth",
   "applicationReady": false
 }

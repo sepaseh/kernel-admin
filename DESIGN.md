@@ -2,16 +2,16 @@
 
 Use this guide when designing or reviewing an administration screen. The existing stack is React/Vite, Ant Design/antd-style, React Router and Axios. Read the closest admitted component and feature contract before choosing a new abstraction or styling approach, plus stories when available. [Development](docs/development.md) describes the implementation workflow.
 
-The `ui-foundation` phase admits shared controls, theme and preference helpers, mutation hooks, local assets and jsdom component tests with `applicationReady: false`. Application providers, screens, routes and Storybook/browser suites remain later integration requirements.
+The `core-auth` phase admits shared controls, theme and preference helpers, mutation hooks, local assets, core providers, authentication screens and jsdom component tests with `applicationReady: false`. Route composition and Storybook/browser suites are planned for later phases.
 
 ## Reuse current owners
 
-| Design concern                                                         | Existing owner                                                                                                                           |
-| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Light/dark/compact algorithms, semantic colors and contrast correction | [`theme.ts`](src/shared/config/theme.ts), using the selected API palette                                                                 |
-| Typography, visible keyboard focus and reduced motion                  | [`src/assets/styles`](src/assets/styles) and the licensed local Vazirmatn font                                                           |
-| Reusable controls and form containers                                  | [`src/shared/ui`](src/shared/ui); feature-specific forms stay with their feature                                                         |
-| Route vocabulary and presentation permissions                          | Route metadata (`src/app/config/routes.ts`, planned for a later PR) and access helpers (`src/app/lib/access.ts`, planned for a later PR) |
+| Design concern                                                         | Existing owner                                                                         |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Light/dark/compact algorithms, semantic colors and contrast correction | [`theme.ts`](src/shared/config/theme.ts), using the selected API palette               |
+| Typography, visible keyboard focus and reduced motion                  | [`src/assets/styles`](src/assets/styles) and the licensed local Vazirmatn font         |
+| Reusable controls and form containers                                  | [`src/shared/ui`](src/shared/ui); feature-specific forms stay with their feature       |
+| Route vocabulary and presentation permissions                          | [Route metadata](src/app/config/routes.ts) and [access helpers](src/app/lib/access.ts) |
 
 Prefer Ant Design props and tokens. Use antd-style for owned custom styles, logical spacing for RTL/LTR and direct named Lucide icons with explicit size/currentColor. Decorative icons use `aria-hidden`; controls need translated accessible names. Use named props types and `FC<Props>` with type-only React imports.
 

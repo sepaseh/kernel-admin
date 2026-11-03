@@ -1,0 +1,130 @@
+import type { ParseKeys } from "i18next";
+
+import type { PermissionKey } from "@/features/roles/types";
+
+export type AccessRule = "authenticated" | "public" | PermissionKey;
+export type RouteLayout = "auth" | "default" | "standalone";
+
+type RoutePermissions = {
+  access: AccessRule;
+  actions: Record<string, PermissionKey>;
+};
+
+type RouteConfig = {
+  index?: boolean;
+  label?: ParseKeys;
+  layout: RouteLayout;
+  link?: (...args: never[]) => string;
+  path: string;
+  permissions: RoutePermissions;
+};
+
+export const routeTree = {
+  account: {
+    label: "account",
+    layout: "default",
+    path: "/account",
+    permissions: { access: "authenticated", actions: {} },
+  },
+  auth: {
+    index: true,
+    layout: "auth",
+    path: "/auth",
+    permissions: { access: "public", actions: {} },
+  },
+  calendar: {
+    label: "calendar",
+    layout: "default",
+    path: "/calendar",
+    permissions: {
+      access: "calendar.read",
+      actions: { canUpdate: "calendar.update" },
+    },
+  },
+  forgotPassword: {
+    layout: "auth",
+    path: "/auth/forgot-password",
+    permissions: { access: "public", actions: {} },
+  },
+  notFound: {
+    layout: "standalone",
+    path: "*",
+    permissions: { access: "public", actions: {} },
+  },
+  register: {
+    layout: "auth",
+    path: "/auth/register",
+    permissions: { access: "public", actions: {} },
+  },
+  roles: {
+    label: "roles",
+    layout: "default",
+    path: "/roles",
+    permissions: {
+      access: "roles.read",
+      actions: {
+        canCreate: "roles.create",
+        canDelete: "roles.delete",
+        canUpdate: "roles.update",
+      },
+    },
+  },
+  root: {
+    index: true,
+    label: "dashboard",
+    layout: "default",
+    path: "/",
+    permissions: { access: "authenticated", actions: {} },
+  },
+  settings: {
+    label: "settings",
+    layout: "default",
+    path: "/settings",
+    permissions: {
+      access: "settings.update",
+      actions: { canUpdate: "settings.update" },
+    },
+  },
+  users: {
+    label: "users",
+    layout: "default",
+    path: "/users",
+    permissions: {
+      access: "users.read",
+      actions: {
+        canCreate: "users.create",
+        canDelete: "users.delete",
+        canUpdate: "users.update",
+      },
+    },
+  },
+} satisfies Record<string, RouteConfig>;
+
+export type RouteKey = keyof typeof routeTree;
+
+type NavigationRouteKey = {
+  [Key in RouteKey]: (typeof routeTree)[Key] extends { label: ParseKeys }
+    ? Key
+    : never;
+}[RouteKey];
+
+export type NavigationItem =
+  | { readonly route: NavigationRouteKey }
+  | {
+      readonly children: readonly NavigationItem[];
+      readonly key: string;
+      readonly label: ParseKeys;
+    };
+
+export const navigationTree: readonly NavigationItem[] = [
+  { route: "root" },
+  {
+    children: [{ route: "users" }, { route: "roles" }],
+    key: "userManagement",
+    label: "userManagement",
+  },
+  { route: "calendar" },
+  { route: "settings" },
+];
+
+export const baseUrl: string = import.meta.env.VITE_APP_BASE_URL ?? "";

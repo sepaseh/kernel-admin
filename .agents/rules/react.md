@@ -2,9 +2,8 @@
 
 These Ant Design, i18next, icon and React Router conventions apply to this standalone admin. Keep components, hooks and accessibility consistent with the existing source.
 
-The `ui-foundation` snapshot admits shared controls and hooks with jsdom tests.
-Feature screens, route composition and application providers remain later owners;
-the form and routing requirements below apply as those sources are admitted.
+The `core-auth` snapshot admits shared controls, hooks, core providers and authentication screens with jsdom tests.
+Route composition and the remaining feature screens are planned for later phases.
 
 ## Components
 

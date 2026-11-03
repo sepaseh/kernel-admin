@@ -4,7 +4,7 @@ Kernel Admin is a standalone React, TypeScript and Ant Design admin frontend bei
 
 This snapshot contains the capabilities admitted by the [publication policy](.github/bootstrap-policy.json). Its `phase`, `applicationReady` and exact inventory describe the current source. Until application readiness is true and its required checks have actually passed, the snapshot does not establish an assembled application, a production build or a deployed service.
 
-Current publication phase: `ui-foundation`. Application readiness: `false`. This phase adds shared UI controls, theme and browser-preference helpers, guarded mutation hooks, observability and licensed local assets to the existing HTTP/session lifecycles, all ten language catalogs and date adapters, including Persian calendar data.
+The `core-auth` phase adds settings and Ant Design providers, route metadata, access rules, authentication screens and layouts. It retains shared controls, local assets, HTTP/session lifecycles, all ten language catalogs and Persian calendar data. The publication policy declares `applicationReady: false`.
 
 Start with [Contributing](CONTRIBUTING.md) for the Git and review workflow, [development](docs/development.md) for source changes, [validation](docs/validation.md) for the exact required gate and the [documentation map](docs/README.md) for the current guides.
 

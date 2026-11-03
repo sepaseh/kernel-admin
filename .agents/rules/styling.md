@@ -7,7 +7,7 @@ Use Ant Design and antd-style with the source recipes in
 
 The current theme builder is `src/shared/config/theme.ts`. Reuse Ant Design
 semantic tokens, algorithms and contrast correction; appearance types own Theme
-and all seven palette fields. The later `AntdProvider` must follow validated API
+and all seven palette fields. The `AntdProvider` must follow validated API
 language and direction metadata. Only theme and compact mode are browser preferences.
 
 Prefer Ant Design component props before custom styles. Keep inline `style` or
