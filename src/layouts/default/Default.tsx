@@ -163,10 +163,7 @@ export const DefaultLayout = () => {
   }, [clearSession]);
 
   useEffect(() => {
-    if (
-      session.error instanceof AdminApiError &&
-      [401, 403].includes(session.error.status ?? 0)
-    )
+    if (session.error instanceof AdminApiError && session.error.status === 401)
       clearSession();
   }, [clearSession, session.error]);
 

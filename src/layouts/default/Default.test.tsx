@@ -337,12 +337,13 @@ describe("DefaultLayout", () => {
     );
   });
 
-  it("keeps a transient session-read failure retryable and hides protected content", async () => {
-    vi.mocked(getAccount).mockRejectedValueOnce(
-      new Error("Temporarily offline"),
-    );
+  it.each([
+    new Error("Temporarily offline"),
+    new AdminApiError("Forbidden", 403),
+  ])("keeps the session and offers retry after $message", async (error) => {
+    vi.mocked(getAccount).mockRejectedValueOnce(error);
     const { user } = renderLayout();
-    await screen.findByText("Temporarily offline");
+    await screen.findByText(error.message);
     expect(clearAccessToken).not.toHaveBeenCalled();
     expect(
       screen.queryByRole("heading", { name: "Dashboard content" }),
