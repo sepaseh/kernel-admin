@@ -1,10 +1,10 @@
 # HTTP contract evidence
 
 This frontend owns feature API modules/types, transport normalization, synthetic
-Axios/MSW fixtures and consumer contracts. The consuming developer chooses a
+Axios/MSW fixtures and local HTTP contracts. The consuming developer chooses a
 backend implementing those local HTTP contracts. Frontend work requires no
-external project source, documentation or services. Local Pact and synthetic
-browser checks do not verify a deployed backend.
+external project source, documentation or services. Pact consumer and synthetic
+browser checks are planned for later phases and cannot verify a deployed backend.
 
 Review HTTP behavior against the local contract, implementation and synthetic
 consumer evidence. Document incompatible request/response changes in the local

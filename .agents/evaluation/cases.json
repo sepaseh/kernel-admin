@@ -2,29 +2,6 @@
   "schemaVersion": 1,
   "cases": [
     {
-      "id": "admin-session-lifecycle",
-      "prompt": {
-        "en": "Without editing files, trace admin login, refresh, logout and session generations. Where are credentials stored and why does terminal client refresh failure not itself revoke server sessions? Give current source evidence and relevant checks."
-      },
-      "taskIds": ["auth-session"],
-      "evidence": [
-        "src/shared/api/client.ts",
-        "src/shared/api/token.ts",
-        "src/features/auth/api.ts"
-      ],
-      "mustExplain": [
-        "Bearer credentials remain in memory.",
-        "Single-flight refresh and originating request generation protect new logins.",
-        "Terminal refresh failure clears client state; server revocation is an API responsibility."
-      ],
-      "mustNot": [
-        "Claim JWT rotation/reuse detection exists.",
-        "Read secrets or owner data.",
-        "Import or move API runtime into the admin."
-      ],
-      "checks": ["boundaries", "typecheck", "unit-coverage"]
-    },
-    {
       "id": "admin-read-and-session-generation",
       "prompt": {
         "en": "Without editing or running services, trace a cancelled/obsolete admin read and an old protected mutation receiving 401 after logout and a new login. Explain current generation guards across refresh, retry and logout, bounded timeout/error behavior and StrictMode cleanup; cite regression tests and explicitly identify any unguarded branch instead of assuming safety. State whether canceling one reader can abort the shared refresh needed by another reader."
@@ -81,6 +58,29 @@
         "Treat a successful CodeRabbit status as proof of its approval."
       ],
       "checks": ["snapshot", "ci-policy", "guidance"]
+    },
+    {
+      "id": "admin-session-lifecycle",
+      "prompt": {
+        "en": "Without editing files, trace admin login, refresh, logout and session generations. Where are credentials stored and why does terminal client refresh failure not itself revoke server sessions? Give current source evidence and relevant checks."
+      },
+      "taskIds": ["auth-session"],
+      "evidence": [
+        "src/shared/api/client.ts",
+        "src/shared/api/token.ts",
+        "src/features/auth/api.ts"
+      ],
+      "mustExplain": [
+        "Bearer credentials remain in memory.",
+        "Single-flight refresh and originating request generation protect new logins.",
+        "Terminal refresh failure clears client state; server revocation is an API responsibility."
+      ],
+      "mustNot": [
+        "Claim JWT rotation/reuse detection exists.",
+        "Read secrets or owner data.",
+        "Import or move API runtime into the admin."
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"]
     }
   ]
 }

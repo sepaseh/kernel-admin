@@ -6,8 +6,8 @@ description: Design or refine published Kernel Admin components and stories with
 # Design UI
 
 Read [AGENTS](../../../AGENTS.md), [DESIGN](../../../DESIGN.md) and the closest source
-recipe. Follow canonical styling, React, localization and Storybook guidance rather
-than copying product rules into another design guide.
+recipe. Follow canonical styling, React and localization guidance, plus Storybook
+guidance when admitted, rather than copying product rules into another design guide.
 
 1. Identify the requested deliverable: concept/asset/design handoff, component or
    story code in this checkout, or an explicitly authorized hosted prototype.
@@ -25,8 +25,9 @@ than copying product rules into another design guide.
    establish an application entry point, route composition or production deployment.
 4. Select actual checks from [the manifest](../../validation.json), following
    [validation](../../../docs/validation.md) and
-   [validate-change](../validate-change/SKILL.md). Use isolated Storybook browser
-   interaction/accessibility evidence for its registered cases. Application E2E
+   [validate-change](../validate-change/SKILL.md). The `core-auth` phase uses unit
+   and jsdom component tests. Use isolated Storybook browser interaction/accessibility
+   evidence for registered cases when that suite is admitted. Application E2E
    and visual comparison require admitted owners, genuine current-revision runs
    and human-reviewed baselines; a component pass or historical image cannot supply
    that evidence. Guidance-only work uses the focused guidance profile during iteration;

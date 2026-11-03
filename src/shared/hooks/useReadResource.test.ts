@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { CanceledError } from "axios";
-import { createElement, useLayoutEffect } from "react";
+import { createElement, type FC, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -113,16 +113,27 @@ describe("read request lifecycle", () => {
     const first = deferred<string>();
     const second = deferred<string>();
     const committed = deferred<void>();
+    let checkedNewIdentity = false;
     const older = vi.fn(() => first.promise);
     const newer = vi.fn(() => second.promise);
     let resource!: ReturnType<typeof useReadResource<string>>;
-    const Probe = ({ load }: { load: typeof older }) => {
+    type ProbeProps = { load: typeof older };
+    const Probe: FC<ProbeProps> = ({ load }) => {
       const current = useReadResource(load);
       useLayoutEffect(() => {
         resource = current;
-        if (load === newer) {
-          first.resolve("obsolete value");
-          committed.resolve();
+        if (load === newer && !checkedNewIdentity) {
+          checkedNewIdentity = true;
+          try {
+            expect(current.data).toBeUndefined();
+            expect(current.error).toBeUndefined();
+            expect(current.loading).toBe(true);
+            first.resolve("obsolete value");
+            committed.resolve();
+          } catch (error) {
+            first.resolve("obsolete value");
+            committed.reject(error);
+          }
         }
       });
       return null;
@@ -135,14 +146,19 @@ describe("read request lifecycle", () => {
     const previous = environment.IS_REACT_ACT_ENVIRONMENT;
     try {
       await act(async () => root.render(createElement(Probe, { load: older })));
+      act(() => resource.replace("accepted value"));
+      expect(resource.data).toBe("accepted value");
       let original!: Promise<string | undefined>;
       act(() => {
         original = resource.reload();
       });
+      expect(resource.data).toBe("accepted value");
+      expect(resource.loading).toBe(true);
       // Preserve the real concurrent commit/passive scheduling boundary.
       environment.IS_REACT_ACT_ENVIRONMENT = false;
       root.render(createElement(Probe, { load: newer }));
       await committed.promise;
+      expect(checkedNewIdentity).toBe(true);
       await expect(original).resolves.toBeUndefined();
       environment.IS_REACT_ACT_ENVIRONMENT = previous;
       await act(async () => second.resolve("current value"));

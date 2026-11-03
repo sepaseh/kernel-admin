@@ -5,12 +5,12 @@ Use the existing checkout and start with [development](docs/development.md), [so
 ## Pull requests
 
 1. Verify the current repository, branch, status and intended base. Create or reuse a focused `codex/<purpose>` branch. Every change to protected `main` must arrive through a PR; never push directly to it.
-2. Keep the initial base-to-head diff at 80 or fewer GitHub changed-file entries. Reserve 20 entries for review fixes under the hard maximum of 100. Include additions, deletions, renames and binaries; one rename is one entry.
+2. Before opening a PR, review its complete base-to-head diff and aim for at most 80 GitHub changed-file entries initially. Split independent changes when useful and explain why a larger cohesive change belongs together. Count additions, deletions, renames and binaries; one rename is one entry. File count is advisory: exceeding 100 files alone must not fail CI or require deleting and recreating a PR.
 3. Run the actual phase's complete `full` gate on an exact verification-only export under ignored `coverage/`, following [validation](docs/validation.md). Do not publish while required checks fail or cannot run.
 4. Use a Conventional Commit title and the [PR template](.github/PULL_REQUEST_TEMPLATE.md). Explain the problem, resulting behavior, dependency PR, checked snapshot and material limitations. A stacked PR targets its verified predecessor and must state that dependency.
 5. Publish only with authorization covering publication. A PR request includes its necessary branch push; it does not authorize a CodeRabbit request or merge. Verify those separate action boundaries before proceeding.
 
-Keep the live protection requirements: the five required check contexts, one native approving review, stale-approval dismissal, an up-to-date branch, resolved conversations, linear history, administrator enforcement, and blocked force pushes/deletions. A PR author cannot supply their own approving review. The CodeRabbit configuration also disables the author-triggered approval shortcut.
+Keep the live protection requirements: the required correctness and security check contexts, one native approving review, stale-approval dismissal, an up-to-date branch, resolved conversations, linear history, administrator enforcement, and blocked force pushes/deletions. A PR author cannot supply their own approving review. The CodeRabbit configuration also disables the author-triggered approval shortcut.
 
 A successful CodeRabbit status can represent a skipped or rate-limited review. A native approval count does not select a particular reviewer. Inspect the actual current-head review evidence; do not claim CodeRabbit approval from those settings alone. See [hosted checks and review](docs/validation.md#hosted-checks-and-review).
 

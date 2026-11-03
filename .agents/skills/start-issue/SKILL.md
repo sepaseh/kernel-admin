@@ -1,6 +1,6 @@
 ---
 name: start-issue
-description: Begin implementation of an existing Kernel Admin issue when asked to work on it, loading verified context, acceptance criteria, source owners and branch state.
+description: Begin implementation of an existing Kernel issue when asked to work on it, loading verified context, acceptance criteria, source owners and branch state.
 ---
 
 # Start an issue

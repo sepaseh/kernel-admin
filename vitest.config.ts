@@ -68,6 +68,7 @@ export default defineConfig({
         "src/shared/api/client.ts",
         "src/shared/api/config.ts",
         "src/shared/api/index.ts",
+        "src/shared/api/path.ts",
         "src/shared/api/token-response.ts",
         "src/shared/api/token.ts",
         "src/shared/api/types.ts",

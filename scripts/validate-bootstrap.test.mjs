@@ -19,16 +19,12 @@ import {
 const coreFiles = [
   ".github/bootstrap-policy.json",
   ".github/workflows/bootstrap.yml",
-  ".github/workflows/pr-policy.yml",
-  "scripts/check-pr-size.mjs",
-  "scripts/check-pr-size.test.mjs",
   "scripts/validate-bootstrap.mjs",
   "scripts/validate-bootstrap.test.mjs",
 ];
 const policy = (overrides = {}) => ({
   allowedFiles: coreFiles,
   applicationReady: false,
-  maximumChangedFiles: 100,
   phase: "governance",
   schemaVersion: 1,
   ...overrides,
@@ -84,7 +80,6 @@ const completeApplicationFiles = [
   ".github/workflows/dast.yml",
   ".github/workflows/deployment-smoke.yml",
   ".github/workflows/mutation.yml",
-  ".github/workflows/pr-policy.yml",
   ".github/workflows/release.yml",
   ".github/workflows/staging.yml",
   ".gitignore",
@@ -174,8 +169,6 @@ const completeApplicationFiles = [
   "scripts/check-guidance.mjs",
   "scripts/check-guidance.test-support.mjs",
   "scripts/check-guidance.test.mjs",
-  "scripts/check-pr-size.mjs",
-  "scripts/check-pr-size.test.mjs",
   "scripts/dependency-compatibility.test.mjs",
   "scripts/deploy-runtime.test.mjs",
   "scripts/deployment.integration.test.mjs",
@@ -345,6 +338,8 @@ const completeApplicationFiles = [
   "src/shared/api/config.test.ts",
   "src/shared/api/config.ts",
   "src/shared/api/index.ts",
+  "src/shared/api/path.test.ts",
+  "src/shared/api/path.ts",
   "src/shared/api/token-response.test.ts",
   "src/shared/api/token-response.ts",
   "src/shared/api/token.test.ts",
@@ -777,9 +772,10 @@ const foundationPolicy = (overrides = {}) =>
     phase: "foundation",
     ...overrides,
   });
-const repositoryFoundationFiles = foundationFiles.filter(
-  (file) => !file.startsWith("src/"),
-);
+const repositoryFoundationFiles = [
+  ...foundationFiles.filter((file) => !file.startsWith("src/")),
+  ".github/workflows/codeql.yml",
+];
 const catalogFiles = [
   "src/shared/i18n/catalogs.ts",
   "src/shared/i18n/catalogs.test.ts",
@@ -819,12 +815,11 @@ const fixture = async (context, declaredPolicy = policy()) => {
   return { put, root };
 };
 
-test("accepts only the declared governance phase and immutable 100-file maximum", () => {
+test("accepts only the declared governance phase and publication schema", () => {
   assert.equal(validateBootstrapPolicy(policy()).size, coreFiles.length);
   for (const overrides of [
     { phase: "application" },
     { applicationReady: true },
-    { maximumChangedFiles: 101 },
     { schemaVersion: 2 },
     { allowedFiles: [] },
     { allowedFiles: coreFiles.slice(1) },
@@ -939,6 +934,43 @@ test("foundation allows its pure source and toolchain, while rejecting runnable 
   );
 });
 
+test("repository foundation admits standalone CodeQL without admitting application or release workflows", () => {
+  const security = ".github/workflows/codeql.yml";
+  const current = foundationPolicy({
+    phase: "repository-foundation",
+    allowedFiles: repositoryFoundationFiles,
+  });
+  assert.ok(validateBootstrapPolicy(current).has(security));
+  assert.equal(current.applicationReady, false);
+  for (const file of [
+    ".github/workflows/release.yml",
+    ".github/workflows/dast.yml",
+    "src/main.tsx",
+  ])
+    assert.throws(() =>
+      validateBootstrapPolicy({
+        ...current,
+        allowedFiles: [...current.allowedFiles, file],
+      }),
+    );
+});
+
+test("repository foundation rejects snapshots omitting the CodeQL workflow and its declaration", async (context) => {
+  const omitted = foundationPolicy({
+    phase: "repository-foundation",
+    allowedFiles: repositoryFoundationFiles.filter(
+      (file) => file !== ".github/workflows/codeql.yml",
+    ),
+  });
+
+  assert.throws(
+    () => validateBootstrapPolicy(omitted),
+    /mandatory guard files/,
+  );
+  const { root } = await fixture(context, omitted);
+  await assert.rejects(inspectBootstrap(root), /mandatory guard files/);
+});
+
 test("repository foundation requires its verification toolchain and canonical Git guidance without application source", async (context) => {
   const guidance = [
     "AGENTS.md",
@@ -963,7 +995,7 @@ test("repository foundation requires its verification toolchain and canonical Gi
     validateBootstrapPolicy(current).size,
     current.allowedFiles.length,
   );
-  assert.equal(repositoryFoundationFiles.length, 15);
+  assert.equal(repositoryFoundationFiles.length, 13);
   assert.ok(current.allowedFiles.every((file) => !file.startsWith("src/")));
   for (const missing of repositoryFoundationFiles)
     assert.throws(
@@ -1132,7 +1164,7 @@ test("catalog publication inspects its exact non-runnable snapshot and ignores o
   await assert.rejects(inspectBootstrap(root), /Unexpected bootstrap path/);
 });
 
-test("the 100-file limit applies to a PR delta rather than the total published inventory", () => {
+test("publication inventories have no file-count cap", () => {
   const files = [
     ...foundationFiles,
     ...Array.from({ length: 110 }, (_, index) => `docs/topic-${index}.md`),
@@ -1140,9 +1172,6 @@ test("the 100-file limit applies to a PR delta rather than the total published i
   assert.equal(
     validateBootstrapPolicy(foundationPolicy({ allowedFiles: files })).size,
     files.length,
-  );
-  assert.throws(() =>
-    validateBootstrapPolicy(foundationPolicy({ maximumChangedFiles: 101 })),
   );
 });
 
@@ -1215,6 +1244,8 @@ test("runtime-localization requires the complete adapters, catalogs and their te
     "src/main.tsx",
     "src/app/App.tsx",
     "src/shared/api/client.ts",
+    "src/shared/api/path.ts",
+    "src/shared/api/path.test.ts",
     "src/shared/i18n/unpublished.ts",
   ])
     assert.throws(() =>
@@ -1269,7 +1300,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 93);
+  assert.equal(required.length, 95);
   for (const missing of required)
     assert.throws(
       () =>
@@ -1745,7 +1776,9 @@ test("application admission requires the exact runnable closure and matching rea
   );
   const historical = await historicalGuidancePolicy();
   for (const file of applicationFiles.filter(
-    (entry) => !earlyApplicationSources.has(entry),
+    (entry) =>
+      !earlyApplicationSources.has(entry) &&
+      entry !== ".github/workflows/codeql.yml",
   ))
     assert.throws(
       () =>

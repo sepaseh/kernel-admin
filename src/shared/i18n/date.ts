@@ -12,12 +12,15 @@ import calendar from "dayjs/plugin/calendar";
 import jalaliday from "jalaliday";
 
 import { faDayjs } from "./dayjs/fa";
-import { localeCodes } from "./locales";
+import { type LocaleCode, localeCodes } from "./locales";
 
 dayjs.extend(calendar);
 dayjs.extend(jalaliday);
 
 const vendorLocales = { ar, de, en, es, fa: faDayjs, fr, it, pt, ru, tr };
+
+export const dayjsLocaleName = (code: LocaleCode): string =>
+  vendorLocales[code].name;
 
 for (const code of localeCodes) {
   let jmonths: string[] | undefined;
