@@ -59,6 +59,8 @@ The quality job installs Chromium and runs the isolated Storybook build and brow
 
 Each test suite publishes its own immutable run/attempt artifact. The [coverage evidence owner](../scripts/ci-evidence.mjs) binds the suite and LCOV hash to the repository, PR head/base, tested commit/tree, workflow, run and producing attempt. Sonar depends on the successful aggregate and receives both suites' outputs directly. It verifies each report independently before scanning, so a rerun uses each successful producer's actual attempt without combining or rerunning suites. Missing configuration, reports or mismatched evidence blocks analysis. Analysis installs locked dependencies with package scripts disabled; scanner execution and the native provider quality gate remain separate results.
 
+Governance coverage explicitly excludes `*.test.*` files so Node's default test discovery pattern does not omit executable owners such as `scripts/test-docker-release.mjs`.
+
 CI keeps active verification running and coalesces pending events by event and ref. The [single-pass test fixture](../scripts/ci-single-pass.test.yml) preserves existing policy regressions; it is test data outside `.github/workflows/` and does not represent current jobs or application execution.
 
 The [Mutation testing workflow](../.github/workflows/mutation.yml) runs `npm run test:mutation` weekly and by manual dispatch. It publishes its report under a run- and attempt-specific artifact name. The [Release workflow](../.github/workflows/release.yml) is manually dispatched and runs Release Please only on `main`. These workflows have separate execution and authorization from the required PR checks.

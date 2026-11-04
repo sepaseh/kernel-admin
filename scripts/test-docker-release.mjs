@@ -4,12 +4,13 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import https from "node:https";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { checkServerIdentity } from "node:tls";
+import { checkServerIdentity, createSecureContext } from "node:tls";
 import { fileURLToPath } from "node:url";
 
 import { withSmokeResources } from "./docker-smoke-resources.mjs";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
+const fixtureApiOrigin = "https://api.example.com";
 export const createDockerDriver =
   ({
     identity,
@@ -78,15 +79,15 @@ export const parseMappedPort = (output) => {
   return port;
 };
 
-export const createTlsRequest =
-  ({
-    port,
-    certificate,
-    signal,
-    transport = https,
-    verifyServerIdentity = checkServerIdentity,
-  }) =>
-  (pathname, servername = "admin.test") =>
+export const createTlsRequest = ({
+  port,
+  certificate,
+  signal,
+  transport = https,
+  verifyServerIdentity = checkServerIdentity,
+}) => {
+  const secureContext = createSecureContext({ ca: certificate });
+  return (pathname, servername = "admin.test") =>
     new Promise((resolve, reject) => {
       signal?.throwIfAborted();
       let ended = false;
@@ -97,11 +98,13 @@ export const createTlsRequest =
       const abort = () => operation.destroy(signal.reason);
       const operation = transport.get(
         {
+          agent: false,
           hostname: "127.0.0.1",
           port,
           path: pathname,
           servername,
-          ca: certificate,
+          secureContext,
+          rejectUnauthorized: true,
           signal,
           ...(servername === "admin.test"
             ? {}
@@ -144,6 +147,17 @@ export const createTlsRequest =
       signal?.addEventListener("abort", abort, { once: true });
       if (signal?.aborted) abort();
     });
+};
+
+const permitsFixtureApi = (policy) =>
+  typeof policy === "string" &&
+  policy.split(",").every((value) => {
+    const sources = value
+      .split(";")
+      .map((directive) => directive.trim().split(/\s+/))
+      .find(([name]) => name.toLowerCase() === "connect-src");
+    return sources?.slice(1).some((source) => source === fixtureApiOrigin);
+  });
 
 const verifyFixtureResponses = async ({ request, identity, signal }) => {
   signal.throwIfAborted();
@@ -154,19 +168,15 @@ const verifyFixtureResponses = async ({ request, identity, signal }) => {
   await assert.rejects(request("/", "unknown.test"), (error) =>
     /unrecognized name|ECONNRESET|socket hang up/i.test(error.message),
   );
-  for (const response of [
-    document,
-    await request("/console/_kernel/release"),
-  ]) {
+  const metadata = await request("/console/_kernel/release");
+  for (const response of [document, metadata]) {
     assert.equal(response.headers["x-frame-options"], "DENY");
     assert.equal(response.headers["x-content-type-options"], "nosniff");
     assert.ok(
-      response.headers["content-security-policy"].includes(
-        "https://api.example.com",
-      ),
+      permitsFixtureApi(response.headers["content-security-policy"]),
+      "The CSP connect-src must allow the exact fixture API origin.",
     );
   }
-  const metadata = await request("/console/_kernel/release");
   assert.equal(JSON.parse(metadata.body).release, identity);
   const assetPath = document.body.match(/src="([^"\s]+\.js)"/)[1];
   const asset = await request(assetPath);
@@ -320,7 +330,7 @@ export async function runDockerSmoke({
           "-t",
           image,
           "--build-arg",
-          "VITE_API_BASE_URL=https://api.example.com",
+          `VITE_API_BASE_URL=${fixtureApiOrigin}`,
           "--build-arg",
           "VITE_APP_BASE_URL=/console/",
           "--build-arg",

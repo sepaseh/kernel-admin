@@ -562,6 +562,45 @@ describe("validated build metadata", () => {
     }
   });
 
+  it("rejects a replaced HTML entry before reading and closes its handle", async () => {
+    const fixture = await buildFixture();
+    const index = path.join(fixture.build, "index.html");
+    const replacement = path.join(fixture.root, "replacement.html");
+    const readEntry = vi.fn();
+    const closeEntry = vi.fn();
+    try {
+      await writeFile(replacement, "<html>unrelated HTML</html>");
+      await expect(
+        stampAdminBuild({
+          environment: publicBuildEnvironment,
+          buildDirectory: fixture.build,
+          openEntry: async (entry, flags) => {
+            const handle = await open(entry, flags);
+            readEntry.mockImplementation(() => handle.readFile("utf8"));
+            closeEntry.mockImplementation(() => handle.close());
+            return {
+              stat: async (options) => {
+                const info = await handle.stat(options);
+                await rename(index, path.join(fixture.root, "original.html"));
+                await rename(replacement, index);
+                return info;
+              },
+              readFile: readEntry,
+              close: closeEntry,
+            };
+          },
+        }),
+      ).rejects.toThrow(/completed HTML/);
+      expect(readEntry).not.toHaveBeenCalled();
+      expect(closeEntry).toHaveBeenCalledOnce();
+      await expect(
+        readFile(path.join(fixture.build, "_kernel/build.json")),
+      ).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
   it("does not follow a swapped metadata directory after checking the build", async () => {
     const fixture = await buildFixture();
     const outside = path.join(fixture.root, "outside");
