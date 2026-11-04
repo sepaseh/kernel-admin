@@ -1,6 +1,8 @@
-# Run Kernel Admin
+# Prepare to run Kernel Admin
 
-Use this guide to open the panel against a compatible backend you choose and are authorized to use. Kernel Admin is a standalone React/Vite frontend; its configured HTTP service supplies authentication, settings and application data.
+The `release-prerequisites` snapshot admits the public environment example and deployment helpers alongside business screens and isolated Storybook verification. It declares `applicationReady: false`. Run the application steps below after a later phase admits application composition, the Vite entry point, build and preview commands, and their complete verification.
+
+For that later phase, choose a compatible backend you are authorized to use. Kernel Admin's local HTTP contract lets that service supply authentication, settings and application data without requiring a particular backend repository or tooling.
 
 ## Before you start
 
@@ -10,7 +12,7 @@ Use this guide to open the panel against a compatible backend you choose and are
 
 Run the commands below from this repository's root. Filesystem examples use PowerShell; the npm and Vite commands also work in a POSIX shell.
 
-## Run locally
+## Run locally after application admission
 
 1. Install the locked dependencies:
 
@@ -52,7 +54,7 @@ The API selects language, direction, calendar and color palettes. The browser st
 
 Stop the server with `Ctrl+C`. Restart it after changing configuration.
 
-## Public configuration reference
+## Application configuration reference
 
 | Name                     | Purpose                                                                         |
 | ------------------------ | ------------------------------------------------------------------------------- |
@@ -61,11 +63,11 @@ Stop the server with `Ctrl+C`. Restart it after changing configuration.
 | `VITE_RELEASE_ID`        | Public build identifier. Production releases use a new immutable identifier.    |
 | `VITE_OBSERVABILITY_URL` | Optional public reporting endpoint; blank disables reporting.                   |
 
-The example and Vite configuration (`vite.config.ts`, planned for a later PR) are the configuration owners. Production input validation and deployment configuration are described in [deployment](deployment.md).
+The example documents public values. The later application phase admits their Vite configuration in `vite.config.ts`. See [deployment](deployment.md) for the public input contract and release prerequisites.
 
 Values already set in the process environment override values loaded from local files. Synthetic validation also disables local environment-file discovery. Use a separate terminal for an API-backed local run after working with the synthetic setup in [validation](validation.md).
 
-## Preview a production build locally
+## Preview after build tooling is admitted
 
 Use the same public configuration to build the frontend, then serve the result on a fixed loopback port:
 
@@ -76,9 +78,9 @@ npm run preview -- --host 127.0.0.1 --port 4173 --strictPort
 
 The build writes static assets to `dist/` and public build identity to `dist/_kernel/build.json`. With a `/` base path, open [http://127.0.0.1:4173/auth](http://127.0.0.1:4173/auth). The API must also allow this preview origin; permission for port 5173 does not cover port 4173.
 
-A preview still uses the configured API for authentication and data. Rebuild after changing values embedded in a production build. Use [deployment](deployment.md) to package or publish a release.
+A preview still uses the configured API for authentication and data. Rebuild after changing values embedded in a production build. See [deployment](deployment.md) for packaging and publication prerequisites.
 
-## Troubleshoot a local run
+## Troubleshoot an admitted application
 
 | Symptom                                                                  | Check next                                                                                                                                                |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -90,6 +92,6 @@ A preview still uses the configured API for authentication and data. Rebuild aft
 | An operation returns 403                                                 | Check the account's server-assigned permissions. The API authorizes every operation independently of visible menus and controls.                          |
 | Configuration changes have no effect                                     | Restart the development server, or rebuild before restarting preview.                                                                                     |
 
-For a failure report, retain the HTTP status and safe `X-Request-Id`. Do not share tokens, cookies or request payloads. Accepted read data remains visible after a refresh failure; use the affected resource's retry control.
+For a failure report, retain the HTTP status and safe `X-Request-Id`. Do not share tokens, cookies or request payloads.
 
 Continue with [development](development.md) to change the panel, or [validation](validation.md) to verify source using synthetic fixtures.

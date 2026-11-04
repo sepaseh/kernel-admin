@@ -116,6 +116,43 @@ const dependencyForms = [
   (specifier) => `import type Value = require("${specifier}");`,
 ];
 
+test("HTTP path validation stays inside the shared production boundary", () => {
+  const helper = path.join(root, "src/shared/api/path.ts");
+  for (const source of ["users", "roles"])
+    assert.equal(
+      check(
+        "../../shared/api/path.ts",
+        helper,
+        path.join(root, `src/features/${source}/api.ts`),
+      ),
+      undefined,
+    );
+  assert.equal(
+    check(
+      "../i18n/index.ts",
+      path.join(root, "src/shared/i18n/index.ts"),
+      helper,
+    ),
+    undefined,
+  );
+  assert.match(
+    check(
+      "../../features/users/api.ts",
+      path.join(root, "src/features/users/api.ts"),
+      helper,
+    ),
+    /Shared source may depend only on shared production modules/,
+  );
+  assert.match(
+    check("node:path", path.join(root, "node_modules/node/path"), helper),
+    /packages and Node builtins/,
+  );
+  assert.match(
+    check("./path.test.ts", path.join(root, "src/shared/api/path.test.ts")),
+    /published production modules/,
+  );
+});
+
 test("shared source rejects every upward dependency form, including the application entrypoint", () => {
   const source = path.join(root, "src/shared/lib/error.ts");
   for (const target of [
@@ -462,6 +499,9 @@ test("a foundation without source still rejects workspaces, linked dependencies 
     { workspaces: [] },
     { dependencies: { "external-backend": "1.0.0" } },
     { devDependencies: { tooling: "file:../other-project" } },
+    { optionalDependencies: { tooling: "file:../other-project" } },
+    { peerDependencies: { tooling: "file:../other-project" } },
+    { overrides: { parent: { tooling: "file:../other-project" } } },
   ]) {
     await put("package.json", JSON.stringify(manifest));
     const result = await checkBoundaries(directory);
@@ -684,7 +724,7 @@ test("the published phase retains every admitted production module", async () =>
   );
   assert.equal(
     result.files,
-    publication.applicationReady ? 121 : production.length,
+    publication.applicationReady ? 122 : production.length,
   );
   assert.deepEqual(result.violations, []);
 });
@@ -1113,7 +1153,13 @@ test("registry aliases and local dependency protocols cannot escape the standalo
     "../source",
     "C:/source",
   ]) {
-    for (const field of ["dependencies", "devDependencies"]) {
+    for (const field of [
+      "dependencies",
+      "devDependencies",
+      "optionalDependencies",
+      "peerDependencies",
+      "overrides",
+    ]) {
       await put(
         "package.json",
         JSON.stringify({
@@ -1126,18 +1172,72 @@ test("registry aliases and local dependency protocols cannot escape the standalo
         /(?:registry|workspaces)/,
       );
     }
+    await put(
+      "package.json",
+      JSON.stringify({ overrides: { parent: { child: { ".": version } } } }),
+    );
+    assert.match(
+      (await checkBoundaries(directory)).violations.join("\n"),
+      /registry versions/,
+    );
   }
 });
 
-test("development tooling accepts valid registry semver ranges", async (context) => {
+test("dependency fields and nested overrides accept valid registry semver ranges", async (context) => {
   const { directory, put } = await fixture(context);
   for (const version of ["7.8.5", "^7.8.5", "~6.0.3", ">=6 <8", "7.x"]) {
     await put(
       "package.json",
-      JSON.stringify({ devDependencies: { typescript: version } }),
+      JSON.stringify({
+        devDependencies: { typescript: version },
+        optionalDependencies: { axios: version },
+        peerDependencies: { axios: version },
+        overrides: { parent: { ".": version, child: { leaf: version } } },
+      }),
     );
     assert.deepEqual((await checkBoundaries(directory)).violations, []);
   }
+});
+
+test("override references must resolve to a declared registry dependency", async (context) => {
+  const { directory, put } = await fixture(context);
+  for (const field of [
+    "dependencies",
+    "devDependencies",
+    "optionalDependencies",
+    "peerDependencies",
+  ]) {
+    await put(
+      "package.json",
+      JSON.stringify({
+        [field]: { axios: "^1.0.0" },
+        overrides: { axios: "$axios", parent: { child: "$axios" } },
+      }),
+    );
+    assert.deepEqual((await checkBoundaries(directory)).violations, []);
+  }
+
+  for (const value of ["$missing", "$toString", null, false, 1, ["1.0.0"]]) {
+    await put(
+      "package.json",
+      JSON.stringify({ overrides: { parent: { child: value } } }),
+    );
+    assert.match(
+      (await checkBoundaries(directory)).violations.join("\n"),
+      /registry versions/,
+    );
+  }
+  await put(
+    "package.json",
+    JSON.stringify({
+      optionalDependencies: { axios: "file:../other-project" },
+      overrides: { parent: "$axios" },
+    }),
+  );
+  assert.match(
+    (await checkBoundaries(directory)).violations.join("\n"),
+    /registry versions/,
+  );
 });
 
 test("application composition admits only its explicit runtime and type package edges", () => {

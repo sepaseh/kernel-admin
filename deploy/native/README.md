@@ -1,6 +1,6 @@
 # Configure native Nginx hosting
 
-Use this procedure after [building an immutable package](../../docs/deployment.md#build-an-immutable-package). It renders public configuration locally, then describes the checks required on an authorized Nginx host. The developer's configured backend remains responsible for authentication and data.
+The `release-prerequisites` snapshot admits the Nginx templates and renderer. Rendering prepares public configuration locally. Installing it on an authorized host requires an [immutable package](../../docs/deployment.md#build-an-immutable-package) from the later application phase. The developer's configured backend remains responsible for authentication and data.
 
 ## Prerequisites
 

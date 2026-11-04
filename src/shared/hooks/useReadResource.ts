@@ -8,6 +8,10 @@ import {
 
 import { useReadRequest } from "./useReadRequest.ts";
 
+/**
+ * Keep `load` referentially stable, for example with `useCallback`.
+ * Changing its identity cancels the current read and starts a new one.
+ */
 export const useReadResource = <T>(
   load: (signal: AbortSignal) => Promise<T>,
   enabled = true,

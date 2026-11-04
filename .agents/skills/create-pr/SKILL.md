@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Prepare or create a focused Kernel Admin pull request with exact-snapshot validation and explicit publication authorization.
+description: Prepare or create a focused Kernel pull request with exact-snapshot validation and explicit publication authorization.
 ---
 
 # Create a pull request
@@ -12,9 +12,11 @@ for the final gate.
 
 1. Verify repository, current head, live intended base and available host tools.
    Preserve unrelated and unpublished work; a local draft is not remote publication.
-2. Review the complete base-to-head diff. Target at most 80 GitHub changed-file
-   entries initially, reserving 20 for review fixes under the hard 100-entry limit.
-   Count additions, deletions, renames and binaries; a rename is one entry.
+2. Before opening a PR, review the complete base-to-head diff and aim for at most
+   80 GitHub changed-file entries initially. Split independent changes when useful
+   and explain why a larger cohesive change belongs together. Count additions,
+   deletions, renames and binaries; a rename is one entry. File count is advisory:
+   exceeding 100 files alone must not fail CI or require deleting and recreating a PR.
 3. Read the declared phase, `applicationReady` and exact admitted inventory from
    [the publication policy](../../../.github/bootstrap-policy.json). Run the
    [canonical full profile](../../validation.json) on the exact proposed snapshot

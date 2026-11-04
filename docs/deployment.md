@@ -1,6 +1,6 @@
 # Build, package and deploy
 
-Use this guide to prepare one immutable frontend release and verify an authorized deployment. The developer's configured backend owns authentication, authorization, data and storage. A build, a package, a running container and a verified target are separate results.
+Use this guide to identify release inputs and hosting owners. The `release-prerequisites` snapshot admits the examples, packaging helpers and hosting definitions with `applicationReady: false`. The application build and Docker image procedures require the later application entry point, Vite configuration and complete application verification. The developer's configured backend owns authentication, authorization, data and storage.
 
 ## Before you start
 
@@ -34,7 +34,7 @@ Browser build values are public. The API must allow the actual frontend origin a
 
 ## Build an immutable package
 
-This PowerShell example writes a local demonstration package without requesting an API or deploying a service. Choose an unused release ID; keep the environment value and `--release` argument identical.
+After application admission and its complete verification, this PowerShell example builds and packages a local demonstration release. Choose an unused release ID and keep the environment value and `--release` argument identical.
 
 1. Install the locked dependencies if they are not already installed:
 
@@ -92,4 +92,4 @@ node scripts/healthcheck.mjs https://admin.example.invalid/console/ release-demo
 
 Keep the prior verified package and configuration until the new release passes its target checks. To roll back, select that prior package/configuration and repeat verification with its original release ID and base path. Do not rebuild an old identifier with new contents. Preserve operator TLS/configuration privately and exercise restore procedures on an authorized isolated target.
 
-Smoke, staging, mutation, release and DAST workflow source does not grant permission to dispatch it. Consult its current inputs and target validators before an authorized operation. Report the actual revision, target, result and first failure; configuration and synthetic helper tests do not establish provider compatibility or a completed deployment.
+The admitted mutation and release workflows require separate authorization to dispatch. Consult their inputs and target validators before an authorized operation. Report the actual revision, target, result and first failure. Deployment and provider compatibility require evidence from the authorized target.

@@ -7,10 +7,17 @@ Use these maintained guides for the currently published source. The [publication
 | Contribute a reviewed change            | [Contributing](../CONTRIBUTING.md)                                                |
 | Locate published source and tests       | [Source navigation](source-navigation.md)                                         |
 | Prepare a source change                 | [Development](development.md)                                                     |
+| Trace providers, layouts and routes     | [Application architecture](architecture.md)                                       |
 | Write synthetic and deterministic tests | [Testing](testing.md)                                                             |
 | Validate a precise publication snapshot | [Validation](validation.md)                                                       |
+| Change HTTP and session lifecycles      | [Authentication and requests](authentication.md)                                  |
+| Change language catalogs and dates      | [Localization](localization.md)                                                   |
+| Design shared UI and interaction states | [Design conventions](../DESIGN.md)                                                |
+| Evaluate instruction discovery          | [Read-only comprehension evaluation](comprehension-evaluation.md)                 |
+| Prepare for a later application run     | [Usage prerequisites](usage.md)                                                   |
+| Prepare release inputs and hosting      | [Deployment](deployment.md)                                                       |
 | Follow assistant and Git instructions   | [Assistant entry point](../AGENTS.md) and [Git workflow](../.agents/rules/git.md) |
 
-Application, localization, UI and hosting guides join this map as their complete owners are admitted. Until the application phase and its actual verification are present, isolated source modules or component evidence do not establish an assembled or deployed application.
+The `release-prerequisites` snapshot adds release and hosting sources to the business screens and isolated Storybook verification. Usage and deployment describe prerequisites for a later application phase that admits route composition, the application entry point and their complete verification.
 
 Keep documentation English, current and organized by reader goal. Update the owning guide instead of creating duplicate command inventories or dated status reports. Preserve localized product data and examples when their source is admitted.

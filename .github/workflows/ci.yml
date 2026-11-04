@@ -12,221 +12,192 @@ on:
       - ready_for_review
   schedule:
     - cron: 30 1 * * *
-  workflow_dispatch:
-    inputs:
-      verification:
-        description: Complete compatibility verification before a release
-        type: choice
-        required: true
-        default: complete
-        options:
-          - full
-          - complete
+  workflow_dispatch: null
 permissions:
   contents: read
-  actions: read
 concurrency:
-  group: ci-${{ github.event_name }}-${{ github.ref }}-${{ github.event.inputs.verification || 'default' }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
-  queue: single
+env:
+  KERNEL_SYNTHETIC_ENV: "1"
 jobs:
-  scope:
+  quality:
+    name: Static checks
     runs-on: windows-2025
-    timeout-minutes: 5
-    outputs:
-      run: ${{ steps.scope.outputs.run }}
-      profile: ${{ steps.scope.outputs.profile }}
-      browser_install: ${{ steps.scope.outputs.browser_install }}
-      visual: ${{ steps.scope.outputs.visual }}
-      head: ${{ steps.scope.outputs.head }}
-      base: ${{ steps.scope.outputs.base }}
-      commit: ${{ steps.scope.outputs.commit }}
-      tree: ${{ steps.scope.outputs.tree }}
-      application: ${{ steps.scope.outputs.application }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version-file: .nvmrc
-      - id: scope
-        run: node scripts/check-ci.mjs --scope
-  check:
-    needs: scope
-    if: always()
-    runs-on: windows-2025
-    timeout-minutes: 45
-    outputs:
-      coverage_artifact: ${{ steps.coverage.outputs.artifact }}
-      coverage_attempt: ${{ steps.coverage.outputs.attempt }}
-      coverage_run_id: ${{ steps.coverage.outputs.run_id }}
-    env:
-      KERNEL_REUSE_VERIFICATION_BUILD: "1"
-      VERIFICATION_HEAD: ${{ needs.scope.outputs.head }}
-      VERIFICATION_BASE: ${{ needs.scope.outputs.base }}
-      VERIFICATION_COMMIT: ${{ needs.scope.outputs.commit }}
-      VERIFICATION_TREE: ${{ needs.scope.outputs.tree }}
-    steps:
-      - name: Require successful source scope selection
-        env:
-          SCOPE_RESULT: ${{ needs.scope.result }}
-        run: if ($env:SCOPE_RESULT -ne "success") { throw "Source scope selection failed; verification cannot be established." }
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.scope.outputs.commit }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version-file: .nvmrc
           cache: npm
-      - id: reuse-candidate
-        name: Find prior successful verification for metadata-only edits
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          VERIFICATION_METADATA_ONLY: ${{ needs.scope.outputs.run == 'false' }}
-        run: node scripts/check-ci.mjs --prepare-reuse
-      - id: reuse-download
-        name: Download existing measured coverage when eligible
-        if: steps.reuse-candidate.outputs.artifact != ''
-        continue-on-error: true
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - name: Install locked validation dependencies
+        run: npm ci --strict-peer-deps --no-audit --no-fund
+      - name: Install Chromium for Storybook verification
+        run: npm run browser:install
+      - name: Static checks
+        run: npm run validate -- ci-quality
+  audit:
+    name: Dependency audit
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          name: ${{ steps.reuse-candidate.outputs.artifact }}
-          path: coverage
-          run-id: ${{ steps.reuse-candidate.outputs.runId }}
-          github-token: ${{ github.token }}
-          digest-mismatch: error
-      - id: reuse
-        name: Accept only successful evidence for the exact source and merge tree
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Dependency audit
+        run: npm run validate -- ci-audit
+  unit:
+    name: Unit tests
+    runs-on: windows-2025
+    timeout-minutes: 15
+    outputs:
+      artifact: ${{ steps.evidence.outputs.artifact }}
+      attempt: ${{ steps.evidence.outputs.attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install locked validation dependencies
+        run: npm ci --strict-peer-deps --no-audit --no-fund
+      - name: Unit tests
+        run: npm run validate -- ci-unit
+      - name: Bind measured suite coverage to this source and attempt
+        id: evidence
         env:
-          VERIFICATION_REUSE_ARTIFACT: ${{ steps.reuse-candidate.outputs.artifact }}
-          VERIFICATION_REUSE_RUN_ID: ${{ steps.reuse-candidate.outputs.runId }}
-          VERIFICATION_REUSE_ATTEMPT: ${{ steps.reuse-candidate.outputs.runAttempt }}
-          GITHUB_TOKEN: ${{ github.token }}
-          VERIFICATION_REUSE_DOWNLOAD: ${{ steps.reuse-download.outcome }}
-        run: node scripts/check-ci.mjs --accept-reuse
-      - run: npm ci --strict-peer-deps --no-audit --no-fund
-        if: steps.reuse.outputs.reused != 'true'
-      - run: npm run ${{ needs.scope.outputs.browser_install }}
-        if: steps.reuse.outputs.reused != 'true'
-      - name: Validate the tested source once
-        run: npm run validate -- ${{ needs.scope.outputs.profile }}
-        if: steps.reuse.outputs.reused != 'true'
-      - name: Compare images when rendering inputs changed
-        if: needs.scope.outputs.application == 'true' && steps.reuse.outputs.reused != 'true' && needs.scope.outputs.profile == 'full' && needs.scope.outputs.visual == 'true'
-        run: npm run validate -- visual
-      - id: performance-policy
-        name: Re-evaluate the advisory deadline immediately before the audit
-        if: needs.scope.outputs.application == 'true' && steps.reuse.outputs.reused != 'true'
-        run: node scripts/check-ci.mjs --performance-scope
-      - name: Measure performance with a bounded advisory exception
-        id: performance
-        continue-on-error: ${{ steps.performance-policy.outputs.advisory == 'true' }}
-        run: npm run validate -- performance
-        if: needs.scope.outputs.application == 'true' && steps.reuse.outputs.reused != 'true'
-      - name: Record performance outcome and review deadline
-        if: always()
-        env:
-          PERFORMANCE_OUTCOME: ${{ steps.performance.outcome }}
-          PERFORMANCE_ADVISORY: ${{ steps.performance-policy.outputs.advisory }}
-          VERIFICATION_REUSED: ${{ steps.reuse.outputs.reused }}
-        run: '"Verification reused: $env:VERIFICATION_REUSED. Lighthouse outcome: $env:PERFORMANCE_OUTCOME. Advisory: $env:PERFORMANCE_ADVISORY. Owner: Kernel Admin frontend/test maintainer. Review by: 2026-11-07; exception expires 2026-11-07T00:00:00Z." >> $env:GITHUB_STEP_SUMMARY'
-      - name: Bind measured coverage to this tested source and merge base
-        id: coverage
-        run: node scripts/check-ci.mjs --record-coverage
-        env:
-          VERIFICATION_REUSE_ARTIFACT: ${{ steps.reuse-candidate.outputs.artifact }}
-          VERIFICATION_REUSE_RUN_ID: ${{ steps.reuse-candidate.outputs.runId }}
-          VERIFICATION_REUSE_ATTEMPT: ${{ steps.reuse-candidate.outputs.runAttempt }}
-          GITHUB_TOKEN: ${{ github.token }}
-          VERIFICATION_REUSED: ${{ steps.reuse.outputs.reused }}
-          VERIFICATION_APPLICATION: ${{ needs.scope.outputs.application }}
-          VERIFICATION_PERFORMANCE_ADVISORY: ${{ steps.performance-policy.outputs.advisory }}
-          VERIFICATION_PERFORMANCE_OUTCOME: ${{ steps.performance.outcome }}
-      - name: Preserve measured coverage evidence
-        id: coverage-upload
-        if: success() && steps.reuse.outputs.reused != 'true'
+          CI_EVIDENCE_SUITE: unit
+        run: node scripts/ci-evidence.mjs --record
+      - name: Share measured suite coverage
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: verification-${{ github.run_id }}-${{ github.run_attempt }}
+          name: ${{ steps.evidence.outputs.artifact }}
           path: |
             coverage/unit/lcov.info
-            coverage/governance/lcov.info
-            coverage/governance/powershell.xml
-            coverage/verification-coverage.json
+            coverage/unit/ci-evidence.json
           if-no-files-found: error
           retention-days: 3
           overwrite: false
           include-hidden-files: false
-      - name: Preserve verification diagnostics
-        id: diagnostics-upload
-        if: always() && steps.reuse.outputs.reused != 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            coverage/e2e/
-            coverage/visual/
-            coverage/lighthouse/
-          if-no-files-found: warn
-          retention-days: 3
-          overwrite: false
-          include-hidden-files: false
-  analysis:
-    name: SonarQube Cloud analysis
-    needs:
-      - scope
-      - check
-    if: needs.scope.result == 'success' && needs.check.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+  governance:
+    name: Governance tests
     runs-on: windows-2025
-    timeout-minutes: 15
-    env:
-      VERIFICATION_HEAD: ${{ needs.scope.outputs.head }}
-      VERIFICATION_BASE: ${{ needs.scope.outputs.base }}
-      VERIFICATION_COMMIT: ${{ needs.scope.outputs.commit }}
-      VERIFICATION_TREE: ${{ needs.scope.outputs.tree }}
-      VERIFICATION_COVERAGE_ATTEMPT: ${{ needs.check.outputs.coverage_attempt }}
-      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-      VERIFICATION_COVERAGE_RUN_ID: ${{ needs.check.outputs.coverage_run_id }}
+    timeout-minutes: 30
+    outputs:
+      artifact: ${{ steps.evidence.outputs.artifact }}
+      attempt: ${{ steps.evidence.outputs.attempt }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ needs.scope.outputs.commit }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: Download coverage from the successful producer job
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: ${{ needs.check.outputs.coverage_artifact }}
-          path: coverage
-          run-id: ${{ needs.check.outputs.coverage_run_id }}
-          github-token: ${{ github.token }}
-          digest-mismatch: error
-      - name: Verify coverage identity and measured bytes before analysis
-        id: coverage
-        run: node scripts/check-ci.mjs --verify-coverage
+      - name: Install locked validation dependencies
+        run: npm ci --strict-peer-deps --no-audit --no-fund
+      - name: Governance tests
+        run: npm run validate -- ci-governance
+      - name: Bind measured suite coverage to this source and attempt
+        id: evidence
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-      - name: Install locked TypeScript analysis dependencies without running scripts
-        run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Analyze the tested source with its measured coverage
+          CI_EVIDENCE_SUITE: governance
+        run: node scripts/ci-evidence.mjs --record
+      - name: Share measured suite coverage
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ${{ steps.evidence.outputs.artifact }}
+          path: |
+            coverage/governance/lcov.info
+            coverage/governance/ci-evidence.json
+          if-no-files-found: error
+          retention-days: 3
+          overwrite: false
+          include-hidden-files: false
+  check:
+    needs:
+      - quality
+      - audit
+      - unit
+      - governance
+    if: always()
+    runs-on: windows-2025
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require every validation job to succeed
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: node -e "const needs = JSON.parse(process.env.CI_NEEDS); const required = ['quality', 'audit', 'unit', 'governance']; if (required.some(id => needs[id]?.result !== 'success')) process.exit(1);"
+  analysis:
+    name: SonarQube Cloud analysis
+    needs:
+      - check
+      - unit
+      - governance
+    if: needs.check.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Require configured SonarQube Cloud analysis
+        env:
+          SONAR_TOKEN_CONFIGURED: ${{ secrets.SONAR_TOKEN != '' }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+        run: if ($env:SONAR_TOKEN_CONFIGURED -ne "true" -or [string]::IsNullOrWhiteSpace($env:SONAR_PROJECT_KEY)) { throw "Configure SONAR_TOKEN and SONAR_PROJECT_KEY before analysis. No Sonar analysis was performed." }
+      - name: Download measured unit coverage
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: ${{ needs.unit.outputs.artifact }}
+          path: coverage/unit
+          digest-mismatch: error
+      - name: Verify unit coverage provenance and contents
+        env:
+          CI_EVIDENCE_SUITE: unit
+          CI_EVIDENCE_PRODUCER_ATTEMPT: ${{ needs.unit.outputs.attempt }}
+        run: node scripts/ci-evidence.mjs --verify-coverage
+      - name: Download measured governance coverage
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: ${{ needs.governance.outputs.artifact }}
+          path: coverage/governance
+          digest-mismatch: error
+      - name: Verify governance coverage provenance and contents
+        env:
+          CI_EVIDENCE_SUITE: governance
+          CI_EVIDENCE_PRODUCER_ATTEMPT: ${{ needs.governance.outputs.attempt }}
+        run: node scripts/ci-evidence.mjs --verify-coverage
+      - name: Install analysis dependencies without package scripts
+        run: npm ci --strict-peer-deps --ignore-scripts --no-audit --no-fund
+      - name: Analyze the tested source and measured coverage
         uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9
         env:
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          args: -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} -Dsonar.scm.revision=${{ needs.scope.outputs.head }} -Dsonar.coverageReportPaths=${{ steps.coverage.outputs.powershell_report }}
-env:
-  KERNEL_SYNTHETIC_ENV: "1"
-  STORYBOOK_DISABLE_TELEMETRY: "1"
-  VITE_API_BASE_URL: https://api.example.com
-  VITE_APP_BASE_URL: /
-  VITE_OBSERVABILITY_URL: ""
-  VITE_RELEASE_ID: application-verification
+          args: -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} -Dsonar.scm.revision=${{ github.event.pull_request.head.sha || github.sha }}

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiClient } from "../../shared/api/index.ts";
+import { i18nInstance } from "../../shared/i18n/index.ts";
 import {
   createRole,
   deleteRole,
@@ -28,6 +29,54 @@ beforeEach(() => {
 });
 
 describe("roles API", () => {
+  describe.each([".", ".."])('URL dot segment "%s"', (id) => {
+    it.each([
+      ["read", (signal: AbortSignal) => fetchRole(id, signal)],
+      ["delete", (signal: AbortSignal) => deleteRole(id, signal)],
+      [
+        "update",
+        (signal: AbortSignal) =>
+          updateRole(
+            id,
+            { name: "Operators", permissions: ["users.read"] },
+            signal,
+          ),
+      ],
+    ] as const)(
+      "rejects %s before any HTTP client call",
+      async (_name, run) => {
+        const controller = new AbortController();
+
+        await expect(run(controller.signal)).rejects.toThrow(
+          i18nInstance.t("unexpectedError"),
+        );
+        for (const method of Object.values(apiClient))
+          expect(method).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it.each([
+    ["member/#? 1", "member%2F%23%3F%201"],
+    ["عضو آبی", "%D8%B9%D8%B6%D9%88%20%D8%A2%D8%A8%DB%8C"],
+    ["encoded%2Fid", "encoded%252Fid"],
+  ])("keeps the opaque ID %s inside each role route", async (id, segment) => {
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
+    const params = {
+      name: "Operators",
+      permissions: ["users.read"],
+    } satisfies RoleRequest;
+    const path = `/roles/${segment}`;
+
+    await fetchRole(id, controller.signal);
+    expect(apiClient.get).toHaveBeenLastCalledWith(path, options);
+    await updateRole(id, params, controller.signal);
+    expect(apiClient.patch).toHaveBeenLastCalledWith(path, params, options);
+    await deleteRole(id, controller.signal);
+    expect(apiClient.del).toHaveBeenLastCalledWith(path, options);
+  });
+
   it("creates, updates, and deletes roles", async () => {
     const controller = new AbortController();
     const params = {
