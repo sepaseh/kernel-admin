@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "phase": "storybook-verification",
+  "phase": "release-prerequisites",
   "applicationReady": false,
   "checks": [
     {
@@ -8,98 +8,98 @@
       "command": "npm run check:snapshot",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "ci-policy",
       "command": "npm run check:ci",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "actions-lint",
       "command": "npm run check:actions",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "guidance",
       "command": "npm run check:guidance",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "audit",
       "command": "npm run audit",
       "kind": "required",
       "ciJobs": ["audit"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "boundaries",
       "command": "npm run check:boundaries",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "typecheck",
       "command": "npm run typecheck",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "lint",
       "command": "npm run lint",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "format",
       "command": "npm run format:check",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "unit-coverage",
       "command": "npm run test:coverage",
       "kind": "required",
       "ciJobs": ["unit"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "governance-coverage",
       "command": "npm run test:governance",
       "kind": "required",
       "ciJobs": ["governance"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "storybook-build",
       "command": "npm run build-storybook",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "storybook-browser",
       "command": "npm run test:storybook",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     },
     {
       "id": "guidance-tests",
       "command": "npm run test:guidance",
       "kind": "advisory",
       "ciJobs": [],
-      "scopes": ["storybook-verification"]
+      "scopes": ["release-prerequisites"]
     }
   ],
   "profiles": {
@@ -158,6 +158,14 @@
     {
       "path": ".github/workflows/codeql.yml",
       "mode": "security"
+    },
+    {
+      "path": ".github/workflows/mutation.yml",
+      "mode": "scheduled"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "mode": "manual"
     }
   ],
   "verificationModel": "split-suites-v1"

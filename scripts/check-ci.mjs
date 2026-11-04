@@ -709,11 +709,12 @@ const inspectSplitManifest = (manifest) => {
       "core-auth",
       "business-screens",
       "storybook-verification",
+      "release-prerequisites",
     ].includes(manifest.phase) ||
     manifest.applicationReady !== false
   )
     throw new Error(
-      "Split suite verification currently owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth, business-screens and storybook-verification",
+      "Split suite verification currently owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth, business-screens, storybook-verification and release-prerequisites",
     );
   const count = manifestPolicy(manifest);
   const partitions = [];
@@ -857,7 +858,8 @@ const inspectSplitProducer = (workflow, id, budget, storybook) => {
 };
 const inspectSplitCi = (workflow, manifest) => {
   const requiredChecks = inspectSplitManifest(manifest);
-  const storybook = manifest.phase === "storybook-verification";
+  const storybook =
+    manifest.profiles["ci-quality"].includes("storybook-browser");
   requireEqual(
     workflow.on,
     {

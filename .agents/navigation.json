@@ -261,17 +261,45 @@
     },
     {
       "id": "deployment-recovery",
-      "when": "Plan future deployment/recovery work while preserving current publication boundaries.",
+      "when": "Change build identity, release packaging, Docker smoke checks or hosting inputs, or plan target verification and recovery.",
       "owners": [
-        "docs/development.md",
-        "docs/architecture.md",
-        "docs/README.md"
+        "docs/deployment.md",
+        "deploy/docker/compose.yaml",
+        "deploy/docker/Dockerfile",
+        "deploy/native/nginx/admin.conf.template",
+        "scripts/stamp-admin-build.mjs",
+        "scripts/package-release.mjs",
+        "scripts/render-deployment.mjs",
+        "scripts/healthcheck.mjs",
+        "scripts/docker-smoke-resources.mjs",
+        "scripts/test-docker-release.mjs"
       ],
-      "contracts": ["docs/validation.md"],
-      "tests": ["scripts/validate-bootstrap.test.mjs"],
-      "checks": ["snapshot", "guidance", "format"],
+      "contracts": [
+        ".env.example",
+        "deploy/docker/compose.env.example",
+        "deploy/native/nginx.env.example",
+        "docs/validation.md"
+      ],
+      "tests": [
+        "scripts/stamp-admin-build.test.mjs",
+        "scripts/package-release.test.mjs",
+        "scripts/render-deployment.test.mjs",
+        "scripts/render-deployment.integration.test.mjs",
+        "scripts/healthcheck.test.mjs",
+        "scripts/deploy-runtime.test.mjs",
+        "scripts/deployment.integration.test.mjs",
+        "scripts/docker-smoke-resources.test.mjs",
+        "scripts/test-docker-release.test.mjs"
+      ],
+      "checks": [
+        "snapshot",
+        "guidance",
+        "format",
+        "unit-coverage",
+        "governance-coverage"
+      ],
       "rules": [".agents/rules/safety.md", ".agents/rules/guidance.md"],
-      "limitations": "Published synthetic deployment and release helpers do not establish a production build, released artifact, deployed target or real recovery. Read the actual publication inventory and require explicit operational authorization."
+      "limitations": "Synthetic tests cover the admitted helpers. Building and packaging the application require its entry point and complete validation. Starting resources and verifying an actual target require explicit operational authorization."
     },
     {
       "id": "admin-request-reliability",
@@ -487,6 +515,6 @@
       "limitations": "Storybook verifies admitted components and interactions with synthetic fixtures. Application composition, visual approval and deployment require separate evidence."
     }
   ],
-  "phase": "storybook-verification",
+  "phase": "release-prerequisites",
   "applicationReady": false
 }

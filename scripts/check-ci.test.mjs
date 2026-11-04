@@ -119,14 +119,17 @@ const browsers = "npm run ${{ needs.scope.outputs.browser_install }}";
 const actualWorkflow = () => parse(read(".github/workflows/ci.yml"));
 const actualManifest = () => JSON.parse(read(".agents/validation.json"));
 
-test("split CI exposes Storybook verification through the existing quality job", () => {
-  assert.deepEqual(inspectCi(stringify(actualWorkflow()), actualManifest()), {
-    requiredChecks: 13,
-  });
-  assert.deepEqual(
-    inspectSonarWorkflow(stringify(actualWorkflow()), actualManifest()),
-    { requiredChecks: 13 },
-  );
+test("split CI retains the 13-check gate through release prerequisites", () => {
+  const workflow = stringify(actualWorkflow());
+  for (const phase of ["storybook-verification", "release-prerequisites"]) {
+    const selected = actualManifest();
+    selected.phase = phase;
+    for (const check of selected.checks) check.scopes = [phase];
+    assert.deepEqual(inspectCi(workflow, selected), { requiredChecks: 13 });
+    assert.deepEqual(inspectSonarWorkflow(workflow, selected), {
+      requiredChecks: 13,
+    });
+  }
   assert.deepEqual(Object.keys(actualWorkflow().jobs), [
     "quality",
     "audit",
@@ -180,6 +183,7 @@ test("split CI rejects unknown, unadmitted and runnable application phases", () 
     ["unknown", false],
     ["governance", false],
     ["foundation", false],
+    ["assistant-guidance", false],
     ["application-verification", true],
     ["repository-foundation", true],
     ["runtime-localization", true],
@@ -188,16 +192,17 @@ test("split CI rejects unknown, unadmitted and runnable application phases", () 
     ["core-auth", true],
     ["business-screens", true],
     ["storybook-verification", true],
+    ["release-prerequisites", true],
   ]) {
     const selected = { ...actualManifest(), phase, applicationReady };
 
     assert.throws(
       () => inspectCi(stringify(actualWorkflow()), selected),
-      /owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth, business-screens and storybook-verification/,
+      /owns only repository-foundation.*release-prerequisites/,
     );
     assert.throws(
       () => inspectSonarWorkflow(stringify(actualWorkflow()), selected),
-      /owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth, business-screens and storybook-verification/,
+      /owns only repository-foundation.*release-prerequisites/,
     );
   }
 });

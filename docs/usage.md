@@ -1,6 +1,6 @@
 # Prepare to run Kernel Admin
 
-The `core-auth` snapshot admits providers, access rules, authentication screens and layouts alongside shared controls, HTTP/session lifecycles and localization modules. It declares `applicationReady: false`. The steps below apply after later phases admit application composition, the Vite entry point, the public environment example, build and preview commands, and their complete verification.
+The `release-prerequisites` snapshot admits the public environment example and deployment helpers alongside business screens and isolated Storybook verification. It declares `applicationReady: false`. Run the application steps below after a later phase admits application composition, the Vite entry point, build and preview commands, and their complete verification.
 
 For that later phase, choose a compatible backend you are authorized to use. Kernel Admin's local HTTP contract lets that service supply authentication, settings and application data without requiring a particular backend repository or tooling.
 
@@ -20,7 +20,7 @@ Run the commands below from this repository's root. Filesystem examples use Powe
    npm ci
    ```
 
-2. Create a local configuration file from the reviewed public example (`.env.example`, planned for a later PR). This PowerShell command refuses to overwrite an existing file:
+2. Create a local configuration file from the reviewed [public example](../.env.example). This PowerShell command refuses to overwrite an existing file:
 
    ```powershell
    if (Test-Path -LiteralPath .env.local) {
@@ -63,7 +63,7 @@ Stop the server with `Ctrl+C`. Restart it after changing configuration.
 | `VITE_RELEASE_ID`        | Public build identifier. Production releases use a new immutable identifier.    |
 | `VITE_OBSERVABILITY_URL` | Optional public reporting endpoint; blank disables reporting.                   |
 
-The example and Vite configuration (`vite.config.ts`, planned for a later PR) are the configuration owners. Production input validation and deployment configuration are described in deployment (`docs/deployment.md`, planned for a later PR).
+The example documents public values. The later application phase admits their Vite configuration in `vite.config.ts`. See [deployment](deployment.md) for the public input contract and release prerequisites.
 
 Values already set in the process environment override values loaded from local files. Synthetic validation also disables local environment-file discovery. Use a separate terminal for an API-backed local run after working with the synthetic setup in [validation](validation.md).
 
@@ -78,7 +78,7 @@ npm run preview -- --host 127.0.0.1 --port 4173 --strictPort
 
 The build writes static assets to `dist/` and public build identity to `dist/_kernel/build.json`. With a `/` base path, open [http://127.0.0.1:4173/auth](http://127.0.0.1:4173/auth). The API must also allow this preview origin; permission for port 5173 does not cover port 4173.
 
-A preview still uses the configured API for authentication and data. Rebuild after changing values embedded in a production build. Use deployment (`docs/deployment.md`, planned for a later PR) to package or publish a release.
+A preview still uses the configured API for authentication and data. Rebuild after changing values embedded in a production build. See [deployment](deployment.md) for packaging and publication prerequisites.
 
 ## Troubleshoot an admitted application
 
