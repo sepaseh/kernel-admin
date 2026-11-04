@@ -164,7 +164,7 @@ describe("workflow target validation", () => {
 });
 
 describe("optional verification workflows", () => {
-  it("CodeQL analyzes JavaScript without running application code or elevating checkout access", () => {
+  it("CodeQL analyzes JavaScript and Actions without running application code or elevating checkout access", () => {
     const workflow = readWorkflow("codeql");
     expect(Object.keys(workflow.on).sort()).toEqual([
       "pull_request",
@@ -173,7 +173,7 @@ describe("optional verification workflows", () => {
       "workflow_dispatch",
     ]);
     expect(workflow.on.push.branches).toEqual(["main"]);
-    expect(workflow.on.pull_request.branches).toEqual(["main"]);
+    expect(workflow.on.pull_request).toBeNull();
     expect(workflow.permissions).toEqual({ contents: "read" });
     const analyze = workflow.jobs.analyze;
     expect(analyze.permissions).toEqual({
@@ -186,8 +186,9 @@ describe("optional verification workflows", () => {
       "github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938",
     ]);
     expect(analyze.steps.every((step) => step.run === undefined)).toBe(true);
+    expect(analyze.steps[0].with["persist-credentials"]).toBe(false);
     expect(analyze.steps[1].with).toEqual({
-      languages: "javascript-typescript",
+      languages: "javascript-typescript,actions",
       queries: "security-extended",
     });
     for (const step of analyze.steps) {
@@ -237,15 +238,28 @@ describe("optional verification workflows", () => {
   it("release publication is manual, main-only and bound to this root package", () => {
     const workflow = readWorkflow("release");
     expect(Object.keys(workflow.on)).toEqual(["workflow_dispatch"]);
-    expect(workflow.permissions).toEqual({
-      contents: "write",
-      "pull-requests": "write",
-    });
+    expect(workflow.permissions).toEqual({});
     const release = workflow.jobs.release;
     expect(release.if).toBe("github.ref == 'refs/heads/main'");
-    expect(release.permissions).toBeUndefined();
-    expect(release.steps).toHaveLength(1);
-    const [step] = release.steps;
+    expect(release.permissions).toEqual({ contents: "read" });
+    expect(release.steps).toHaveLength(4);
+    const [tokenGuard, checkout, publicationGuard, step] = release.steps;
+    expect(tokenGuard.env.RELEASE_TOKEN_CONFIGURED).toBe(
+      "${{ secrets.RELEASE_PLEASE_TOKEN != '' }}",
+    );
+    expect(tokenGuard.run).toMatch(/exit 1/);
+    expect(checkout.with).toEqual({
+      ref: "${{ github.sha }}",
+      "persist-credentials": false,
+    });
+    expect(publicationGuard.run).toMatch(/\.applicationReady == true/);
+    expect(publicationGuard.run).toMatch(/index\("CHANGELOG\.md"\)/);
+    expect(publicationGuard.run).toMatch(/\[ ! -f CHANGELOG\.md \]/);
+    expect(publicationGuard.run).toMatch(/exit 1/);
+    for (const preflight of [tokenGuard, checkout, publicationGuard]) {
+      expect(preflight.if).toBeUndefined();
+      expect(preflight["continue-on-error"]).toBeUndefined();
+    }
     expect(step.uses).toBe(
       "googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7",
     );
@@ -253,6 +267,7 @@ describe("optional verification workflows", () => {
     expect(step["continue-on-error"]).toBeUndefined();
     expect(step.with["config-file"]).toBe("release-please-config.json");
     expect(step.with["manifest-file"]).toBe(".release-please-manifest.json");
+    expect(step.with.token).toBe("${{ secrets.RELEASE_PLEASE_TOKEN }}");
     const config = JSON.parse(readRepositoryFile(step.with["config-file"]));
     const manifest = JSON.parse(readRepositoryFile(step.with["manifest-file"]));
     const pkg = JSON.parse(readRepositoryFile("package.json"));
@@ -266,7 +281,7 @@ describe("optional verification workflows", () => {
       readRepositoryFile(".agents/validation.json"),
     ).externalWorkflows;
     for (const [name, mode] of [
-      ["codeql", "ci"],
+      ["codeql", "security"],
       ["dast", "manual"],
       ["release", "manual"],
     ])
@@ -352,7 +367,7 @@ describe("optional verification workflows", () => {
     );
     expect(workflow.on.pull_request.paths).toBeUndefined();
     expect(workflow.on.pull_request["paths-ignore"]).toBeUndefined();
-    expect(manifest.profiles.full).toHaveLength(17);
+    expect(manifest.profiles.full).toHaveLength(18);
     const ordinaryCommands = manifest.profiles.full.map(
       (id) => manifest.checks.find((check) => check.id === id).command,
     );

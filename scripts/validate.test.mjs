@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { requiredCheckCommands } from "./check-ci.mjs";
 import { commandArguments, executeProfile, runProfile } from "./validate.mjs";
 
 const applicationChecks = [
@@ -121,22 +122,32 @@ test("the current full gate executes every published required check in declared 
   const required = manifest.checks.filter((check) => check.kind === "required");
   assert.equal(manifest.phase, publication.phase);
   assert.equal(manifest.applicationReady, publication.applicationReady);
-  const count = phaseCounts.get(manifest.phase);
-  assert.notEqual(count, undefined);
+  const expected = requiredCheckCommands(manifest);
+  const count = expected.length;
   const application = manifest.phase === "application-verification";
   assert.equal(manifest.applicationReady, application);
   assert.equal(required.length, count);
+  assert.deepEqual(
+    required.map(({ id, command }) => [id, command]),
+    expected,
+  );
   const inherited = historicalManifest().checks.filter(
     (check) => check.kind === "required",
   );
+  const historicalRequired = required.filter(
+    (check) => check.id !== "actions-lint",
+  );
+  const historicalCount = phaseCounts.get(manifest.phase);
   assert.equal(inherited.length, 12);
   assert.deepEqual(
-    required.slice(0, Math.min(12, count)),
-    inherited.slice(0, Math.min(12, count)),
+    historicalRequired.slice(0, Math.min(12, historicalCount)),
+    inherited.slice(0, Math.min(12, historicalCount)),
   );
   assert.deepEqual(
-    required.slice(10, 12).map(({ command, id }) => ({ command, id })),
-    count >= 12
+    historicalRequired
+      .slice(10, 12)
+      .map(({ command, id }) => ({ command, id })),
+    historicalCount >= 12
       ? [
           { command: "npm run build-storybook", id: "storybook-build" },
           { command: "npm run test:storybook", id: "storybook-browser" },
@@ -144,7 +155,7 @@ test("the current full gate executes every published required check in declared 
       : [],
   );
   assert.deepEqual(
-    required.slice(12).map(({ command, id }) => ({ command, id })),
+    historicalRequired.slice(12).map(({ command, id }) => ({ command, id })),
     application ? applicationChecks : [],
   );
   assert.equal(
@@ -159,7 +170,7 @@ test("the current full gate executes every published required check in declared 
   ])
     if (publication.allowedFiles.includes(file))
       assert.ok(pkg.scripts["test:governance"].includes(file));
-  if (count >= 12) {
+  if (historicalCount >= 12) {
     assert.equal(
       pkg.scripts["build-storybook"],
       "storybook build --output-dir coverage/storybook-static",

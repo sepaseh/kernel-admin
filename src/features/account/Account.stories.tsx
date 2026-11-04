@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
 
-import { sampleAccount, sampleLanguages } from "@/test/storybook/fixtures";
 import { i18nInstance } from "@/shared/i18n";
+import { sampleAccount, sampleLanguages } from "@/test/storybook/fixtures";
 import { StoryShell } from "@/test/storybook/StoryShell";
 
 import { AccountPage } from "./Account";
@@ -30,6 +30,7 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     const firstName = canvas.getByLabelText(i18nInstance.t("firstName"));
     await expect(
       canvas.getByLabelText(i18nInstance.t("mobile")),
@@ -45,7 +46,9 @@ export const Default: Story = {
         expect.any(AbortSignal),
       ),
     );
-    await expect(firstName).toHaveValue("Samira");
+    await waitFor(() =>
+      expect(body.getByText(i18nInstance.t("profileUpdated"))).toBeVisible(),
+    );
   },
 };
 

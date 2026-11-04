@@ -34,6 +34,13 @@
       ]
     },
     {
+      "id": "actions-lint",
+      "command": "npm run check:actions",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["application-verification"]
+    },
+    {
       "id": "guidance",
       "command": "npm run check:guidance",
       "kind": "required",
@@ -262,6 +269,7 @@
     "full": [
       "snapshot",
       "ci-policy",
+      "actions-lint",
       "guidance",
       "audit",
       "boundaries",
@@ -282,6 +290,7 @@
     "complete": [
       "snapshot",
       "ci-policy",
+      "actions-lint",
       "guidance",
       "audit",
       "boundaries",
@@ -311,10 +320,6 @@
       "mode": "ci"
     },
     {
-      "path": ".github/workflows/pr-policy.yml",
-      "mode": "ci"
-    },
-    {
       "path": ".github/workflows/mutation.yml",
       "mode": "scheduled"
     },
@@ -328,7 +333,7 @@
     },
     {
       "path": ".github/workflows/codeql.yml",
-      "mode": "ci"
+      "mode": "security"
     },
     {
       "path": ".github/workflows/dast.yml",

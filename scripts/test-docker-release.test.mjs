@@ -49,6 +49,7 @@ const orchestrationFixture = async (options = {}) => {
   const headers = {
     "cache-control": "no-store",
     "content-security-policy":
+      options.policy ??
       "default-src 'self'; connect-src https://api.example.com",
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
@@ -88,7 +89,11 @@ const orchestrationFixture = async (options = {}) => {
           if (pathname === "/console/_kernel/release")
             return {
               status: 200,
-              headers,
+              headers: {
+                ...headers,
+                "content-security-policy":
+                  options.metadataPolicy ?? headers["content-security-policy"],
+              },
               body: JSON.stringify({ release: owned.identity }),
             };
           if (pathname === "/console/assets/app.js")
@@ -96,6 +101,14 @@ const orchestrationFixture = async (options = {}) => {
               status: 200,
               headers: { "cache-control": "public, immutable" },
               body: "export default 1;",
+            };
+          if (pathname === "/console/assets/missing.js")
+            return {
+              status: 404,
+              headers: {
+                ...headers,
+                "cache-control": options.missingAssetCache ?? "no-store",
+              },
             };
           return { status: 404, headers, body: "Missing synthetic asset" };
         };
@@ -177,6 +190,41 @@ test("mapped Docker ports require a single numeric loopback endpoint", () => {
       () => smoke.parseMappedPort(value),
       /valid loopback HTTPS port/,
     );
+});
+
+for (const policy of [
+  "",
+  "connect-src https://api.example.com.attacker.test",
+  "connect-src https://api.example.com@attacker.test",
+  "connect-src https://attacker.test/https://api.example.com",
+  "connect-src 'self'; img-src https://api.example.com",
+  "connect-src 'self'; connect-src https://api.example.com",
+  "connect-src https://api.example.com, connect-src 'self'",
+])
+  test(`Docker smoke rejects a CSP without an effective exact API origin: ${JSON.stringify(policy)}`, async () => {
+    const fixtureValue = await orchestrationFixture({ policy });
+    await assert.rejects(fixtureValue.run(), /CSP connect-src/);
+    assert.equal(
+      fixtureValue.requests.some(({ pathname }) => pathname.endsWith(".js")),
+      false,
+    );
+    await fixtureValue.cleaned();
+  });
+
+test("Docker smoke verifies the CSP on the release metadata response too", async () => {
+  const fixtureValue = await orchestrationFixture({
+    metadataPolicy: "connect-src https://api.example.com.attacker.test",
+  });
+  await assert.rejects(fixtureValue.run(), /CSP connect-src/);
+  await fixtureValue.cleaned();
+});
+
+test("Docker smoke rejects a missing asset response cached as immutable", async () => {
+  const fixtureValue = await orchestrationFixture({
+    missingAssetCache: "public, max-age=31536000, immutable",
+  });
+  await assert.rejects(fixtureValue.run(), /Missing assets must use/);
+  await fixtureValue.cleaned();
 });
 
 const failureMessages = (error) =>
@@ -530,6 +578,10 @@ const tlsFixture = (mode = "success") => {
             operation.emit("error", new Error("synthetic request failure"));
             return;
           }
+          if (mode === "request-close") {
+            operation.emit("close");
+            return;
+          }
           if (mode === "abort") {
             controller.abort(new Error("Synthetic request cancellation"));
             return;
@@ -541,6 +593,7 @@ const tlsFixture = (mode = "success") => {
           receive(response);
           if (mode === "response-error")
             response.emit("error", new Error("synthetic response failure"));
+          else if (mode === "response-abort") response.emit("aborted");
           else if (mode === "response-close") response.emit("close");
           else {
             response.emit("data", "first");
@@ -555,7 +608,6 @@ const tlsFixture = (mode = "success") => {
   return {
     request,
     options: () => options,
-    certificate,
     signal,
     identityChecks,
   };
@@ -571,11 +623,16 @@ test("TLS fixture driver uses pinned loopback, certificate, hostname and cancell
   assert.equal(fixtureValue.options().hostname, "127.0.0.1");
   assert.equal(fixtureValue.options().servername, "admin.test");
   assert.equal(fixtureValue.options().port, 49153);
-  assert.equal(fixtureValue.options().ca, fixtureValue.certificate);
+  assert.equal(fixtureValue.options().agent, false);
+  assert.equal(fixtureValue.options().rejectUnauthorized, true);
+  assert.equal(Object.hasOwn(fixtureValue.options(), "ca"), false);
+  const secureContext = fixtureValue.options().secureContext;
+  assert.ok(secureContext);
   assert.equal(fixtureValue.options().signal, fixtureValue.signal);
   assert.equal(Object.hasOwn(fixtureValue.options(), "timeout"), false);
   assert.equal(fixtureValue.options().checkServerIdentity, undefined);
   await fixtureValue.request("/", "unknown.test");
+  assert.equal(fixtureValue.options().secureContext, secureContext);
   assert.equal(fixtureValue.options().headers.Host, "unknown.test");
   const peerCertificate = { subject: { CN: "admin.test" } };
   assert.equal(
@@ -589,7 +646,9 @@ test("TLS fixture driver uses pinned loopback, certificate, hostname and cancell
 
 for (const [mode, expected] of [
   ["request-error", /synthetic request failure/],
+  ["request-close", /request closed before completion/],
   ["response-error", /synthetic response failure/],
+  ["response-abort", /response was aborted/],
   ["abort", /Synthetic request cancellation/],
   ["response-close", /response closed before completion/],
 ])

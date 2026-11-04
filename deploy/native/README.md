@@ -1,6 +1,6 @@
 # Configure native Nginx hosting
 
-Use this procedure after [building an immutable package](../../docs/deployment.md#build-an-immutable-package). It renders public configuration locally, then describes the checks required on an authorized Nginx host. The developer's configured backend remains responsible for authentication and data.
+Render the public Nginx configuration locally and install it on an authorized host with an [immutable application package](../../docs/deployment.md#build-an-immutable-package). The developer's configured backend remains responsible for authentication and data.
 
 ## Prerequisites
 
@@ -50,6 +50,6 @@ For an authorized ACME bootstrap, select [`nginx/acme-bootstrap.conf.template`](
 
    Proceed only after a successful configuration test. Use the host's normal reload/release-switch procedure, then run [target and release-identity verification](../../docs/deployment.md#verify-and-recover).
 
-The [application template](nginx/admin.conf.template) redirects the expected HTTP host to HTTPS, rejects unknown hosts, preserves SPA deep links beneath the configured base and returns 404 for missing hashed assets. Hashed assets are immutable; documents and identity metadata use no-store. Preserve its explicit CSP origins and TLS behavior when integrating with an existing edge.
+The [application template](nginx/admin.conf.template) redirects the expected HTTP host to HTTPS, rejects unknown hosts, and preserves SPA deep links beneath the configured base. Successful hashed asset responses use immutable caching, including range responses and revalidation. Missing assets return 404 with `Cache-Control: no-store`, as do other asset errors. Documents and identity metadata also use `no-store`. Preserve its explicit CSP origins and TLS behavior when integrating with an existing edge.
 
 If verification fails, retain the first failure and select the prior verified immutable package/configuration. Rendering success alone is not authorization or evidence of a working deployment.

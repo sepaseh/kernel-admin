@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import {
   mkdir,
   mkdtemp,
+  open,
   readFile,
   realpath,
+  rename,
   rm,
   writeFile,
 } from "node:fs/promises";
@@ -18,6 +21,7 @@ import {
   coverageManifest,
   createEvidenceRunner,
   inspectCi,
+  inspectCodeqlWorkflow,
   inspectSonarWorkflow,
   lighthouseException,
   requiredCheckCommands,
@@ -32,71 +36,29 @@ import {
 
 const read = (file) =>
   readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
-const workflow = () => parse(read(".github/workflows/ci.yml"));
-const manifest = () => JSON.parse(read(".agents/validation.json"));
+const workflow = () => parse(read("scripts/ci-single-pass.test.yml"));
+const applicationWorkflow = () => read(".github/workflows/ci.yml");
+const actualManifest = () => JSON.parse(read(".agents/validation.json"));
 const install = "npm ci --strict-peer-deps --no-audit --no-fund";
-const analysisInstall = "npm ci --ignore-scripts --no-audit --no-fund";
-const applicationManifest = () => {
-  const value = manifest();
-  delete value.bootstrapBaseSha;
-  value.applicationReady = true;
-  value.phase = "application-verification";
-  for (const [id, command, kind] of [
-    ["storybook-build", "npm run build-storybook", "required"],
-    ["storybook-browser", "npm run test:storybook", "required"],
-    ["unused", "npm run check:unused", "required"],
-    ["application-build", "npm run build:verification", "required"],
-    ["bundle", "npm run check:bundle", "required"],
-    ["contract", "npm run test:contract", "required"],
-    ["application-e2e", "npm run test:e2e", "required"],
-    ["browser-compatibility", "npm run test:e2e:complete", "manual"],
-    ["visual", "npm run test:visual", "manual"],
-    ["lighthouse", "npm run test:lighthouse:verified", "advisory"],
-  ])
-    if (!value.checks.some((check) => check.id === id))
-      value.checks.push({
-        id,
-        command,
-        kind,
-        ciJobs: ["check"],
-        scopes: ["application-verification"],
-        ...(id === "lighthouse"
-          ? {
-              exception: {
-                ...lighthouseException,
-                reason: "Synthetic bounded exception",
-              },
-            }
-          : {}),
-      });
-  value.profiles.full = value.checks
-    .filter((check) => check.kind === "required")
-    .map((check) => check.id);
-  value.profiles.complete = [
-    ...value.profiles.full.slice(0, -1),
-    "browser-compatibility",
-    "visual",
-  ];
-  value.profiles.visual = ["visual"];
-  value.profiles.performance = ["lighthouse"];
-  return value;
-};
+const analysisInstall =
+  "npm ci --strict-peer-deps --ignore-scripts --no-audit --no-fund";
 const phaseManifest = (phase, count) => {
-  const value = applicationManifest();
+  const value = actualManifest();
   value.phase = phase;
   value.applicationReady = phase === "application-verification";
-  const required = new Set(value.profiles.full.slice(0, count));
+  const required = new Set(
+    value.profiles.full
+      .filter((id) => value.applicationReady || id !== "actions-lint")
+      .slice(0, count),
+  );
   value.checks = value.checks.filter(
     (check) => check.kind !== "required" || required.has(check.id),
   );
   value.profiles.full = [...required];
   return value;
 };
-const phaseWorkflow = () => {
-  const value = workflow();
-  delete value.jobs["file-limit"];
-  return stringify(value);
-};
+const manifest = () => phaseManifest("release-prerequisites", 12);
+const phaseWorkflow = () => stringify(workflow());
 const changedWorkflow = (change) => {
   const value = workflow();
   change(value);
@@ -107,20 +69,453 @@ const command = (value, text, name = "check") =>
 const canonical = "npm run validate -- ${{ needs.scope.outputs.profile }}";
 const browsers = "npm run ${{ needs.scope.outputs.browser_install }}";
 
-test("the actual workflow runs core verification once and reuses measured coverage for one scanner", () => {
-  assert.deepEqual(inspectCi(read(".github/workflows/ci.yml"), manifest()), {
-    requiredChecks: manifest().profiles.full.length,
+const splitWorkflow = () => parse(read("scripts/ci-split-suites.test.yml"));
+const splitManifest = () => {
+  const value = actualManifest();
+  value.phase = "release-prerequisites";
+  value.applicationReady = false;
+  value.verificationModel = "split-suites-v1";
+  const full = value.profiles.full.slice(
+    0,
+    value.profiles.full.indexOf("storybook-browser") + 1,
+  );
+  value.checks = value.checks.filter(({ id }) => full.includes(id));
+  const owners = {
+    audit: "audit",
+    "unit-coverage": "unit",
+    "governance-coverage": "governance",
+  };
+  for (const check of value.checks) {
+    check.ciJobs = [owners[check.id] ?? "quality"];
+    check.scopes = [value.phase];
+  }
+  value.profiles = { full, complete: [...full] };
+  for (const job of ["quality", "audit", "unit", "governance"]) {
+    value.profiles["ci-" + job] = full.filter(
+      (id) => (owners[id] ?? "quality") === job,
+    );
+  }
+  return value;
+};
+
+test("split CI retains the 13-check gate through release prerequisites", () => {
+  const workflow = stringify(splitWorkflow());
+  for (const phase of ["storybook-verification", "release-prerequisites"]) {
+    const selected = splitManifest();
+    selected.phase = phase;
+    for (const check of selected.checks) check.scopes = [phase];
+    assert.deepEqual(inspectCi(workflow, selected), { requiredChecks: 13 });
+    assert.deepEqual(inspectSonarWorkflow(workflow, selected), {
+      requiredChecks: 13,
+    });
+  }
+  assert.deepEqual(Object.keys(splitWorkflow().jobs), [
+    "quality",
+    "audit",
+    "unit",
+    "governance",
+    "check",
+    "analysis",
+  ]);
+  const selected = splitManifest();
+  const partitions = ["quality", "audit", "unit", "governance"].flatMap(
+    (id) => selected.profiles["ci-" + id],
+  );
+  assert.equal(partitions.length, selected.profiles.full.length);
+  assert.deepEqual(new Set(partitions), new Set(selected.profiles.full));
+});
+
+test("split CI retains the complete gate through the business screens phase", () => {
+  for (const phase of [
+    "repository-foundation",
+    "runtime-localization",
+    "http-lifecycle",
+    "ui-foundation",
+    "core-auth",
+    "business-screens",
+  ]) {
+    const selected = splitManifest();
+    selected.phase = phase;
+    const coreOnly = (id) => !id.startsWith("storybook-");
+    selected.checks = selected.checks.filter(({ id }) => coreOnly(id));
+    for (const check of selected.checks) check.scopes = [phase];
+    for (const profile of ["full", "complete", "ci-quality"]) {
+      selected.profiles[profile] = selected.profiles[profile].filter(coreOnly);
+    }
+    const workflow = splitWorkflow();
+    workflow.jobs.quality["timeout-minutes"] = 15;
+    workflow.jobs.quality.steps = workflow.jobs.quality.steps.filter(
+      (step) => step.run !== "npm run browser:install",
+    );
+
+    assert.deepEqual(inspectCi(stringify(workflow), selected), {
+      requiredChecks: 11,
+    });
+    assert.deepEqual(inspectSonarWorkflow(stringify(workflow), selected), {
+      requiredChecks: 11,
+    });
+  }
+});
+
+test("split CI rejects unknown, unadmitted and runnable application phases", () => {
+  for (const [phase, applicationReady] of [
+    ["unknown", false],
+    ["governance", false],
+    ["foundation", false],
+    ["assistant-guidance", false],
+    ["application-verification", true],
+    ["repository-foundation", true],
+    ["runtime-localization", true],
+    ["http-lifecycle", true],
+    ["ui-foundation", true],
+    ["core-auth", true],
+    ["business-screens", true],
+    ["storybook-verification", true],
+    ["release-prerequisites", true],
+  ]) {
+    const selected = { ...splitManifest(), phase, applicationReady };
+
+    assert.throws(
+      () => inspectCi(stringify(splitWorkflow()), selected),
+      /owns only repository-foundation.*release-prerequisites/,
+    );
+    assert.throws(
+      () => inspectSonarWorkflow(stringify(splitWorkflow()), selected),
+      /owns only repository-foundation.*release-prerequisites/,
+    );
+  }
+});
+
+test("split suites cannot skip checks, duplicate execution, replace source or weaken coverage transport", () => {
+  for (const change of [
+    (value) => {
+      value.jobs.unit.if = "false";
+    },
+    (value) => {
+      value.jobs.governance["continue-on-error"] = true;
+    },
+    (value) => {
+      value.jobs.quality.steps.at(-1).run = "npm run validate -- full";
+    },
+    (value) => {
+      const steps = value.jobs.quality.steps;
+      const install = steps.findIndex(
+        (step) => step.run === "npm run browser:install",
+      );
+      assert.notEqual(install, -1);
+      steps.splice(install, 1);
+    },
+    (value) => {
+      value.jobs.audit.steps.push({ run: "npm run audit" });
+    },
+    (value) => {
+      value.jobs.unit.steps[0].with.ref = "main";
+    },
+    (value) => {
+      value.jobs.governance.steps[0].with["persist-credentials"] = true;
+    },
+    (value) => {
+      value.jobs.unit.steps.at(-1).with["if-no-files-found"] = "warn";
+    },
+    (value) => {
+      value.jobs.unit.steps.at(-1).with.overwrite = true;
+    },
+    (value) => {
+      value.jobs.unit.steps.at(-2).env.CI_EVIDENCE_SUITE = "governance";
+    },
+    (value) => {
+      value.jobs.unit.outputs.attempt = "1";
+    },
+    (value) => {
+      value.jobs.quality.permissions = { contents: "write" };
+    },
+    (value) => {
+      value.jobs.governance["timeout-minutes"] = 60;
+    },
+    (value) => {
+      value.jobs.e2e = structuredClone(value.jobs.unit);
+    },
+    (value) => {
+      value.on.pull_request.paths = ["scripts/**"];
+    },
+    (value) => {
+      value.concurrency["cancel-in-progress"] = true;
+    },
+  ]) {
+    const value = splitWorkflow();
+    change(value);
+    assert.throws(() => inspectCi(stringify(value), splitManifest()));
+  }
+  for (const change of [
+    (value) => {
+      value.profiles["ci-unit"] = [];
+    },
+    (value) => {
+      value.profiles["ci-quality"].push("unit-coverage");
+    },
+    (value) => {
+      value.checks.find((check) => check.id === "unit-coverage").ciJobs = [
+        "check",
+      ];
+    },
+  ]) {
+    const value = splitManifest();
+    change(value);
+    assert.throws(
+      () => inspectCi(stringify(splitWorkflow()), value),
+      /partition|one CI owner/,
+    );
+  }
+});
+
+test("the required aggregate runs after failure and rejects unsuccessful or missing suite results", () => {
+  const aggregate = splitWorkflow().jobs.check;
+  assert.equal(aggregate.if, "always()");
+  const commandText = aggregate.steps[0].run;
+  const source = commandText.slice('node -e "'.length, -1);
+  const successful = Object.fromEntries(
+    aggregate.needs.map((id) => [id, { result: "success" }]),
+  );
+  const run = (needs) =>
+    spawnSync(process.execPath, ["-e", source], {
+      env: {
+        CI_NEEDS: JSON.stringify(needs),
+        SystemRoot: process.env.SystemRoot,
+      },
+      encoding: "utf8",
+      windowsHide: true,
+    });
+  assert.equal(run(successful).status, 0);
+  for (const id of aggregate.needs) {
+    for (const result of ["failure", "cancelled", "skipped", undefined]) {
+      const changed = structuredClone(successful);
+      changed[id].result = result;
+      assert.equal(run(changed).status, 1, id + ": " + result);
+    }
+    const changed = structuredClone(successful);
+    delete changed[id];
+    assert.equal(run(changed).status, 1);
+  }
+  for (const change of [
+    (value) => {
+      delete value.jobs.check.if;
+    },
+    (value) => {
+      value.jobs.check.needs.pop();
+    },
+    (value) => {
+      value.jobs.check.steps[0].run = 'node -e "process.exit(0)"';
+    },
+  ]) {
+    const value = splitWorkflow();
+    change(value);
+    assert.throws(() => inspectCi(stringify(value), splitManifest()));
+  }
+});
+
+test("Sonar consumes both successful suite artifacts and verifies each producing attempt before analysis", () => {
+  for (const change of [
+    (value) => {
+      value.jobs.analysis.needs = ["unit", "governance"];
+    },
+    (value) => {
+      value.jobs.analysis.if = "always()";
+    },
+    (value) => {
+      value.jobs.analysis.steps[2].env.SONAR_TOKEN_CONFIGURED = "true";
+    },
+    (value) => {
+      value.jobs.analysis.steps[3].with.name = "foreign-coverage";
+    },
+    (value) => {
+      value.jobs.analysis.steps[3].with["digest-mismatch"] = "warn";
+    },
+    (value) => {
+      value.jobs.analysis.steps[4].env.CI_EVIDENCE_PRODUCER_ATTEMPT = "1";
+    },
+    (value) => {
+      value.jobs.analysis.steps[6].env.CI_EVIDENCE_SUITE = "unit";
+    },
+    (value) => {
+      value.jobs.analysis.steps[6].env.CI_EVIDENCE_PRODUCER_ATTEMPT =
+        "${{ needs.unit.outputs.attempt }}";
+    },
+    (value) => {
+      value.jobs.analysis.steps.splice(4, 1);
+    },
+    (value) => {
+      value.jobs.analysis.steps.push({ run: "npm run test:coverage" });
+    },
+    (value) => {
+      value.jobs.analysis.steps.at(-1).env.SONAR_TOKEN = "literal-token";
+    },
+  ]) {
+    const value = splitWorkflow();
+    change(value);
+    assert.throws(() => inspectCi(stringify(value), splitManifest()));
+  }
+});
+
+test("CodeQL runs real security analysis on every PR base with minimal upload permission", () => {
+  const content = read(".github/workflows/codeql.yml");
+  assert.deepEqual(inspectCodeqlWorkflow(content), {
+    requiredContext: "CodeQL",
   });
+  const source = parse(content);
+  for (const change of [
+    (value) => {
+      delete value.on.pull_request;
+    },
+    (value) => {
+      value.on.pull_request = { branches: ["main"] };
+    },
+    (value) => {
+      value.on.pull_request = { "paths-ignore": ["scripts/**"] };
+    },
+    (value) => {
+      value.on.pull_request = { types: ["opened"] };
+    },
+    (value) => {
+      value.on.pull_request_target = null;
+    },
+    (value) => {
+      delete value.on.schedule;
+    },
+    (value) => {
+      delete value.on.workflow_dispatch;
+    },
+    (value) => {
+      value.permissions.contents = "write";
+    },
+    (value) => {
+      value.jobs.analyze.if = "false";
+    },
+    (value) => {
+      value.jobs.analyze["continue-on-error"] = true;
+    },
+    (value) => {
+      value.jobs.analyze["timeout-minutes"] = 0;
+    },
+    (value) => {
+      value.jobs.analyze.permissions.contents = "write";
+    },
+    (value) => {
+      value.jobs.analyze.permissions["security-events"] = "read";
+    },
+    (value) => {
+      value.jobs.analyze.steps[0].with["persist-credentials"] = true;
+    },
+    (value) => {
+      value.jobs.analyze.steps[1].uses = "github/codeql-action/init@main";
+    },
+    (value) => {
+      value.jobs.analyze.steps[1].with.queries = "default";
+    },
+    (value) => {
+      value.jobs.analyze.steps[1].with.languages = "javascript-typescript";
+    },
+    (value) => {
+      value.jobs.analyze.steps[1].with["build-mode"] = "none";
+    },
+    (value) => {
+      value.jobs.analyze.steps[2].if = "false";
+    },
+    (value) => {
+      value.jobs.analyze.steps[2]["continue-on-error"] = true;
+    },
+    (value) => {
+      value.jobs.analyze.steps.push({ run: "npm install" });
+    },
+  ]) {
+    const changed = structuredClone(source);
+    change(changed);
+    assert.throws(() => inspectCodeqlWorkflow(stringify(changed)));
+  }
+});
+
+test("the active application workflow requires all 18 checks and verified coverage", () => {
+  const workflow = applicationWorkflow();
+  const selected = actualManifest();
+  assert.equal(selected.applicationReady, true);
+  assert.equal(parse(workflow).concurrency.queue, undefined);
+  assert.deepEqual(inspectCi(workflow, selected), { requiredChecks: 18 });
+  assert.deepEqual(inspectSonarWorkflow(workflow, selected), {
+    requiredChecks: 18,
+  });
+});
+
+test("application CI runs fresh checks for metadata edits and rejects reuse or skipped commands", () => {
+  for (const change of [
+    (value) => {
+      value.jobs.check.steps.push({
+        run: "node scripts/check-ci.mjs --prepare-reuse",
+      });
+    },
+    (value) => {
+      command(value, canonical).if = "needs.scope.outputs.run == 'true'";
+    },
+    (value) => {
+      command(
+        value,
+        "node scripts/check-ci.mjs --record-coverage",
+      ).env.VERIFICATION_REUSED = "${{ steps.reuse.outputs.reused }}";
+    },
+  ]) {
+    const value = parse(applicationWorkflow());
+    change(value);
+    assert.throws(
+      () => inspectCi(stringify(value), actualManifest()),
+      /fresh verification|declared condition|actual application phase/,
+    );
+  }
+});
+
+test("the historical single-pass fixture runs core verification once and reuses measured coverage for one scanner", () => {
   assert.deepEqual(
-    inspectSonarWorkflow(read(".github/workflows/ci.yml"), manifest()),
+    inspectCi(read("scripts/ci-single-pass.test.yml"), manifest()),
+    {
+      requiredChecks: manifest().profiles.full.length,
+    },
+  );
+  assert.deepEqual(
+    inspectSonarWorkflow(read("scripts/ci-single-pass.test.yml"), manifest()),
     { requiredChecks: manifest().profiles.full.length },
   );
   assert.deepEqual(Object.keys(workflow().jobs).sort(), [
     "analysis",
     "check",
-    ...(manifest().bootstrapBaseSha ? ["file-limit"] : []),
     "scope",
   ]);
+});
+
+test("analysis requires credentials and project binding before consuming coverage", () => {
+  const configured = (value) =>
+    value.jobs.analysis.steps.find(
+      (step) => step.name === "Require configured SonarQube Cloud analysis",
+    );
+  for (const change of [
+    (value) => {
+      delete configured(value).env.SONAR_TOKEN_CONFIGURED;
+    },
+    (value) => {
+      configured(value).env.SONAR_TOKEN_CONFIGURED = "true";
+    },
+    (value) => {
+      delete configured(value).env.SONAR_PROJECT_KEY;
+    },
+    (value) => {
+      configured(value).run = "Write-Output 'Analysis configured'";
+    },
+    (value) => {
+      const steps = value.jobs.analysis.steps;
+      const index = steps.indexOf(configured(value));
+      steps.push(...steps.splice(index, 1));
+    },
+  ])
+    assert.throws(
+      () => inspectCi(changedWorkflow(change), manifest()),
+      /configured credentials|exactly once|existing measured coverage/,
+    );
 });
 
 test("every declared publication phase retains its exact available verification capabilities", () => {
@@ -137,11 +532,14 @@ test("every declared publication phase retains its exact available verification 
     ["storybook-verification", 12],
     ["assistant-guidance", 12],
     ["release-prerequisites", 12],
-    ["application-verification", 17],
+    ["application-verification", 18],
   ]) {
     const value = phaseManifest(phase, count);
+    const source = value.applicationReady
+      ? applicationWorkflow()
+      : phaseWorkflow();
     for (const inspect of [inspectCi, inspectSonarWorkflow]) {
-      assert.deepEqual(inspect(phaseWorkflow(), value), {
+      assert.deepEqual(inspect(source, value), {
         requiredChecks: count,
       });
       for (const id of value.profiles.full) {
@@ -151,7 +549,7 @@ test("every declared publication phase retains its exact available verification 
           (check) => check !== id,
         );
         assert.throws(
-          () => inspect(phaseWorkflow(), missing),
+          () => inspect(source, missing),
           /every exact required core check/,
         );
       }
@@ -193,102 +591,6 @@ test("phase check selection does not expose mutable policy definitions", () => {
     "snapshot",
     "npm run check:snapshot",
   ]);
-});
-
-test("only the initial repository foundation can own a read-only bootstrap PR file-limit job", () => {
-  const fixture = phaseManifest("repository-foundation", 10);
-  fixture.bootstrapBaseSha = "a".repeat(40);
-  const value = parse(phaseWorkflow());
-  value.jobs["file-limit"] = {
-    name: "PR file limit",
-    "runs-on": "ubuntu-latest",
-    "timeout-minutes": 5,
-    if: `github.event_name == 'pull_request' && github.event.pull_request.base.sha == '${fixture.bootstrapBaseSha}'`,
-    permissions: { contents: "read", "pull-requests": "read" },
-    steps: [
-      {
-        uses: value.jobs.scope.steps[0].uses,
-        with: {
-          ref: "${{ github.event.pull_request.head.sha }}",
-          "persist-credentials": false,
-        },
-      },
-      {
-        uses: value.jobs.scope.steps[1].uses,
-        with: { "node-version-file": ".nvmrc" },
-      },
-      {
-        run: "node scripts/check-pr-size.mjs",
-        env: { GITHUB_TOKEN: "${{ github.token }}" },
-      },
-    ],
-  };
-  assert.deepEqual(inspectCi(stringify(value), fixture), {
-    requiredChecks: 10,
-  });
-  for (const change of [
-    (workflow) => {
-      delete workflow.jobs["file-limit"];
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].if = "always()";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].permissions.contents = "write";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].permissions.actions = "read";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].needs = "check";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"]["continue-on-error"] = true;
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].steps[0].with.ref =
-        "${{ github.event.pull_request.head.ref }}";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].steps[0].with.token =
-        "${{ secrets.UNRELATED_TOKEN }}";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].steps[1].env = {
-        SECRET: "${{ secrets.UNRELATED_TOKEN }}",
-      };
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].steps[2].env.GITHUB_TOKEN =
-        "${{ secrets.UNRELATED_TOKEN }}";
-    },
-    (workflow) => {
-      workflow.jobs["file-limit"].steps.push({ run: "node other.mjs" });
-    },
-    (workflow) => {
-      workflow.jobs.check.steps.push({ run: "node scripts/check-pr-size.mjs" });
-    },
-  ]) {
-    const invalid = structuredClone(value);
-    change(invalid);
-    assert.throws(
-      () => inspectCi(stringify(invalid), fixture),
-      /bootstrap PR file limit|exact tested revision|trusted pull-request policy/,
-    );
-  }
-  for (const phase of ["foundation", "application-verification"]) {
-    const later = phaseManifest(phase, phase === "foundation" ? 10 : 17);
-    assert.throws(
-      () => inspectCi(stringify(value), later),
-      /bootstrap PR file limit/,
-    );
-  }
-  for (const base of [undefined, "", "0".repeat(40), "not a commit"]) {
-    assert.throws(
-      () => inspectCi(stringify(value), { ...fixture, bootstrapBaseSha: base }),
-      /bootstrap PR file limit/,
-    );
-  }
 });
 
 test("CI preserves PR lifecycle and base retargeting, scheduled compatibility and manual release verification", () => {
@@ -722,10 +1024,10 @@ test("manifest ownership preserves all inherited checks and the complete matrix 
       ).exception.expiresAt = "2027-01-01T00:00:00Z";
     },
   ]) {
-    const value = applicationManifest();
+    const value = actualManifest();
     change(value);
     assert.throws(
-      () => inspectCi(phaseWorkflow(), value),
+      () => inspectCi(applicationWorkflow(), value),
       /phase|unique|core check|declared scope|Complete verification|bounded expiry/,
     );
   }
@@ -890,6 +1192,13 @@ test("title/body edits avoid duplicate verification while retargeting a base alw
     };
     assert.equal(scope({ event }).run, "false");
     assert.equal(scope({ event }).visual, "false");
+    assert.equal(scope({ event, runMetadataEdits: true }).run, "true");
+    assert.equal(scope({ event, runMetadataEdits: true }).visual, "true");
+    assert.equal(
+      scope({ event, runMetadataEdits: true, files: ["docs/testing.md"] })
+        .visual,
+      "false",
+    );
   }
   const event = {
     action: "edited",
@@ -1511,9 +1820,6 @@ test("protected checks fail closed on missing scope and performance expiry is re
       value.concurrency.queue = "max";
     },
     (value) => {
-      delete value.concurrency.queue;
-    },
-    (value) => {
       command(value, "npm run validate -- performance")["continue-on-error"] =
         "${{ needs.scope.outputs.lighthouse_advisory == 'true' }}";
     },
@@ -1543,7 +1849,7 @@ test("the shared normalized workflow keeps the non-runnable phase at its real tw
     requiredChecks: 12,
   });
   assert.deepEqual(
-    inspectSonarWorkflow(read(".github/workflows/ci.yml"), fixture),
+    inspectSonarWorkflow(read("scripts/ci-single-pass.test.yml"), fixture),
     { requiredChecks: 12 },
   );
   for (const phase of [
@@ -1643,7 +1949,7 @@ test("Sonar analyzes the declared phase and classifies its fixtures without weak
         return [line.slice(0, separator), line.slice(separator + 1)];
       }),
   );
-  const application = manifest().applicationReady === true;
+  const application = actualManifest().applicationReady === true;
   const published = JSON.parse(
     read(".github/bootstrap-policy.json"),
   ).allowedFiles;
@@ -2408,6 +2714,84 @@ test("fresh scanner and evidence publication fail closed on invalid identity, ch
   );
 });
 
+test("coverage verification reads the validated descriptor after a pathname replacement", async (context) => {
+  for (const file of [
+    "coverage/unit/lcov.info",
+    "coverage/verification-coverage.json",
+  ]) {
+    const fixture = await evidenceFixture(context);
+    await fixture.runner()("--record-coverage");
+    const target = path.join(fixture.directory, file);
+    let replaced = false;
+    let closed = false;
+    const execute = fixture.runner({
+      openFile: async (filename, flags) => {
+        const handle = await open(filename, flags);
+        if (filename !== target) return handle;
+
+        return {
+          stat: () => handle.stat(),
+          readFile: async () => {
+            await rename(filename, `${filename}.previous`);
+            await writeFile(filename, "untrusted replacement");
+            replaced = true;
+            return handle.readFile();
+          },
+          close: async () => {
+            closed = true;
+            await handle.close();
+          },
+        };
+      },
+    });
+
+    await execute("--verify-coverage");
+    assert.equal(replaced, true, file);
+    assert.equal(closed, true, file);
+    assert.equal(await readFile(target, "utf8"), "untrusted replacement");
+  }
+});
+
+test("coverage verification rejects a replacement before pathname validation and closes the handle", async (context) => {
+  for (const file of [
+    "coverage/unit/lcov.info",
+    "coverage/verification-coverage.json",
+  ]) {
+    const fixture = await evidenceFixture(context);
+    await fixture.runner()("--record-coverage");
+    const target = path.join(fixture.directory, file);
+    let read = false;
+    let closed = false;
+    const execute = fixture.runner({
+      openFile: async (filename, flags) => {
+        const handle = await open(filename, flags);
+        if (filename !== target) return handle;
+
+        return {
+          stat: async () => {
+            const info = await handle.stat();
+            await rename(filename, `${filename}.previous`);
+            await writeFile(filename, "untrusted replacement");
+            return info;
+          },
+          readFile: async () => {
+            read = true;
+            return handle.readFile();
+          },
+          close: async () => {
+            closed = true;
+            await handle.close();
+          },
+        };
+      },
+    });
+
+    await assert.rejects(execute("--verify-coverage"), /ordinary/);
+    assert.equal(read, false, file);
+    assert.equal(closed, true, file);
+  }
+});
+
 test("application phase mismatch cannot reuse otherwise valid measured evidence", () => {
   const producer = { ...identity(), runId: "122" };
   const report = coverageManifest(producer, contents(), {
@@ -2478,30 +2862,6 @@ test("each CI stage retains its declared execution budget and cannot expand toke
   assert.throws(
     () => inspectCi(stringify(privileged), manifest()),
     /read-only evidence/,
-  );
-});
-
-test("PR size has only the immutable trusted policy owner", () => {
-  const value = workflow();
-  assert.ok(
-    value.jobs.check.steps.every(
-      (step) => !step.run?.includes("check-pr-size.mjs"),
-    ),
-  );
-  const policy = parse(read(".github/workflows/pr-policy.yml"));
-  const checkout = policy.jobs["file-limit"].steps.find((step) =>
-    step.uses?.startsWith("actions/checkout@"),
-  );
-  assert.equal(checkout.with.ref, "${{ github.workflow_sha }}");
-  assert.ok(
-    policy.jobs["file-limit"].steps.some(
-      (step) => step.run === "node scripts/check-pr-size.mjs",
-    ),
-  );
-  value.jobs.check.steps.push({ run: "node scripts/check-pr-size.mjs" });
-  assert.throws(
-    () => inspectCi(stringify(value), manifest()),
-    /trusted pull-request policy/,
   );
 });
 

@@ -123,12 +123,15 @@ export const phaseFixture = (phase) => {
     .map(({ command }) => command);
   state.ci = parse(
     readFileSync(
-      new URL("../.github/workflows/ci.yml", import.meta.url),
+      new URL(
+        applicationReady
+          ? "../.github/workflows/ci.yml"
+          : "./ci-single-pass.test.yml",
+        import.meta.url,
+      ),
       "utf8",
     ),
   );
-  // Phase fixtures use ordinary CI; the live initial-PR guard is tested separately.
-  delete state.ci.jobs["file-limit"];
   state.sonar = structuredClone(state.ci);
   return state;
 };

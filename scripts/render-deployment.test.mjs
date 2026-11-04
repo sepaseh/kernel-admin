@@ -17,6 +17,10 @@ test("renders root/subpath TLS SPA, immutable assets, explicit API CSP and unmod
     });
     assert.ok(rendered.includes(`try_files $uri $uri/ ${basePath}index.html;`));
     assert.ok(rendered.includes(`location ^~ ${basePath}assets/`));
+    assert.ok(
+      rendered.includes('map "$status:$uri" $kernel_admin_cache_control'),
+    );
+    assert.ok(rendered.includes(`~^(?:200|206|304):${basePath}assets/`));
     assert.ok(rendered.includes("https://$host:8443$request_uri"));
     for (const token of [
       "ssl_protocols TLSv1.2 TLSv1.3",

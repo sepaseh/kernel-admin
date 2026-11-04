@@ -21,6 +21,52 @@ const availableShell = () =>
       }).status === 0,
   );
 
+test("Docker build rejects uppercase ADMIN_HOST before compiling or packaging", async (context) => {
+  const shell = availableShell();
+  if (!shell) return context.skip("A POSIX shell is required for this check.");
+
+  const dockerfile = await read("deploy/docker/Dockerfile");
+  const build = dockerfile
+    .replace(/\\\r?\n/g, "")
+    .split(/\r?\n/)
+    .find((line) => line.startsWith("RUN ") && line.includes("npm run build"));
+  assert.ok(build, "The Docker build command must be present.");
+
+  const run = (ADMIN_HOST) =>
+    spawnSync(
+      shell,
+      [
+        "-c",
+        `node() { printf 'node %s\\n' "$*"; }
+npm() { printf 'npm %s\\n' "$*"; }
+${build.slice(4)}`,
+      ],
+      {
+        encoding: "utf8",
+        env: { ADMIN_HOST, VITE_RELEASE_ID: "release-test-1" },
+        windowsHide: true,
+      },
+    );
+
+  const lowercase = run("admin.kernel.test");
+  assert.ifError(lowercase.error);
+  assert.equal(lowercase.status, 0, lowercase.stderr);
+  assert.deepEqual(lowercase.stdout.trim().split(/\r?\n/), [
+    "node scripts/validate-deployment-env.mjs",
+    "npm run build",
+    "node scripts/package-release.mjs --release=release-test-1",
+  ]);
+
+  const mixedCase = run("Admin.Kernel.test");
+  assert.ifError(mixedCase.error);
+  assert.equal(mixedCase.status, 1);
+  assert.match(
+    mixedCase.stderr,
+    /ADMIN_HOST must be a lowercase bare DNS hostname/,
+  );
+  assert.equal(mixedCase.stdout, "");
+});
+
 test("container startup rejects unsafe public configuration before starting Nginx", async (context) => {
   const shell = availableShell();
   if (!shell) return context.skip("A POSIX shell is required for this check.");

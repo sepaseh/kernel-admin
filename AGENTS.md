@@ -1,36 +1,25 @@
 # Assistant entry point
 
-Read [`.agents/README.md`](.agents/README.md), its [settings index](.agents/settings.json), [source navigation](docs/source-navigation.md) and the relevant canonical rules before changing source. Use repository scripts and follow [Contributing](CONTRIBUTING.md).
+Read [assistant guidance](.agents/README.md), its [settings index](.agents/settings.json), [source navigation](docs/source-navigation.md) and the relevant canonical rules before changing source. Follow [Contributing](CONTRIBUTING.md).
 
 ## Scope and safety
 
-Preserve user changes, including unrelated tracked and untracked files. Never read real environment files, credentials, keys, databases, uploads or browser state as fixtures. Do not commit, push, publish, contact production or run an operational target without authorization covering that action. Existing authorization and user preferences remain valid within their scope.
+Preserve unrelated tracked, staged and untracked work. Never read real environment files, credentials, keys, databases, uploads or browser state as test fixtures. Use the existing checkout; an additional worktree, clone or copied implementation checkout requires prior explicit authorization under the [working-checkout rule](.agents/rules/branches.md#working-checkout).
 
-Use the existing checkout. Creating an additional Git worktree, clone or copied
-implementation checkout of this repository requires prior explicit user
-authorization, including when delegated to a subagent. Follow the
-[working-checkout rule](.agents/rules/branches.md#working-checkout).
+Keep one standalone root project. Do not add workspaces, backend SDKs, local-package links or external project source dependencies. A consuming developer chooses a backend implementing the local HTTP contract.
 
-Keep one standalone root project. Do not introduce workspaces, backend SDKs, local-package links or external project source dependencies. The consuming developer chooses a backend implementing the local HTTP contract; frontend work requires no external project source or documentation. Authentication execution, authorization and storage remain behind HTTP; menus and client guards do not replace server enforcement.
+The [publication policy](.github/bootstrap-policy.json) identifies the admitted application source. Follow the [development guide](docs/development.md) for its React, Ant Design, React Router and Axios owners. Preserve memory-only tokens, session generations, bounded shared refresh, cancellation and stale-result guards. Source admission and test configuration do not establish successful execution.
 
-## Source contracts
+## Git and review
 
-Use the existing React, Ant Design/antd-style, React Router and Axios owners. Feature API/types stay with the feature; shared transport/session state stays in `src/shared/api`; request hooks stay in `src/shared/hooks`.
+Use a verified feature branch and PR for every change to `main`. Never push directly to protected `main`, force-push it or bypass protection. Honor existing authorization; committing, publishing, requesting a provider review and merging are distinct action boundaries.
 
-Preserve memory-only tokens, login/logout generations, shared bounded refresh, cancellation and stale-result guards. Read [authentication and requests](docs/authentication.md) before changing these flows.
-
-Keep complete local application catalogs and API-owned language, direction and calendar. Browser preferences own theme/compact only. English-only documentation does not remove product translations. Read [localization](docs/localization.md).
-
-For interface work, read [DESIGN](DESIGN.md), the closest component/story and [the design skill](.agents/skills/design-ui/SKILL.md). Preserve permission, keyboard, contrast, motion, responsive and RTL/LTR behavior.
+Before opening a PR, review its scope and aim for at most 80 GitHub changed-file entries initially. Split independent changes when useful and explain why a larger cohesive change belongs together. Count additions, deletions, renames and binaries. File count is advisory: exceeding 100 files alone must not fail CI or require deleting and recreating a PR. Follow [Git workflow](.agents/rules/git.md), [PR policy](.agents/rules/pull-requests.md) and the [review skill](.agents/skills/review-pr/SKILL.md).
 
 ## Verification and documentation
 
-The [validation manifest](.agents/validation.json) owns commands and profiles. Start focused, then run the declared full gate on the exact isolated proposed source before an authorized commit, push or handoff. Do not weaken checks, coverage, tolerances or security controls to pass them. Report actual execution and limits; configuration alone is not evidence.
+The [validation manifest](.agents/validation.json) owns commands and profiles. Start focused, then run its complete `full` profile on the exact proposed publication export before an authorized commit, push or handoff. Keep required checks, coverage thresholds and security controls intact. Report actual results and unavailable evidence.
 
-Target at most 80 GitHub changed-file entries when opening a PR, reserving 20 for
-review fixes under the hard 100-entry limit. Count additions, deletions, renames
-and binaries; follow [pull-request policy](.agents/rules/pull-requests.md).
+Maintain English, current, task-oriented documentation through the [documentation map](docs/README.md). When UI catalogs are admitted, retain all ten catalogs and Persian calendar data; the API owns language, direction and calendar, while browser preferences own theme and compact mode.
 
-Keep documentation and assistant instructions in English, current and task-oriented; do not add translated companions or bilingual navigation. Preserve all ten UI catalogs, Persian calendar data and clearly identified localized product examples or synthetic UI fixtures; their explanatory prose stays English. Use [the documentation map](docs/README.md); update the existing owner guide instead of adding dated QA reports or decision logs. Optional host adapters and hooks do not grant permission or prove automatic loading.
-
-Only reviewed public examples at `.env.example`, `deploy/docker/compose.env.example` and `deploy/native/nginx.env.example` may enter source fixtures. A filename does not authorize reading a private local counterpart. Deployment/helper CLIs can write files, start resources and contact targets: read [deployment](docs/deployment.md) before invoking them.
+Only the reviewed examples at `.env.example`, `deploy/docker/compose.env.example` and `deploy/native/nginx.env.example` may become public source fixtures when admitted. Their private counterparts remain unread. Deployment source and optional hooks do not authorize operational targets or prove automatic execution.

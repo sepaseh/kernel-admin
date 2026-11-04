@@ -28,7 +28,6 @@ permissions:
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.ref }}-${{ github.event.inputs.verification || 'default' }}
   cancel-in-progress: false
-  queue: single
 jobs:
   scope:
     runs-on: windows-2025
@@ -82,73 +81,38 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - id: reuse-candidate
-        name: Find prior successful verification for metadata-only edits
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          VERIFICATION_METADATA_ONLY: ${{ needs.scope.outputs.run == 'false' }}
-        run: node scripts/check-ci.mjs --prepare-reuse
-      - id: reuse-download
-        name: Download existing measured coverage when eligible
-        if: steps.reuse-candidate.outputs.artifact != ''
-        continue-on-error: true
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: ${{ steps.reuse-candidate.outputs.artifact }}
-          path: coverage
-          run-id: ${{ steps.reuse-candidate.outputs.runId }}
-          github-token: ${{ github.token }}
-          digest-mismatch: error
-      - id: reuse
-        name: Accept only successful evidence for the exact source and merge tree
-        env:
-          VERIFICATION_REUSE_ARTIFACT: ${{ steps.reuse-candidate.outputs.artifact }}
-          VERIFICATION_REUSE_RUN_ID: ${{ steps.reuse-candidate.outputs.runId }}
-          VERIFICATION_REUSE_ATTEMPT: ${{ steps.reuse-candidate.outputs.runAttempt }}
-          GITHUB_TOKEN: ${{ github.token }}
-          VERIFICATION_REUSE_DOWNLOAD: ${{ steps.reuse-download.outcome }}
-        run: node scripts/check-ci.mjs --accept-reuse
       - run: npm ci --strict-peer-deps --no-audit --no-fund
-        if: steps.reuse.outputs.reused != 'true'
       - run: npm run ${{ needs.scope.outputs.browser_install }}
-        if: steps.reuse.outputs.reused != 'true'
       - name: Validate the tested source once
         run: npm run validate -- ${{ needs.scope.outputs.profile }}
-        if: steps.reuse.outputs.reused != 'true'
       - name: Compare images when rendering inputs changed
-        if: needs.scope.outputs.application == 'true' && steps.reuse.outputs.reused != 'true' && needs.scope.outputs.profile == 'full' && needs.scope.outputs.visual == 'true'
+        if: needs.scope.outputs.application == 'true' && needs.scope.outputs.profile == 'full' && needs.scope.outputs.visual == 'true'
         run: npm run validate -- visual
       - id: performance-policy
         name: Re-evaluate the advisory deadline immediately before the audit
-        if: needs.scope.outputs.application == 'true' && steps.reuse.outputs.reused != 'true'
+        if: needs.scope.outputs.application == 'true'
         run: node scripts/check-ci.mjs --performance-scope
       - name: Measure performance with a bounded advisory exception
         id: performance
         continue-on-error: ${{ steps.performance-policy.outputs.advisory == 'true' }}
         run: npm run validate -- performance
-        if: needs.scope.outputs.application == 'true' && steps.reuse.outputs.reused != 'true'
+        if: needs.scope.outputs.application == 'true'
       - name: Record performance outcome and review deadline
         if: always()
         env:
           PERFORMANCE_OUTCOME: ${{ steps.performance.outcome }}
           PERFORMANCE_ADVISORY: ${{ steps.performance-policy.outputs.advisory }}
-          VERIFICATION_REUSED: ${{ steps.reuse.outputs.reused }}
-        run: '"Verification reused: $env:VERIFICATION_REUSED. Lighthouse outcome: $env:PERFORMANCE_OUTCOME. Advisory: $env:PERFORMANCE_ADVISORY. Owner: Kernel Admin frontend/test maintainer. Review by: 2026-11-07; exception expires 2026-11-07T00:00:00Z." >> $env:GITHUB_STEP_SUMMARY'
+        run: '"Lighthouse outcome: $env:PERFORMANCE_OUTCOME. Advisory: $env:PERFORMANCE_ADVISORY. Owner: Kernel Admin frontend/test maintainer. Review by: 2026-11-07; exception expires 2026-11-07T00:00:00Z." >> $env:GITHUB_STEP_SUMMARY'
       - name: Bind measured coverage to this tested source and merge base
         id: coverage
         run: node scripts/check-ci.mjs --record-coverage
         env:
-          VERIFICATION_REUSE_ARTIFACT: ${{ steps.reuse-candidate.outputs.artifact }}
-          VERIFICATION_REUSE_RUN_ID: ${{ steps.reuse-candidate.outputs.runId }}
-          VERIFICATION_REUSE_ATTEMPT: ${{ steps.reuse-candidate.outputs.runAttempt }}
-          GITHUB_TOKEN: ${{ github.token }}
-          VERIFICATION_REUSED: ${{ steps.reuse.outputs.reused }}
           VERIFICATION_APPLICATION: ${{ needs.scope.outputs.application }}
           VERIFICATION_PERFORMANCE_ADVISORY: ${{ steps.performance-policy.outputs.advisory }}
           VERIFICATION_PERFORMANCE_OUTCOME: ${{ steps.performance.outcome }}
       - name: Preserve measured coverage evidence
         id: coverage-upload
-        if: success() && steps.reuse.outputs.reused != 'true'
+        if: success()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: verification-${{ github.run_id }}-${{ github.run_attempt }}
@@ -163,7 +127,7 @@ jobs:
           include-hidden-files: false
       - name: Preserve verification diagnostics
         id: diagnostics-upload
-        if: always() && steps.reuse.outputs.reused != 'true'
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
@@ -201,6 +165,11 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      - name: Require configured SonarQube Cloud analysis
+        env:
+          SONAR_TOKEN_CONFIGURED: ${{ secrets.SONAR_TOKEN != '' }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+        run: if ($env:SONAR_TOKEN_CONFIGURED -ne "true" -or [string]::IsNullOrWhiteSpace($env:SONAR_PROJECT_KEY)) { throw "Configure SONAR_TOKEN and SONAR_PROJECT_KEY before analysis. No Sonar analysis was performed." }
       - name: Download coverage from the successful producer job
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -215,7 +184,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Install locked TypeScript analysis dependencies without running scripts
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: npm ci --strict-peer-deps --ignore-scripts --no-audit --no-fund
       - name: Analyze the tested source with its measured coverage
         uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9
         env:

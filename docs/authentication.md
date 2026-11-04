@@ -2,11 +2,15 @@
 
 Use this reference when changing an HTTP adapter, session transition or asynchronous screen. Start with the relevant owner and its tests:
 
+The application composes transport, feature HTTP adapters, settings validation, guarded requests, providers and authentication forms. Local tests use synthetic responses. Live backend integration requires separate verification.
+
 | Change                                        | Owner                                                             | Regression examples                                                    |
 | --------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | Dispatch, refresh, replay or transport errors | [`client.ts`](../src/shared/api/client.ts)                        | [`client.test.ts`](../src/shared/api/client.test.ts)                   |
 | Credential lifetime or generation             | [`token.ts`](../src/shared/api/token.ts)                          | [`token.test.ts`](../src/shared/api/token.test.ts)                     |
 | Login, registration or logout                 | [Authentication API](../src/features/auth/api.ts)                 | [Logout lifecycle](../src/features/auth/logout.test.ts)                |
+| OTP cancellation and cooldown                 | [OTP request hook](../src/features/auth/useOtpRequest.ts)         | [OTP lifecycle](../src/features/auth/useOtpRequest.test.tsx)           |
+| Account loading and logout in protected UI    | [Default layout](../src/layouts/default/Default.tsx)              | [Layout lifecycle](../src/layouts/default/Default.test.tsx)            |
 | Read cancellation and replacement             | [`useReadResource`](../src/shared/hooks/useReadResource.ts)       | [Read lifecycles](../src/shared/hooks/useReadResource.test.ts)         |
 | Mutation identity and continuation            | [`useMutationRequest`](../src/shared/hooks/useMutationRequest.ts) | [Mutation lifecycles](../src/shared/hooks/useMutationRequest.test.tsx) |
 
@@ -16,11 +20,13 @@ Feature HTTP owners consume the configured backend. Database operations, authori
 
 Developers choose a compatible backend through `VITE_API_BASE_URL`. The local feature `api.ts` and `types.ts` files define this frontend's requests and expected responses; no particular backend implementation, repository, request collection or tooling is required. Adapt this project's HTTP boundary when integrating a service with a different contract.
 
-Use the [synthetic settings response](../e2e/fixtures.ts), [application HTTP handlers](../e2e/shared/admin-fixtures.ts) and [consumer request/response examples](../contract/api.contract.test.ts) as local integration references. They cover the current consumer expectations and remain fixtures, not real accounts or services. Initial startup needs a valid `/settings` response before routes render; authenticated features also require compatible login, refresh and permission behavior. Builds and synthetic checks need no running backend. Verify a chosen service separately when real integration testing is authorized.
+Use the [synthetic HTTP handlers](../src/test/mocks/handlers.ts), [settings fixture](../e2e/fixtures.ts), [application HTTP fixtures](../e2e/shared/admin-fixtures.ts) and [consumer contracts](../contract/api.contract.test.ts) for request and response examples. Startup requires a valid `/settings` response before routes render. Authenticated features require compatible login, refresh and permission behavior. Builds and synthetic tests need no running backend. Verify the chosen service separately when real integration testing is authorized.
 
 ## Transport contract
 
 The shared client configures Axios with credentials, a 15-second timeout and explicit cancellation. [`config.ts`](../src/shared/api/config.ts) reads the public `VITE_API_BASE_URL`, falling back to the browser origin when that value is absent. See [usage](usage.md) for configuration.
+
+User and role adapters pass IDs through the shared [path validator](../src/shared/api/path.ts) before constructing a request URL. It rejects only the exact IDs `.` and `..`, which URL normalization would treat as dot segments, with a translated validation error before transport. Other IDs remain opaque and are encoded as one path segment; ordinary dots and literal percent sequences are preserved as identifier data.
 
 JSON request keys become snake case and response keys become camel case. FormData and binary payloads keep their identity. Key conversion returns `unknown`; it does not validate a generic DTO. Authentication replies and application settings receive explicit runtime validation before changing session or application state.
 
@@ -62,25 +68,27 @@ To connect a feature read:
 
 Disabled resources expose no stale data, loading or error. Keep independent list and lookup resources separate so an optional lookup failure does not erase a usable list. The hook's resource identity and the client's authentication generation protect different boundaries; both remain necessary.
 
-## Forms and privileged screens
+## Mutation guards and future privileged screens
 
-Forms own cancellation and submitting state. The shared mutation hook binds work to its identity, enabled state and initiating authentication generation. Check the returned `isCurrent()` before success effects and use `isCurrentMutationError` before showing a failure. Unmounting or changing that scope invalidates pending continuation.
+The shared `useMutationRequest` hook binds work to its identity, enabled state and initiating authentication generation. Its `run` method forwards an owned cancellation signal and returns accepted data with an `isCurrent()` guard. Use that guard before success effects and `isCurrentMutationError` before failure presentation. Unmounting or changing the scope invalidates pending continuation; stale or cancelled work returns no accepted result.
 
-Changing a mobile number cancels its OTP request and clears old OTP/cooldown state. A pending-operation guard binds the intent before asynchronous OTP validation. Enter and button submission use the same form validation and duplicate-request guard. Login and registration also guard credential installation after transport fulfillment.
+When adding a feature form that uses this hook, connect cancellation and submitting state to the owning form.
 
-The [user form](../src/features/users/components/user-form/UserForm.tsx) and [password reset](../src/features/users/Users.tsx) reveal a generated password only after a successful API response and while the initiating login is current. They display a notification and attempt to copy the value to the clipboard; clipboard failure does not prevent the notification. The form's navigation and completion callbacks also require the mutation to remain current. Preserve those separate guards and reuse `profileNameMaxLength` from `src/shared/contracts` rather than inventing another limit.
+An admitted authentication form must cancel its OTP request and clear old OTP/cooldown state when the mobile number changes. Its pending-operation guard must bind the intent before asynchronous OTP validation. Enter and button submission must use the same form validation and duplicate-request guard. The current login and registration APIs already guard credential installation after transport fulfillment.
 
-The default layout checks the account before rendering protected children and retains explicit loading/error/retry states. The API independently enforces administrator safeguards and every mutation. Cancellation protects client continuation; it cannot undo a server mutation or a browser cookie side effect.
+The [user form](../src/features/users/components/user-form/UserForm.tsx) and [password reset](../src/features/users/Users.tsx) must reveal a generated password only after a successful API response and while the initiating login is current. They must display a notification and attempt to copy the value to the clipboard. The notification must still appear if clipboard access fails. The form's navigation and completion callbacks also require the mutation to remain current. Preserve those separate guards and reuse `profileNameMaxLength` from `src/shared/contracts`.
+
+The default layout checks the account before rendering protected children and exposes explicit loading, error and retry states. The API independently enforces administrator safeguards and authorizes each mutation. Cancellation protects client continuation. Server mutations and browser cookie effects can persist after cancellation.
 
 ## Settings and troubleshooting
 
-The [settings adapter](../src/features/settings/api.ts) validates the complete envelope, the required palette fields, optional logos and complete language metadata. Core preserves accepted settings across refresh failures and replaces older reads when a save succeeds. Language authority is described in [localization](localization.md).
+The settings adapter validates the complete envelope, the required palette fields, optional logos and complete language metadata. Core preserves accepted settings across refresh failures and replaces older reads when a save succeeds. [Settings adapter](../src/features/settings/api.ts) and [localization](localization.md).
 
 | Symptom                                               | First check                                                                                                                            |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Settings fail before routes appear                    | Confirm the configured API URL, response metadata and exact allowed browser origin. `localhost` and `127.0.0.1` are different origins. |
+| Settings metadata is rejected                         | Confirm the configured API URL, response metadata and exact allowed browser origin. `localhost` and `127.0.0.1` are different origins. |
 | A protected request repeatedly returns 401            | Trace its initiating generation, the shared refresh result and the single replay in `client.test.ts`.                                  |
 | A request returns 403                                 | Check the API's permission decision and the current account; changing a menu guard cannot grant access.                                |
 | A completed request changes the wrong screen or login | Check loader dependencies, mutation identity, signal forwarding and post-fulfillment guards.                                           |
 
-Record the URL, HTTP status and safe `X-Request-Id`, without credentials or payloads. Document changed HTTP/session expectations at the local integration boundary and use the synthetic fixtures described in [testing](testing.md).
+Record a sanitized route template such as `/users/:id`, with query values and user identifiers removed, plus the HTTP status and safe `X-Request-Id`. Exclude credentials and payloads. Document changed HTTP/session expectations at the local integration boundary and use the synthetic fixtures described in [testing](testing.md).

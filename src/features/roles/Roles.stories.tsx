@@ -1,18 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, mocked, userEvent, within } from "storybook/test";
+import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
 
 import { permissions, roles, sampleAccount } from "@/test/storybook/fixtures";
 import { i18nInstance } from "@/shared/i18n";
 import { StoryShell } from "@/test/storybook/StoryShell";
 
-import { fetchPermissions, fetchRole, fetchRoles } from "./api";
+import { fetchPermissions, fetchRoles } from "./api";
 import { RolesPage } from "./Roles";
 
 const meta = {
   async beforeEach() {
     mocked(fetchPermissions).mockResolvedValue(permissions);
-    mocked(fetchRole).mockResolvedValue(roles[0]);
-    mocked(fetchRoles).mockResolvedValue(roles);
   },
   component: RolesPage,
   render: () => (
@@ -34,6 +32,32 @@ export const Populated: Story = {
     await expect(
       canvas.getByRole("button", { name: i18nInstance.t("create") }),
     ).toBeEnabled();
+  },
+};
+
+export const EditSelectedRole: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole("row", { name: /Editor/ });
+    const update = within(editor).getByRole("button", {
+      name: i18nInstance.t("update"),
+    });
+    await waitFor(() => expect(update).toBeEnabled());
+    await userEvent.click(update);
+
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = within(await body.findByRole("dialog"));
+    const name = dialog.getByLabelText(i18nInstance.t("name"));
+    await expect(name).toHaveValue("Editor");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Content Editor");
+    await userEvent.click(
+      dialog.getByRole("button", { name: i18nInstance.t("submit") }),
+    );
+
+    await expect(await canvas.findByText("Content Editor")).toBeVisible();
+    await expect(canvas.getByText("Administrator")).toBeVisible();
+    await expect(canvas.queryByText("Editor")).not.toBeInTheDocument();
   },
 };
 

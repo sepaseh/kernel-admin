@@ -26,7 +26,7 @@ const identities = {
   [fontFile]:
     "4e3fa217d38fdafc1fea4414ceb58ca5e662cf0ab5fa735a8c8c20e8b42cad92",
   "src/assets/styles/index.css":
-    "1ab03b89ece5055a348fba8a7de303a1f0736daa50e11c7283a1ab59ced421b4",
+    "6a5b5fa3a4dd30015f3533575664325ac7b8c19d660fe8b563ff476001a32ec3",
   "src/assets/styles/vazirmatn.css":
     "30f5bf96cefb147568fd5ccf5ab6d16e86849f6f2af8dcb982a90b4fde782664",
   "public/logo.svg":
@@ -83,6 +83,20 @@ describe("published visual assets", () => {
     expect(global).toMatch(/font-family:\s*Vazirmatn, system-ui, sans-serif/);
     expect(global).toContain(":focus-visible");
     expect(global).toContain("prefers-reduced-motion: reduce");
+  });
+
+  it("does not impose a minimum width on the page", () => {
+    const style = document.createElement("style");
+    style.textContent = read("src/assets/styles/index.css").toString();
+    document.head.append(style);
+
+    try {
+      const rootStyle = getComputedStyle(document.documentElement);
+      expect(["", "auto", "0px"]).toContain(rootStyle.minWidth);
+      expect(rootStyle.overflowX).toBe("hidden");
+    } finally {
+      style.remove();
+    }
   });
 
   it("scopes reduced motion across the document and portalled controls in app and Storybook roots", () => {

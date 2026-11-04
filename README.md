@@ -13,6 +13,8 @@ A standalone React/Vite TypeScript administration panel using Ant Design, React 
 
 Local setup requires the Node version in [`.nvmrc`](.nvmrc) and its bundled npm. Opening the panel also requires a backend compatible with the local [HTTP contracts and examples](docs/authentication.md#backend-integration). The [run guide](docs/usage.md) covers installation, public configuration and the first sign-in. Builds and synthetic source checks need no live backend; [testing](docs/testing.md) describes their fixtures.
 
+The [publication policy](.github/bootstrap-policy.json) declares the `application-verification` phase and its admitted source. Provider compatibility and deployed availability require results from the selected target.
+
 ## Project boundaries
 
 Keep this repository as one root frontend project. API language, direction and calendar drive the interface; theme and compact mode are browser preferences. English repository documentation does not change the application's supported translations.

@@ -46,5 +46,9 @@ export const Default: Story = {
       ),
     );
     await waitFor(() => expect(args.onFinish).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(body.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(body.queryByRole("listbox")).not.toBeInTheDocument();
+    });
   },
 };

@@ -2,6 +2,64 @@
   "schemaVersion": 1,
   "cases": [
     {
+      "id": "admin-read-and-session-generation",
+      "prompt": {
+        "en": "Without editing or running services, trace a cancelled/obsolete admin read and an old protected mutation receiving 401 after logout and a new login. Explain current generation guards across refresh, retry and logout, bounded timeout/error behavior and StrictMode cleanup; cite regression tests and explicitly identify any unguarded branch instead of assuming safety. State whether canceling one reader can abort the shared refresh needed by another reader."
+      },
+      "taskIds": ["admin-request-reliability"],
+      "evidence": [
+        "src/shared/hooks/useReadRequest.ts",
+        "src/shared/hooks/useReadResource.ts",
+        "src/shared/api/client.ts",
+        "src/shared/api/token.ts",
+        "src/features/auth/api.ts",
+        "src/layouts/default/Default.tsx",
+        "src/shared/hooks/useReadResource.test.ts",
+        "src/shared/api/client.test.ts",
+        "src/layouts/default/Default.test.tsx",
+        "src/features/auth/logout.test.ts"
+      ],
+      "mustExplain": [
+        "Read sequence/key/mount checks prevent stale commits even when an adapter ignores AbortSignal; cancellation settles busy state and StrictMode cleanup invalidates obsolete work.",
+        "A shared refresh must survive one reader cancelling, while original request/session generation remains bound across awaits, retry dispatch and terminal 401 handling.",
+        "Old operations must not replay a mutation as a newly logged-in account or clear that account after a delayed refresh failure/retried 401; identify source guards or report an actual missing branch. Public settings reads may survive a session change, but a public-read exemption must not exempt protected writes to the same path.",
+        "Logout completion and duplicate requests need generation/mounted-owner protection beyond the shared client's generation checks; examine the helper finally and layout continuation separately.",
+        "Default request and refresh bounds are 15 seconds per attempt and uploads have an explicit 60-second bound; transient timeout/network errors stay retryable without automatically clearing authentication, and cancellation is not a user error.",
+        "Transient read retry is manual and has no attempt budget; the protected-401 one-replay rule after a successful same-generation refresh is independent."
+      ],
+      "mustNot": [
+        "Claim AbortSignal alone protects adapters that ignore cancellation or un-signaled mutations.",
+        "Silently replay an old mutation under new credentials or treat a transient refresh timeout as definitive logout.",
+        "Claim overlapping logout is safe without inspecting both helper finalization and layout state.",
+        "Read actual credentials/state, mutate runtime source or execute a live auth service to answer the case."
+      ],
+      "checks": ["boundaries", "typecheck", "unit-coverage"]
+    },
+    {
+      "id": "publication-rules",
+      "prompt": {
+        "en": "Without editing files, trace the current publication phase, exact full validation gate and required GitHub review checks. Explain what still needs real provider evidence."
+      },
+      "taskIds": ["publication-validation"],
+      "evidence": [
+        ".github/bootstrap-policy.json",
+        ".agents/validation.json",
+        "scripts/check-ci.mjs",
+        ".coderabbit.yaml"
+      ],
+      "mustExplain": [
+        "Changes reach protected main through a reviewed PR.",
+        "The complete full profile validates the exact admitted snapshot.",
+        "Scanner execution, quality gate and actual review approval are separate evidence."
+      ],
+      "mustNot": [
+        "Claim missing or skipped provider checks passed.",
+        "Read secrets or owner data.",
+        "Treat a successful CodeRabbit status as proof of its approval."
+      ],
+      "checks": ["snapshot", "ci-policy", "guidance"]
+    },
+    {
       "id": "admin-session-lifecycle",
       "prompt": {
         "en": "Without editing files, trace admin login, refresh, logout and session generations. Where are credentials stored and why does terminal client refresh failure not itself revoke server sessions? Give current source evidence and relevant checks."
@@ -54,40 +112,6 @@
         "Reintroduce a shared translation package or external project source dependency.",
         "Accept empty catalogs or English copies as translations.",
         "Initialize engines in pure catalog data modules."
-      ],
-      "checks": ["boundaries", "typecheck", "unit-coverage"]
-    },
-    {
-      "id": "admin-read-and-session-generation",
-      "prompt": {
-        "en": "Without editing or running services, trace a cancelled/obsolete admin read and an old protected mutation receiving 401 after logout and a new login. Explain current generation guards across refresh, retry and logout, bounded timeout/error behavior and StrictMode cleanup; cite regression tests and explicitly identify any unguarded branch instead of assuming safety. State whether canceling one reader can abort the shared refresh needed by another reader."
-      },
-      "taskIds": ["admin-request-reliability"],
-      "evidence": [
-        "src/shared/hooks/useReadRequest.ts",
-        "src/shared/hooks/useReadResource.ts",
-        "src/shared/api/client.ts",
-        "src/shared/api/token.ts",
-        "src/features/auth/api.ts",
-        "src/layouts/default/Default.tsx",
-        "src/shared/hooks/useReadResource.test.ts",
-        "src/shared/api/client.test.ts",
-        "src/layouts/default/Default.test.tsx",
-        "src/features/auth/logout.test.ts"
-      ],
-      "mustExplain": [
-        "Read sequence/key/mount checks prevent stale commits even when an adapter ignores AbortSignal; cancellation settles busy state and StrictMode cleanup invalidates obsolete work.",
-        "A shared refresh must survive one reader cancelling, while original request/session generation remains bound across awaits, retry dispatch and terminal 401 handling.",
-        "Old operations must not replay a mutation as a newly logged-in account or clear that account after a delayed refresh failure/retried 401; identify source guards or report an actual missing branch. Public settings reads may survive a session change, but a public-read exemption must not exempt protected writes to the same path.",
-        "Logout completion and duplicate requests need generation/mounted-owner protection beyond the shared client's generation checks; examine the helper finally and layout continuation separately.",
-        "Default request and refresh bounds are 15 seconds per attempt and uploads have an explicit 60-second bound; transient timeout/network errors stay retryable without automatically clearing authentication, and cancellation is not a user error.",
-        "Transient read retry is manual and has no attempt budget; the protected-401 one-replay rule after a successful same-generation refresh is independent."
-      ],
-      "mustNot": [
-        "Claim AbortSignal alone protects adapters that ignore cancellation or un-signaled mutations.",
-        "Silently replay an old mutation under new credentials or treat a transient refresh timeout as definitive logout.",
-        "Claim overlapping logout is safe without inspecting both helper finalization and layout state.",
-        "Read actual credentials/state, mutate runtime source or execute a live auth service to answer the case."
       ],
       "checks": ["boundaries", "typecheck", "unit-coverage"]
     },

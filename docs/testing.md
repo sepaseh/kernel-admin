@@ -86,6 +86,8 @@ Visual children, Windows helpers and these synthetic fixtures use actual complet
 
 The governance runner executes files serially so CPU-intensive child fixtures do not compete. Its [PowerShell fixture](../scripts/stop-visual-process-tree.test.ps1) runs once, emits phase diagnostics and measures debugger line hits and misses in `coverage/governance/powershell.xml`. The scanner consumes that same verified artifact without rerunning the fixture.
 
+Governance coverage excludes `*.test.*` fixtures explicitly so executable owners such as [the Docker smoke helper](../scripts/test-docker-release.mjs) remain measured. Its synthetic tests exercise the orchestration and cleanup without starting Docker.
+
 ## Preserve meaningful failures
 
 Keep the first failed command, runtime conditions and diagnostics. Distinguish a product defect, fixture race, unavailable host prerequisite and resource leak before changing code. A later pass does not erase an earlier failure. Optional Bash wrappers report unavailable host prerequisites; portable Node safety regressions remain required.

@@ -17,6 +17,8 @@ Use this guide to choose checks and prepare evidence for a commit or PR. [Testin
 | Check an explicitly authorized staging deployment                | `staging`     | Four browser projects validate public journeys, assets, accessibility, headers and API health.              |
 | Check an explicitly authorized released deployment               | `smoke`       | Chromium checks the public application, API health and served immutable release identity.                   |
 
+The application `full` profile includes the required [actionlint runner](../scripts/run-actionlint.mjs). It verifies the pinned official archive's SHA-256 and checks the actual workflows. The first run needs access to the official release asset. Optional ShellCheck and Pyflakes are disabled consistently.
+
 Use the Node release in [`.nvmrc`](../.nvmrc) and its bundled npm. Install locked dependencies before running a check. During a documentation edit, run this from the repository root:
 
 ```sh
@@ -111,23 +113,23 @@ Local success does not establish hosted CI, scanner execution, the asynchronous 
 
 1. Read the latest published PR head/base and live branch protection. Match required check contexts to their configured provider applications. A CodeRabbit request preflight requires all applicable non-CodeRabbit checks to pass; its own pending or skipped review check is not a prerequisite to requesting that review. Merge still requires every applicable check, including CodeRabbit, with no stale, pending, failed or skipped evidence.
 2. Verify the scanner job and actual matching Sonar Quality Gate separately. For a CodeRabbit request, inspect the complete unfiltered unresolved Sonar report across every page and severity; it must contain zero issues. A documented false positive still marked open does not satisfy this prerequisite.
-3. Request one manual CodeRabbit review only with user authorization, after all applicable non-CodeRabbit checks pass. Respect actual provider capacity and avoid an existing or in-flight request for that head. A new commit requires fresh preflight.
-4. Merge only with separate authorization, current-head approval, successful required checks and resolved review conversations. Preserve branch protection.
+3. Request one manual review with only `@coderabbitai review`, after authorization and successful preflight. Wait at least one hour after the last CodeRabbit review request, respect provider capacity and avoid an existing or in-flight request for that head. A new commit requires fresh preflight.
+4. Merge only with separate authorization, current-head approval, successful required checks and resolved review conversations. A successful CodeRabbit status can reflect a skip or quota limit. Verify the actual substantive review.
+
+Preserve strict up-to-date checks, one native approving review, stale approval dismissal, resolved conversations, linear history, administrator enforcement and blocked force pushes and deletions. The [CodeQL workflow](../.github/workflows/codeql.yml) and its native GitHub security result are separate from the CI scanner and Sonar quality gate.
 
 CI serializes events by event type, ref and selected manual profile. An active
 Windows run finishes its cleanup; only the newest pending event in that group is
 retained. PR metadata changes therefore cannot build an unbounded queue, and
 nightly/manual compatibility runs use separate groups.
 
-Metadata-only reuse considers the complete paginated history of strictly earlier
-runs of the verified current workflow and retains the original measured producer
-artifact. Head/base/merge tree, phase, expiry and report bytes must match; future
-queued metadata cannot invalidate an earlier successful producer. Missing or
-inconsistent proof falls back to fresh validation, including a failed newest run.
+Each triggered workflow runs fresh verification, including PR title and
+description edits. The coverage artifact belongs to its successful producer
+within that run and records the tested head, base, commit, tree and attempt.
 
 Successful verification publishes a small mandatory coverage artifact. Browser,
 visual and Lighthouse diagnostics are uploaded separately, including on failure,
-so analysis and metadata reuse download only the evidence they need. Artifact
+so analysis downloads only the measured evidence it needs. Artifact
 digest mismatches fail the download; source identity and individual report hashes
 are verified again before use. Both artifacts have three-day retention.
 
@@ -142,3 +144,11 @@ and visual comparison has five minutes, leaving time for cleanup and reports
 before the verification job limit.
 
 The scanner consumes the verified reports without rerunning their suites. PowerShell coverage stays bound to the same phase, source and producer as both LCOV files. CI evidence requests use transport completion and explicit cancellation without a configured request deadline. See [the CI workflow](../.github/workflows/ci.yml) and [Git guidance](../.agents/rules/pull-requests.md) for the implementation and authorization boundaries.
+
+## Review PR scope before opening
+
+Review the complete base-to-head diff and aim for at most 80 changed-file entries initially. Count additions, deletions, renames and binaries. Split independent changes when useful and explain a larger cohesive scope. File count is advisory. Exceeding 100 entries alone does not fail CI or require recreating a PR.
+
+## Release automation
+
+The [Release workflow](../.github/workflows/release.yml) is manual and runs only on `main`. Its guard requires `applicationReady: true` and [CHANGELOG](../CHANGELOG.md) both listed in the publication policy and present in the checkout. Configure `RELEASE_PLEASE_TOKEN` as a dedicated GitHub credential with contents and pull-request write access. It lets the release PR trigger its required checks automatically. A missing secret stops the workflow before Release Please runs. Dispatch requires separate authorization.

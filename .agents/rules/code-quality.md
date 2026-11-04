@@ -6,8 +6,9 @@ Run the smallest check that covers the files you changed, then broaden before ha
 
 - Typecheck: `npm run typecheck`
 - Lint: `npm run lint`
-- Isolated workshop build: `npm run build-storybook`
-- Browser interaction/accessibility: `npm run test:storybook`
+- Format: `npm run format:check`
+
+Storybook build and browser checks are planned for the Storybook phase and are not available in this snapshot.
 
 Select current commands from [the manifest](../validation.json). Start with focused checks, then run its declared blocking `full` profile on the exact proposed snapshot before an authorized commit, push or PR handoff. The profile follows the admitted phase: module/workshop verification does not establish a runnable panel, while admitted application checks need their actual results. Hosted visual and complete compatibility responsibilities follow the manifest separately. Reuse genuine reports for the same checked source instead of repeating the suite for analysis.
 
@@ -36,8 +37,8 @@ Write self-documenting code. Add comments only for:
 - Add a blank line only when the code changes responsibility or begins an
   independently meaningful phase. If a function needs many such phases,
   consider extracting a focused helper instead of adding more visual sections.
-- Apply this to changed handlers, hooks, helpers and tests as well as components;
-  arrange/act/assert are useful test phases. Review the semantic grouping directly:
+- Apply this to changed functions, helpers and tests; arrange/act/assert are useful
+  test phases. Review the semantic grouping directly:
   a formatter passing does not prove that phase boundaries are readable.
 - Keep consecutive request steps together, such as setting the busy flag,
   awaiting the request and applying its result. Avoid a new padding rule or

@@ -7,8 +7,8 @@ Use Ant Design and antd-style with the source recipes in
 
 The current theme builder is `src/shared/config/theme.ts`. Reuse Ant Design
 semantic tokens, algorithms and contrast correction; appearance types own Theme
-and all seven palette fields. `AntdProvider` follows validated API language and
-direction metadata. Only theme and compact mode are browser preferences.
+and all seven palette fields. The `AntdProvider` must follow validated API
+language and direction metadata. Only theme and compact mode are browser preferences.
 
 Prefer Ant Design component props before custom styles. Keep inline `style` or
 Ant Design `styles` for local layout, and shared global styling in
@@ -19,8 +19,9 @@ application activation. Introducing an entry point requires its genuine applicat
 
 Keep table delete triggers visually neutral; apply danger treatment to the
 confirmation button. Preserve translated accessible names, visible focus,
-reduced-motion behavior and narrow/desktop layouts. Use the isolated Storybook
-suite for affected browser behavior without claiming production visual evidence.
+reduced-motion behavior and narrow/desktop layouts. Current component tests use
+jsdom. Use isolated Storybook checks for affected browser behavior when that suite
+is admitted, without claiming production visual evidence.
 
 ## Style object readability
 

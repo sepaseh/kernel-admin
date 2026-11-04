@@ -1,9 +1,9 @@
+import { constants } from "node:fs";
 import {
   lstat,
   mkdir,
   mkdtemp,
   open,
-  readFile,
   realpath,
   rename,
   rmdir,
@@ -26,6 +26,31 @@ export function createBuildMetadata(environment) {
     basePath: validateBasePath(environment.VITE_APP_BASE_URL),
     apiOrigin: environment.VITE_API_BASE_URL,
   };
+}
+
+async function requireCompletedBuild(entry, openEntry) {
+  const handle = await openEntry(
+    entry,
+    constants.O_RDONLY |
+      (constants.O_NOFOLLOW ?? 0) |
+      (constants.O_NONBLOCK ?? 0),
+  );
+  try {
+    const opened = await handle.stat({ bigint: true });
+    const current = await lstat(entry, { bigint: true });
+    if (
+      !opened.isFile() ||
+      !current.isFile() ||
+      opened.dev !== current.dev ||
+      opened.ino !== current.ino ||
+      !/<html(?:\s|>)/i.test(await handle.readFile("utf8"))
+    )
+      throw new Error(
+        "A completed HTML build is required before stamping metadata.",
+      );
+  } finally {
+    await handle.close();
+  }
 }
 
 async function publishBuildMetadata(build, contents, operations) {
@@ -94,6 +119,7 @@ async function publishBuildMetadata(build, contents, operations) {
 export async function stampAdminBuild({
   environment,
   buildDirectory = path.resolve("dist"),
+  openEntry = open,
   openFile = open,
   publishDirectory = rename,
   removeFile = unlink,
@@ -107,16 +133,7 @@ export async function stampAdminBuild({
     !(await lstat(build)).isDirectory()
   )
     throw new Error("Build output must be an ordinary directory.");
-  const entry = path.join(build, "index.html"),
-    information = await lstat(entry);
-  if (
-    !information.isFile() ||
-    information.isSymbolicLink() ||
-    !/<html(?:\s|>)/i.test(await readFile(entry, "utf8"))
-  )
-    throw new Error(
-      "A completed HTML build is required before stamping metadata.",
-    );
+  await requireCompletedBuild(path.join(build, "index.html"), openEntry);
   let existing;
   try {
     existing = await lstat(path.join(build, "_kernel"));

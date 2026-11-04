@@ -4,7 +4,8 @@ Use this procedure to build an immutable frontend image and start it on an autho
 
 ## Prerequisites
 
-- The exact source has passed the applicable [validation](../../docs/validation.md), and Docker with Compose and Buildx is available on the selected engine.
+- The exact application source has passed complete application [validation](../../docs/validation.md).
+- Docker with Compose and Buildx is available on the selected engine.
 - Authorization covers building and starting resources on that engine and contacting the selected target.
 - DNS, the public admin/API/media origins and the API's frontend CORS policy are configured for the target.
 - An existing absolute TLS directory contains `fullchain.pem` and `privkey.pem`. Keep both outside the build context and provision key access for the image's unprivileged `nginx` user without making the key world-readable.
@@ -22,7 +23,7 @@ New-Item -ItemType Directory -Path coverage/deployment -Force | Out-Null
 Copy-Item -LiteralPath deploy/docker/compose.env.example -Destination $publicInputs
 ```
 
-Replace the synthetic host/origins and placeholder release ID in that file. Select a new immutable `VITE_RELEASE_ID`, its canonical `VITE_APP_BASE_URL`, the intended `BIND_ADDRESS` and public HTTP/HTTPS ports. Set `TLS_CERT_DIRECTORY` to the existing private mount source. The preparation file contains public values and paths, never certificate contents or keys; `coverage/` is ignored by Git and the Docker build context.
+Replace the synthetic host/origins and placeholder release ID in that file. Use a lowercase bare DNS hostname for `ADMIN_HOST`. The image build rejects uppercase hostnames before compiling the frontend. Select a new immutable `VITE_RELEASE_ID`, its canonical `VITE_APP_BASE_URL`, the intended `BIND_ADDRESS` and public HTTP/HTTPS ports. Set `TLS_CERT_DIRECTORY` to the existing private mount source. The preparation file contains public values and paths, never certificate contents or keys; `coverage/` is ignored by Git and the Docker build context.
 
 The [Compose definition](compose.yaml) maps the selected public ports to internal HTTP 8080 and HTTPS 8443. The TLS mount is read-only and does not create a missing source directory. The public HTTPS port also enters the built Nginx redirect configuration, so keep it consistent with the actual listener.
 
@@ -60,6 +61,6 @@ The service drops capabilities, prevents privilege escalation, uses a read-only 
 
 ## Run the optional synthetic engine check
 
-`node scripts/test-docker-release.mjs` builds and starts a separate synthetic fixture. It requires explicit authorization for its local engine and Buildx. The helper selects Docker Desktop's Linux named pipe on Windows and `/var/run/docker.sock` on other hosts; it does not use a remote target or validate the operator's Compose deployment.
+`node scripts/test-docker-release.mjs` builds and starts a separate synthetic fixture from the admitted application source. It requires explicit authorization for its local engine and Buildx. The helper selects Docker Desktop's Linux named pipe on Windows and `/var/run/docker.sock` on other hosts. Its evidence applies to the synthetic fixture.
 
 [`docker-smoke-resources.mjs`](../../scripts/docker-smoke-resources.mjs) owns its unique builder, image, container, labels and disposable TLS directory. The check exercises TLS/unknown-host rejection, SPA subpaths, asset caching/404s, headers and release readiness. It must attempt all owned cleanup and preserve primary and cleanup failures. Synthetic lifecycle tests do not start Docker. Never prune shared resources or alter the global selected builder to recover from a failed fixture.

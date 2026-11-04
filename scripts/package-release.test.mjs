@@ -6,6 +6,7 @@ import {
   readdir,
   readFile,
   realpath,
+  rename,
   rm,
   symlink,
   writeFile,
@@ -159,6 +160,115 @@ test("refuses directory links instead of following build content outside the tre
       /symbolic links/,
     );
   } finally {
+    await cleanup(root);
+  }
+});
+
+test("refuses a linked metadata directory before opening build metadata", async () => {
+  const { root, build } = await fixture();
+  const metadata = path.join(build, "_kernel");
+  const relocated = path.join(root, "relocated-metadata");
+  try {
+    await rename(metadata, relocated);
+    await symlink(
+      relocated,
+      metadata,
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    await assert.rejects(
+      packageRelease({ repositoryRoot: root, releaseId: "synthetic-v1" }),
+      /metadata must remain inside/,
+    );
+    assert.deepEqual(await readdir(root), ["dist", "relocated-metadata"]);
+  } finally {
+    await cleanup(root);
+  }
+});
+
+test("rejects metadata replaced before descriptor validation and closes the handle", async (context) => {
+  const { root, build } = await fixture();
+  const filename = path.join(build, "_kernel/build.json");
+  const openFile = fs.promises.open;
+  let read = false;
+  let closed = false;
+  try {
+    context.mock.method(fs.promises, "open", async (file, flags) => {
+      const handle = await openFile(file, flags);
+      if (file !== filename) return handle;
+
+      return {
+        async stat(options) {
+          const result = await handle.stat(options);
+          await rename(file, `${file}.original`);
+          await writeFile(file, "replacement metadata");
+          return result;
+        },
+        async readFile() {
+          read = true;
+          return handle.readFile();
+        },
+        async close() {
+          closed = true;
+          await handle.close();
+        },
+      };
+    });
+    syncBuiltinESMExports();
+    await assert.rejects(
+      packageRelease({ repositoryRoot: root, releaseId: "synthetic-v1" }),
+      /metadata must remain inside/,
+    );
+    assert.equal(read, false);
+    assert.equal(closed, true);
+    assert.deepEqual(await readdir(root), ["dist"]);
+  } finally {
+    context.mock.restoreAll();
+    syncBuiltinESMExports();
+    await cleanup(root);
+  }
+});
+
+test("packages the validated metadata bytes after a pathname replacement", async (context) => {
+  const { root, build } = await fixture("/console/");
+  const filename = path.join(build, "_kernel/build.json");
+  const openFile = fs.promises.open;
+  const original = await readFile(filename);
+  const replacement = Buffer.from("replacement metadata");
+  let closed = false;
+  try {
+    context.mock.method(fs.promises, "open", async (file, flags) => {
+      const handle = await openFile(file, flags);
+      if (file !== filename) return handle;
+
+      return {
+        stat: (options) => handle.stat(options),
+        async readFile() {
+          await rename(file, path.join(path.dirname(file), ".original"));
+          await writeFile(file, replacement);
+          return handle.readFile();
+        },
+        async close() {
+          closed = true;
+          await handle.close();
+        },
+      };
+    });
+    syncBuiltinESMExports();
+    const output = await packageRelease({
+      repositoryRoot: root,
+      releaseId: "synthetic-v1",
+    });
+    assert.equal(closed, true);
+    assert.deepEqual(await readFile(filename), replacement);
+    assert.deepEqual(
+      await readFile(
+        path.join(output.directory, "public/console/_kernel/build.json"),
+      ),
+      original,
+    );
+  } finally {
+    context.mock.restoreAll();
+    syncBuiltinESMExports();
     await cleanup(root);
   }
 });
