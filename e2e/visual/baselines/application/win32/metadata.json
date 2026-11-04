@@ -285,10 +285,12 @@
     "reviewer": "Human user in kernel-admin Codex conversation",
     "reviewedAt": "2026-10-29T19:42:48.000Z"
   },
-  "captureOnly": true,
-  "canonicalVisualComparison": false,
-  "fullGatePassed": false,
-  "status": "complete-pending-human-review",
+  "captureResult": {
+    "captureOnly": true,
+    "canonicalVisualComparison": false,
+    "fullGatePassed": false,
+    "status": "complete-pending-human-review"
+  },
   "images": [
     {
       "name": "admin-login-en-light.png",

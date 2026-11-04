@@ -200,6 +200,8 @@ export function assertReviewedVisualBaseline(metadata, expected) {
     metadata?.platform !== expected.platform ||
     metadata?.playwright !== expected.playwright ||
     metadata?.review?.status !== "reviewed" ||
+    metadata.captureOnly === true ||
+    metadata.status === "complete-pending-human-review" ||
     typeof metadata.review.reviewer !== "string" ||
     !metadata.review.reviewer.trim() ||
     !Number.isFinite(Date.parse(metadata.review.reviewedAt))

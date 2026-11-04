@@ -65,6 +65,8 @@ For an affected screen, exercise translated names/errors, keyboard submission, i
 
 `npm run test:visual:update` requires explicit authorization and creates pending candidates under `coverage/visual/captures`. It leaves approved images intact and is forbidden in CI. Present the exact candidate bytes and metadata for human approval before promotion; preserve original baseline provenance and failure artifacts.
 
+Keep the original capture result separate from the baseline's human review record. Top-level capture-only or pending-review markers block comparison.
+
 ## Test Windows process cleanup
 
 The runner owns its preview, strict ports and process lock. An occupied port fails before contacting another service. Windows cleanup captures process identities, refreshes eligible descendants and operates through retained, identity-verified process handles.

@@ -215,11 +215,25 @@ test("comparison requires an actual review and matching platform/browser, withou
     browserVersion: metadata.browserVersion,
   };
   assert.doesNotThrow(() => assertReviewedVisualBaseline(metadata, expected));
+  assert.doesNotThrow(() =>
+    assertReviewedVisualBaseline(
+      {
+        ...metadata,
+        captureResult: {
+          captureOnly: true,
+          status: "complete-pending-human-review",
+        },
+      },
+      expected,
+    ),
+  );
   for (const invalid of [
     undefined,
     { ...metadata, platform: "linux" },
     { ...metadata, playwright: "another-version" },
     { ...metadata, browserVersion: "another-browser" },
+    { ...metadata, captureOnly: true },
+    { ...metadata, status: "complete-pending-human-review" },
     { ...metadata, review: { ...metadata.review, status: "pending" } },
     { ...metadata, review: { ...metadata.review, reviewer: "" } },
     { ...metadata, review: { ...metadata.review, reviewedAt: null } },
