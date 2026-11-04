@@ -708,11 +708,12 @@ const inspectSplitManifest = (manifest) => {
       "ui-foundation",
       "core-auth",
       "business-screens",
+      "storybook-verification",
     ].includes(manifest.phase) ||
     manifest.applicationReady !== false
   )
     throw new Error(
-      "Split suite verification currently owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth and business-screens",
+      "Split suite verification currently owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth, business-screens and storybook-verification",
     );
   const count = manifestPolicy(manifest);
   const partitions = [];
@@ -798,8 +799,65 @@ const inspectSplitAnalysis = (workflow) => {
     "Analysis must verify separate source-bound coverage before scanning, without repeating tests",
   );
 };
+const inspectSplitProducer = (workflow, id, budget, storybook) => {
+  const value = inspectSuiteJob(workflow, id, budget);
+  requireEqual(
+    value.name,
+    suiteNames[id],
+    "Keep independently visible suite display names",
+  );
+  for (const key of ["permissions", "needs"])
+    if (Object.hasOwn(value, key))
+      throw new Error(
+        "Each suite executes independently with minimal permission",
+      );
+  const measured = id === "unit" || id === "governance";
+  requireEqual(
+    value.outputs,
+    measured
+      ? {
+          artifact: "${{ steps.evidence.outputs.artifact }}",
+          attempt: "${{ steps.evidence.outputs.attempt }}",
+        }
+      : undefined,
+    "Each measured suite publishes its actual producer identity",
+  );
+  requireEqual(
+    withoutStepNames(value.steps),
+    [
+      ...suiteSetup(),
+      ...(id === "audit" ? [] : [{ run: installCommand }]),
+      ...(storybook && id === "quality"
+        ? [{ run: "npm run browser:install" }]
+        : []),
+      { run: "npm run validate -- ci-" + id },
+      ...(measured
+        ? [
+            {
+              id: "evidence",
+              env: { CI_EVIDENCE_SUITE: id },
+              run: "node scripts/ci-evidence.mjs --record",
+            },
+            {
+              uses: suiteAction.upload,
+              with: {
+                name: "${{ steps.evidence.outputs.artifact }}",
+                path: `coverage/${id}/lcov.info\ncoverage/${id}/ci-evidence.json\n`,
+                "if-no-files-found": "error",
+                "retention-days": 3,
+                overwrite: false,
+                "include-hidden-files": false,
+              },
+            },
+          ]
+        : []),
+    ],
+    "Each suite must execute its declared profile exactly once and publish only its measured coverage",
+  );
+};
 const inspectSplitCi = (workflow, manifest) => {
   const requiredChecks = inspectSplitManifest(manifest);
+  const storybook = manifest.phase === "storybook-verification";
   requireEqual(
     workflow.on,
     {
@@ -841,62 +899,12 @@ const inspectSplitCi = (workflow, manifest) => {
     "Only admitted suites, aggregate and scanner are allowed",
   );
   for (const [id, budget] of [
-    ["quality", 15],
+    ["quality", storybook ? 30 : 15],
     ["audit", 10],
     ["unit", 15],
     ["governance", 30],
   ]) {
-    const value = inspectSuiteJob(workflow, id, budget);
-    requireEqual(
-      value.name,
-      suiteNames[id],
-      "Keep independently visible suite display names",
-    );
-    for (const key of ["permissions", "needs"])
-      if (Object.hasOwn(value, key))
-        throw new Error(
-          "Each suite executes independently with minimal permission",
-        );
-    const measured = id === "unit" || id === "governance";
-    requireEqual(
-      value.outputs,
-      measured
-        ? {
-            artifact: "${{ steps.evidence.outputs.artifact }}",
-            attempt: "${{ steps.evidence.outputs.attempt }}",
-          }
-        : undefined,
-      "Each measured suite publishes its actual producer identity",
-    );
-    requireEqual(
-      withoutStepNames(value.steps),
-      [
-        ...suiteSetup(),
-        ...(id === "audit" ? [] : [{ run: installCommand }]),
-        { run: "npm run validate -- ci-" + id },
-        ...(measured
-          ? [
-              {
-                id: "evidence",
-                env: { CI_EVIDENCE_SUITE: id },
-                run: "node scripts/ci-evidence.mjs --record",
-              },
-              {
-                uses: suiteAction.upload,
-                with: {
-                  name: "${{ steps.evidence.outputs.artifact }}",
-                  path: `coverage/${id}/lcov.info\ncoverage/${id}/ci-evidence.json\n`,
-                  "if-no-files-found": "error",
-                  "retention-days": 3,
-                  overwrite: false,
-                  "include-hidden-files": false,
-                },
-              },
-            ]
-          : []),
-      ],
-      "Each suite must execute its declared profile exactly once and publish only its measured coverage",
-    );
+    inspectSplitProducer(workflow, id, budget, storybook);
   }
   const aggregate = inspectSuiteJob(workflow, "check", 5, "always()");
   requireEqual(

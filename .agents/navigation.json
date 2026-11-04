@@ -387,8 +387,106 @@
         ".agents/rules/testing.md"
       ],
       "limitations": "Unit and jsdom component tests cover admitted providers and screens in isolation. Route composition, Storybook browser execution, a production build and visual approval require separate evidence. Keep API-owned language, direction and calendar separate from browser-owned theme and compact mode."
+    },
+    {
+      "id": "admin-feature",
+      "when": "Change published admin screen, form, menu or permission-gated component behavior.",
+      "owners": [
+        "src/features/roles",
+        "src/features/settings",
+        "src/features/users",
+        "src/app/config/routes.ts",
+        "src/app/providers/core/Core.tsx"
+      ],
+      "contracts": [
+        "src/features/roles/types.ts",
+        "src/shared/contracts/index.ts",
+        ".agents/rules/react.md",
+        ".agents/rules/styling.md"
+      ],
+      "tests": [
+        "src/features/roles/Roles.test.tsx",
+        "src/features/settings/Settings.test.tsx",
+        "src/features/users/Users.test.tsx",
+        "src/test/integration/forms.test.tsx",
+        "src/features/users/Users.stories.tsx"
+      ],
+      "checks": [
+        "boundaries",
+        "typecheck",
+        "lint",
+        "unit-coverage",
+        "storybook-build",
+        "storybook-browser"
+      ],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Storybook verifies admitted components and interactions with synthetic fixtures. Application composition, visual approval and deployment require separate evidence."
+    },
+    {
+      "id": "accessibility-visual",
+      "when": "Change component contrast, keyboard/focus behavior or responsive fixtures, and plan later visual-baseline verification.",
+      "owners": [
+        "src/shared/ui",
+        "src/shared/config/theme.ts",
+        ".storybook/preview.tsx"
+      ],
+      "contracts": [
+        "src/shared/contracts/appearance.ts",
+        "docs/testing.md",
+        "docs/development.md"
+      ],
+      "tests": [
+        "src/shared/lib/color-contrast.test.ts",
+        "src/test/storybook/StoryShell.test.tsx",
+        "src/shared/ui/form-drawer/FormDrawer.stories.tsx"
+      ],
+      "checks": [
+        "typecheck",
+        "lint",
+        "unit-coverage",
+        "storybook-build",
+        "storybook-browser"
+      ],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Storybook verifies admitted components and interactions with synthetic fixtures. Application composition, visual approval and deployment require separate evidence."
+    },
+    {
+      "id": "ui-design",
+      "when": "Design or refine published admin components and plan authorized handoffs using current tokens and owners.",
+      "owners": [
+        "DESIGN.md",
+        ".agents/skills/design-ui/SKILL.md",
+        "src/shared/config/theme.ts",
+        "src/layouts/default/Default.tsx",
+        "src/features/users/Users.tsx",
+        "src/shared/ui"
+      ],
+      "contracts": [
+        ".agents/rules/styling.md",
+        ".agents/rules/react.md",
+        ".agents/rules/localization.md"
+      ],
+      "tests": [
+        "src/test/storybook/StoryShell.test.tsx",
+        "src/features/users/Users.stories.tsx",
+        "src/features/users/components/user-form/UserForm.stories.tsx"
+      ],
+      "checks": [
+        "guidance",
+        "typecheck",
+        "lint",
+        "unit-coverage",
+        "storybook-build",
+        "storybook-browser"
+      ],
+      "rules": [
+        ".agents/rules/react.md",
+        ".agents/rules/styling.md",
+        ".agents/rules/localization.md"
+      ],
+      "limitations": "Storybook verifies admitted components and interactions with synthetic fixtures. Application composition, visual approval and deployment require separate evidence."
     }
   ],
-  "phase": "business-screens",
+  "phase": "storybook-verification",
   "applicationReady": false
 }

@@ -119,13 +119,13 @@ const browsers = "npm run ${{ needs.scope.outputs.browser_install }}";
 const actualWorkflow = () => parse(read(".github/workflows/ci.yml"));
 const actualManifest = () => JSON.parse(read(".agents/validation.json"));
 
-test("split CI independently exposes only actual static, audit, unit and governance checks", () => {
+test("split CI exposes Storybook verification through the existing quality job", () => {
   assert.deepEqual(inspectCi(stringify(actualWorkflow()), actualManifest()), {
-    requiredChecks: 11,
+    requiredChecks: 13,
   });
   assert.deepEqual(
     inspectSonarWorkflow(stringify(actualWorkflow()), actualManifest()),
-    { requiredChecks: 11 },
+    { requiredChecks: 13 },
   );
   assert.deepEqual(Object.keys(actualWorkflow().jobs), [
     "quality",
@@ -154,15 +154,24 @@ test("split CI retains the complete gate through the business screens phase", ()
   ]) {
     const selected = actualManifest();
     selected.phase = phase;
+    const coreOnly = (id) => !id.startsWith("storybook-");
+    selected.checks = selected.checks.filter(({ id }) => coreOnly(id));
     for (const check of selected.checks) check.scopes = [phase];
+    for (const profile of ["full", "complete", "ci-quality"]) {
+      selected.profiles[profile] = selected.profiles[profile].filter(coreOnly);
+    }
+    const workflow = actualWorkflow();
+    workflow.jobs.quality["timeout-minutes"] = 15;
+    workflow.jobs.quality.steps = workflow.jobs.quality.steps.filter(
+      (step) => step.run !== "npm run browser:install",
+    );
 
-    assert.deepEqual(inspectCi(stringify(actualWorkflow()), selected), {
+    assert.deepEqual(inspectCi(stringify(workflow), selected), {
       requiredChecks: 11,
     });
-    assert.deepEqual(
-      inspectSonarWorkflow(stringify(actualWorkflow()), selected),
-      { requiredChecks: 11 },
-    );
+    assert.deepEqual(inspectSonarWorkflow(stringify(workflow), selected), {
+      requiredChecks: 11,
+    });
   }
 });
 
@@ -178,16 +187,17 @@ test("split CI rejects unknown, unadmitted and runnable application phases", () 
     ["ui-foundation", true],
     ["core-auth", true],
     ["business-screens", true],
+    ["storybook-verification", true],
   ]) {
     const selected = { ...actualManifest(), phase, applicationReady };
 
     assert.throws(
       () => inspectCi(stringify(actualWorkflow()), selected),
-      /owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth and business-screens/,
+      /owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth, business-screens and storybook-verification/,
     );
     assert.throws(
       () => inspectSonarWorkflow(stringify(actualWorkflow()), selected),
-      /owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth and business-screens/,
+      /owns only repository-foundation, runtime-localization, http-lifecycle, ui-foundation, core-auth, business-screens and storybook-verification/,
     );
   }
 });
@@ -201,7 +211,15 @@ test("split suites cannot skip checks, duplicate execution, replace source or we
       value.jobs.governance["continue-on-error"] = true;
     },
     (value) => {
-      value.jobs.quality.steps[3].run = "npm run validate -- full";
+      value.jobs.quality.steps.at(-1).run = "npm run validate -- full";
+    },
+    (value) => {
+      const steps = value.jobs.quality.steps;
+      const install = steps.findIndex(
+        (step) => step.run === "npm run browser:install",
+      );
+      assert.notEqual(install, -1);
+      steps.splice(install, 1);
     },
     (value) => {
       value.jobs.audit.steps.push({ run: "npm run audit" });

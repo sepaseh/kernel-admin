@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "phase": "business-screens",
+  "phase": "storybook-verification",
   "applicationReady": false,
   "checks": [
     {
@@ -8,84 +8,98 @@
       "command": "npm run check:snapshot",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
     },
     {
       "id": "ci-policy",
       "command": "npm run check:ci",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
     },
     {
       "id": "actions-lint",
       "command": "npm run check:actions",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
     },
     {
       "id": "guidance",
       "command": "npm run check:guidance",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
     },
     {
       "id": "audit",
       "command": "npm run audit",
       "kind": "required",
       "ciJobs": ["audit"],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
     },
     {
       "id": "boundaries",
       "command": "npm run check:boundaries",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
     },
     {
       "id": "typecheck",
       "command": "npm run typecheck",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
     },
     {
       "id": "lint",
       "command": "npm run lint",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
     },
     {
       "id": "format",
       "command": "npm run format:check",
       "kind": "required",
       "ciJobs": ["quality"],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
     },
     {
       "id": "unit-coverage",
       "command": "npm run test:coverage",
       "kind": "required",
       "ciJobs": ["unit"],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
     },
     {
       "id": "governance-coverage",
       "command": "npm run test:governance",
       "kind": "required",
       "ciJobs": ["governance"],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
+    },
+    {
+      "id": "storybook-build",
+      "command": "npm run build-storybook",
+      "kind": "required",
+      "ciJobs": ["quality"],
+      "scopes": ["storybook-verification"]
+    },
+    {
+      "id": "storybook-browser",
+      "command": "npm run test:storybook",
+      "kind": "required",
+      "ciJobs": ["quality"],
+      "scopes": ["storybook-verification"]
     },
     {
       "id": "guidance-tests",
       "command": "npm run test:guidance",
       "kind": "advisory",
       "ciJobs": [],
-      "scopes": ["business-screens"]
+      "scopes": ["storybook-verification"]
     }
   ],
   "profiles": {
@@ -100,7 +114,9 @@
       "lint",
       "format",
       "unit-coverage",
-      "governance-coverage"
+      "governance-coverage",
+      "storybook-build",
+      "storybook-browser"
     ],
     "guidance": ["guidance", "guidance-tests"],
     "complete": [
@@ -114,7 +130,9 @@
       "lint",
       "format",
       "unit-coverage",
-      "governance-coverage"
+      "governance-coverage",
+      "storybook-build",
+      "storybook-browser"
     ],
     "ci-quality": [
       "snapshot",
@@ -124,7 +142,9 @@
       "boundaries",
       "typecheck",
       "lint",
-      "format"
+      "format",
+      "storybook-build",
+      "storybook-browser"
     ],
     "ci-audit": ["audit"],
     "ci-unit": ["unit-coverage"],

@@ -46,7 +46,7 @@ Before an authorized review request or merge:
 
 Keep Sonar project binding and source scope accurate. The scanner imports genuinely measured LCOV from the same tested revision and reports only that scope. Scanner execution and the quality gate are separate results. Inspect secret names only during setup; never read or print token values. Provider classification requires its own authorization; do not replace real fixes with exclusions or suppressions.
 
-CI exposes the `core-auth` checks independently. The four profiles below partition the complete local `full` profile so every required check executes once.
+CI exposes the `storybook-verification` checks through four profiles that partition the complete local `full` profile so every required check executes once.
 
 | GitHub job   | Display name     | Manifest profile | Actual scope                                                                           |
 | ------------ | ---------------- | ---------------- | -------------------------------------------------------------------------------------- |
@@ -55,7 +55,7 @@ CI exposes the `core-auth` checks independently. The four profiles below partiti
 | `unit`       | Unit tests       | `ci-unit`        | Measured runtime, HTTP/session, UI/helper, jsdom component, asset and audit-tool tests |
 | `governance` | Governance tests | `ci-governance`  | Measured repository-policy and tooling regressions                                     |
 
-The required `check` runs after every producer, including failures, and succeeds only when all four jobs succeed. Missing, failed, cancelled or skipped jobs fail the aggregate. CodeQL runs in its separate security workflow. The `core-auth` snapshot retains `applicationReady: false`. Application builds, E2E, browser, visual and performance results require their own admitted source and checks.
+The quality job installs Chromium and runs the isolated Storybook build and browser interaction checks through `ci-quality`. The required `check` runs after every producer, including failures, and succeeds only when all four jobs succeed. Missing, failed, cancelled or skipped jobs fail the aggregate. CodeQL runs in its separate security workflow. The snapshot retains `applicationReady: false`. Application builds, E2E, visual and performance results require their own admitted source and checks.
 
 Each test suite publishes its own immutable run/attempt artifact. The [coverage evidence owner](../scripts/ci-evidence.mjs) binds the suite and LCOV hash to the repository, PR head/base, tested commit/tree, workflow, run and producing attempt. Sonar depends on the successful aggregate and receives both suites' outputs directly. It verifies each report independently before scanning, so a rerun uses each successful producer's actual attempt without combining or rerunning suites. Missing configuration, reports or mismatched evidence blocks analysis. Analysis installs locked dependencies with package scripts disabled; scanner execution and the native provider quality gate remain separate results.
 
