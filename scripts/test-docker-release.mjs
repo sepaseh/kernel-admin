@@ -156,7 +156,7 @@ const permitsFixtureApi = (policy) =>
       .split(";")
       .map((directive) => directive.trim().split(/\s+/))
       .find(([name]) => name.toLowerCase() === "connect-src");
-    return sources?.slice(1).some((source) => source === fixtureApiOrigin);
+    return sources?.includes(fixtureApiOrigin, 1);
   });
 
 const verifyFixtureResponses = async ({ request, identity, signal }) => {
