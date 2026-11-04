@@ -8,7 +8,7 @@ Preserve unrelated tracked, staged and untracked work. Never read real environme
 
 Keep one standalone root project. Do not add workspaces, backend SDKs, local-package links or external project source dependencies. A consuming developer chooses a backend implementing the local HTTP contract.
 
-The [publication policy](.github/bootstrap-policy.json) identifies the actual source admitted by this snapshot. Keep `applicationReady: false` until application composition and its genuine complete gate are admitted. Source files, installed services and configuration alone are not execution evidence.
+The [publication policy](.github/bootstrap-policy.json) identifies the admitted application source. Follow the [development guide](docs/development.md) for its React, Ant Design, React Router and Axios owners. Preserve memory-only tokens, session generations, bounded shared refresh, cancellation and stale-result guards. Source admission and test configuration do not establish successful execution.
 
 ## Git and review
 

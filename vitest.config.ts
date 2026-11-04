@@ -1,10 +1,10 @@
-import { fileURLToPath } from "node:url";
-
 import { defineConfig } from "vitest/config";
+
+import { srcPath } from "./tooling/paths.ts";
 
 export default defineConfig({
   envDir: false,
-  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
+  resolve: { alias: { "@": srcPath } },
   test: {
     clearMocks: true,
     environment: "node",
@@ -13,24 +13,25 @@ export default defineConfig({
       VITE_OBSERVABILITY_URL: "",
       VITE_RELEASE_ID: "synthetic-storybook-verification",
     },
-    setupFiles: ["src/test/http-setup.ts", "src/test/setup.ts"],
-    environmentOptions: {
-      jsdom: {
-        url: "http://localhost/",
-      },
-    },
+    setupFiles: ["./src/test/http-setup.ts", "./src/test/setup.ts"],
+    environmentOptions: { jsdom: { url: "http://localhost/" } },
     include: [
+      ".storybook/request-guard.test.ts",
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
-      ".storybook/request-guard.test.ts",
       "scripts/run-audit.test.mjs",
       "scripts/check-bundle-size.test.mjs",
       "scripts/lighthouse-policy.test.mjs",
+      "scripts/run-lighthouse.test.mjs",
       "scripts/stamp-admin-build.test.mjs",
+      "scripts/validate-production-env.test.mjs",
+      "scripts/validate-workflow-targets.test.mjs",
     ],
     restoreMocks: true,
     coverage: {
       include: [
+        "src/app/App.tsx",
+        "src/app/Routes.tsx",
         "src/app/config/index.ts",
         "src/app/config/routes.ts",
         "src/app/contexts/Core.ts",
@@ -92,6 +93,7 @@ export default defineConfig({
         "src/layouts/auth/index.ts",
         "src/layouts/default/Default.tsx",
         "src/layouts/default/index.ts",
+        "src/main.tsx",
         "src/shared/api/client.ts",
         "src/shared/api/config.ts",
         "src/shared/api/index.ts",
@@ -153,17 +155,15 @@ export default defineConfig({
         "scripts/run-audit.mjs",
         "scripts/check-bundle-size.mjs",
         "scripts/lighthouse-policy.mjs",
+        "scripts/run-lighthouse.mjs",
         "scripts/stamp-admin-build.mjs",
+        "scripts/validate-production-env.mjs",
+        "scripts/validate-workflow-targets.mjs",
       ],
       provider: "v8",
       reporter: ["text", "json-summary", "lcov"],
       reportsDirectory: "coverage/unit",
-      thresholds: {
-        branches: 54,
-        functions: 59,
-        lines: 69,
-        statements: 68,
-      },
+      thresholds: { branches: 54, functions: 59, lines: 69, statements: 68 },
     },
   },
 });

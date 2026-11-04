@@ -4,7 +4,7 @@ Use this procedure to build an immutable frontend image and start it on an autho
 
 ## Prerequisites
 
-- The exact source admits the application entry point and build configuration and has passed complete application [validation](../../docs/validation.md). The `release-prerequisites` snapshot publishes the Docker definition with `applicationReady: false`.
+- The exact application source has passed complete application [validation](../../docs/validation.md).
 - Docker with Compose and Buildx is available on the selected engine.
 - Authorization covers building and starting resources on that engine and contacting the selected target.
 - DNS, the public admin/API/media origins and the API's frontend CORS policy are configured for the target.
@@ -61,6 +61,6 @@ The service drops capabilities, prevents privilege escalation, uses a read-only 
 
 ## Run the optional synthetic engine check
 
-`node scripts/test-docker-release.mjs` builds and starts a separate synthetic fixture after the application build inputs are admitted. It requires explicit authorization for its local engine and Buildx. The helper selects Docker Desktop's Linux named pipe on Windows and `/var/run/docker.sock` on other hosts. Its evidence applies to the synthetic fixture.
+`node scripts/test-docker-release.mjs` builds and starts a separate synthetic fixture from the admitted application source. It requires explicit authorization for its local engine and Buildx. The helper selects Docker Desktop's Linux named pipe on Windows and `/var/run/docker.sock` on other hosts. Its evidence applies to the synthetic fixture.
 
 [`docker-smoke-resources.mjs`](../../scripts/docker-smoke-resources.mjs) owns its unique builder, image, container, labels and disposable TLS directory. The check exercises TLS/unknown-host rejection, SPA subpaths, asset caching/404s, headers and release readiness. It must attempt all owned cleanup and preserve primary and cleanup failures. Synthetic lifecycle tests do not start Docker. Never prune shared resources or alter the global selected builder to recover from a failed fixture.

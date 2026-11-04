@@ -155,7 +155,7 @@ test("current guidance paths, instruction entrypoints and canonical matrix agree
 for (const [phase, count] of [
   ["repository-foundation", 10],
   ["storybook-verification", 12],
-  ["application-verification", 17],
+  ["application-verification", 18],
 ])
   test(`isolated ${phase} guidance validates only its actual published contract`, async (context) => {
     const state = phaseFixture(phase);

@@ -1,8 +1,6 @@
-# Prepare to run Kernel Admin
+# Run Kernel Admin
 
-The `release-prerequisites` snapshot admits the public environment example and deployment helpers alongside business screens and isolated Storybook verification. It declares `applicationReady: false`. Run the application steps below after a later phase admits application composition, the Vite entry point, build and preview commands, and their complete verification.
-
-For that later phase, choose a compatible backend you are authorized to use. Kernel Admin's local HTTP contract lets that service supply authentication, settings and application data without requiring a particular backend repository or tooling.
+Use this guide to configure the panel and sign in locally. Choose a compatible backend you are authorized to use. Kernel Admin's local HTTP contract lets that service supply authentication, settings and application data without requiring a particular backend repository or tooling.
 
 ## Before you start
 
@@ -12,7 +10,7 @@ For that later phase, choose a compatible backend you are authorized to use. Ker
 
 Run the commands below from this repository's root. Filesystem examples use PowerShell; the npm and Vite commands also work in a POSIX shell.
 
-## Run locally after application admission
+## Run locally
 
 1. Install the locked dependencies:
 
@@ -63,11 +61,11 @@ Stop the server with `Ctrl+C`. Restart it after changing configuration.
 | `VITE_RELEASE_ID`        | Public build identifier. Production releases use a new immutable identifier.    |
 | `VITE_OBSERVABILITY_URL` | Optional public reporting endpoint; blank disables reporting.                   |
 
-The example documents public values. The later application phase admits their Vite configuration in `vite.config.ts`. See [deployment](deployment.md) for the public input contract and release prerequisites.
+The example and [Vite configuration](../vite.config.ts) define public values. See [deployment](deployment.md) for the public input contract and release prerequisites.
 
 Values already set in the process environment override values loaded from local files. Synthetic validation also disables local environment-file discovery. Use a separate terminal for an API-backed local run after working with the synthetic setup in [validation](validation.md).
 
-## Preview after build tooling is admitted
+## Preview a build
 
 Use the same public configuration to build the frontend, then serve the result on a fixed loopback port:
 
@@ -80,7 +78,7 @@ The build writes static assets to `dist/` and public build identity to `dist/_ke
 
 A preview still uses the configured API for authentication and data. Rebuild after changing values embedded in a production build. See [deployment](deployment.md) for packaging and publication prerequisites.
 
-## Troubleshoot an admitted application
+## Troubleshoot a local run
 
 | Symptom                                                                  | Check next                                                                                                                                                |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |

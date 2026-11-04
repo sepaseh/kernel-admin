@@ -1,6 +1,6 @@
 # Build, package and deploy
 
-Use this guide to identify release inputs and hosting owners. The `release-prerequisites` snapshot admits the examples, packaging helpers and hosting definitions with `applicationReady: false`. The application build and Docker image procedures require the later application entry point, Vite configuration and complete application verification. The developer's configured backend owns authentication, authorization, data and storage.
+Use this guide to prepare an immutable frontend release and verify an authorized deployment. Build and package from verified application source. The configured backend owns authentication, authorization, data and storage.
 
 ## Before you start
 
@@ -34,7 +34,7 @@ Browser build values are public. The API must allow the actual frontend origin a
 
 ## Build an immutable package
 
-After application admission and its complete verification, this PowerShell example builds and packages a local demonstration release. Choose an unused release ID and keep the environment value and `--release` argument identical.
+After complete source verification, this PowerShell example builds and packages a local demonstration release. Choose an unused release ID and keep the environment value and `--release` argument identical.
 
 1. Install the locked dependencies if they are not already installed:
 

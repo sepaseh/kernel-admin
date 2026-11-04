@@ -2,7 +2,7 @@
 
 Use this reference when changing an HTTP adapter, session transition or asynchronous screen. Start with the relevant owner and its tests:
 
-The `core-auth` snapshot admits transport, feature HTTP adapters, settings validation, guarded read and mutation hooks, Core, layouts and authentication forms. Application composition and live backend integration require separate verification.
+The application composes transport, feature HTTP adapters, settings validation, guarded requests, providers and authentication forms. Local tests use synthetic responses. Live backend integration requires separate verification.
 
 | Change                                        | Owner                                                             | Regression examples                                                    |
 | --------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
@@ -20,7 +20,7 @@ Feature HTTP owners consume the configured backend. Database operations, authori
 
 Developers choose a compatible backend through `VITE_API_BASE_URL`. The local feature `api.ts` and `types.ts` files define this frontend's requests and expected responses; no particular backend implementation, repository, request collection or tooling is required. Adapt this project's HTTP boundary when integrating a service with a different contract.
 
-Use the admitted [synthetic HTTP handlers](../src/test/mocks/handlers.ts) and nearby feature API tests for current request/response examples. The settings response in `e2e/fixtures.ts`, application HTTP handlers in `e2e/shared/admin-fixtures.ts` and consumer examples in `contract/api.contract.test.ts` are planned for later PRs; they are not current integration evidence. Application startup must require a valid `/settings` response before routes render, and authenticated features must use compatible login, refresh and permission behavior when composed. Synthetic module checks need no running backend. Verify a chosen service separately when real integration testing is authorized.
+Use the [synthetic HTTP handlers](../src/test/mocks/handlers.ts), [settings fixture](../e2e/fixtures.ts), [application HTTP fixtures](../e2e/shared/admin-fixtures.ts) and [consumer contracts](../contract/api.contract.test.ts) for request and response examples. Startup requires a valid `/settings` response before routes render. Authenticated features require compatible login, refresh and permission behavior. Builds and synthetic tests need no running backend. Verify the chosen service separately when real integration testing is authorized.
 
 ## Transport contract
 

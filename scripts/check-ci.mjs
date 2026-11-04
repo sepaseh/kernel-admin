@@ -85,7 +85,10 @@ export const requiredCheckCommands = (manifest) => {
       "Verification phase and application readiness must describe the published capability",
     );
   const checks = requiredCommands.slice(0, count).map((check) => [...check]);
-  if (manifest.verificationModel === "split-suites-v1")
+  if (
+    manifest.verificationModel === "split-suites-v1" ||
+    manifest.phase === "application-verification"
+  )
     checks.splice(2, 0, ["actions-lint", "npm run check:actions"]);
   return checks;
 };
@@ -129,6 +132,7 @@ export const selectVerificationScope = ({
   tree,
   files,
   applicationReady = true,
+  runMetadataEdits = false,
 }) => {
   if (
     !["pull_request", "push", "schedule", "workflow_dispatch"].includes(
@@ -151,7 +155,9 @@ export const selectVerificationScope = ({
     pullRequest &&
     event.action === "edited" &&
     Object.hasOwn(event.changes ?? {}, "base");
-  const run = !(pullRequest && event.action === "edited" && !retargeted);
+  const run =
+    runMetadataEdits ||
+    !(pullRequest && event.action === "edited" && !retargeted);
   const complete =
     applicationReady &&
     (eventName === "schedule" ||
@@ -1267,18 +1273,18 @@ const inspectCoveragePublication = (check, visual, performance, fresh) => {
     check.steps[record].env?.VERIFICATION_PERFORMANCE_OUTCOME !==
       "${{ steps.performance.outcome }}" ||
     check.steps[record].env?.VERIFICATION_REUSED !==
-      "${{ steps.reuse.outputs.reused }}"
+      (fresh ? "${{ steps.reuse.outputs.reused }}" : undefined)
   )
     throw new Error(
       "Coverage evidence must preserve the actual application phase and observed performance policy/outcome",
     );
   const upload = pinnedAction(check, "actions/upload-artifact", {
     id: "coverage-upload",
-    condition: "success() && " + fresh,
+    condition: fresh ? "success() && " + fresh : "success()",
   });
   const diagnostics = pinnedAction(check, "actions/upload-artifact", {
     id: "diagnostics-upload",
-    condition: "always() && " + fresh,
+    condition: fresh ? "always() && " + fresh : "always()",
   });
   if (
     record <= visual ||
@@ -1331,7 +1337,7 @@ export const inspectCi = (content, manifest) => {
     ) ||
     workflow.concurrency?.group !== concurrencyGroup ||
     workflow.concurrency?.["cancel-in-progress"] !== false ||
-    workflow.concurrency?.queue !== "single"
+    ![undefined, "single"].includes(workflow.concurrency?.queue)
   )
     throw new Error(
       "Metadata runs need minimal read-only evidence access and coalesced event/ref/profile queues that must not cancel active verification",
@@ -1348,10 +1354,20 @@ export const inspectCi = (content, manifest) => {
     );
   inspectScopeSelection(workflow);
   const { check, checkSetup } = inspectCheckSource(workflow);
-  const accept = inspectEvidenceReuse(check, checkSetup);
-  const fresh = "steps.reuse.outputs.reused != 'true'";
-  const appFresh = "needs.scope.outputs.application == 'true' && " + fresh;
-  const full = inspectCoreCommands(check, accept, fresh);
+  const application = manifest.applicationReady === true;
+  if (application && check.steps.length !== 13)
+    throw new Error(
+      "Application CI must publish fresh verification from its declared producer steps",
+    );
+  const ready = application
+    ? checkSetup
+    : inspectEvidenceReuse(check, checkSetup);
+  const fresh = application
+    ? undefined
+    : "steps.reuse.outputs.reused != 'true'";
+  const appCondition = "needs.scope.outputs.application == 'true'";
+  const appFresh = fresh ? appCondition + " && " + fresh : appCondition;
+  const full = inspectCoreCommands(check, ready, fresh);
   const { visual, performance } = inspectHostedChecks(check, full, appFresh);
   inspectCoveragePublication(check, visual, performance, fresh);
   inspectSonarWorkflow(content, manifest);
@@ -1606,19 +1622,15 @@ export const createEvidenceRunner = ({
             .split("\0")
             .filter(Boolean)
         : ["package.json"];
+    const { applicationReady } = await reusePolicy();
     const result = selectVerificationScope({
       event,
       eventName: environment.GITHUB_EVENT_NAME,
       commit,
       tree,
       files,
-      applicationReady:
-        JSON.parse(
-          await readFile(
-            path.join(directory, ".agents/validation.json"),
-            "utf8",
-          ),
-        ).applicationReady === true,
+      applicationReady,
+      runMetadataEdits: applicationReady,
     });
     await output(result);
   };

@@ -1,15 +1,22 @@
 # Kernel Admin
 
-Kernel Admin is a standalone React, TypeScript and Ant Design admin frontend being published through a sequence of reviewed pull requests.
+A standalone React/Vite TypeScript administration panel using Ant Design, React Router and Axios. It provides account, user, role, settings and calendar screens. Developers choose a compatible backend for authentication, authorization, data and storage.
 
-This snapshot contains the capabilities admitted by the [publication policy](.github/bootstrap-policy.json). Its `phase`, `applicationReady` and exact inventory describe the current source. Until application readiness is true and its required checks have actually passed, the snapshot does not establish an assembled application, a production build or a deployed service.
+## Start here
 
-The `release-prerequisites` phase adds public configuration examples, release packaging and deployment helpers, and Docker and native Nginx definitions. It retains the business screens, providers, shared UI, isolated Storybook verification, all ten language catalogs and Persian calendar data. The publication policy declares `applicationReady: false`.
+| Your goal                  | Guide                                           |
+| -------------------------- | ----------------------------------------------- |
+| Open the panel locally     | [Run and configure](docs/usage.md)              |
+| Change a screen or feature | [Develop a feature](docs/development.md)        |
+| Check a proposed change    | [Validate a change](docs/validation.md)         |
+| Prepare a hosted release   | [Build, package and deploy](docs/deployment.md) |
 
-Start with [Contributing](CONTRIBUTING.md) for the Git and review workflow, [development](docs/development.md) for source changes, [validation](docs/validation.md) for the exact required gate and the [documentation map](docs/README.md) for the current guides.
+Local setup requires the Node version in [`.nvmrc`](.nvmrc) and its bundled npm. Opening the panel also requires a backend compatible with the local [HTTP contracts and examples](docs/authentication.md#backend-integration). The [run guide](docs/usage.md) covers installation, public configuration and the first sign-in. Builds and synthetic source checks need no live backend; [testing](docs/testing.md) describes their fixtures.
 
-Every change to protected `main` goes through a PR. Before opening a PR, aim for at most 80 changed-file entries initially, split independent changes when useful and explain larger cohesive scopes. File count is advisory: exceeding 100 files alone does not fail CI or require recreating a PR. CodeRabbit and Sonar requirements remain mandatory; a configured provider is not evidence of a completed review or analysis.
+The [publication policy](.github/bootstrap-policy.json) declares the `application-verification` phase and its admitted source. Provider compatibility and deployed availability require results from the selected target.
 
-The project uses one root package and the Node version pinned in [`.nvmrc`](.nvmrc). Install the locked dependencies with `npm ci --strict-peer-deps --no-audit --no-fund` before running the phase's declared checks. Run commands from the repository root and use synthetic inputs rather than private operator state.
+## Project boundaries
 
-[Usage prerequisites](docs/usage.md) and [deployment](docs/deployment.md) describe the inputs and checks needed after application composition is admitted. No backend source checkout is required to validate the frontend's local contracts.
+Keep this repository as one root frontend project. API language, direction and calendar drive the interface; theme and compact mode are browser preferences. English repository documentation does not change the application's supported translations.
+
+Use the [documentation map](docs/README.md) for focused references, [Contributing](CONTRIBUTING.md) for the change workflow and [Security](SECURITY.md) for private reporting. Assistants start with [AGENTS](AGENTS.md).

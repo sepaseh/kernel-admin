@@ -1,6 +1,6 @@
 # Configure native Nginx hosting
 
-The `release-prerequisites` snapshot admits the Nginx templates and renderer. Rendering prepares public configuration locally. Installing it on an authorized host requires an [immutable package](../../docs/deployment.md#build-an-immutable-package) from the later application phase. The developer's configured backend remains responsible for authentication and data.
+Render the public Nginx configuration locally and install it on an authorized host with an [immutable application package](../../docs/deployment.md#build-an-immutable-package). The developer's configured backend remains responsible for authentication and data.
 
 ## Prerequisites
 

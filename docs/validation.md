@@ -1,15 +1,38 @@
 # Validate a source change
 
-Use the [publication policy](../.github/bootstrap-policy.json) to identify this snapshot's phase, readiness and admitted files. The [validation manifest](../.agents/validation.json) owns commands, profiles and required checks; [settings](../.agents/settings.json) project that inventory. Run the actual phase's complete `full` gate without claiming unpublished application capabilities.
+Use this guide to choose checks and prepare evidence for a commit or PR. [Testing](testing.md) explains how to write fixtures; [deployment](deployment.md) covers packaging and authorized target operations.
+
+[The validation manifest](../.agents/validation.json) owns check commands, profiles, required/advisory kinds and CI responsibility. [Settings](../.agents/settings.json) project that inventory. Read those owners instead of maintaining another complete command list in prose.
+
+## Choose a profile
+
+| Need                                                             | Profile       | What it establishes                                                                                         |
+| ---------------------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------- |
+| Iterate on documentation or assistant guidance                   | `guidance`    | Guidance consistency and its focused regressions. It does not replace the required gate.                    |
+| Prepare the exact proposed source for a commit or PR             | `full`        | Every required check, including the synthetic build and Chromium application journeys.                      |
+| Verify the configured browser matrix and approved images         | `complete`    | Replaces the ordinary Chromium run with the full matrix, then compares images once on the approved runtime. |
+| Compare approved images for an applicable rendering change       | `visual`      | Image comparison with unchanged provenance and tolerances.                                                  |
+| Measure the verified build with Lighthouse                       | `performance` | A real audit under the manifest's current performance policy.                                               |
+| Measure the four configured helper modules with mutation testing | `mutation`    | Every mutant runs the four complete owner test files; the score must remain at least 80%.                   |
+| Check an explicitly authorized staging deployment                | `staging`     | Four browser projects validate public journeys, assets, accessibility, headers and API health.              |
+| Check an explicitly authorized released deployment               | `smoke`       | Chromium checks the public application, API health and served immutable release identity.                   |
+
+The application `full` profile includes the required [actionlint runner](../scripts/run-actionlint.mjs). It verifies the pinned official archive's SHA-256 and checks the actual workflows. The first run needs access to the official release asset. Optional ShellCheck and Pyflakes are disabled consistently.
+
+Use the Node release in [`.nvmrc`](../.nvmrc) and its bundled npm. Install locked dependencies before running a check. During a documentation edit, run this from the repository root:
+
+```sh
+npm run validate -- guidance
+```
+
+The runner names each selected check and returns a nonzero exit code on failure. Inspect the result of advisory entries too; their classification does not turn an observed failure into a pass.
 
 ## Validate the exact proposed source
 
-Use the existing checkout under the [working-checkout rule](../.agents/rules/branches.md#working-checkout). Additional implementation worktrees, clones and copied checkouts require prior explicit authorization. A disposable verification export is evidence only.
+Implement in the existing checkout and follow the [working-checkout rule](../.agents/rules/branches.md#working-checkout). The required disposable validation export is verification-only: keep it under an ignored repository-local directory such as `coverage/validation/`, record its source commit/tree and included changes, and never use it as another implementation workspace. Preserve unrelated local work and exclude operator state.
 
-1. Select the precise proposed base-to-head snapshot and its admitted files. Record the source commit/tree, selected changes and phase. Preserve bytes and unrelated work; extra unpublished files must not supply missing dependencies to a partial PR.
-2. Export that selection under an ignored repository-local directory such as `coverage/validation/`. Keep private operator state out. Direct `TMP`, `TEMP` and `TMPDIR` to an existing ignored scratch directory. Set `GIT_CEILING_DIRECTORIES` to their common verification parent so fixture Git commands cannot discover the implementation repository.
-3. Use the Node release pinned in [`.nvmrc`](../.nvmrc) and its bundled npm. From the export root, install locked dependencies with `npm ci --strict-peer-deps --no-audit --no-fund`. Install the browsers required by that phase before its browser checks.
-4. In that verification session, use explicit synthetic public inputs:
+1. Select the exact proposed publication snapshot. Check its actual phase, `applicationReady` and admitted paths in [the publication policy](../.github/bootstrap-policy.json). Export only that selection into a new ignored repository-local directory and record its source commit/tree and included changes. Preserve file bytes and exclude unrelated local work and operator state. A pass over extra local files does not validate a different partial PR.
+2. Open a PowerShell session in that verification export's root. Set the public synthetic values used by CI before building or running the full profile:
 
    ```powershell
    $env:KERNEL_SYNTHETIC_ENV = "1"
@@ -18,57 +41,114 @@ Use the existing checkout under the [working-checkout rule](../.agents/rules/bra
    $env:VITE_APP_BASE_URL = "/"
    $env:VITE_OBSERVABILITY_URL = ""
    $env:VITE_RELEASE_ID = "application-verification"
+   ```
+
+   These values disable operator environment-file discovery and identify the synthetic verification build. Direct this session's `TMP`, `TEMP` and `TMPDIR` to an existing ignored repository-local scratch directory so temporary fixtures also stay inside the repository. Set `GIT_CEILING_DIRECTORIES` to their common verification parent directory so fixtures cannot discover the implementation repository through an ancestor; owned Git fixtures initialize their own repository below it. Do not load a real environment, browser profile, credential, database or upload as a fixture.
+
+3. Install the locked dependencies and Chromium, then run the complete required gate:
+
+   ```sh
+   npm ci --strict-peer-deps --no-audit --no-fund
+   npm run browser:install
    npm run validate -- full
    ```
 
-   These inputs prevent ambient operator environment discovery where supported and identify synthetic verification. The release label is not an application-readiness claim. Never load a real environment as a fixture.
+   A successful result means every required entry completed successfully on that source. The runner stops at the first failure; a focused subset cannot replace `full`. Dependency audit unavailability is a failure.
 
-5. Preserve the first failure and resolve it within scope. Revalidate changed source. Do not omit required files or checks, suppress findings, lower coverage or tolerances, or weaken security controls to obtain a pass.
-6. Verify that maintained source stayed unchanged. Record actual execution, the checked tree and material limitations in the handoff. Keep generated evidence in ignored repository-local directories.
+4. Preserve the first failure and its diagnostics. Resolve it within scope and reverify the affected source. Do not omit files, reduce assertions, lower thresholds or weaken controls to obtain a pass.
+5. Confirm that maintained source stayed unchanged during validation. Report the checked commit/tree, actual commands, results and remaining limits in the handoff. Keep generated evidence inside the repository's ignored directories.
 
-A complete local pass applies only to that exact snapshot and phase. It does not establish hosted provider results, an assembled application, deployment, production access or human visual approval.
+For `complete`, install browsers with `npm run browser:install:all` before running `npm run validate -- complete`. It substitutes the full configured matrix rather than first repeating the ordinary Chromium run. Approved-image comparison additionally requires the reviewed OS, architecture, Node, Playwright and Chromium runtime; local `full` does not require reproducing that image environment.
 
-Static checks include `npm run check:actions`, which runs the reviewed official actionlint 1.7.12 binary on actual `.github/workflows/` YAML files. The [runner](../scripts/run-actionlint.mjs) supports Windows and Linux x64, verifies the release archive's pinned SHA-256 on every use and extracts a fresh executable under ignored `coverage/tools/`. The first run needs access to the official GitHub release asset. Optional ShellCheck and Pyflakes integrations are disabled consistently; actionlint diagnostics are not filtered. Historical workflow test data is outside this scan. No global installation, additional CI job or repeated test suite is needed.
+## Resolve a failed check
+
+| Failure                                                          | Next action                                                                                                                                                                                                                                   |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Unexpected bootstrap path`                                      | Compare the proposed snapshot with the publication inventory. A local file such as `CHANGELOG.md` may exist without being admitted. Resolve the publication scope while preserving local work; do not silently admit or delete files to pass. |
+| `Verification build reuse requires the synthetic CI environment` | Apply the public values above in the same session, then rerun the required profile.                                                                                                                                                           |
+| Browser executable or host dependency missing                    | Run the declared browser installation for the selected profile, then retain any setup failure as an unavailable prerequisite.                                                                                                                 |
+| Missing approval or visual runtime mismatch                      | Use the approved runtime and reviewed baseline. Do not promote new captures or change tolerances as a workaround.                                                                                                                             |
+| Stale build or changed report bytes                              | Produce fresh evidence for the exact source; reject the old build or artifact.                                                                                                                                                                |
+| Required Git executable unavailable                              | Restore the supported tool prerequisite. Evidence commands use an absolute Git executable rather than searching `PATH`.                                                                                                                       |
+
+`performance` uses the configured Lighthouse budgets and throttling. Its advisory exception expires at **2026-11-07T00:00:00Z**; the **Kernel Admin frontend/test maintainer** owns fixture-startup repair and review before expiry. Report an audit/setup failure plainly. An expired exception blocks validation until an authorized renewal or restored blocking enforcement is recorded.
+
+## Interpret the evidence
+
+The mutation workflow runs weekly or on explicit dispatch, outside the ordinary
+PR gate. It uses the locked Stryker command runner with the real Vitest CLI;
+it does not depend on the Vitest adapter's per-test selection. Mutation sandboxes
+and reports stay under `coverage/`. Run `npm run validate -- mutation` on an
+isolated public source export, never with operator files or a real environment.
+
+Staging and deployment smoke workflows are manual-only. Their commands enforce
+the same allowlists as the workflow before any browser or HTTP request. Staging
+requires `STAGING_BASE_URL`, `STAGING_API_HEALTH_URL`,
+`STAGING_ALLOWED_APP_HOST` and `STAGING_ALLOWED_API_HOST`. Smoke requires the
+corresponding `SMOKE_` variables plus matching `SMOKE_DEPLOYMENT_ID` and
+`SMOKE_EXPECTED_DEPLOYMENT_ID`; the served `_kernel/build.json` must also carry
+that release ID. With explicitly authorized targets configured, use
+`npm run validate -- staging` or `npm run validate -- smoke`. These profiles do
+not replace `full`, and local configuration/listing is not deployment evidence.
+
+| Evidence                                                 | Scope                                                                                                           |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `coverage/unit/lcov.info`                                | Measured unit coverage for the source selected by the Vitest configuration. Preserve its production thresholds. |
+| `coverage/governance/lcov.info`                          | Measured Node tooling and governance coverage.                                                                  |
+| `coverage/governance/powershell.xml`                     | Genuine executable PowerShell line hits and misses from the Windows process-tree fixture.                       |
+| Browser, visual and Lighthouse reports under `coverage/` | Separate execution results; they do not substitute for LCOV or provider compatibility.                          |
+
+A configured test is not an executed result. Consumer contracts and synthetic browser journeys do not verify a configured backend. A new screenshot capture remains pending until the exact images receive human approval; CI cannot update approved baselines. See [testing](testing.md#review-appearance) for fixture and image-review responsibilities.
+
+Build reuse verifies the admitted public source, synthetic environment, build identity and output bytes before and after an operation. Source ordering remains deterministic; ordinary-file, containment and no-link guards still apply. Missing or stale proof requires a fresh build.
+
+The full and complete coordinators pass a source fingerprint to the verification
+build only after their own required typecheck succeeds on unchanged source. The
+builder verifies that fingerprint before compiling, avoiding a second typecheck.
+Standalone production and verification builds still perform their own typecheck.
 
 ## Hosted checks and review
 
-Protected `main` requires its provider-bound correctness and security checks, including `check`, `CodeQL`, `SonarQube Cloud analysis`, `SonarCloud Code Analysis` and `CodeRabbit`. Keep strict up-to-date checks, one native approving review, stale-review dismissal, resolved conversations, linear history, administrator enforcement, and blocked force pushes/deletions. Verify live protection and provider application bindings; a declaration is not proof of server enforcement.
+Local success does not establish hosted CI, scanner execution, the asynchronous Sonar quality gate or review approval. Before an authorized review request or merge:
 
-The [CodeQL workflow](../.github/workflows/codeql.yml) analyzes JavaScript, TypeScript and GitHub Actions with `security-extended` on every PR base, pushes to `main`, weekly and manually. Both interpreted languages share one analysis job without an explicit single-language build mode. Its Actions job runs the analysis and uploads findings; the native `CodeQL` result from GitHub Advanced Security (App `57789`) evaluates those findings separately. Require the native result before merging. CodeQL is a hosted security gate, not an additional local full-profile command. Workflow source and local policy validation do not establish hosted analysis or live protection; applying remote requirements needs separate authorization.
+1. Read the latest published PR head/base and live branch protection. Match required check contexts to their configured provider applications. A CodeRabbit request preflight requires all applicable non-CodeRabbit checks to pass; its own pending or skipped review check is not a prerequisite to requesting that review. Merge still requires every applicable check, including CodeRabbit, with no stale, pending, failed or skipped evidence.
+2. Verify the scanner job and actual matching Sonar Quality Gate separately. For a CodeRabbit request, inspect the complete unfiltered unresolved Sonar report across every page and severity; it must contain zero issues. A documented false positive still marked open does not satisfy this prerequisite.
+3. Request one manual review with only `@coderabbitai review`, after authorization and successful preflight. Wait at least one hour after the last CodeRabbit review request, respect provider capacity and avoid an existing or in-flight request for that head. A new commit requires fresh preflight.
+4. Merge only with separate authorization, current-head approval, successful required checks and resolved review conversations. A successful CodeRabbit status can reflect a skip or quota limit. Verify the actual substantive review.
 
-Before an authorized review request or merge:
+Preserve strict up-to-date checks, one native approving review, stale approval dismissal, resolved conversations, linear history, administrator enforcement and blocked force pushes and deletions. The [CodeQL workflow](../.github/workflows/codeql.yml) and its native GitHub security result are separate from the CI scanner and Sonar quality gate.
 
-1. Bind all evidence to the latest published PR head and applicable Sonar project/report. Check native CI, the actual scanner execution and the provider's asynchronous quality gate separately. Missing, pending, failed, stale, skipped or quota-limited results are not completed verification.
-2. Before requesting CodeRabbit, every applicable non-CodeRabbit required check must have passed. Inspect every page of the complete applicable unresolved Sonar report across severities and existing/new code; it must contain zero issues. A passing quality gate, zero new issues or an unanalysed project does not establish that result. An open finding classified only in prose still blocks the request.
-3. Request one manual review with only `@coderabbitai review` after that preflight and authorization covering the review request. PR creation does not authorize this request. Wait at least one hour after the last CodeRabbit review request, respect actual provider capacity and avoid an existing in-flight request. A new commit requires fresh preflight.
-4. Inspect CodeRabbit's actual review and disposition. Its successful status can mean a skipped or rate-limited review, and the native one-review count can be satisfied by another reviewer. Preserve the configured author-approval restriction. Never describe status alone as CodeRabbit approval.
-5. Merge only with separate authorization, successful current-head required checks, the required approving review and resolved conversations. Do not bypass protection to complete the sequence.
+CI serializes events by event type, ref and selected manual profile. An active
+Windows run finishes its cleanup; only the newest pending event in that group is
+retained. PR metadata changes therefore cannot build an unbounded queue, and
+nightly/manual compatibility runs use separate groups.
 
-Keep Sonar project binding and source scope accurate. The scanner imports genuinely measured LCOV from the same tested revision and reports only that scope. Scanner execution and the quality gate are separate results. Inspect secret names only during setup; never read or print token values. Provider classification requires its own authorization; do not replace real fixes with exclusions or suppressions.
+Each triggered workflow runs fresh verification, including PR title and
+description edits. The coverage artifact belongs to its successful producer
+within that run and records the tested head, base, commit, tree and attempt.
 
-CI exposes the 13 `release-prerequisites` checks through four profiles that partition the complete local `full` profile so every required check executes once.
+Successful verification publishes a small mandatory coverage artifact. Browser,
+visual and Lighthouse diagnostics are uploaded separately, including on failure,
+so analysis downloads only the measured evidence it needs. Artifact
+digest mismatches fail the download; source identity and individual report hashes
+are verified again before use. Both artifacts have three-day retention.
 
-| GitHub job   | Display name     | Manifest profile | Actual scope                                                                           |
-| ------------ | ---------------- | ---------------- | -------------------------------------------------------------------------------------- |
-| `quality`    | Static checks    | `ci-quality`     | Snapshot, CI policy, actionlint, guidance, boundaries, typecheck, lint and formatting  |
-| `audit`      | Dependency audit | `ci-audit`       | Locked dependency audit                                                                |
-| `unit`       | Unit tests       | `ci-unit`        | Measured runtime, HTTP/session, UI/helper, jsdom component, asset and audit-tool tests |
-| `governance` | Governance tests | `ci-governance`  | Measured repository-policy and tooling regressions                                     |
+Dependency installs use npm's download cache and skip automatic audit submissions;
+the explicit required audit remains in the full profile. Sonar installs locked
+dependencies with lifecycle scripts disabled and imports the original measured
+reports without running tests again.
 
-The quality job installs Chromium and runs the isolated Storybook build and browser interaction checks through `ci-quality`. The required `check` runs after every producer, including failures, and succeeds only when all four jobs succeed. Missing, failed, cancelled or skipped jobs fail the aggregate. CodeQL runs in its separate security workflow. The snapshot retains `applicationReady: false`. Application builds, E2E, visual and performance results require their own admitted source and checks.
+Hosted scope, verification and analysis jobs allow 5, 45 and 15 minutes,
+respectively. On CI, functional Playwright suites have a 20-minute global timeout
+and visual comparison has five minutes, leaving time for cleanup and reports
+before the verification job limit.
 
-Each test suite publishes its own immutable run/attempt artifact. The [coverage evidence owner](../scripts/ci-evidence.mjs) binds the suite and LCOV hash to the repository, PR head/base, tested commit/tree, workflow, run and producing attempt. Sonar depends on the successful aggregate and receives both suites' outputs directly. It verifies each report independently before scanning, so a rerun uses each successful producer's actual attempt without combining or rerunning suites. Missing configuration, reports or mismatched evidence blocks analysis. Analysis installs locked dependencies with package scripts disabled; scanner execution and the native provider quality gate remain separate results.
-
-Governance coverage explicitly excludes `*.test.*` files so Node's default test discovery pattern does not omit executable owners such as `scripts/test-docker-release.mjs`.
-
-CI keeps active verification running and coalesces pending events by event and ref. The [single-pass test fixture](../scripts/ci-single-pass.test.yml) preserves existing policy regressions; it is test data outside `.github/workflows/` and does not represent current jobs or application execution.
-
-The [Mutation testing workflow](../.github/workflows/mutation.yml) runs `npm run test:mutation` weekly and by manual dispatch. It publishes its report under a run- and attempt-specific artifact name. The [Release workflow](../.github/workflows/release.yml) is manually dispatched and runs Release Please only on `main`. These workflows have separate execution and authorization from the required PR checks.
-
-Before an authorized Release dispatch, configure `RELEASE_PLEASE_TOKEN` with a dedicated GitHub credential that can write repository contents and pull requests. A missing secret stops the workflow before Release Please starts. Use a credential that lets the release PR trigger its required checks automatically.
+The scanner consumes the verified reports without rerunning their suites. PowerShell coverage stays bound to the same phase, source and producer as both LCOV files. CI evidence requests use transport completion and explicit cancellation without a configured request deadline. See [the CI workflow](../.github/workflows/ci.yml) and [Git guidance](../.agents/rules/pull-requests.md) for the implementation and authorization boundaries.
 
 ## Review PR scope before opening
 
-Before opening a PR, review its complete base-to-head diff and aim for at most 80 GitHub changed-file entries initially. Count additions, deletions, renames and binaries; a rename counts as one entry. Split independent changes when useful and explain why a larger cohesive change belongs together.
+Review the complete base-to-head diff and aim for at most 80 changed-file entries initially. Count additions, deletions, renames and binaries. Split independent changes when useful and explain a larger cohesive scope. File count is advisory. Exceeding 100 entries alone does not fail CI or require recreating a PR.
 
-This is advisory guidance, outside CI and required checks. Exceeding 100 files alone must not fail CI or require deleting and recreating a PR. Keep the actual correctness, security, coverage and review requirements intact.
+## Release automation
+
+The [Release workflow](../.github/workflows/release.yml) is manual and runs only on `main`. Its guard requires `applicationReady: true` and [CHANGELOG](../CHANGELOG.md) both listed in the publication policy and present in the checkout. Configure `RELEASE_PLEASE_TOKEN` as a dedicated GitHub credential with contents and pull-request write access. It lets the release PR trigger its required checks automatically. A missing secret stops the workflow before Release Please runs. Dispatch requires separate authorization.

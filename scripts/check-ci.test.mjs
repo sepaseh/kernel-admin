@@ -37,74 +37,27 @@ import {
 const read = (file) =>
   readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const workflow = () => parse(read("scripts/ci-single-pass.test.yml"));
-const manifest = () => {
-  const value = JSON.parse(read(".agents/validation.json"));
-  value.verificationModel = "single-pass-v1";
-  value.checks = value.checks.filter((check) => check.id !== "actions-lint");
-  for (const [name, ids] of Object.entries(value.profiles))
-    value.profiles[name] = ids.filter((id) => id !== "actions-lint");
-  for (const check of value.checks)
-    if (check.kind === "required") check.ciJobs = ["check"];
-  return value;
-};
+const applicationWorkflow = () => read(".github/workflows/ci.yml");
+const actualManifest = () => JSON.parse(read(".agents/validation.json"));
 const install = "npm ci --strict-peer-deps --no-audit --no-fund";
 const analysisInstall =
   "npm ci --strict-peer-deps --ignore-scripts --no-audit --no-fund";
-const applicationManifest = () => {
-  const value = manifest();
-  value.applicationReady = true;
-  value.phase = "application-verification";
-  for (const [id, command, kind] of [
-    ["storybook-build", "npm run build-storybook", "required"],
-    ["storybook-browser", "npm run test:storybook", "required"],
-    ["unused", "npm run check:unused", "required"],
-    ["application-build", "npm run build:verification", "required"],
-    ["bundle", "npm run check:bundle", "required"],
-    ["contract", "npm run test:contract", "required"],
-    ["application-e2e", "npm run test:e2e", "required"],
-    ["browser-compatibility", "npm run test:e2e:complete", "manual"],
-    ["visual", "npm run test:visual", "manual"],
-    ["lighthouse", "npm run test:lighthouse:verified", "advisory"],
-  ])
-    if (!value.checks.some((check) => check.id === id))
-      value.checks.push({
-        id,
-        command,
-        kind,
-        ciJobs: ["check"],
-        scopes: ["application-verification"],
-        ...(id === "lighthouse"
-          ? {
-              exception: {
-                ...lighthouseException,
-                reason: "Synthetic bounded exception",
-              },
-            }
-          : {}),
-      });
-  value.profiles.full = value.checks
-    .filter((check) => check.kind === "required")
-    .map((check) => check.id);
-  value.profiles.complete = [
-    ...value.profiles.full.slice(0, -1),
-    "browser-compatibility",
-    "visual",
-  ];
-  value.profiles.visual = ["visual"];
-  value.profiles.performance = ["lighthouse"];
-  return value;
-};
 const phaseManifest = (phase, count) => {
-  const value = applicationManifest();
+  const value = actualManifest();
   value.phase = phase;
   value.applicationReady = phase === "application-verification";
-  const required = new Set(value.profiles.full.slice(0, count));
+  const required = new Set(
+    value.profiles.full
+      .filter((id) => value.applicationReady || id !== "actions-lint")
+      .slice(0, count),
+  );
   value.checks = value.checks.filter(
     (check) => check.kind !== "required" || required.has(check.id),
   );
   value.profiles.full = [...required];
   return value;
 };
+const manifest = () => phaseManifest("release-prerequisites", 12);
 const phaseWorkflow = () => stringify(workflow());
 const changedWorkflow = (change) => {
   const value = workflow();
@@ -116,13 +69,39 @@ const command = (value, text, name = "check") =>
 const canonical = "npm run validate -- ${{ needs.scope.outputs.profile }}";
 const browsers = "npm run ${{ needs.scope.outputs.browser_install }}";
 
-const actualWorkflow = () => parse(read(".github/workflows/ci.yml"));
-const actualManifest = () => JSON.parse(read(".agents/validation.json"));
+const splitWorkflow = () => parse(read("scripts/ci-split-suites.test.yml"));
+const splitManifest = () => {
+  const value = actualManifest();
+  value.phase = "release-prerequisites";
+  value.applicationReady = false;
+  value.verificationModel = "split-suites-v1";
+  const full = value.profiles.full.slice(
+    0,
+    value.profiles.full.indexOf("storybook-browser") + 1,
+  );
+  value.checks = value.checks.filter(({ id }) => full.includes(id));
+  const owners = {
+    audit: "audit",
+    "unit-coverage": "unit",
+    "governance-coverage": "governance",
+  };
+  for (const check of value.checks) {
+    check.ciJobs = [owners[check.id] ?? "quality"];
+    check.scopes = [value.phase];
+  }
+  value.profiles = { full, complete: [...full] };
+  for (const job of ["quality", "audit", "unit", "governance"]) {
+    value.profiles["ci-" + job] = full.filter(
+      (id) => (owners[id] ?? "quality") === job,
+    );
+  }
+  return value;
+};
 
 test("split CI retains the 13-check gate through release prerequisites", () => {
-  const workflow = stringify(actualWorkflow());
+  const workflow = stringify(splitWorkflow());
   for (const phase of ["storybook-verification", "release-prerequisites"]) {
-    const selected = actualManifest();
+    const selected = splitManifest();
     selected.phase = phase;
     for (const check of selected.checks) check.scopes = [phase];
     assert.deepEqual(inspectCi(workflow, selected), { requiredChecks: 13 });
@@ -130,7 +109,7 @@ test("split CI retains the 13-check gate through release prerequisites", () => {
       requiredChecks: 13,
     });
   }
-  assert.deepEqual(Object.keys(actualWorkflow().jobs), [
+  assert.deepEqual(Object.keys(splitWorkflow().jobs), [
     "quality",
     "audit",
     "unit",
@@ -138,7 +117,7 @@ test("split CI retains the 13-check gate through release prerequisites", () => {
     "check",
     "analysis",
   ]);
-  const selected = actualManifest();
+  const selected = splitManifest();
   const partitions = ["quality", "audit", "unit", "governance"].flatMap(
     (id) => selected.profiles["ci-" + id],
   );
@@ -155,7 +134,7 @@ test("split CI retains the complete gate through the business screens phase", ()
     "core-auth",
     "business-screens",
   ]) {
-    const selected = actualManifest();
+    const selected = splitManifest();
     selected.phase = phase;
     const coreOnly = (id) => !id.startsWith("storybook-");
     selected.checks = selected.checks.filter(({ id }) => coreOnly(id));
@@ -163,7 +142,7 @@ test("split CI retains the complete gate through the business screens phase", ()
     for (const profile of ["full", "complete", "ci-quality"]) {
       selected.profiles[profile] = selected.profiles[profile].filter(coreOnly);
     }
-    const workflow = actualWorkflow();
+    const workflow = splitWorkflow();
     workflow.jobs.quality["timeout-minutes"] = 15;
     workflow.jobs.quality.steps = workflow.jobs.quality.steps.filter(
       (step) => step.run !== "npm run browser:install",
@@ -194,14 +173,14 @@ test("split CI rejects unknown, unadmitted and runnable application phases", () 
     ["storybook-verification", true],
     ["release-prerequisites", true],
   ]) {
-    const selected = { ...actualManifest(), phase, applicationReady };
+    const selected = { ...splitManifest(), phase, applicationReady };
 
     assert.throws(
-      () => inspectCi(stringify(actualWorkflow()), selected),
+      () => inspectCi(stringify(splitWorkflow()), selected),
       /owns only repository-foundation.*release-prerequisites/,
     );
     assert.throws(
-      () => inspectSonarWorkflow(stringify(actualWorkflow()), selected),
+      () => inspectSonarWorkflow(stringify(splitWorkflow()), selected),
       /owns only repository-foundation.*release-prerequisites/,
     );
   }
@@ -263,9 +242,9 @@ test("split suites cannot skip checks, duplicate execution, replace source or we
       value.concurrency["cancel-in-progress"] = true;
     },
   ]) {
-    const value = actualWorkflow();
+    const value = splitWorkflow();
     change(value);
-    assert.throws(() => inspectCi(stringify(value), actualManifest()));
+    assert.throws(() => inspectCi(stringify(value), splitManifest()));
   }
   for (const change of [
     (value) => {
@@ -280,17 +259,17 @@ test("split suites cannot skip checks, duplicate execution, replace source or we
       ];
     },
   ]) {
-    const value = actualManifest();
+    const value = splitManifest();
     change(value);
     assert.throws(
-      () => inspectCi(stringify(actualWorkflow()), value),
+      () => inspectCi(stringify(splitWorkflow()), value),
       /partition|one CI owner/,
     );
   }
 });
 
 test("the required aggregate runs after failure and rejects unsuccessful or missing suite results", () => {
-  const aggregate = actualWorkflow().jobs.check;
+  const aggregate = splitWorkflow().jobs.check;
   assert.equal(aggregate.if, "always()");
   const commandText = aggregate.steps[0].run;
   const source = commandText.slice('node -e "'.length, -1);
@@ -328,9 +307,9 @@ test("the required aggregate runs after failure and rejects unsuccessful or miss
       value.jobs.check.steps[0].run = 'node -e "process.exit(0)"';
     },
   ]) {
-    const value = actualWorkflow();
+    const value = splitWorkflow();
     change(value);
-    assert.throws(() => inspectCi(stringify(value), actualManifest()));
+    assert.throws(() => inspectCi(stringify(value), splitManifest()));
   }
 });
 
@@ -371,9 +350,9 @@ test("Sonar consumes both successful suite artifacts and verifies each producing
       value.jobs.analysis.steps.at(-1).env.SONAR_TOKEN = "literal-token";
     },
   ]) {
-    const value = actualWorkflow();
+    const value = splitWorkflow();
     change(value);
-    assert.throws(() => inspectCi(stringify(value), actualManifest()));
+    assert.throws(() => inspectCi(stringify(value), splitManifest()));
   }
 });
 
@@ -454,6 +433,43 @@ test("CodeQL runs real security analysis on every PR base with minimal upload pe
   }
 });
 
+test("the active application workflow requires all 18 checks and verified coverage", () => {
+  const workflow = applicationWorkflow();
+  const selected = actualManifest();
+  assert.equal(selected.applicationReady, true);
+  assert.equal(parse(workflow).concurrency.queue, undefined);
+  assert.deepEqual(inspectCi(workflow, selected), { requiredChecks: 18 });
+  assert.deepEqual(inspectSonarWorkflow(workflow, selected), {
+    requiredChecks: 18,
+  });
+});
+
+test("application CI runs fresh checks for metadata edits and rejects reuse or skipped commands", () => {
+  for (const change of [
+    (value) => {
+      value.jobs.check.steps.push({
+        run: "node scripts/check-ci.mjs --prepare-reuse",
+      });
+    },
+    (value) => {
+      command(value, canonical).if = "needs.scope.outputs.run == 'true'";
+    },
+    (value) => {
+      command(
+        value,
+        "node scripts/check-ci.mjs --record-coverage",
+      ).env.VERIFICATION_REUSED = "${{ steps.reuse.outputs.reused }}";
+    },
+  ]) {
+    const value = parse(applicationWorkflow());
+    change(value);
+    assert.throws(
+      () => inspectCi(stringify(value), actualManifest()),
+      /fresh verification|declared condition|actual application phase/,
+    );
+  }
+});
+
 test("the historical single-pass fixture runs core verification once and reuses measured coverage for one scanner", () => {
   assert.deepEqual(
     inspectCi(read("scripts/ci-single-pass.test.yml"), manifest()),
@@ -516,11 +532,14 @@ test("every declared publication phase retains its exact available verification 
     ["storybook-verification", 12],
     ["assistant-guidance", 12],
     ["release-prerequisites", 12],
-    ["application-verification", 17],
+    ["application-verification", 18],
   ]) {
     const value = phaseManifest(phase, count);
+    const source = value.applicationReady
+      ? applicationWorkflow()
+      : phaseWorkflow();
     for (const inspect of [inspectCi, inspectSonarWorkflow]) {
-      assert.deepEqual(inspect(phaseWorkflow(), value), {
+      assert.deepEqual(inspect(source, value), {
         requiredChecks: count,
       });
       for (const id of value.profiles.full) {
@@ -530,7 +549,7 @@ test("every declared publication phase retains its exact available verification 
           (check) => check !== id,
         );
         assert.throws(
-          () => inspect(phaseWorkflow(), missing),
+          () => inspect(source, missing),
           /every exact required core check/,
         );
       }
@@ -1005,10 +1024,10 @@ test("manifest ownership preserves all inherited checks and the complete matrix 
       ).exception.expiresAt = "2027-01-01T00:00:00Z";
     },
   ]) {
-    const value = applicationManifest();
+    const value = actualManifest();
     change(value);
     assert.throws(
-      () => inspectCi(phaseWorkflow(), value),
+      () => inspectCi(applicationWorkflow(), value),
       /phase|unique|core check|declared scope|Complete verification|bounded expiry/,
     );
   }
@@ -1173,6 +1192,13 @@ test("title/body edits avoid duplicate verification while retargeting a base alw
     };
     assert.equal(scope({ event }).run, "false");
     assert.equal(scope({ event }).visual, "false");
+    assert.equal(scope({ event, runMetadataEdits: true }).run, "true");
+    assert.equal(scope({ event, runMetadataEdits: true }).visual, "true");
+    assert.equal(
+      scope({ event, runMetadataEdits: true, files: ["docs/testing.md"] })
+        .visual,
+      "false",
+    );
   }
   const event = {
     action: "edited",
@@ -1794,9 +1820,6 @@ test("protected checks fail closed on missing scope and performance expiry is re
       value.concurrency.queue = "max";
     },
     (value) => {
-      delete value.concurrency.queue;
-    },
-    (value) => {
       command(value, "npm run validate -- performance")["continue-on-error"] =
         "${{ needs.scope.outputs.lighthouse_advisory == 'true' }}";
     },
@@ -1926,7 +1949,7 @@ test("Sonar analyzes the declared phase and classifies its fixtures without weak
         return [line.slice(0, separator), line.slice(separator + 1)];
       }),
   );
-  const application = manifest().applicationReady === true;
+  const application = actualManifest().applicationReady === true;
   const published = JSON.parse(
     read(".github/bootstrap-policy.json"),
   ).allowedFiles;

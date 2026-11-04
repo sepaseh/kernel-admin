@@ -122,7 +122,15 @@ export const phaseFixture = (phase) => {
     .filter(({ kind }) => kind === "required")
     .map(({ command }) => command);
   state.ci = parse(
-    readFileSync(new URL("./ci-single-pass.test.yml", import.meta.url), "utf8"),
+    readFileSync(
+      new URL(
+        applicationReady
+          ? "../.github/workflows/ci.yml"
+          : "./ci-single-pass.test.yml",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
   );
   state.sonar = structuredClone(state.ci);
   return state;

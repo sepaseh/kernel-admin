@@ -644,7 +644,7 @@ test("guidance recognizes genuine canonical full execution without duplicating e
 for (const [phase, count] of [
   ["repository-foundation", 10],
   ["storybook-verification", 12],
-  ["application-verification", 17],
+  ["application-verification", 18],
 ])
   test(`guidance enforces the ${phase} required-check contract`, () => {
     const state = phaseFixture(phase);

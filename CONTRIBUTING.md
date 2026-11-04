@@ -25,3 +25,5 @@ Preserve all required checks and measured coverage. Do not suppress findings, lo
 Maintain English, current, task-oriented guides using the [documentation map](docs/README.md). Update the existing owner alongside a behavior or workflow change. Link only files admitted by the current snapshot; identify planned paths as plain inline code rather than broken links. Do not add dated QA reports, decision logs or translated companion guides.
 
 Use public synthetic examples. Keep all ten UI catalogs and Persian calendar data when admitted, with localized product examples clearly identified and explanatory prose in English. Source and optional hooks do not authorize deployment, external review requests or production access.
+
+State the inputs, working directory, shell, expected result and recovery for a procedure. Verify each command against its source owner and each profile against the manifest. Use `npm run validate -- guidance` for focused checks, then follow the full gate before publication.
