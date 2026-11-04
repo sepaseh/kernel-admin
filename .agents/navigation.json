@@ -261,15 +261,18 @@
     },
     {
       "id": "deployment-recovery",
-      "when": "Change release packaging, Docker or native hosting inputs, or plan target verification and recovery.",
+      "when": "Change build identity, release packaging, Docker smoke checks or hosting inputs, or plan target verification and recovery.",
       "owners": [
         "docs/deployment.md",
         "deploy/docker/compose.yaml",
         "deploy/docker/Dockerfile",
         "deploy/native/nginx/admin.conf.template",
+        "scripts/stamp-admin-build.mjs",
         "scripts/package-release.mjs",
         "scripts/render-deployment.mjs",
-        "scripts/healthcheck.mjs"
+        "scripts/healthcheck.mjs",
+        "scripts/docker-smoke-resources.mjs",
+        "scripts/test-docker-release.mjs"
       ],
       "contracts": [
         ".env.example",
@@ -278,13 +281,23 @@
         "docs/validation.md"
       ],
       "tests": [
+        "scripts/stamp-admin-build.test.mjs",
         "scripts/package-release.test.mjs",
         "scripts/render-deployment.test.mjs",
+        "scripts/render-deployment.integration.test.mjs",
         "scripts/healthcheck.test.mjs",
         "scripts/deploy-runtime.test.mjs",
-        "scripts/docker-smoke-resources.test.mjs"
+        "scripts/deployment.integration.test.mjs",
+        "scripts/docker-smoke-resources.test.mjs",
+        "scripts/test-docker-release.test.mjs"
       ],
-      "checks": ["snapshot", "guidance", "format", "governance-coverage"],
+      "checks": [
+        "snapshot",
+        "guidance",
+        "format",
+        "unit-coverage",
+        "governance-coverage"
+      ],
       "rules": [".agents/rules/safety.md", ".agents/rules/guidance.md"],
       "limitations": "Synthetic tests cover the admitted helpers. Building and packaging the application require its entry point and complete validation. Starting resources and verifying an actual target require explicit operational authorization."
     },

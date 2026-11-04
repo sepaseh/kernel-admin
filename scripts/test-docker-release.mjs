@@ -182,7 +182,13 @@ const verifyFixtureResponses = async ({ request, identity, signal }) => {
   const asset = await request(assetPath);
   assert.equal(asset.status, 200);
   assert.match(asset.headers["cache-control"], /immutable/);
-  assert.equal((await request("/console/assets/missing.js")).status, 404);
+  const missingAsset = await request("/console/assets/missing.js");
+  assert.equal(missingAsset.status, 404);
+  assert.equal(
+    missingAsset.headers["cache-control"],
+    "no-store",
+    "Missing assets must use Cache-Control: no-store.",
+  );
   assert.equal((await request("/console/.env.local")).status, 404);
 };
 

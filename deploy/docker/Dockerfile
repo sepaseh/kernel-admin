@@ -22,7 +22,10 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_APP_BASE_URL=${VITE_APP_BASE_URL} \
     VITE_RELEASE_ID=${VITE_RELEASE_ID} \
     VITE_OBSERVABILITY_URL=${VITE_OBSERVABILITY_URL}
-RUN node scripts/validate-deployment-env.mjs \
+RUN case "${ADMIN_HOST}" in \
+      *[A-Z]*) printf '%s\n' 'ADMIN_HOST must be a lowercase bare DNS hostname.' >&2; exit 1 ;; \
+    esac \
+    && node scripts/validate-deployment-env.mjs \
     && npm run build \
     && node scripts/package-release.mjs --release="${VITE_RELEASE_ID}"
 RUN ADMIN_HOST="${ADMIN_HOST}" \

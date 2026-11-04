@@ -65,6 +65,8 @@ CI keeps active verification running and coalesces pending events by event and r
 
 The [Mutation testing workflow](../.github/workflows/mutation.yml) runs `npm run test:mutation` weekly and by manual dispatch. It publishes its report under a run- and attempt-specific artifact name. The [Release workflow](../.github/workflows/release.yml) is manually dispatched and runs Release Please only on `main`. These workflows have separate execution and authorization from the required PR checks.
 
+Before an authorized Release dispatch, configure `RELEASE_PLEASE_TOKEN` with a dedicated GitHub credential that can write repository contents and pull requests. A missing secret stops the workflow before Release Please starts. Use a credential that lets the release PR trigger its required checks automatically.
+
 ## Review PR scope before opening
 
 Before opening a PR, review its complete base-to-head diff and aim for at most 80 GitHub changed-file entries initially. Count additions, deletions, renames and binaries; a rename counts as one entry. Split independent changes when useful and explain why a larger cohesive change belongs together.

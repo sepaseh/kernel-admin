@@ -102,6 +102,14 @@ const orchestrationFixture = async (options = {}) => {
               headers: { "cache-control": "public, immutable" },
               body: "export default 1;",
             };
+          if (pathname === "/console/assets/missing.js")
+            return {
+              status: 404,
+              headers: {
+                ...headers,
+                "cache-control": options.missingAssetCache ?? "no-store",
+              },
+            };
           return { status: 404, headers, body: "Missing synthetic asset" };
         };
       },
@@ -208,6 +216,14 @@ test("Docker smoke verifies the CSP on the release metadata response too", async
     metadataPolicy: "connect-src https://api.example.com.attacker.test",
   });
   await assert.rejects(fixtureValue.run(), /CSP connect-src/);
+  await fixtureValue.cleaned();
+});
+
+test("Docker smoke rejects a missing asset response cached as immutable", async () => {
+  const fixtureValue = await orchestrationFixture({
+    missingAssetCache: "public, max-age=31536000, immutable",
+  });
+  await assert.rejects(fixtureValue.run(), /Missing assets must use/);
   await fixtureValue.cleaned();
 });
 

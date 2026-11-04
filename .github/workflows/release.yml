@@ -3,9 +3,7 @@ name: Release
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   release:
@@ -13,9 +11,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Require release token
+        env:
+          RELEASE_TOKEN_CONFIGURED: ${{ secrets.RELEASE_PLEASE_TOKEN != '' }}
+        run: |
+          if [ "$RELEASE_TOKEN_CONFIGURED" != "true" ]; then
+            echo "::error::Configure RELEASE_PLEASE_TOKEN before running Release Please."
+            exit 1
+          fi
+
       - name: Create or update release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}

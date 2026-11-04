@@ -1,6 +1,6 @@
-map $uri $kernel_admin_cache_control {
+map "$status:$uri" $kernel_admin_cache_control {
     default "no-store";
-    ~^${VITE_APP_BASE_URL}assets/ "public, max-age=31536000, immutable";
+    ~^(?:200|206|304):${VITE_APP_BASE_URL}assets/ "public, max-age=31536000, immutable";
 }
 
 server {

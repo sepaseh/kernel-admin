@@ -23,7 +23,7 @@ New-Item -ItemType Directory -Path coverage/deployment -Force | Out-Null
 Copy-Item -LiteralPath deploy/docker/compose.env.example -Destination $publicInputs
 ```
 
-Replace the synthetic host/origins and placeholder release ID in that file. Select a new immutable `VITE_RELEASE_ID`, its canonical `VITE_APP_BASE_URL`, the intended `BIND_ADDRESS` and public HTTP/HTTPS ports. Set `TLS_CERT_DIRECTORY` to the existing private mount source. The preparation file contains public values and paths, never certificate contents or keys; `coverage/` is ignored by Git and the Docker build context.
+Replace the synthetic host/origins and placeholder release ID in that file. Use a lowercase bare DNS hostname for `ADMIN_HOST`. The image build rejects uppercase hostnames before compiling the frontend. Select a new immutable `VITE_RELEASE_ID`, its canonical `VITE_APP_BASE_URL`, the intended `BIND_ADDRESS` and public HTTP/HTTPS ports. Set `TLS_CERT_DIRECTORY` to the existing private mount source. The preparation file contains public values and paths, never certificate contents or keys; `coverage/` is ignored by Git and the Docker build context.
 
 The [Compose definition](compose.yaml) maps the selected public ports to internal HTTP 8080 and HTTPS 8443. The TLS mount is read-only and does not create a missing source directory. The public HTTPS port also enters the built Nginx redirect configuration, so keep it consistent with the actual listener.
 
