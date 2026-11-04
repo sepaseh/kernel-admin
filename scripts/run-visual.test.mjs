@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
+import fs from "node:fs";
 import {
   mkdir,
   mkdtemp,
   readFile,
   realpath,
+  rename,
   rm,
   symlink,
   writeFile,
 } from "node:fs/promises";
+import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -236,6 +239,62 @@ test("reviewed baselines reject linked directories, ancestors and images", async
       path.basename(container).startsWith("kernel-visual-linked-images-"),
     );
     await rm(container, { recursive: true, force: true });
+  }
+});
+
+test("reviewed baselines reject an image path replaced after opening it", async (context) => {
+  const directory = await realpath(
+    await mkdtemp(path.join(tmpdir(), "kernel-visual-image-replacement-")),
+  );
+  const filename = path.join(directory, "approved.png");
+  const image = Buffer.from("synthetic reviewed image");
+  const openFile = fs.promises.open;
+  let read = false;
+  let closed = false;
+  try {
+    await writeFile(filename, image);
+    context.mock.method(fs.promises, "open", async (file, flags) => {
+      const handle = await openFile(file, flags);
+      if (file !== filename) return handle;
+      return {
+        async stat(options) {
+          const opened = await handle.stat(options);
+          await rename(filename, path.join(directory, "previous"));
+          await writeFile(filename, image);
+          return opened;
+        },
+        async readFile() {
+          read = true;
+          return handle.readFile();
+        },
+        async close() {
+          closed = true;
+          await handle.close();
+        },
+      };
+    });
+    syncBuiltinESMExports();
+    await assert.rejects(
+      assertVisualBaselineImages(directory, {
+        images: [
+          {
+            name: "approved.png",
+            sha256: createHash("sha256").update(image).digest("hex"),
+          },
+        ],
+      }),
+      /ordinary image/,
+    );
+    assert.equal(read, false);
+    assert.equal(closed, true);
+  } finally {
+    context.mock.restoreAll();
+    syncBuiltinESMExports();
+    assert.equal(path.dirname(directory), await realpath(tmpdir()));
+    assert.ok(
+      path.basename(directory).startsWith("kernel-visual-image-replacement-"),
+    );
+    await rm(directory, { recursive: true, force: true });
   }
 });
 

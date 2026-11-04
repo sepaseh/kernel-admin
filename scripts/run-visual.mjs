@@ -1,12 +1,16 @@
 import { execFile, spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
+import { constants } from "node:fs";
 import {
   lstat,
   mkdir,
   mkdtemp,
+  open,
   readdir,
   readFile,
   realpath,
+  rename,
+  unlink,
   writeFile,
 } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -63,10 +67,6 @@ export async function assertVisualBaselineImages(directory, metadata) {
     throw new Error("Reviewed visual baseline image hashes are required.");
 
   const root = await canonicalVisualDirectory(directory);
-  const samePath = (left, right) =>
-    process.platform === "win32"
-      ? left.toLowerCase() === right.toLowerCase()
-      : left === right;
   const actualNames = new Set(
     (await readdir(root)).filter((name) => /\.png$/i.test(name)),
   );
@@ -79,19 +79,11 @@ export async function assertVisualBaselineImages(directory, metadata) {
   await Promise.all(
     images.map(async (image) => {
       const imagePath = path.join(root, image.name);
-      const imageStatus = await lstat(imagePath);
-      if (
-        imageStatus.isSymbolicLink() ||
-        !imageStatus.isFile() ||
-        !samePath(await realpath(imagePath), imagePath)
-      )
-        throw new Error(
-          `Reviewed visual baseline must be an ordinary image: ${image.name}`,
-        );
-
-      const actualHash = createHash("sha256")
-        .update(await readFile(imagePath))
-        .digest("hex");
+      const bytes = await ordinaryFile(
+        imagePath,
+        `Reviewed visual baseline must be an ordinary image: ${image.name}`,
+      );
+      const actualHash = createHash("sha256").update(bytes).digest("hex");
       if (actualHash !== image.sha256)
         throw new Error(
           `Reviewed visual baseline image hash mismatch: ${image.name}`,
@@ -102,20 +94,11 @@ export async function assertVisualBaselineImages(directory, metadata) {
 
 export async function fingerprintVisualSources(repository) {
   const root = await realpath(repository);
-  const readPublicInput = async (relative) => {
-    const filename = path.resolve(root, relative);
-    const resolved = await realpath(filename);
-    const samePath =
-      process.platform === "win32"
-        ? resolved.toLowerCase() === filename.toLowerCase()
-        : resolved === filename;
-    const status = await lstat(filename);
-    if (!samePath || status.isSymbolicLink() || !status.isFile())
-      throw new Error(
-        `Visual source must be an ordinary public file: ${relative}`,
-      );
-    return readFile(filename);
-  };
+  const readPublicInput = (relative) =>
+    ordinaryFile(
+      path.resolve(root, relative),
+      `Visual source must be an ordinary public file: ${relative}`,
+    );
   const inventory = JSON.parse(
     await readPublicInput(".github/bootstrap-policy.json"),
   );
@@ -151,19 +134,43 @@ const verificationEnvironment = (environment) => {
   return expected;
 };
 
-async function ordinaryFile(filename) {
-  const status = await lstat(filename);
-  if (!status.isFile() || status.isSymbolicLink())
-    throw new Error("Verification inputs must be ordinary files.");
-  const resolved = await realpath(filename);
-  if (
-    (process.platform === "win32" ? resolved.toLowerCase() : resolved) !==
-    (process.platform === "win32" ? filename.toLowerCase() : filename)
-  )
-    throw new Error(
-      "Verification inputs must remain inside their ordinary directory.",
+async function ordinaryFile(
+  filename,
+  message = "Verification inputs must be ordinary files inside their ordinary directory.",
+) {
+  let handle;
+  try {
+    handle = await open(
+      filename,
+      constants.O_RDONLY |
+        (constants.O_NOFOLLOW ?? 0) |
+        (constants.O_NONBLOCK ?? 0),
     );
-  return readFile(filename);
+  } catch (error) {
+    if (error.code === "ELOOP" || error.code === "EISDIR")
+      throw new Error(message, { cause: error });
+    throw error;
+  }
+  try {
+    const opened = await handle.stat({ bigint: true });
+    const resolved = await realpath(filename);
+    const entry = await lstat(filename, { bigint: true });
+    const samePath =
+      process.platform === "win32"
+        ? resolved.toLowerCase() === filename.toLowerCase()
+        : resolved === filename;
+    if (
+      !samePath ||
+      !opened.isFile() ||
+      !entry.isFile() ||
+      opened.dev !== entry.dev ||
+      opened.ino !== entry.ino
+    )
+      throw new Error(message);
+    return await handle.readFile();
+  } finally {
+    await handle.close();
+  }
 }
 
 async function inspectVerificationPaths(root, admitted) {
@@ -304,6 +311,45 @@ async function verificationIdentity(repository, environment) {
   };
 }
 
+async function publishVerificationBuild(filename, contents) {
+  const temporary = path.join(
+    path.dirname(filename),
+    `.verification-build-${randomUUID()}.tmp`,
+  );
+  const handle = await open(temporary, "wx", 0o600);
+  const failures = [];
+  try {
+    await handle.writeFile(contents);
+  } catch (error) {
+    failures.push(error);
+  }
+  try {
+    await handle.close();
+  } catch (error) {
+    failures.push(error);
+  }
+  if (!failures.length) {
+    try {
+      await rename(temporary, filename);
+      return;
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+  try {
+    await unlink(temporary);
+  } catch (error) {
+    failures.push(error);
+  }
+  if (failures.length > 1)
+    throw new AggregateError(
+      failures,
+      "Verification evidence publication or owned cleanup failed.",
+      { cause: failures[0] },
+    );
+  throw failures[0];
+}
+
 async function recordVerificationBuild(
   repository,
   environment,
@@ -339,7 +385,10 @@ async function recordVerificationBuild(
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  await writeFile(filename, JSON.stringify(identity, null, 2) + "\n");
+  await publishVerificationBuild(
+    filename,
+    JSON.stringify(identity, null, 2) + "\n",
+  );
   return identity;
 }
 

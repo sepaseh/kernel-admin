@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  link,
   mkdir,
   mkdtemp,
+  open,
+  readdir,
   readFile,
   realpath,
   rm,
@@ -356,6 +359,65 @@ test("a failed build or concurrent source edit never publishes reusable evidence
       /sources changed/,
     );
     await assert.rejects(readFile(proof), { code: "ENOENT" });
+  });
+});
+
+test("rebuilding atomically replaces verification evidence without rewriting the previous file", async () => {
+  await withBuildFixture(async (directory, environment) => {
+    const coverage = path.join(directory, "coverage");
+    const proof = path.join(coverage, "verification-build.json");
+    const alias = path.join(coverage, "previous-evidence.json");
+    await mkdir(coverage);
+    await writeFile(proof, "previous evidence");
+    await link(proof, alias);
+
+    const previous =
+      process.platform === "win32" ? null : await open(proof, "r");
+    try {
+      const identity = await buildVerification({
+        repository: directory,
+        environment,
+        build: async () => 0,
+      });
+      if (previous)
+        assert.equal(await previous.readFile("utf8"), "previous evidence");
+      assert.equal(await readFile(alias, "utf8"), "previous evidence");
+      assert.deepEqual(JSON.parse(await readFile(proof, "utf8")), identity);
+      assert.deepEqual((await readdir(coverage)).sort(), [
+        "previous-evidence.json",
+        "verification-build.json",
+      ]);
+    } finally {
+      await previous?.close();
+    }
+  });
+});
+
+test("verification publication rejects existing linked and directory destinations", async () => {
+  await withBuildFixture(async (directory, environment) => {
+    const coverage = path.join(directory, "coverage");
+    const proof = path.join(coverage, "verification-build.json");
+    const outside = path.join(coverage, "unrelated-directory");
+    const build = () =>
+      buildVerification({
+        repository: directory,
+        environment,
+        build: async () => 0,
+      });
+    await mkdir(coverage);
+    await mkdir(outside);
+    await symlink(outside, proof, "junction");
+    await assert.rejects(build(), /evidence must be an ordinary file/);
+    assert.deepEqual(await readdir(outside), []);
+
+    await rm(proof);
+    await mkdir(proof);
+    await assert.rejects(build(), /evidence must be an ordinary file/);
+    assert.deepEqual(await readdir(proof), []);
+    assert.deepEqual((await readdir(coverage)).sort(), [
+      "unrelated-directory",
+      "verification-build.json",
+    ]);
   });
 });
 
