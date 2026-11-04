@@ -392,6 +392,8 @@
       "id": "admin-feature",
       "when": "Change published admin screen, form, menu or permission-gated component behavior.",
       "owners": [
+        "src/features/roles",
+        "src/features/settings",
         "src/features/users",
         "src/app/config/routes.ts",
         "src/app/providers/core/Core.tsx"
@@ -403,6 +405,8 @@
         ".agents/rules/styling.md"
       ],
       "tests": [
+        "src/features/roles/Roles.test.tsx",
+        "src/features/settings/Settings.test.tsx",
         "src/features/users/Users.test.tsx",
         "src/test/integration/forms.test.tsx",
         "src/features/users/Users.stories.tsx"
