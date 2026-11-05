@@ -158,8 +158,10 @@ export const executeProfile = async (
     return 0;
   });
   const sharesTypecheck =
-    ["full", "complete"].includes(profile) &&
-    commands.some(({ check }) => isVerificationBuild(check));
+    commands.some(
+      ({ check }) =>
+        check.id === "typecheck" && check.command === "npm run typecheck",
+    ) && commands.some(({ check }) => isVerificationBuild(check));
   const state = { checkedSource: undefined, reusableBuild: false };
   const drivers = { run, sourceFingerprint, sharesTypecheck };
   return commands.reduce(

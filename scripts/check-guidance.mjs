@@ -190,7 +190,7 @@ export const validateManifest = (manifest, settings, workflows) => {
     ...checkSettings(manifest, settings, checks),
   ];
   if (
-    ["single-pass-v1", "split-suites-v1"].includes(
+    ["single-pass-v1", "split-suites-v1", "split-application-v1"].includes(
       manifest.verificationModel,
     ) ||
     manifest.applicationReady === true
@@ -1318,7 +1318,7 @@ export const checkGuidance = async (directory = repository) => {
     readSource(root, ".github/workflows/ci.yml"),
   ]);
   const sonar =
-    ["single-pass-v1", "split-suites-v1"].includes(
+    ["single-pass-v1", "split-suites-v1", "split-application-v1"].includes(
       manifest.verificationModel,
     ) || manifest.applicationReady
       ? ci

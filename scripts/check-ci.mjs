@@ -608,7 +608,7 @@ const inspectHostedManifest = (manifest) => {
     if (
       check?.command !== command ||
       check.kind !== kind ||
-      JSON.stringify(check.ciJobs) !== '["check"]'
+      JSON.stringify(check.ciJobs) !== JSON.stringify([ciOwner(manifest, id)])
     )
       throw new Error(
         "Hosted verification needs its exact declared scope and owner: " + id,
@@ -640,6 +640,24 @@ const inspectHostedManifest = (manifest) => {
     );
 };
 export const ciOwner = (manifest, id) => {
+  if (manifest.verificationModel === "split-application-v1")
+    return (
+      {
+        audit: "audit",
+        "unit-coverage": "unit",
+        "governance-coverage": "governance",
+        "storybook-build": "storybook",
+        "storybook-browser": "storybook",
+        typecheck: "build",
+        "application-build": "build",
+        bundle: "build",
+        contract: "contract",
+        "application-e2e": "e2e",
+        "browser-compatibility": "e2e",
+        visual: "visual",
+        lighthouse: "performance",
+      }[id] ?? "quality"
+    );
   if (manifest.verificationModel !== "split-suites-v1") return "check";
   return (
     {
@@ -933,6 +951,583 @@ const inspectSplitCi = (workflow, manifest) => {
     "The check aggregate must reject every failed, cancelled or skipped suite without rerunning tests",
   );
   inspectSplitAnalysis(workflow);
+  return { requiredChecks };
+};
+
+const applicationJobs = [
+  "quality",
+  "audit",
+  "unit",
+  "governance",
+  "storybook",
+  "build",
+  "contract",
+  "e2e",
+];
+const applicationJobDetails = {
+  quality: ["Static checks", 15],
+  audit: ["Dependency audit", 10],
+  unit: ["Unit tests", 15],
+  governance: ["Governance tests", 30],
+  storybook: ["Storybook tests", 20],
+  build: ["Application build and bundle", 15],
+  contract: ["API contract tests", 10],
+  e2e: ["Application E2E tests", 25],
+  visual: ["Visual comparison", 10],
+  performance: ["Lighthouse", 20],
+};
+const visualCondition =
+  "needs.scope.outputs.profile == 'complete' || needs.scope.outputs.visual == 'true'";
+const applicationAggregate = `node -e "
+  const needs = JSON.parse(process.env.CI_NEEDS);
+  const required = ['scope', 'quality', 'audit', 'unit', 'governance', 'storybook', 'build', 'contract', 'e2e', 'performance'];
+  const visual = process.env.CI_VISUAL_REQUIRED;
+  if (!['true', 'false'].includes(visual)) process.exit(1);
+  if (required.some(id => needs[id]?.result !== 'success')) process.exit(1);
+  if (needs.visual?.result !== (visual === 'true' ? 'success' : 'skipped')) process.exit(1);
+"`;
+const normalizedCommand = (command) => command?.replace(/\s+/g, " ").trim();
+const inspectApplicationManifest = (manifest) => {
+  if (
+    manifest.phase !== "application-verification" ||
+    manifest.applicationReady !== true
+  )
+    throw new Error(
+      "Split application verification requires its admitted application phase and composition",
+    );
+  const count = manifestPolicy(manifest);
+  const partitions = applicationJobs.flatMap((id) => {
+    const expected = manifest.profiles.full.filter(
+      (check) => ciOwner(manifest, check) === id,
+    );
+    requireEqual(
+      manifest.profiles["ci-" + id],
+      expected,
+      "CI application profiles must partition every full check exactly once under its owner",
+    );
+    return expected;
+  });
+  requireEqual(
+    manifest.profiles["ci-e2e-complete"],
+    ["browser-compatibility"],
+    "Complete CI replaces the ordinary E2E suite with the browser matrix",
+  );
+  if (partitions.length !== count || new Set(partitions).size !== count)
+    throw new Error(
+      "CI application profiles must execute every required check once",
+    );
+  return count;
+};
+const inspectApplicationJob = (workflow, id, needs, condition) => {
+  const value = workflow.jobs[id];
+  blocking(value, condition === undefined ? undefined : { condition });
+  const [name, budget] = applicationJobDetails[id] ?? [
+    id === "analysis" ? "SonarQube Cloud analysis" : undefined,
+    id === "analysis" ? 15 : 5,
+  ];
+  if (
+    value.name !== name ||
+    value["runs-on"] !== "windows-2025" ||
+    value["timeout-minutes"] !== budget ||
+    !Array.isArray(value.steps) ||
+    ["strategy", "container", "services", "defaults", "permissions"].some(
+      (key) => Object.hasOwn(value, key),
+    )
+  )
+    throw new Error(
+      "Application suites retain their blocking Windows execution and declared budget: " +
+        id,
+    );
+  requireEqual(
+    value.needs,
+    needs,
+    "Application jobs must depend on their actual source and build producers: " +
+      id,
+  );
+  requireEqual(
+    value.env,
+    ["e2e", "visual", "performance"].includes(id)
+      ? { KERNEL_REUSE_VERIFICATION_BUILD: "1" }
+      : undefined,
+    "Application execution uses only its declared build-reuse environment",
+  );
+  for (const step of value.steps) rootExecution(step);
+  const ready = setup(value, { ref: "${{ needs.scope.outputs.commit }}" });
+  const checkout = value.steps.find((step) =>
+    step.uses?.startsWith("actions/checkout@"),
+  );
+  const node = value.steps.find((step) =>
+    step.uses?.startsWith("actions/setup-node@"),
+  );
+  requireEqual(
+    checkout?.uses,
+    suiteAction.checkout,
+    "Application source checkout must retain its immutable pin",
+  );
+  requireEqual(
+    checkout.with,
+    {
+      ref: "${{ needs.scope.outputs.commit }}",
+      "fetch-depth": 0,
+      "persist-credentials": false,
+    },
+    "Application suites check out the exact scoped source with complete history and no persisted credentials",
+  );
+  requireEqual(
+    node?.uses,
+    suiteAction.node,
+    "Application Node setup must retain its immutable pin",
+  );
+  requireEqual(
+    node.with,
+    { "node-version-file": ".nvmrc", cache: "npm" },
+    "Application jobs use the pinned project Node version and download cache",
+  );
+  return { value, ready };
+};
+const inspectImmutableUpload = (step, paths) => {
+  requireEqual(
+    step?.uses,
+    suiteAction.upload,
+    "Evidence upload must use its immutable action pin",
+  );
+  requireEqual(
+    step?.with,
+    {
+      name: "${{ steps.evidence.outputs.artifact }}",
+      path: paths,
+      "if-no-files-found": "error",
+      "retention-days": 3,
+      overwrite: false,
+      "include-hidden-files": false,
+    },
+    "Evidence must upload only its immutable measured reports or attested build",
+  );
+  blocking(step);
+};
+const inspectBuildConsumption = (value, ready) => {
+  const download = pinnedAction(value, "actions/download-artifact");
+  requireEqual(
+    download.step.uses,
+    downloadAction,
+    "Build download must use its immutable action pin",
+  );
+  requireEqual(
+    download.step.with,
+    {
+      name: "${{ needs.build.outputs.artifact }}",
+      path: ".",
+      "digest-mismatch": "error",
+    },
+    "Build consumers must download the actual successful producer's immutable artifact",
+  );
+  const verify = commandStep(
+    value,
+    "node scripts/ci-evidence.mjs --verify-build",
+  );
+  requireEqual(
+    value.steps[verify].env,
+    {
+      CI_EVIDENCE_PRODUCER_ATTEMPT: "${{ needs.build.outputs.attempt }}",
+    },
+    "Build verification requires its actual producer attempt",
+  );
+  if (!(ready < download.index && download.index < verify))
+    throw new Error(
+      "Build consumers must verify downloaded source-bound bytes before execution",
+    );
+  return verify;
+};
+const inspectApplicationProducer = (workflow, id) => {
+  const consumesBuild = ["e2e", "visual", "performance"].includes(id);
+  const { value, ready } = inspectApplicationJob(
+    workflow,
+    id,
+    consumesBuild ? ["scope", "build"] : ["scope"],
+    id === "visual" ? visualCondition : undefined,
+  );
+  const verified = consumesBuild
+    ? inspectBuildConsumption(value, ready)
+    : ready;
+  let installed = verified;
+  if (id !== "audit") {
+    installed = commandStep(value, installCommand);
+    if (installed <= verified)
+      throw new Error(
+        "Dependencies install after source and build verification",
+      );
+  }
+  const allowed = new Set(id === "audit" ? [] : [installCommand]);
+  let completed;
+  if (["storybook", "e2e", "visual", "performance"].includes(id)) {
+    const browsers =
+      id === "e2e"
+        ? "npm run ${{ needs.scope.outputs.browser_install }}"
+        : "npm run browser:install";
+    const browser = commandStep(value, browsers);
+    if (browser <= installed)
+      throw new Error("Browser setup must follow the locked install");
+    installed = browser;
+    allowed.add(browsers);
+  }
+  if (consumesBuild) {
+    const verifiedBuild = commandStep(
+      value,
+      "node scripts/run-visual.mjs --verify-build",
+    );
+    if (verifiedBuild <= installed)
+      throw new Error(
+        "Browser consumers verify the reusable build after installation and before execution",
+      );
+    installed = verifiedBuild;
+    allowed.add("node scripts/run-visual.mjs --verify-build");
+  }
+  if (id === "e2e") {
+    for (const [profile, scope] of [
+      ["ci-e2e", "full"],
+      ["ci-e2e-complete", "complete"],
+    ]) {
+      const run = "npm run validate -- " + profile;
+      completed = commandStep(value, run, {
+        condition: "needs.scope.outputs.profile == '" + scope + "'",
+      });
+      if (completed <= installed)
+        throw new Error(
+          "E2E execution follows the verified build and browser prerequisites",
+        );
+      allowed.add(run);
+    }
+  } else if (id === "performance") {
+    const application = "needs.scope.outputs.application == 'true'";
+    const policy = commandStep(
+      value,
+      "node scripts/check-ci.mjs --performance-scope",
+      { condition: application },
+    );
+    const performance = value.steps[policy + 1];
+    if (
+      policy <= installed ||
+      value.steps[policy].id !== "performance-policy" ||
+      performance?.run !== "npm run validate -- performance" ||
+      performance.id !== "performance" ||
+      performance["continue-on-error"] !==
+        "${{ steps.performance-policy.outputs.advisory == 'true' }}" ||
+      performance.if !== application
+    )
+      throw new Error(
+        "Performance must execute once and its freshly evaluated advisory status must expire automatically",
+      );
+    completed = policy + 1;
+    allowed.add("node scripts/check-ci.mjs --performance-scope");
+    allowed.add("npm run validate -- performance");
+  } else {
+    const run =
+      "npm run validate -- " + (id === "visual" ? "visual" : "ci-" + id);
+    completed = commandStep(value, run);
+    if (completed <= installed)
+      throw new Error(
+        "Each application profile executes after its actual prerequisites",
+      );
+    allowed.add(run);
+  }
+  if (consumesBuild) allowed.add("node scripts/ci-evidence.mjs --verify-build");
+  if (["unit", "governance", "build"].includes(id)) {
+    const mode = id === "build" ? "--record-build" : "--record";
+    const record = commandStep(value, "node scripts/ci-evidence.mjs " + mode);
+    const evidence = value.steps[record];
+    requireEqual(
+      evidence.id,
+      "evidence",
+      "Evidence must come from the declared producer step",
+    );
+    requireEqual(
+      evidence.env,
+      id === "build" ? undefined : { CI_EVIDENCE_SUITE: id },
+      "Measured evidence must attest its actual suite",
+    );
+    requireEqual(
+      value.outputs,
+      {
+        artifact: "${{ steps.evidence.outputs.artifact }}",
+        attempt: "${{ steps.evidence.outputs.attempt }}",
+      },
+      "Producer outputs must identify their own immutable artifact and attempt",
+    );
+    inspectImmutableUpload(
+      value.steps[record + 1],
+      id === "build"
+        ? "dist/\ncoverage/verification-build.json\ncoverage/ci-build-evidence.json\n"
+        : `coverage/${id}/lcov.info\ncoverage/${id}/ci-evidence.json\n` +
+            (id === "governance" ? "coverage/governance/powershell.xml\n" : ""),
+    );
+    if (record <= completed)
+      throw new Error(
+        "Evidence must follow successful execution of its actual producer",
+      );
+    allowed.add("node scripts/ci-evidence.mjs " + mode);
+  } else if (value.outputs !== undefined)
+    throw new Error(
+      "Only measured suites and the build producer publish evidence outputs",
+    );
+  if (consumesBuild) {
+    const diagnostic = pinnedAction(value, "actions/upload-artifact", {
+      condition: "always()",
+    });
+    const report = id === "performance" ? "lighthouse" : id;
+    requireEqual(
+      diagnostic.step.uses,
+      suiteAction.upload,
+      "Diagnostics retain their immutable upload pin",
+    );
+    requireEqual(
+      diagnostic.step.with,
+      {
+        name: report + "-${{ github.run_id }}-${{ github.run_attempt }}",
+        path: "coverage/" + report + "/\n",
+        "if-no-files-found": "warn",
+        "retention-days": 3,
+        overwrite: false,
+        "include-hidden-files": false,
+      },
+      "Browser and audit diagnostics retain their actual reports, including on failure",
+    );
+    if (diagnostic.index <= completed)
+      throw new Error("Diagnostics follow their actual suite execution");
+  }
+  if (id === "performance") {
+    const summary = value.steps[completed + 1];
+    requireEqual(
+      summary?.env,
+      {
+        PERFORMANCE_OUTCOME: "${{ steps.performance.outcome }}",
+        PERFORMANCE_ADVISORY:
+          "${{ steps.performance-policy.outputs.advisory }}",
+      },
+      "Performance summary must report the actual audit result and fresh deadline decision",
+    );
+    blocking(summary, { condition: "always()" });
+    requireEqual(
+      summary.run,
+      '"Lighthouse outcome: $env:PERFORMANCE_OUTCOME. Advisory: $env:PERFORMANCE_ADVISORY. Owner: Kernel Admin frontend/test maintainer. Review by: 2026-11-07; exception expires 2026-11-07T00:00:00Z." >> $env:GITHUB_STEP_SUMMARY',
+      "The bounded performance exception retains its actual result, owner and review deadline",
+    );
+    allowed.add(summary.run);
+  }
+  const stepCount = {
+    quality: 4,
+    audit: 3,
+    unit: 6,
+    governance: 6,
+    storybook: 5,
+    build: 6,
+    contract: 4,
+    e2e: 10,
+    visual: 9,
+    performance: 11,
+  };
+  requireEqual(
+    value.steps.length,
+    stepCount[id],
+    "Application suites retain only their declared execution owners",
+  );
+  for (const step of value.steps) {
+    if (step.run && !allowed.has(step.run))
+      throw new Error(
+        "Application suites must run only their declared commands once: " + id,
+      );
+    if (
+      step.uses &&
+      ![
+        suiteAction.checkout,
+        suiteAction.node,
+        suiteAction.upload,
+        ...(consumesBuild ? [downloadAction] : []),
+      ].includes(step.uses)
+    )
+      throw new Error(
+        "Application suites must retain only their actual pinned execution owners",
+      );
+    if (
+      step.env !== undefined &&
+      ![
+        "node scripts/ci-evidence.mjs --record",
+        "node scripts/ci-evidence.mjs --verify-build",
+      ].includes(step.run) &&
+      !(id === "performance" && step.if === "always()")
+    )
+      throw new Error(
+        "Suite commands must retain the declared synthetic environment",
+      );
+  }
+  return value;
+};
+
+const inspectApplicationAnalysis = (workflow) => {
+  const { value, ready } = inspectApplicationJob(
+    workflow,
+    "analysis",
+    ["scope", "check", "unit", "governance"],
+    "needs.check.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)",
+  );
+  const configured = commandStep(value, analysisConfigurationCommand);
+  if (configured <= ready)
+    throw new Error(
+      "Analysis requires configured credentials before report use",
+    );
+  requireEqual(
+    value.steps[configured].env,
+    {
+      SONAR_TOKEN_CONFIGURED: "${{ secrets.SONAR_TOKEN != '' }}",
+      SONAR_PROJECT_KEY: "${{ vars.SONAR_PROJECT_KEY }}",
+    },
+    "Sonar must require configured credentials and project binding",
+  );
+  let verified = configured;
+  for (const suite of ["unit", "governance"]) {
+    const downloads = value.steps.flatMap((step, index) =>
+      step.uses === downloadAction &&
+      step.with?.name === "${{ needs." + suite + ".outputs.artifact }}"
+        ? [{ step, index }]
+        : [],
+    );
+    if (downloads.length !== 1)
+      throw new Error(
+        "Sonar must consume each measured suite's own artifact once",
+      );
+    const { step, index } = downloads[0];
+    requireEqual(
+      step.with,
+      {
+        name: "${{ needs." + suite + ".outputs.artifact }}",
+        path: "coverage/" + suite,
+        "digest-mismatch": "error",
+      },
+      "Analysis downloads measured coverage into its actual suite directory",
+    );
+    blocking(step);
+    const verification = value.steps[index + 1];
+    requireEqual(
+      verification?.run,
+      "node scripts/ci-evidence.mjs --verify-coverage",
+      "Analysis verifies each downloaded suite before scanning",
+    );
+    blocking(verification);
+    requireEqual(
+      verification.env,
+      {
+        CI_EVIDENCE_SUITE: suite,
+        CI_EVIDENCE_PRODUCER_ATTEMPT:
+          "${{ needs." + suite + ".outputs.attempt }}",
+      },
+      "Analysis verifies actual independent producer attempts",
+    );
+    requireEqual(
+      verification.id,
+      suite === "governance" ? "governance" : undefined,
+      "Scanner reports come from their actual verified suite",
+    );
+    if (index <= verified)
+      throw new Error(
+        "Analysis must verify measured suites in the declared order",
+      );
+    verified = index + 1;
+  }
+  const install = commandStep(value, analysisInstallCommand);
+  const scan = pinnedAction(value, "SonarSource/sonarqube-scan-action");
+  requireEqual(
+    scan.step.uses,
+    suiteAction.scan,
+    "Sonar must retain its immutable scanner pin",
+  );
+  requireEqual(
+    scan.step.env,
+    {
+      SONAR_HOST_URL: "${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}",
+      SONAR_TOKEN: "${{ secrets.SONAR_TOKEN }}",
+    },
+    "Sonar retains its configured host and scoped analysis credential",
+  );
+  requireEqual(
+    scan.step.with?.args,
+    "-Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }} -Dsonar.scm.revision=${{ needs.scope.outputs.head }} -Dsonar.coverageReportPaths=${{ steps.governance.outputs.powershell_report }}",
+    "Scanner source and PowerShell report must bind the verified producer evidence",
+  );
+  if (!(verified < install && install < scan.index) || value.steps.length !== 9)
+    throw new Error(
+      "Sonar imports the measured reports once without rerunning suites",
+    );
+};
+const inspectApplicationCi = (workflow, manifest) => {
+  const requiredChecks = inspectApplicationManifest(manifest);
+  triggerPolicy(workflow);
+  requireEqual(
+    workflow.permissions,
+    { contents: "read" },
+    "Application CI retains minimal read-only permissions",
+  );
+  requireEqual(
+    workflow.concurrency,
+    { group: concurrencyGroup, "cancel-in-progress": false },
+    "Application CI retains coalesced event/ref/profile queues without cancelling active work",
+  );
+  requireEqual(
+    Object.keys(workflow.jobs ?? {}),
+    ["scope", ...applicationJobs, "visual", "performance", "check", "analysis"],
+    "Application CI must expose each admitted suite, its aggregate and scanner once",
+  );
+  if (workflow.defaults !== undefined)
+    throw new Error("Application CI uses root execution defaults");
+  requireEqual(
+    workflow.env,
+    {
+      KERNEL_SYNTHETIC_ENV: "1",
+      STORYBOOK_DISABLE_TELEMETRY: "1",
+      VITE_API_BASE_URL: "https://api.example.com",
+      VITE_APP_BASE_URL: "/",
+      VITE_OBSERVABILITY_URL: "",
+      VITE_RELEASE_ID: "application-verification",
+    },
+    "Application CI retains its synthetic public environment",
+  );
+  inspectScopeSelection(workflow);
+  for (const id of [...applicationJobs, "visual", "performance"])
+    inspectApplicationProducer(workflow, id);
+  const aggregate = workflow.jobs.check;
+  blocking(aggregate, { condition: "always()" });
+  requireEqual(
+    aggregate.needs,
+    ["scope", ...applicationJobs, "performance", "visual"],
+    "The aggregate requires the source scope and every actual producer result",
+  );
+  requireEqual(aggregate.permissions, {}, "The aggregate requires no token");
+  requireEqual(
+    withoutStepNames(aggregate.steps),
+    [
+      {
+        env: {
+          CI_NEEDS: "${{ toJSON(needs) }}",
+          CI_VISUAL_REQUIRED: "${{ " + visualCondition + " }}",
+        },
+        run: aggregate.steps[0]?.run,
+      },
+    ],
+    "The aggregate only evaluates actual results without rerunning checks",
+  );
+  if (
+    aggregate["runs-on"] !== "windows-2025" ||
+    aggregate["timeout-minutes"] !== 5 ||
+    aggregate.name !== undefined ||
+    aggregate.outputs !== undefined ||
+    ["env", "strategy", "container", "services", "defaults"].some((key) =>
+      Object.hasOwn(aggregate, key),
+    ) ||
+    normalizedCommand(aggregate.steps[0]?.run) !==
+      normalizedCommand(applicationAggregate)
+  )
+    throw new Error(
+      "The required aggregate rejects failed, cancelled, missing and unexpected skipped suites",
+    );
+  inspectApplicationAnalysis(workflow);
   return { requiredChecks };
 };
 
@@ -1319,6 +1914,8 @@ const inspectCoveragePublication = (check, visual, performance, fresh) => {
 
 export const inspectCi = (content, manifest) => {
   const workflow = parseWorkflow(content);
+  if (manifest.verificationModel === "split-application-v1")
+    return inspectApplicationCi(workflow, manifest);
   if (manifest.verificationModel === "split-suites-v1")
     return inspectSplitCi(workflow, manifest);
   if (
@@ -1376,6 +1973,11 @@ export const inspectCi = (content, manifest) => {
 
 export const inspectSonarWorkflow = (content, manifest) => {
   const workflow = parseWorkflow(content);
+  if (manifest.verificationModel === "split-application-v1") {
+    const requiredChecks = inspectApplicationManifest(manifest);
+    inspectApplicationAnalysis(workflow);
+    return { requiredChecks };
+  }
   if (manifest.verificationModel === "split-suites-v1") {
     const requiredChecks = inspectSplitManifest(manifest);
     inspectSplitAnalysis(workflow);

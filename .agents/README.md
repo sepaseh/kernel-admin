@@ -6,6 +6,8 @@ The [validation manifest](validation.json) owns commands and profiles. Start wit
 
 Ordinary local and PR verification uses Chromium. The complete profile substitutes the full browser matrix and adds approved-runtime image comparison; performance follows its separate, time-bounded advisory policy. Preserve these manifest responsibilities and source-bound measured reports when reorganizing checks.
 
+Application CI exposes its actual suites independently. The manifest's CI profiles partition every required check once, and `check` aggregates their results. Reuse the verified build across browser, visual and performance jobs and the measured producer reports for Sonar. Follow [validation](../docs/validation.md) when changing source identity, artifacts or producer attempts.
+
 Interface work starts with [DESIGN](../DESIGN.md) and [design-ui](skills/design-ui/SKILL.md). Git/remote work starts with [Git workflow](rules/git.md). Current human docs and active assistant instructions are English. Keep application translations and API-owned language metadata intact.
 
 Never use real environments, credentials, certificates, databases, uploads or browser state as fixtures. Existing authorization persists within scope; source preparation does not authorize real operations or publication.

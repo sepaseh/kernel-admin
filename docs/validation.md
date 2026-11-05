@@ -124,26 +124,54 @@ retained. PR metadata changes therefore cannot build an unbounded queue, and
 nightly/manual compatibility runs use separate groups.
 
 Each triggered workflow runs fresh verification, including PR title and
-description edits. The coverage artifact belongs to its successful producer
-within that run and records the tested head, base, commit, tree and attempt.
+description edits. Independent jobs partition the canonical required profile:
 
-Successful verification publishes a small mandatory coverage artifact. Browser,
-visual and Lighthouse diagnostics are uploaded separately, including on failure,
-so analysis downloads only the measured evidence it needs. Artifact
-digest mismatches fail the download; source identity and individual report hashes
-are verified again before use. Both artifacts have three-day retention.
+| Job                          | Responsibility                                                                            |
+| ---------------------------- | ----------------------------------------------------------------------------------------- |
+| Static checks                | Snapshot, CI policy, actionlint, guidance, boundaries, ESLint, formatting and Knip        |
+| Dependency audit             | The explicit locked dependency audit                                                      |
+| Unit tests                   | Measured unit, component and integration tests                                            |
+| Governance tests             | Measured repository tooling and policy regressions, including Windows PowerShell coverage |
+| Storybook tests              | Storybook build and Chromium interactions/accessibility                                   |
+| Application build and bundle | One typecheck, the verified application build and bundle budgets                          |
+| API contract tests           | Consumer HTTP contracts against owned synthetic providers                                 |
+| Application E2E tests        | Chromium journeys, or the complete browser matrix on scheduled/manual complete runs       |
+| Visual comparison            | Approved images when rendering inputs changed, and on complete runs                       |
+| Lighthouse                   | The existing performance audit and its bounded advisory exception                         |
+
+The required `check` executes no test suite. It runs after the producers and
+requires each selected job to succeed. A skipped visual job is accepted only
+when the scope explicitly did not request image comparison. Failures,
+cancellations and unexpectedly skipped jobs block the aggregate.
+
+The build job runs typecheck and build together, retaining the successful source
+fingerprint so the build does not repeat typecheck. It publishes the immutable
+distribution and its source-bound build evidence once. E2E, visual and Lighthouse
+jobs independently verify that producer's source, attempt and file hashes before
+reusing the same build.
+
+Unit and governance jobs publish separate immutable coverage artifacts. Each
+records the tested repository, head, base, commit, tree, workflow, run and producer
+attempt, together with the measured report hashes. Governance evidence includes
+the genuine PowerShell report on Windows. Analysis depends directly on both
+producers, verifies each actual successful attempt, and imports their reports
+without rerunning tests. This also supports failed-job and analysis-only reruns.
+
+Browser, visual and Lighthouse diagnostics are uploaded separately, including on
+failure. Build and report downloads reject digest mismatches and verify source
+identity and contents again before use. Artifacts have three-day retention.
 
 Dependency installs use npm's download cache and skip automatic audit submissions;
 the explicit required audit remains in the full profile. Sonar installs locked
 dependencies with lifecycle scripts disabled and imports the original measured
 reports without running tests again.
 
-Hosted scope, verification and analysis jobs allow 5, 45 and 15 minutes,
-respectively. On CI, functional Playwright suites have a 20-minute global timeout
-and visual comparison has five minutes, leaving time for cleanup and reports
-before the verification job limit.
-
-The scanner consumes the verified reports without rerunning their suites. PowerShell coverage stays bound to the same phase, source and producer as both LCOV files. CI evidence requests use transport completion and explicit cancellation without a configured request deadline. See [the CI workflow](../.github/workflows/ci.yml) and [Git guidance](../.agents/rules/pull-requests.md) for the implementation and authorization boundaries.
+Each producer has its own declared job budget. Functional Playwright suites keep
+their 20-minute global timeout and visual comparison keeps five minutes, leaving
+time for cleanup and report upload. See [the CI workflow](../.github/workflows/ci.yml),
+[coverage and build evidence](../scripts/ci-evidence.mjs) and
+[Git guidance](../.agents/rules/pull-requests.md) for the execution and authorization
+boundaries.
 
 ## Review PR scope before opening
 
