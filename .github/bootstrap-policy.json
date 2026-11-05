@@ -435,6 +435,7 @@
     "vitest.config.ts",
     "vitest.contract.config.ts",
     "vitest.shims.d.ts",
-    "vitest.storybook.config.ts"
+    "vitest.storybook.config.ts",
+    "scripts/ci-application-single-pass.test.yml"
   ]
 }

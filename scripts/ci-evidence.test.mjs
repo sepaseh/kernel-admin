@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import {
   copyFile,
+  cp,
   mkdir,
   mkdtemp,
   readFile,
@@ -24,6 +25,7 @@ import {
   runEvidence,
   sourceIdentity,
 } from "./ci-evidence.mjs";
+import { buildVerification } from "./run-visual.mjs";
 
 const commit = "a".repeat(40);
 const tree = "b".repeat(40);
@@ -32,6 +34,8 @@ const head = "d".repeat(40);
 const base = "e".repeat(40);
 const lcov = (source = "src/example.ts") =>
   `TN:\nSF:${source}\nDA:1,1\nLF:1\nLH:1\nend_of_record\n`;
+const powershell =
+  '<coverage version="1"><file path="scripts/stop-visual-process-tree.ps1"><lineToCover lineNumber="1" covered="true"/><lineToCover lineNumber="3" covered="false"/></file></coverage>\n';
 const identityOptions = () => ({
   environment: {
     GITHUB_REPOSITORY: "example/api",
@@ -70,6 +74,15 @@ const fixture = async (context) => {
   await mkdir(path.join(root, "src"));
   await mkdir(path.join(root, "coverage/unit"), { recursive: true });
   await mkdir(path.join(root, "coverage/governance"), { recursive: true });
+  await mkdir(path.join(root, "scripts"));
+  await writeFile(
+    path.join(root, "scripts/stop-visual-process-tree.ps1"),
+    "# synthetic helper\nWrite-Output 'fixture'\n# uncovered\n",
+  );
+  await writeFile(
+    path.join(root, "coverage/governance/powershell.xml"),
+    powershell,
+  );
   await writeFile(
     path.join(root, "src/example.ts"),
     "export const value = 1;\n",
@@ -98,6 +111,442 @@ const putManifest = (root, value) =>
     path.join(root, "coverage/unit/ci-evidence.json"),
     JSON.stringify(value),
   );
+
+const syntheticEnvironment = {
+  KERNEL_SYNTHETIC_ENV: "1",
+  VITE_API_BASE_URL: "https://api.example.com",
+  VITE_APP_BASE_URL: "/",
+  VITE_OBSERVABILITY_URL: "",
+  VITE_RELEASE_ID: "application-verification",
+};
+const putBuildRecord = (root, record) =>
+  writeFile(
+    path.join(root, "coverage/verification-build.json"),
+    JSON.stringify(record, null, 2) + "\n",
+  );
+const buildFixture = async (context) => {
+  const options = await fixture(context);
+  options.environment = { ...options.environment, ...syntheticEnvironment };
+  delete options.environment.CI_EVIDENCE_SUITE;
+  await mkdir(path.join(options.root, ".github"));
+  await writeFile(
+    path.join(options.root, ".github/bootstrap-policy.json"),
+    JSON.stringify({ allowedFiles: ["src/example.ts"] }),
+  );
+  const sourceInputs = [".github/bootstrap-policy.json", "src/example.ts"];
+  const hash = createHash("sha256");
+  for (const file of sourceInputs) {
+    const bytes = await readFile(path.join(options.root, file));
+    hash
+      .update(file)
+      .update("\0")
+      .update(String(bytes.length))
+      .update("\0")
+      .update(bytes);
+  }
+  const build = {
+    schemaVersion: 1,
+    apiOrigin: syntheticEnvironment.VITE_API_BASE_URL,
+    basePath: "/",
+    releaseId: "application-verification",
+  };
+  const output = {
+    "_kernel/build.json": JSON.stringify(build),
+    "assets/app.js": "console.info('synthetic application');\n",
+    "assets/empty.css": "",
+    "index.html": "<main>synthetic application</main>\n",
+  };
+  const distribution = [];
+  for (const [relative, contents] of Object.entries(output)) {
+    const filename = path.join(options.root, "dist", relative);
+    await mkdir(path.dirname(filename), { recursive: true });
+    await writeFile(filename, contents);
+    distribution.push({
+      path: relative,
+      bytes: Buffer.byteLength(contents),
+      sha256: createHash("sha256").update(contents).digest("hex"),
+    });
+  }
+  const record = {
+    schemaVersion: 1,
+    environment: syntheticEnvironment,
+    sourceFingerprint: hash.digest("hex"),
+    sourceInputs,
+    distribution,
+    build,
+  };
+  await putBuildRecord(options.root, record);
+  return { ...options, record };
+};
+
+test("governance preserves genuinely measured PowerShell bytes and emits the scanner report path", async (context) => {
+  const options = await fixture(context);
+  options.environment.CI_EVIDENCE_SUITE = "governance";
+  await runEvidence("--record", options);
+  const report = JSON.parse(
+    await readFile(
+      path.join(options.root, "coverage/governance/ci-evidence.json"),
+    ),
+  );
+  assert.equal(report.coverage.length, 2);
+  assert.deepEqual(report.coverage[1], {
+    path: "coverage/governance/powershell.xml",
+    bytes: Buffer.byteLength(powershell),
+    sha256: createHash("sha256").update(powershell).digest("hex"),
+  });
+  await runEvidence("--verify-coverage", options);
+  assert.deepEqual(options.outputs.at(-1), {
+    powershell_report: "coverage/governance/powershell.xml",
+  });
+  await writeFile(
+    path.join(options.root, "coverage/governance/powershell.xml"),
+    powershell.replace('covered="false"', 'covered="true"'),
+  );
+  await assert.rejects(
+    runEvidence("--verify-coverage", options),
+    /does not match/,
+  );
+});
+
+test("Windows governance requires PowerShell measurement while other hosts explicitly report its absence", async (context) => {
+  const options = await fixture(context);
+  options.environment.CI_EVIDENCE_SUITE = "governance";
+  await rm(path.join(options.root, "coverage/governance/powershell.xml"));
+  await assert.rejects(
+    runEvidence("--record", { ...options, platform: "win32" }),
+    { code: "ENOENT" },
+  );
+  await runEvidence("--record", { ...options, platform: "linux" });
+  await runEvidence("--verify-coverage", { ...options, platform: "linux" });
+  assert.deepEqual(options.outputs.at(-1), { powershell_report: "" });
+  await assert.rejects(
+    runEvidence("--verify-coverage", { ...options, platform: "win32" }),
+    { code: "ENOENT" },
+  );
+});
+
+test("PowerShell evidence rejects malformed, unmeasured, duplicated and out-of-source line records", async (context) => {
+  const options = await fixture(context);
+  options.environment.CI_EVIDENCE_SUITE = "governance";
+  for (const value of [
+    "",
+    "not coverage",
+    powershell.replaceAll('covered="true"', 'covered="false"'),
+    powershell.replace('lineNumber="3"', 'lineNumber="1"'),
+    powershell.replace('lineNumber="3"', 'lineNumber="100"'),
+    powershell.replace('lineNumber="3"', 'lineNumber="9007199254740993"'),
+    powershell.replace(
+      "scripts/stop-visual-process-tree.ps1",
+      "../private.ps1",
+    ),
+    powershell.replace("</file>", "<unexpected/></file>"),
+    Buffer.from([255]),
+  ]) {
+    await writeFile(
+      path.join(options.root, "coverage/governance/powershell.xml"),
+      value,
+    );
+    await assert.rejects(runEvidence("--record", options));
+  }
+});
+
+test("build transport binds the owner's existing record and every output byte without rebuilding", async (context) => {
+  const options = await buildFixture(context);
+  const original = await readFile(
+    path.join(options.root, "coverage/verification-build.json"),
+  );
+  await runEvidence("--record-build", options);
+  assert.deepEqual(options.outputs, [
+    { artifact: "verification-build-123-1", attempt: "1" },
+  ]);
+  assert.deepEqual(
+    await readFile(path.join(options.root, "coverage/verification-build.json")),
+    original,
+  );
+  const manifest = JSON.parse(
+    await readFile(path.join(options.root, "coverage/ci-build-evidence.json")),
+  );
+  assert.deepEqual(
+    manifest.files.map((file) => file.path),
+    [
+      "coverage/verification-build.json",
+      "dist/_kernel/build.json",
+      "dist/assets/app.js",
+      "dist/assets/empty.css",
+      "dist/index.html",
+    ],
+  );
+  const consumer = await buildFixture(context);
+  await rm(path.join(consumer.root, "dist"), { recursive: true });
+  await cp(path.join(options.root, "dist"), path.join(consumer.root, "dist"), {
+    recursive: true,
+  });
+  await copyFile(
+    path.join(options.root, "coverage/verification-build.json"),
+    path.join(consumer.root, "coverage/verification-build.json"),
+  );
+  await copyFile(
+    path.join(options.root, "coverage/ci-build-evidence.json"),
+    path.join(consumer.root, "coverage/ci-build-evidence.json"),
+  );
+  consumer.environment.GITHUB_RUN_ATTEMPT = "3";
+  await runEvidence("--verify-build", consumer);
+  assert.deepEqual(consumer.outputs, []);
+});
+
+test("build evidence accepts the real owner's case and Unicode source ordering and nested output inventory", async (context) => {
+  const options = await buildFixture(context);
+  const addedSources = [
+    "src/😀.ts",
+    "src/a-lower.ts",
+    "src/مورد.ts",
+    "src/_lead.ts",
+    "src/éclair.ts",
+    "src/A-upper.ts",
+    "src/ﭐ.ts",
+    "src/𐀀.ts",
+    "src/Ωmega.ts",
+  ];
+  const configuration = [
+    ".nvmrc",
+    "package.json",
+    "package-lock.json",
+    "index.html",
+    "vite.config.ts",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "playwright.visual.config.ts",
+    "scripts/run-visual.mjs",
+    "scripts/visual-environment.mjs",
+    "scripts/stamp-admin-build.mjs",
+    "scripts/validate-production-env.mjs",
+    "scripts/validate-deployment-env.mjs",
+  ];
+  await Promise.all(
+    [...addedSources, ...configuration].map(async (relative) => {
+      const filename = path.join(options.root, relative);
+      await mkdir(path.dirname(filename), { recursive: true });
+      await writeFile(filename, `Synthetic public input: ${relative}\n`);
+    }),
+  );
+  await writeFile(
+    path.join(options.root, ".github/bootstrap-policy.json"),
+    JSON.stringify({
+      allowedFiles: [
+        ...addedSources,
+        ...configuration,
+        "src/example.ts",
+        "scripts/stop-visual-process-tree.ps1",
+      ],
+    }),
+  );
+  await mkdir(path.join(options.root, "dist/assets/a-nested"));
+  await writeFile(
+    path.join(options.root, "dist/assets/a-nested/first.js"),
+    "nested output\n",
+  );
+  await writeFile(
+    path.join(options.root, "dist/assets/z-last.js"),
+    "last output\n",
+  );
+
+  const ownerRecord = await buildVerification({
+    repository: options.root,
+    environment: options.environment,
+    build: async () => 0,
+  });
+  assert.deepEqual(
+    ownerRecord.sourceInputs.filter((file) => file.startsWith("src/")),
+    [
+      "src/A-upper.ts",
+      "src/_lead.ts",
+      "src/a-lower.ts",
+      "src/example.ts",
+      "src/éclair.ts",
+      "src/Ωmega.ts",
+      "src/مورد.ts",
+      "src/𐀀.ts",
+      "src/😀.ts",
+      "src/ﭐ.ts",
+    ],
+  );
+  await runEvidence("--record-build", options);
+  const manifestPath = path.join(
+    options.root,
+    "coverage/ci-build-evidence.json",
+  );
+  const recorded = await readFile(manifestPath);
+  const manifest = JSON.parse(recorded);
+  assert.deepEqual(
+    manifest.files.slice(1),
+    ownerRecord.distribution.map((file) => ({
+      ...file,
+      path: `dist/${file.path}`,
+    })),
+  );
+  await runEvidence("--record-build", options);
+  assert.deepEqual(await readFile(manifestPath), recorded);
+  await runEvidence("--verify-build", options);
+});
+
+test("parallel output inspection retains ordinary empty directories and rejects links to empty directories", async (context) => {
+  const options = await buildFixture(context);
+  await runEvidence("--record-build", options);
+  const emptyDirectory = path.join(options.root, "dist/empty");
+  await mkdir(emptyDirectory);
+  await runEvidence("--verify-build", options);
+
+  assert.equal(path.dirname(emptyDirectory), path.join(options.root, "dist"));
+  await rm(emptyDirectory, { recursive: true });
+  const target = path.join(options.root, "coverage/empty-output");
+  await mkdir(target);
+  await symlink(
+    target,
+    emptyDirectory,
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  await assert.rejects(
+    runEvidence("--verify-build", options),
+    /must not contain links/,
+  );
+});
+
+test("build verification rejects foreign producers, runs, source heads, bases, trees and workflows", async (context) => {
+  const options = await buildFixture(context);
+  await runEvidence("--record-build", options);
+  for (const change of [
+    (value) => {
+      value.environment.GITHUB_RUN_ID = "124";
+    },
+    (value) => {
+      value.environment.GITHUB_RUN_ATTEMPT = "3";
+      value.environment.CI_EVIDENCE_PRODUCER_ATTEMPT = "2";
+    },
+    (value) => {
+      value.event.pull_request.head.sha = "f".repeat(40);
+    },
+    (value) => {
+      value.event.pull_request.base.sha = "f".repeat(40);
+    },
+    (value) => {
+      value.git = (args) =>
+        args[1] === "HEAD^{tree}" ? "f".repeat(40) : options.git(args);
+    },
+    (value) => {
+      value.git = (args) =>
+        args[1] === "HEAD:.github/workflows/ci.yml"
+          ? "f".repeat(40)
+          : options.git(args);
+    },
+  ]) {
+    const changed = {
+      ...options,
+      environment: { ...options.environment },
+      event: structuredClone(options.event),
+    };
+    change(changed);
+    await assert.rejects(
+      runEvidence("--verify-build", changed),
+      /does not match/,
+    );
+  }
+  for (const attempt of [undefined, "0", "2"]) {
+    await assert.rejects(
+      runEvidence("--verify-build", {
+        ...options,
+        environment: {
+          ...options.environment,
+          CI_EVIDENCE_PRODUCER_ATTEMPT: attempt,
+        },
+      }),
+      /producer attempt|exact clean checkout/,
+    );
+  }
+});
+
+test("build evidence rejects missing, added or changed outputs and altered owner records", async (context) => {
+  const options = await buildFixture(context);
+  await runEvidence("--record-build", options);
+  const target = path.join(options.root, "dist/assets/app.js");
+  const original = await readFile(target);
+  await writeFile(target, "changed bytes");
+  await assert.rejects(runEvidence("--verify-build", options), /distribution/);
+  await writeFile(target, original);
+  const added = path.join(options.root, "dist/assets/foreign.js");
+  await writeFile(added, "additional bytes");
+  await assert.rejects(runEvidence("--verify-build", options), /distribution/);
+  await rm(added);
+  await rm(target);
+  await assert.rejects(runEvidence("--verify-build", options), /distribution/);
+  await writeFile(target, original);
+  await writeFile(
+    path.join(options.root, "coverage/verification-build.json"),
+    JSON.stringify(options.record),
+  );
+  await assert.rejects(
+    runEvidence("--verify-build", options),
+    /does not match/,
+  );
+  await putBuildRecord(options.root, options.record);
+  await writeFile(
+    path.join(options.root, "src/example.ts"),
+    "changed source\n",
+  );
+  await assert.rejects(
+    runEvidence("--verify-build", options),
+    /source fingerprint/,
+  );
+});
+
+test("build recording requires matching inventory, synthetic environment, metadata and ordinary artifact paths", async (context) => {
+  const options = await buildFixture(context);
+  for (const change of [
+    (record) => {
+      record.schemaVersion = 2;
+    },
+    (record) => {
+      record.environment.VITE_API_BASE_URL = "https://foreign.invalid";
+    },
+    (record) => {
+      record.sourceInputs.push("../private");
+    },
+    (record) => {
+      record.build.releaseId = "foreign";
+    },
+  ]) {
+    const changed = structuredClone(options.record);
+    change(changed);
+    await putBuildRecord(options.root, changed);
+    await assert.rejects(runEvidence("--record-build", options));
+  }
+  await putBuildRecord(options.root, options.record);
+  await assert.rejects(
+    runEvidence("--record-build", {
+      ...options,
+      environment: { ...options.environment, VITE_RELEASE_ID: "foreign" },
+    }),
+    /synthetic environment/,
+  );
+  const manifest = path.join(options.root, "coverage/ci-build-evidence.json");
+  await mkdir(manifest);
+  await assert.rejects(
+    runEvidence("--record-build", options),
+    /must not contain links/,
+  );
+  await rm(manifest, { recursive: true });
+  await rm(path.join(options.root, "dist/assets"), { recursive: true });
+  await mkdir(path.join(options.root, "linked-assets"));
+  await symlink(
+    path.join(options.root, "linked-assets"),
+    path.join(options.root, "dist/assets"),
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  await assert.rejects(
+    runEvidence("--record-build", options),
+    /must not contain links/,
+  );
+});
 
 test("records measured bytes and verifies the exact same-run source identity", async (context) => {
   const options = await fixture(context);
@@ -318,6 +767,7 @@ test("suite artifacts remain independent across failed-job and analysis reruns",
   assert.deepEqual(options.outputs, [
     { artifact: "coverage-unit-123-1", attempt: "1" },
     { artifact: "coverage-governance-123-2", attempt: "2" },
+    { powershell_report: "coverage/governance/powershell.xml" },
   ]);
 });
 
@@ -541,7 +991,7 @@ test(
   async (context) => {
     const { root } = await fixture(context);
     await mkdir(path.join(root, ".github/workflows"), { recursive: true });
-    await mkdir(path.join(root, "scripts"));
+    await mkdir(path.join(root, "scripts"), { recursive: true });
     await writeFile(
       path.join(root, ".github/workflows/ci.yml"),
       "name: Synthetic CI\non: push\njobs: {}\n",

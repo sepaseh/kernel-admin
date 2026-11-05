@@ -18,6 +18,7 @@ import { test } from "node:test";
 import { parse, stringify } from "yaml";
 
 import {
+  ciOwner,
   coverageManifest,
   createEvidenceRunner,
   inspectCi,
@@ -38,12 +39,17 @@ const read = (file) =>
   readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
 const workflow = () => parse(read("scripts/ci-single-pass.test.yml"));
 const applicationWorkflow = () => read(".github/workflows/ci.yml");
+const historicalApplicationWorkflow = () =>
+  read("scripts/ci-application-single-pass.test.yml");
 const actualManifest = () => JSON.parse(read(".agents/validation.json"));
 const install = "npm ci --strict-peer-deps --no-audit --no-fund";
 const analysisInstall =
   "npm ci --strict-peer-deps --ignore-scripts --no-audit --no-fund";
 const phaseManifest = (phase, count) => {
   const value = actualManifest();
+  value.verificationModel = "single-pass-v1";
+  for (const check of value.checks)
+    if (check.ciJobs.length) check.ciJobs = ["check"];
   value.phase = phase;
   value.applicationReady = phase === "application-verification";
   const required = new Set(
@@ -444,7 +450,303 @@ test("the active application workflow requires all 18 checks and verified covera
   });
 });
 
-test("application CI runs fresh checks for metadata edits and rejects reuse or skipped commands", () => {
+test("application CI partitions each real check once while complete substitutes the browser matrix", () => {
+  const selected = actualManifest();
+  assert.equal(selected.verificationModel, "split-application-v1");
+  const owners = [
+    "quality",
+    "audit",
+    "unit",
+    "governance",
+    "storybook",
+    "build",
+    "contract",
+    "e2e",
+  ];
+  const checks = owners.flatMap((id) => {
+    const profile = selected.profiles["ci-" + id];
+    assert.ok(profile.length > 0);
+    assert.ok(profile.every((check) => ciOwner(selected, check) === id));
+    return profile;
+  });
+  assert.equal(checks.length, 18);
+  assert.deepEqual(new Set(checks), new Set(selected.profiles.full));
+  assert.deepEqual(selected.profiles["ci-build"], [
+    "typecheck",
+    "application-build",
+    "bundle",
+  ]);
+  assert.deepEqual(selected.profiles["ci-e2e-complete"], [
+    "browser-compatibility",
+  ]);
+  for (const mutate of [
+    (value) => value.profiles["ci-quality"].push("typecheck"),
+    (value) => value.profiles["ci-build"].shift(),
+    (value) => value.profiles["ci-e2e-complete"].push("application-e2e"),
+    (value) => {
+      value.checks.find(({ id }) => id === "unit-coverage").ciJobs = ["check"];
+    },
+  ]) {
+    const changed = structuredClone(selected);
+    mutate(changed);
+    assert.throws(() => inspectCi(applicationWorkflow(), changed));
+  }
+});
+
+test("application suites cannot skip, repeat or redirect actual source and build verification", () => {
+  const changes = [
+    (value) => {
+      value.jobs.audit["continue-on-error"] = true;
+    },
+    (value) => {
+      value.jobs.unit.if = "false";
+    },
+    (value) => {
+      value.jobs.quality.steps.push({ run: "npm run test:coverage" });
+    },
+    (value) => {
+      command(value, "npm run validate -- ci-storybook", "storybook").run =
+        "npm run validate -- full";
+    },
+    (value) => {
+      value.jobs.build.steps[0].with.ref = "main";
+    },
+    (value) => {
+      value.jobs.contract.steps[0].with["persist-credentials"] = true;
+    },
+    (value) => {
+      value.jobs.e2e.needs = ["scope"];
+    },
+    (value) => {
+      value.jobs.e2e.env.KERNEL_REUSE_VERIFICATION_BUILD = "0";
+    },
+    (value) => {
+      command(value, "npm run validate -- ci-e2e", "e2e").if = "true";
+    },
+    (value) => {
+      command(value, "npm run validate -- ci-e2e-complete", "e2e").if =
+        "needs.scope.outputs.profile == 'full'";
+    },
+    (value) => {
+      value.jobs.visual.if = "true";
+    },
+    (value) => {
+      value.jobs.e2e.steps.find((step) =>
+        step.uses?.startsWith("actions/download-artifact@"),
+      ).with.name = "mutable-build";
+    },
+    (value) => {
+      value.jobs.visual.steps.find((step) =>
+        step.uses?.startsWith("actions/download-artifact@"),
+      ).with["digest-mismatch"] = "warn";
+    },
+    (value) => {
+      command(
+        value,
+        "node scripts/ci-evidence.mjs --verify-build",
+        "performance",
+      ).env.CI_EVIDENCE_PRODUCER_ATTEMPT = "${{ github.run_attempt }}";
+    },
+    (value) => {
+      const steps = value.jobs.e2e.steps;
+      const install = steps.findIndex(
+        (step) => step.run === "npm ci --strict-peer-deps --no-audit --no-fund",
+      );
+      steps.splice(2, 0, ...steps.splice(install, 1));
+    },
+    (value) => {
+      value.jobs.build.steps.at(-1).with.path = "dist/";
+    },
+    (value) => {
+      value.jobs.unit.outputs.attempt = "1";
+    },
+    (value) => {
+      command(
+        value,
+        "node scripts/ci-evidence.mjs --record",
+        "unit",
+      ).env.CI_EVIDENCE_SUITE = "governance";
+    },
+    (value) => {
+      value.jobs.governance.steps.at(-1).with.path =
+        "coverage/governance/lcov.info\ncoverage/governance/ci-evidence.json\n";
+    },
+    (value) => {
+      value.jobs.build.steps.at(-1).with.overwrite = true;
+    },
+    (value) => {
+      value.jobs.check.if = "success()";
+    },
+    (value) => {
+      value.jobs.check.steps[0].env.CI_VISUAL_REQUIRED = "false";
+    },
+    (value) => {
+      value.jobs.check.permissions = { contents: "write" };
+    },
+  ];
+  for (const [index, mutate] of changes.entries()) {
+    const value = parse(applicationWorkflow());
+    mutate(value);
+    assert.throws(
+      () => inspectCi(stringify(value), actualManifest()),
+      "mutation " + index,
+    );
+  }
+});
+
+test("active application jobs check out the immutable event revision with no repository or credential override", () => {
+  const source = parse(applicationWorkflow());
+  const jobs = Object.entries(source.jobs).filter(
+    ([id]) => !["scope", "check"].includes(id),
+  );
+  for (const [id, job] of jobs) {
+    assert.equal(job.steps[0].with.ref, "${{ github.sha }}", id);
+    for (const mutate of [
+      (checkout) => {
+        checkout.ref = "${{ needs.scope.outputs.commit }}";
+      },
+      (checkout) => {
+        checkout.ref = "${{ github.event.pull_request.head.sha }}";
+      },
+      (checkout) => {
+        checkout.ref = "main";
+      },
+      (checkout) => {
+        delete checkout.ref;
+      },
+      (checkout) => {
+        checkout.repository = "untrusted/other";
+      },
+      (checkout) => {
+        checkout.path = "other";
+      },
+      (checkout) => {
+        checkout["persist-credentials"] = true;
+      },
+    ]) {
+      const changed = structuredClone(source);
+      mutate(changed.jobs[id].steps[0].with);
+      assert.throws(() => inspectCi(stringify(changed), actualManifest()), id);
+      if (id === "analysis")
+        assert.throws(() =>
+          inspectSonarWorkflow(stringify(changed), actualManifest()),
+        );
+    }
+  }
+});
+
+test("application aggregate rejects missing, failed, cancelled and unexpected skipped results", () => {
+  const aggregate = parse(applicationWorkflow()).jobs.check;
+  assert.equal(aggregate.if, "always()");
+  const script = /^node -e "([\s\S]*)"$/.exec(
+    aggregate.steps[0].run.trim(),
+  )?.[1];
+  assert.ok(script);
+  const results = Object.fromEntries(
+    aggregate.needs.map((id) => [id, { result: "success" }]),
+  );
+  const execute = (needs, visual) =>
+    spawnSync(process.execPath, ["-e", script], {
+      env: {
+        ...process.env,
+        CI_NEEDS: JSON.stringify(needs),
+        CI_VISUAL_REQUIRED: visual,
+      },
+      encoding: "utf8",
+      windowsHide: true,
+    }).status;
+  assert.equal(execute(results, "true"), 0);
+  assert.equal(
+    execute({ ...results, visual: { result: "skipped" } }, "false"),
+    0,
+  );
+  for (const id of aggregate.needs) {
+    for (const result of ["failure", "cancelled", "skipped", "pending"]) {
+      assert.notEqual(
+        execute({ ...results, [id]: { result } }, "true"),
+        0,
+        id + ":" + result,
+      );
+    }
+    const missing = structuredClone(results);
+    delete missing[id];
+    assert.notEqual(execute(missing, "true"), 0, "missing " + id);
+  }
+  for (const visual of ["", "unknown", "false"])
+    assert.notEqual(execute(results, visual), 0);
+});
+
+test("application analysis verifies each actual suite attempt without retesting or substituting PowerShell evidence", () => {
+  for (const mutate of [
+    (value) => {
+      value.jobs.analysis.needs = ["scope", "check", "unit"];
+    },
+    (value) => {
+      value.jobs.analysis.steps.find(
+        (step) => step.env?.CI_EVIDENCE_SUITE === "unit",
+      ).env.CI_EVIDENCE_PRODUCER_ATTEMPT =
+        "${{ needs.governance.outputs.attempt }}";
+    },
+    (value) => {
+      value.jobs.analysis.steps.find(
+        (step) => step.with?.path === "coverage/governance",
+      ).with.name = "${{ needs.unit.outputs.artifact }}";
+    },
+    (value) => {
+      value.jobs.analysis.steps.find((step) => step.id === "governance").id =
+        "unverified";
+    },
+    (value) => {
+      value.jobs.analysis.steps.at(-1).with.args =
+        "-Dsonar.coverageReportPaths=coverage/forged.xml";
+    },
+    (value) => {
+      value.jobs.analysis.steps.push({ run: "npm run test:coverage" });
+    },
+  ]) {
+    const value = parse(applicationWorkflow());
+    mutate(value);
+    assert.throws(() =>
+      inspectSonarWorkflow(stringify(value), actualManifest()),
+    );
+  }
+});
+
+test("independent Lighthouse execution retains the fresh bounded exception and actual outcome", () => {
+  for (const mutate of [
+    (value) => {
+      value.jobs.performance["continue-on-error"] = true;
+    },
+    (value) => {
+      command(
+        value,
+        "node scripts/check-ci.mjs --performance-scope",
+        "performance",
+      ).if = "false";
+    },
+    (value) => {
+      command(value, "npm run validate -- performance", "performance")[
+        "continue-on-error"
+      ] = true;
+    },
+    (value) => {
+      command(value, "npm run validate -- performance", "performance")[
+        "continue-on-error"
+      ] = "${{ needs.scope.outputs.advisory == 'true' }}";
+    },
+    (value) => {
+      value.jobs.performance.steps.find(
+        (step) => step.env?.PERFORMANCE_OUTCOME,
+      ).env.PERFORMANCE_OUTCOME = "success";
+    },
+  ]) {
+    const value = parse(applicationWorkflow());
+    mutate(value);
+    assert.throws(() => inspectCi(stringify(value), actualManifest()));
+  }
+});
+
+test("historical application CI runs fresh checks for metadata edits and rejects reuse or skipped commands", () => {
   for (const change of [
     (value) => {
       value.jobs.check.steps.push({
@@ -461,10 +763,14 @@ test("application CI runs fresh checks for metadata edits and rejects reuse or s
       ).env.VERIFICATION_REUSED = "${{ steps.reuse.outputs.reused }}";
     },
   ]) {
-    const value = parse(applicationWorkflow());
+    const value = parse(historicalApplicationWorkflow());
     change(value);
     assert.throws(
-      () => inspectCi(stringify(value), actualManifest()),
+      () =>
+        inspectCi(
+          stringify(value),
+          phaseManifest("application-verification", 18),
+        ),
       /fresh verification|declared condition|actual application phase/,
     );
   }
@@ -536,7 +842,7 @@ test("every declared publication phase retains its exact available verification 
   ]) {
     const value = phaseManifest(phase, count);
     const source = value.applicationReady
-      ? applicationWorkflow()
+      ? historicalApplicationWorkflow()
       : phaseWorkflow();
     for (const inspect of [inspectCi, inspectSonarWorkflow]) {
       assert.deepEqual(inspect(source, value), {

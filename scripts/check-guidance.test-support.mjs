@@ -125,7 +125,7 @@ export const phaseFixture = (phase) => {
     readFileSync(
       new URL(
         applicationReady
-          ? "../.github/workflows/ci.yml"
+          ? "./ci-application-single-pass.test.yml"
           : "./ci-single-pass.test.yml",
         import.meta.url,
       ),

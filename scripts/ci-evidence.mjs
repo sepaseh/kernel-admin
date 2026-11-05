@@ -1,6 +1,12 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFile, lstat, readFile, writeFile } from "node:fs/promises";
+import {
+  appendFile,
+  lstat,
+  readdir,
+  readFile,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
@@ -11,6 +17,10 @@ const gitExecutable =
     ? String.raw`C:\Program Files\Git\bin\git.exe`
     : "/usr/bin/git";
 const suites = new Set(["unit", "governance"]);
+const powershellReport = "coverage/governance/powershell.xml";
+const powershellSource = "scripts/stop-visual-process-tree.ps1";
+const buildRecord = "coverage/verification-build.json";
+const buildManifest = "coverage/ci-build-evidence.json";
 export const maximumCoverageBytes = 32 * 1024 * 1024;
 const sha = (value) =>
   typeof value === "string" &&
@@ -179,33 +189,290 @@ export const evidenceManifest = (identity, reports, suite) => ({
   })),
 });
 
-const publishEvidence = async (filename, evidence, { environment, output }) => {
-  await writeFile(filename, JSON.stringify(evidence, null, 2) + "\n", "utf8");
-  const { suite, identity } = evidence;
-  const values = {
-    artifact: `coverage-${suite}-${identity.runId}-${identity.attempt}`,
-    attempt: identity.attempt,
-  };
+const emitOutputs = async (values, { environment, output }) => {
   if (output) await output(values);
-  else {
+  else
     await appendFile(
       environment.GITHUB_OUTPUT,
-      `artifact=${values.artifact}\nattempt=${values.attempt}\n`,
+      Object.entries(values)
+        .map(([key, value]) => `${key}=${value}\n`)
+        .join(""),
     );
+};
+
+const publishEvidence = async (filename, evidence, options) => {
+  await writeFile(filename, JSON.stringify(evidence, null, 2) + "\n", "utf8");
+  const { suite, identity } = evidence;
+  const artifactPrefix = suite ? `coverage-${suite}` : "verification-build";
+  await emitOutputs(
+    {
+      artifact: `${artifactPrefix}-${identity.runId}-${identity.attempt}`,
+      attempt: identity.attempt,
+    },
+    options,
+  );
+};
+
+const readOrdinary = async (
+  root,
+  relative,
+  maximum = maximumCoverageBytes,
+  allowEmpty = false,
+) => {
+  const { filename, info } = await regularFile(root, relative);
+  if ((!allowEmpty && !info.size) || info.size > maximum)
+    throw new Error("CI evidence file is empty or too large: " + relative);
+  const bytes = await readFile(filename);
+  if ((!allowEmpty && !bytes.length) || bytes.length > maximum)
+    throw new Error("CI evidence file is empty or too large: " + relative);
+  return bytes;
+};
+
+const readPowershellCoverage = async (root, required) => {
+  const { info } = await regularFile(root, powershellReport, !required);
+  if (!info) return;
+  const bytes = await readOrdinary(root, powershellReport);
+  const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes).trim();
+  const body =
+    /^<coverage version="1">\s*<file path="scripts\/stop-visual-process-tree\.ps1">([\s\S]*)<\/file>\s*<\/coverage>$/.exec(
+      text.replace(/^<\?xml[^?]*\?>\s*/, ""),
+    )?.[1];
+  const line =
+    /<lineToCover lineNumber="([1-9]\d*)" covered="(true|false)"\s*\/>/g;
+  const entries = [...(body ?? "").matchAll(line)];
+  const numbers = entries.map((entry) => Number(entry[1]));
+  if (
+    body === undefined ||
+    body.replace(line, "").trim() ||
+    !entries.some((entry) => entry[2] === "true") ||
+    numbers.some((number) => !Number.isSafeInteger(number)) ||
+    new Set(numbers).size !== numbers.length
+  )
+    throw new Error(
+      "PowerShell coverage must contain genuine measured source lines",
+    );
+  const source = await readOrdinary(root, powershellSource);
+  if (
+    numbers.some(
+      (number) => number > source.toString("utf8").split(/\r?\n/).length,
+    )
+  )
+    throw new Error("PowerShell coverage contains a line outside its source");
+  return { reportPath: powershellReport, bytes };
+};
+
+const fileEvidence = (relative, bytes) => ({
+  path: relative,
+  bytes: bytes.length,
+  sha256: createHash("sha256").update(bytes).digest("hex"),
+});
+
+const readDistribution = async (root, relative = "dist") => {
+  // Inspect each directory before enumerating it, including empty or added paths.
+  const info = await lstat(path.join(root, relative));
+  if (!info.isDirectory() || info.isSymbolicLink())
+    throw new Error("Verification build paths must be ordinary directories");
+  const entries = (
+    await readdir(path.join(root, relative), { withFileTypes: true })
+  ).sort((left, right) => left.name.localeCompare(right.name, "en"));
+  const results = await Promise.allSettled(
+    entries.map(async (entry) => {
+      const filename = `${relative}/${entry.name}`;
+      safeRelative(filename);
+      if (entry.isDirectory()) return readDistribution(root, filename);
+
+      return [
+        fileEvidence(
+          filename,
+          await readOrdinary(root, filename, maximumCoverageBytes, true),
+        ),
+      ];
+    }),
+  );
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
+
+  return results.flatMap((result) => result.value);
+};
+
+const verifyBuildSource = async (root, record) => {
+  const inventoryName = ".github/bootstrap-policy.json";
+  const inventory = JSON.parse(await readOrdinary(root, inventoryName));
+  if (
+    !Array.isArray(inventory.allowedFiles) ||
+    new Set(inventory.allowedFiles).size !== inventory.allowedFiles.length ||
+    inventory.allowedFiles.some(
+      (file) => typeof file !== "string" || safeRelative(file) !== file,
+    )
+  )
+    throw new Error(
+      "Verification build requires the admitted public source inventory",
+    );
+  // Match the existing verification-build owner; these reviewed examples are omitted there.
+  const excluded = new Set([
+    ".env.example",
+    "deploy/docker/.env.example",
+    "deploy/native/hosts.env.example",
+  ]);
+  const inputs = [...new Set([inventoryName, ...inventory.allowedFiles])]
+    .filter((file) => !excluded.has(file))
+    .sort((left, right) => {
+      if (left < right) return -1;
+      if (left > right) return 1;
+      return 0;
+    });
+  if (inputs.some((file) => /(?:^|\/)\.env(?:\.|$)/i.test(file)))
+    throw new Error(
+      "Operator environments cannot supply verification build source",
+    );
+  if (!isDeepStrictEqual(record.sourceInputs, inputs))
+    throw new Error(
+      "Verification build source inputs differ from the admitted inventory",
+    );
+  const hash = createHash("sha256");
+  const contents = await Promise.allSettled(
+    inputs.map((file) => readOrdinary(root, file, maximumCoverageBytes, true)),
+  );
+  const failure = contents.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
+
+  inputs.forEach((file, index) => {
+    const bytes = contents[index].value;
+    hash
+      .update(file)
+      .update("\0")
+      .update(String(bytes.length))
+      .update("\0")
+      .update(bytes);
+  });
+  if (record.sourceFingerprint !== hash.digest("hex"))
+    throw new Error(
+      "Verification build source fingerprint does not match this checkout",
+    );
+};
+
+const buildEvidence = async (root, identity, environment) => {
+  const recordBytes = await readOrdinary(root, buildRecord);
+  const record = JSON.parse(recordBytes);
+  const expectedEnvironment = {
+    KERNEL_SYNTHETIC_ENV: "1",
+    VITE_API_BASE_URL: "https://api.example.com",
+    VITE_APP_BASE_URL: "/",
+    VITE_OBSERVABILITY_URL: "",
+    VITE_RELEASE_ID: "application-verification",
+  };
+  if (
+    record.schemaVersion !== 1 ||
+    !isDeepStrictEqual(record.environment, expectedEnvironment) ||
+    Object.entries(expectedEnvironment).some(
+      ([key, value]) => (environment[key] ?? "") !== value,
+    )
+  )
+    throw new Error(
+      "Verification build requires its original synthetic environment",
+    );
+  await verifyBuildSource(root, record);
+  const files = await readDistribution(root);
+  const distribution = files.map((file) => ({
+    ...file,
+    path: file.path.slice("dist/".length),
+  }));
+  if (
+    !files.some((file) => file.path === "dist/index.html") ||
+    !isDeepStrictEqual(record.distribution, distribution)
+  )
+    throw new Error(
+      "Verification build distribution does not match its recorded bytes",
+    );
+  const metadata = JSON.parse(
+    await readOrdinary(root, "dist/_kernel/build.json"),
+  );
+  if (
+    !isDeepStrictEqual(record.build, metadata) ||
+    metadata.schemaVersion !== 1 ||
+    metadata.apiOrigin !== expectedEnvironment.VITE_API_BASE_URL ||
+    metadata.basePath !== expectedEnvironment.VITE_APP_BASE_URL ||
+    metadata.releaseId !== expectedEnvironment.VITE_RELEASE_ID
+  )
+    throw new Error(
+      "Verification build metadata does not match its recorded environment",
+    );
+  return {
+    schemaVersion: 1,
+    identity,
+    files: [fileEvidence(buildRecord, recordBytes), ...files],
+  };
+};
+
+const verifyManifest = async (
+  root,
+  relative,
+  expected,
+  maximum = 16 * 1024,
+) => {
+  const bytes = await readOrdinary(root, relative, maximum);
+  if (!isDeepStrictEqual(JSON.parse(bytes), expected))
+    throw new Error(
+      "CI evidence does not match the exact source, workflow, producer or measured bytes",
+    );
+};
+
+const runCoverageEvidence = async ({
+  root,
+  suite,
+  platform,
+  identity,
+  verifying,
+  options,
+}) => {
+  const reportPath = `coverage/${suite}/lcov.info`;
+  const manifestPath = `coverage/${suite}/ci-evidence.json`;
+  const bytes = await readCoverage(root, reportPath);
+  const powershell =
+    suite === "governance"
+      ? await readPowershellCoverage(root, platform === "win32")
+      : undefined;
+  const reports = [{ reportPath, bytes }, ...(powershell ? [powershell] : [])];
+  const expected = evidenceManifest(identity, reports, suite);
+  const { filename } = await regularFile(root, manifestPath, !verifying);
+  if (verifying) {
+    await verifyManifest(root, manifestPath, expected);
+    if (suite === "governance")
+      await emitOutputs(
+        { powershell_report: powershell ? powershellReport : "" },
+        options,
+      );
+  } else {
+    await publishEvidence(filename, expected, options);
   }
 };
 
 export const runEvidence = async (
   mode,
-  { root = repository, environment = process.env, event, git, output } = {},
+  {
+    root = repository,
+    environment = process.env,
+    event,
+    git,
+    output,
+    platform = process.platform,
+  } = {},
 ) => {
-  if (!["--record", "--verify-coverage"].includes(mode))
-    throw new Error("Usage: ci-evidence.mjs --record|--verify-coverage");
+  if (
+    ![
+      "--record",
+      "--verify-coverage",
+      "--record-build",
+      "--verify-build",
+    ].includes(mode)
+  )
+    throw new Error(
+      "Usage: ci-evidence.mjs --record|--verify-coverage|--record-build|--verify-build",
+    );
+  const build = mode.endsWith("-build");
   const suite = environment.CI_EVIDENCE_SUITE;
-  if (!suites.has(suite))
+  if (!build && !suites.has(suite))
     throw new Error("CI evidence requires a declared unit or governance suite");
-  const reportPath = `coverage/${suite}/lcov.info`;
-  const manifestPath = `coverage/${suite}/ci-evidence.json`;
   const readGit =
     git ??
     ((args) =>
@@ -218,7 +485,7 @@ export const runEvidence = async (
       }));
   const payload =
     event ?? JSON.parse(await readFile(environment.GITHUB_EVENT_PATH, "utf8"));
-  const verifying = mode === "--verify-coverage";
+  const verifying = mode.startsWith("--verify-");
   if (verifying && !positive(environment.CI_EVIDENCE_PRODUCER_ATTEMPT))
     throw new Error("Analysis requires the successful producer attempt output");
   if (!verifying && !output && !environment.GITHUB_OUTPUT)
@@ -231,21 +498,23 @@ export const runEvidence = async (
       ? environment.CI_EVIDENCE_PRODUCER_ATTEMPT
       : undefined,
   });
-  const bytes = await readCoverage(root, reportPath);
-  const expected = evidenceManifest(identity, [{ reportPath, bytes }], suite);
-  const { filename, info } = await regularFile(root, manifestPath, !verifying);
-  if (verifying) {
-    if (info.size > 16 * 1024)
-      throw new Error("CI evidence manifest is too large");
-    if (
-      !isDeepStrictEqual(JSON.parse(await readFile(filename, "utf8")), expected)
-    )
-      throw new Error(
-        "Coverage evidence does not match the exact source, workflow, producer or measured bytes",
-      );
-  } else {
-    await publishEvidence(filename, expected, { environment, output });
+  const options = { environment, output };
+  if (build) {
+    const expected = await buildEvidence(root, identity, environment);
+    const { filename } = await regularFile(root, buildManifest, !verifying);
+    if (verifying)
+      await verifyManifest(root, buildManifest, expected, 1024 * 1024);
+    else await publishEvidence(filename, expected, options);
+    return identity;
   }
+  await runCoverageEvidence({
+    root,
+    suite,
+    platform,
+    identity,
+    verifying,
+    options,
+  });
   return identity;
 };
 

@@ -444,6 +444,126 @@ test("the coordinator passes only its own successful same-source typecheck to th
   ]);
 });
 
+const ciBuildManifest = () => ({
+  checks: [
+    { id: "typecheck", command: "npm run typecheck", kind: "required" },
+    {
+      id: "application-build",
+      command: "npm run build:verification",
+      kind: "required",
+    },
+    { id: "bundle", command: "npm run check:bundle", kind: "required" },
+  ],
+  profiles: { "ci-build": ["typecheck", "application-build", "bundle"] },
+});
+
+test("ci-build checks types once and shares its matching proof and completed build", async () => {
+  const calls = [];
+  const fingerprint = "a".repeat(64);
+  assert.equal(
+    await executeProfile(
+      ciBuildManifest(),
+      "ci-build",
+      (args, check, options) => {
+        calls.push({ id: check.id, args, ...options });
+        return 0;
+      },
+      async () => fingerprint,
+    ),
+    0,
+  );
+  assert.deepEqual(calls, [
+    {
+      id: "typecheck",
+      args: ["run", "typecheck"],
+      reusableBuild: false,
+    },
+    {
+      id: "application-build",
+      args: [
+        "run",
+        "build:verification",
+        "--",
+        "--typechecked-source",
+        fingerprint,
+      ],
+      reusableBuild: false,
+    },
+    {
+      id: "bundle",
+      args: ["run", "check:bundle"],
+      reusableBuild: true,
+    },
+  ]);
+});
+
+test("ci-build rejects stale or malformed typecheck proof before building", async () => {
+  for (const fingerprints of [
+    ["a".repeat(64), "b".repeat(64)],
+    ["a".repeat(64), "a".repeat(64), "b".repeat(64)],
+    ["invalid"],
+  ]) {
+    const calls = [];
+    await assert.rejects(
+      executeProfile(
+        ciBuildManifest(),
+        "ci-build",
+        (_args, check) => {
+          calls.push(check.id);
+          return 0;
+        },
+        async () => fingerprints.shift(),
+      ),
+      /Source changed/,
+    );
+    assert.deepEqual(calls, ["typecheck"]);
+  }
+});
+
+test("ci-build stops after a failed typecheck and cannot borrow a different command", async () => {
+  const failed = [];
+  assert.equal(
+    await executeProfile(
+      ciBuildManifest(),
+      "ci-build",
+      (_args, check) => {
+        failed.push(check.id);
+        return 7;
+      },
+      async () => "a".repeat(64),
+    ),
+    7,
+  );
+  assert.deepEqual(failed, ["typecheck"]);
+
+  for (const [index, command] of [
+    [0, "npm run typecheck:other"],
+    [1, "npm run build"],
+  ]) {
+    const manifest = ciBuildManifest();
+    manifest.checks[index].command = command;
+    const calls = [];
+    assert.equal(
+      await executeProfile(
+        manifest,
+        "ci-build",
+        (args) => {
+          calls.push(args);
+          return 0;
+        },
+        async () => {
+          throw new Error("A different command cannot supply typecheck proof");
+        },
+      ),
+      0,
+    );
+    assert.deepEqual(
+      calls,
+      manifest.checks.map((check) => commandArguments(check.command)),
+    );
+  }
+});
+
 test("full and complete coordination preserve each declared check exactly once", async () => {
   const manifest = historicalManifest();
   manifest.applicationReady = true;
