@@ -1138,181 +1138,199 @@ const inspectBuildConsumption = (value, ready) => {
     );
   return verify;
 };
-const inspectApplicationProducer = (workflow, id) => {
-  const consumesBuild = ["e2e", "visual", "performance"].includes(id);
-  const { value, ready } = inspectApplicationJob(
-    workflow,
-    id,
-    consumesBuild ? ["scope", "build"] : ["scope"],
-    id === "visual" ? visualCondition : undefined,
-  );
+const applicationBrowserCommands = {
+  storybook: "npm run browser:install",
+  e2e: "npm run ${{ needs.scope.outputs.browser_install }}",
+  visual: "npm run browser:install",
+  performance: "npm run browser:install",
+};
+const inspectApplicationPrerequisites = (value, id, ready, consumesBuild) => {
   const verified = consumesBuild
     ? inspectBuildConsumption(value, ready)
     : ready;
-  let installed = verified;
-  if (id !== "audit") {
-    installed = commandStep(value, installCommand);
-    if (installed <= verified)
-      throw new Error(
-        "Dependencies install after source and build verification",
-      );
-  }
-  const allowed = new Set(id === "audit" ? [] : [installCommand]);
-  let completed;
-  if (["storybook", "e2e", "visual", "performance"].includes(id)) {
-    const browsers =
-      id === "e2e"
-        ? "npm run ${{ needs.scope.outputs.browser_install }}"
-        : "npm run browser:install";
-    const browser = commandStep(value, browsers);
-    if (browser <= installed)
-      throw new Error("Browser setup must follow the locked install");
-    installed = browser;
-    allowed.add(browsers);
-  }
-  if (consumesBuild) {
-    const verifiedBuild = commandStep(
-      value,
-      "node scripts/run-visual.mjs --verify-build",
-    );
-    if (verifiedBuild <= installed)
-      throw new Error(
-        "Browser consumers verify the reusable build after installation and before execution",
-      );
-    installed = verifiedBuild;
-    allowed.add("node scripts/run-visual.mjs --verify-build");
-  }
-  if (id === "e2e") {
-    for (const [profile, scope] of [
-      ["ci-e2e", "full"],
-      ["ci-e2e-complete", "complete"],
-    ]) {
-      const run = "npm run validate -- " + profile;
-      completed = commandStep(value, run, {
-        condition: "needs.scope.outputs.profile == '" + scope + "'",
-      });
-      if (completed <= installed)
-        throw new Error(
-          "E2E execution follows the verified build and browser prerequisites",
-        );
-      allowed.add(run);
-    }
-  } else if (id === "performance") {
-    const application = "needs.scope.outputs.application == 'true'";
-    const policy = commandStep(
-      value,
-      "node scripts/check-ci.mjs --performance-scope",
-      { condition: application },
-    );
-    const performance = value.steps[policy + 1];
-    if (
-      policy <= installed ||
-      value.steps[policy].id !== "performance-policy" ||
-      performance?.run !== "npm run validate -- performance" ||
-      performance.id !== "performance" ||
-      performance["continue-on-error"] !==
-        "${{ steps.performance-policy.outputs.advisory == 'true' }}" ||
-      performance.if !== application
-    )
-      throw new Error(
-        "Performance must execute once and its freshly evaluated advisory status must expire automatically",
-      );
-    completed = policy + 1;
-    allowed.add("node scripts/check-ci.mjs --performance-scope");
-    allowed.add("npm run validate -- performance");
-  } else {
-    const run =
-      "npm run validate -- " + (id === "visual" ? "visual" : "ci-" + id);
-    completed = commandStep(value, run);
-    if (completed <= installed)
-      throw new Error(
-        "Each application profile executes after its actual prerequisites",
-      );
-    allowed.add(run);
-  }
-  if (consumesBuild) allowed.add("node scripts/ci-evidence.mjs --verify-build");
-  if (["unit", "governance", "build"].includes(id)) {
-    const mode = id === "build" ? "--record-build" : "--record";
-    const record = commandStep(value, "node scripts/ci-evidence.mjs " + mode);
-    const evidence = value.steps[record];
-    requireEqual(
-      evidence.id,
-      "evidence",
-      "Evidence must come from the declared producer step",
-    );
-    requireEqual(
-      evidence.env,
-      id === "build" ? undefined : { CI_EVIDENCE_SUITE: id },
-      "Measured evidence must attest its actual suite",
-    );
-    requireEqual(
-      value.outputs,
-      {
-        artifact: "${{ steps.evidence.outputs.artifact }}",
-        attempt: "${{ steps.evidence.outputs.attempt }}",
-      },
-      "Producer outputs must identify their own immutable artifact and attempt",
-    );
-    inspectImmutableUpload(
-      value.steps[record + 1],
-      id === "build"
-        ? "dist/\ncoverage/verification-build.json\ncoverage/ci-build-evidence.json\n"
-        : `coverage/${id}/lcov.info\ncoverage/${id}/ci-evidence.json\n` +
-            (id === "governance" ? "coverage/governance/powershell.xml\n" : ""),
-    );
-    if (record <= completed)
-      throw new Error(
-        "Evidence must follow successful execution of its actual producer",
-      );
-    allowed.add("node scripts/ci-evidence.mjs " + mode);
-  } else if (value.outputs !== undefined)
+  const installed =
+    id === "audit" ? verified : commandStep(value, installCommand);
+  if (id !== "audit" && installed <= verified)
+    throw new Error("Dependencies install after source and build verification");
+
+  const browsers = applicationBrowserCommands[id];
+  const browserReady = browsers ? commandStep(value, browsers) : installed;
+  if (browsers && browserReady <= installed)
+    throw new Error("Browser setup must follow the locked install");
+
+  const runtimeProof = consumesBuild
+    ? commandStep(value, "node scripts/run-visual.mjs --verify-build")
+    : browserReady;
+  if (consumesBuild && runtimeProof <= browserReady)
     throw new Error(
-      "Only measured suites and the build producer publish evidence outputs",
+      "Browser consumers verify the reusable build after installation and before execution",
     );
-  if (consumesBuild) {
-    const diagnostic = pinnedAction(value, "actions/upload-artifact", {
-      condition: "always()",
+  return {
+    ready: runtimeProof,
+    commands: [
+      ...(id === "audit" ? [] : [installCommand]),
+      ...(browsers ? [browsers] : []),
+      ...(consumesBuild
+        ? [
+            "node scripts/ci-evidence.mjs --verify-build",
+            "node scripts/run-visual.mjs --verify-build",
+          ]
+        : []),
+    ],
+  };
+};
+const inspectApplicationE2e = (value, ready) => {
+  const profiles = [
+    ["ci-e2e", "full"],
+    ["ci-e2e-complete", "complete"],
+  ];
+  const executions = profiles.map(([profile, scope]) => {
+    const run = "npm run validate -- " + profile;
+    const index = commandStep(value, run, {
+      condition: "needs.scope.outputs.profile == '" + scope + "'",
     });
-    const report = id === "performance" ? "lighthouse" : id;
-    requireEqual(
-      diagnostic.step.uses,
-      suiteAction.upload,
-      "Diagnostics retain their immutable upload pin",
+    if (index <= ready)
+      throw new Error(
+        "E2E execution follows the verified build and browser prerequisites",
+      );
+    return { index, run };
+  });
+  return {
+    completed: executions.at(-1).index,
+    commands: executions.map(({ run }) => run),
+  };
+};
+const inspectApplicationPerformance = (value, ready) => {
+  const application = "needs.scope.outputs.application == 'true'";
+  const policyCommand = "node scripts/check-ci.mjs --performance-scope";
+  const auditCommand = "npm run validate -- performance";
+  const policy = commandStep(value, policyCommand, { condition: application });
+  const performance = value.steps[policy + 1];
+  if (
+    policy <= ready ||
+    value.steps[policy].id !== "performance-policy" ||
+    performance?.run !== auditCommand ||
+    performance.id !== "performance" ||
+    performance["continue-on-error"] !==
+      "${{ steps.performance-policy.outputs.advisory == 'true' }}" ||
+    performance.if !== application
+  )
+    throw new Error(
+      "Performance must execute once and its freshly evaluated advisory status must expire automatically",
     );
-    requireEqual(
-      diagnostic.step.with,
-      {
-        name: report + "-${{ github.run_id }}-${{ github.run_attempt }}",
-        path: "coverage/" + report + "/\n",
-        "if-no-files-found": "warn",
-        "retention-days": 3,
-        overwrite: false,
-        "include-hidden-files": false,
-      },
-      "Browser and audit diagnostics retain their actual reports, including on failure",
+  const summary = value.steps[policy + 2];
+  requireEqual(
+    summary?.env,
+    {
+      PERFORMANCE_OUTCOME: "${{ steps.performance.outcome }}",
+      PERFORMANCE_ADVISORY: "${{ steps.performance-policy.outputs.advisory }}",
+    },
+    "Performance summary must report the actual audit result and fresh deadline decision",
+  );
+  blocking(summary, { condition: "always()" });
+  requireEqual(
+    summary.run,
+    '"Lighthouse outcome: $env:PERFORMANCE_OUTCOME. Advisory: $env:PERFORMANCE_ADVISORY. Owner: Kernel Admin frontend/test maintainer. Review by: 2026-11-07; exception expires 2026-11-07T00:00:00Z." >> $env:GITHUB_STEP_SUMMARY',
+    "The bounded performance exception retains its actual result, owner and review deadline",
+  );
+  return {
+    completed: policy + 1,
+    commands: [policyCommand, auditCommand, summary.run],
+  };
+};
+const inspectApplicationExecution = (value, id, ready) => {
+  if (id === "e2e") return inspectApplicationE2e(value, ready);
+  if (id === "performance") return inspectApplicationPerformance(value, ready);
+  const run =
+    "npm run validate -- " + (id === "visual" ? "visual" : "ci-" + id);
+  const completed = commandStep(value, run);
+  if (completed <= ready)
+    throw new Error(
+      "Each application profile executes after its actual prerequisites",
     );
-    if (diagnostic.index <= completed)
-      throw new Error("Diagnostics follow their actual suite execution");
+  return { completed, commands: [run] };
+};
+const applicationEvidence = {
+  unit: {
+    mode: "--record",
+    env: { CI_EVIDENCE_SUITE: "unit" },
+    paths: "coverage/unit/lcov.info\ncoverage/unit/ci-evidence.json\n",
+  },
+  governance: {
+    mode: "--record",
+    env: { CI_EVIDENCE_SUITE: "governance" },
+    paths:
+      "coverage/governance/lcov.info\ncoverage/governance/ci-evidence.json\ncoverage/governance/powershell.xml\n",
+  },
+  build: {
+    mode: "--record-build",
+    paths:
+      "dist/\ncoverage/verification-build.json\ncoverage/ci-build-evidence.json\n",
+  },
+};
+const inspectApplicationEvidence = (value, id, completed) => {
+  const expected = applicationEvidence[id];
+  if (!expected) {
+    if (value.outputs !== undefined)
+      throw new Error(
+        "Only measured suites and the build producer publish evidence outputs",
+      );
+    return [];
   }
-  if (id === "performance") {
-    const summary = value.steps[completed + 1];
-    requireEqual(
-      summary?.env,
-      {
-        PERFORMANCE_OUTCOME: "${{ steps.performance.outcome }}",
-        PERFORMANCE_ADVISORY:
-          "${{ steps.performance-policy.outputs.advisory }}",
-      },
-      "Performance summary must report the actual audit result and fresh deadline decision",
+  const run = "node scripts/ci-evidence.mjs " + expected.mode;
+  const record = commandStep(value, run);
+  const evidence = value.steps[record];
+  requireEqual(
+    evidence.id,
+    "evidence",
+    "Evidence must come from the declared producer step",
+  );
+  requireEqual(
+    evidence.env,
+    expected.env,
+    "Measured evidence must attest its actual suite",
+  );
+  requireEqual(
+    value.outputs,
+    {
+      artifact: "${{ steps.evidence.outputs.artifact }}",
+      attempt: "${{ steps.evidence.outputs.attempt }}",
+    },
+    "Producer outputs must identify their own immutable artifact and attempt",
+  );
+  inspectImmutableUpload(value.steps[record + 1], expected.paths);
+  if (record <= completed)
+    throw new Error(
+      "Evidence must follow successful execution of its actual producer",
     );
-    blocking(summary, { condition: "always()" });
-    requireEqual(
-      summary.run,
-      '"Lighthouse outcome: $env:PERFORMANCE_OUTCOME. Advisory: $env:PERFORMANCE_ADVISORY. Owner: Kernel Admin frontend/test maintainer. Review by: 2026-11-07; exception expires 2026-11-07T00:00:00Z." >> $env:GITHUB_STEP_SUMMARY',
-      "The bounded performance exception retains its actual result, owner and review deadline",
-    );
-    allowed.add(summary.run);
-  }
+  return [run];
+};
+const inspectApplicationDiagnostics = (value, id, completed) => {
+  const diagnostic = pinnedAction(value, "actions/upload-artifact", {
+    condition: "always()",
+  });
+  const report = id === "performance" ? "lighthouse" : id;
+  requireEqual(
+    diagnostic.step.uses,
+    suiteAction.upload,
+    "Diagnostics retain their immutable upload pin",
+  );
+  requireEqual(
+    diagnostic.step.with,
+    {
+      name: report + "-${{ github.run_id }}-${{ github.run_attempt }}",
+      path: "coverage/" + report + "/\n",
+      "if-no-files-found": "warn",
+      "retention-days": 3,
+      overwrite: false,
+      "include-hidden-files": false,
+    },
+    "Browser and audit diagnostics retain their actual reports, including on failure",
+  );
+  if (diagnostic.index <= completed)
+    throw new Error("Diagnostics follow their actual suite execution");
+};
+const inspectApplicationCommands = (value, id, commands, consumesBuild) => {
   const stepCount = {
     quality: 4,
     audit: 3,
@@ -1330,20 +1348,19 @@ const inspectApplicationProducer = (workflow, id) => {
     stepCount[id],
     "Application suites retain only their declared execution owners",
   );
+  const allowed = new Set(commands);
+  const actions = [
+    suiteAction.checkout,
+    suiteAction.node,
+    suiteAction.upload,
+    ...(consumesBuild ? [downloadAction] : []),
+  ];
   for (const step of value.steps) {
     if (step.run && !allowed.has(step.run))
       throw new Error(
         "Application suites must run only their declared commands once: " + id,
       );
-    if (
-      step.uses &&
-      ![
-        suiteAction.checkout,
-        suiteAction.node,
-        suiteAction.upload,
-        ...(consumesBuild ? [downloadAction] : []),
-      ].includes(step.uses)
-    )
+    if (step.uses && !actions.includes(step.uses))
       throw new Error(
         "Application suites must retain only their actual pinned execution owners",
       );
@@ -1359,6 +1376,35 @@ const inspectApplicationProducer = (workflow, id) => {
         "Suite commands must retain the declared synthetic environment",
       );
   }
+};
+const inspectApplicationProducer = (workflow, id) => {
+  const consumesBuild = ["e2e", "visual", "performance"].includes(id);
+  const { value, ready } = inspectApplicationJob(
+    workflow,
+    id,
+    consumesBuild ? ["scope", "build"] : ["scope"],
+    id === "visual" ? visualCondition : undefined,
+  );
+  const prerequisites = inspectApplicationPrerequisites(
+    value,
+    id,
+    ready,
+    consumesBuild,
+  );
+  const execution = inspectApplicationExecution(value, id, prerequisites.ready);
+  const evidenceCommands = inspectApplicationEvidence(
+    value,
+    id,
+    execution.completed,
+  );
+  if (consumesBuild)
+    inspectApplicationDiagnostics(value, id, execution.completed);
+  inspectApplicationCommands(
+    value,
+    id,
+    [...prerequisites.commands, ...execution.commands, ...evidenceCommands],
+    consumesBuild,
+  );
   return value;
 };
 

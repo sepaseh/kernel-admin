@@ -203,9 +203,10 @@ const emitOutputs = async (values, { environment, output }) => {
 const publishEvidence = async (filename, evidence, options) => {
   await writeFile(filename, JSON.stringify(evidence, null, 2) + "\n", "utf8");
   const { suite, identity } = evidence;
+  const artifactPrefix = suite ? `coverage-${suite}` : "verification-build";
   await emitOutputs(
     {
-      artifact: `${suite ? `coverage-${suite}` : "verification-build"}-${identity.runId}-${identity.attempt}`,
+      artifact: `${artifactPrefix}-${identity.runId}-${identity.attempt}`,
       attempt: identity.attempt,
     },
     options,
@@ -274,21 +275,24 @@ const readDistribution = async (root, relative = "dist") => {
   const entries = (
     await readdir(path.join(root, relative), { withFileTypes: true })
   ).sort((left, right) => left.name.localeCompare(right.name, "en"));
-  const files = [];
-  for (const entry of entries) {
-    const filename = `${relative}/${entry.name}`;
-    safeRelative(filename);
-    if (entry.isDirectory())
-      files.push(...(await readDistribution(root, filename)));
-    else
-      files.push(
+  const results = await Promise.allSettled(
+    entries.map(async (entry) => {
+      const filename = `${relative}/${entry.name}`;
+      safeRelative(filename);
+      if (entry.isDirectory()) return readDistribution(root, filename);
+
+      return [
         fileEvidence(
           filename,
           await readOrdinary(root, filename, maximumCoverageBytes, true),
         ),
-      );
-  }
-  return files;
+      ];
+    }),
+  );
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
+
+  return results.flatMap((result) => result.value);
 };
 
 const verifyBuildSource = async (root, record) => {
@@ -312,7 +316,11 @@ const verifyBuildSource = async (root, record) => {
   ]);
   const inputs = [...new Set([inventoryName, ...inventory.allowedFiles])]
     .filter((file) => !excluded.has(file))
-    .sort();
+    .sort((left, right) => {
+      if (left < right) return -1;
+      if (left > right) return 1;
+      return 0;
+    });
   if (inputs.some((file) => /(?:^|\/)\.env(?:\.|$)/i.test(file)))
     throw new Error(
       "Operator environments cannot supply verification build source",
@@ -322,15 +330,21 @@ const verifyBuildSource = async (root, record) => {
       "Verification build source inputs differ from the admitted inventory",
     );
   const hash = createHash("sha256");
-  for (const file of inputs) {
-    const bytes = await readOrdinary(root, file, maximumCoverageBytes, true);
+  const contents = await Promise.allSettled(
+    inputs.map((file) => readOrdinary(root, file, maximumCoverageBytes, true)),
+  );
+  const failure = contents.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
+
+  inputs.forEach((file, index) => {
+    const bytes = contents[index].value;
     hash
       .update(file)
       .update("\0")
       .update(String(bytes.length))
       .update("\0")
       .update(bytes);
-  }
+  });
   if (record.sourceFingerprint !== hash.digest("hex"))
     throw new Error(
       "Verification build source fingerprint does not match this checkout",
@@ -403,6 +417,36 @@ const verifyManifest = async (
     );
 };
 
+const runCoverageEvidence = async ({
+  root,
+  suite,
+  platform,
+  identity,
+  verifying,
+  options,
+}) => {
+  const reportPath = `coverage/${suite}/lcov.info`;
+  const manifestPath = `coverage/${suite}/ci-evidence.json`;
+  const bytes = await readCoverage(root, reportPath);
+  const powershell =
+    suite === "governance"
+      ? await readPowershellCoverage(root, platform === "win32")
+      : undefined;
+  const reports = [{ reportPath, bytes }, ...(powershell ? [powershell] : [])];
+  const expected = evidenceManifest(identity, reports, suite);
+  const { filename } = await regularFile(root, manifestPath, !verifying);
+  if (verifying) {
+    await verifyManifest(root, manifestPath, expected);
+    if (suite === "governance")
+      await emitOutputs(
+        { powershell_report: powershell ? powershellReport : "" },
+        options,
+      );
+  } else {
+    await publishEvidence(filename, expected, options);
+  }
+};
+
 export const runEvidence = async (
   mode,
   {
@@ -429,8 +473,6 @@ export const runEvidence = async (
   const suite = environment.CI_EVIDENCE_SUITE;
   if (!build && !suites.has(suite))
     throw new Error("CI evidence requires a declared unit or governance suite");
-  const reportPath = `coverage/${suite}/lcov.info`;
-  const manifestPath = `coverage/${suite}/ci-evidence.json`;
   const readGit =
     git ??
     ((args) =>
@@ -465,24 +507,14 @@ export const runEvidence = async (
     else await publishEvidence(filename, expected, options);
     return identity;
   }
-  const bytes = await readCoverage(root, reportPath);
-  const powershell =
-    suite === "governance"
-      ? await readPowershellCoverage(root, platform === "win32")
-      : undefined;
-  const reports = [{ reportPath, bytes }, ...(powershell ? [powershell] : [])];
-  const expected = evidenceManifest(identity, reports, suite);
-  const { filename } = await regularFile(root, manifestPath, !verifying);
-  if (verifying) {
-    await verifyManifest(root, manifestPath, expected);
-    if (suite === "governance")
-      await emitOutputs(
-        { powershell_report: powershell ? powershellReport : "" },
-        options,
-      );
-  } else {
-    await publishEvidence(filename, expected, options);
-  }
+  await runCoverageEvidence({
+    root,
+    suite,
+    platform,
+    identity,
+    verifying,
+    options,
+  });
   return identity;
 };
 

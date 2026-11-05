@@ -25,6 +25,7 @@ import {
   runEvidence,
   sourceIdentity,
 } from "./ci-evidence.mjs";
+import { buildVerification } from "./run-visual.mjs";
 
 const commit = "a".repeat(40);
 const tree = "b".repeat(40);
@@ -291,6 +292,124 @@ test("build transport binds the owner's existing record and every output byte wi
   consumer.environment.GITHUB_RUN_ATTEMPT = "3";
   await runEvidence("--verify-build", consumer);
   assert.deepEqual(consumer.outputs, []);
+});
+
+test("build evidence accepts the real owner's case and Unicode source ordering and nested output inventory", async (context) => {
+  const options = await buildFixture(context);
+  const addedSources = [
+    "src/😀.ts",
+    "src/a-lower.ts",
+    "src/مورد.ts",
+    "src/_lead.ts",
+    "src/éclair.ts",
+    "src/A-upper.ts",
+    "src/ﭐ.ts",
+    "src/𐀀.ts",
+    "src/Ωmega.ts",
+  ];
+  const configuration = [
+    ".nvmrc",
+    "package.json",
+    "package-lock.json",
+    "index.html",
+    "vite.config.ts",
+    "tsconfig.json",
+    "tsconfig.app.json",
+    "tsconfig.node.json",
+    "playwright.visual.config.ts",
+    "scripts/run-visual.mjs",
+    "scripts/visual-environment.mjs",
+    "scripts/stamp-admin-build.mjs",
+    "scripts/validate-production-env.mjs",
+    "scripts/validate-deployment-env.mjs",
+  ];
+  await Promise.all(
+    [...addedSources, ...configuration].map(async (relative) => {
+      const filename = path.join(options.root, relative);
+      await mkdir(path.dirname(filename), { recursive: true });
+      await writeFile(filename, `Synthetic public input: ${relative}\n`);
+    }),
+  );
+  await writeFile(
+    path.join(options.root, ".github/bootstrap-policy.json"),
+    JSON.stringify({
+      allowedFiles: [
+        ...addedSources,
+        ...configuration,
+        "src/example.ts",
+        "scripts/stop-visual-process-tree.ps1",
+      ],
+    }),
+  );
+  await mkdir(path.join(options.root, "dist/assets/a-nested"));
+  await writeFile(
+    path.join(options.root, "dist/assets/a-nested/first.js"),
+    "nested output\n",
+  );
+  await writeFile(
+    path.join(options.root, "dist/assets/z-last.js"),
+    "last output\n",
+  );
+
+  const ownerRecord = await buildVerification({
+    repository: options.root,
+    environment: options.environment,
+    build: async () => 0,
+  });
+  assert.deepEqual(
+    ownerRecord.sourceInputs.filter((file) => file.startsWith("src/")),
+    [
+      "src/A-upper.ts",
+      "src/_lead.ts",
+      "src/a-lower.ts",
+      "src/example.ts",
+      "src/éclair.ts",
+      "src/Ωmega.ts",
+      "src/مورد.ts",
+      "src/𐀀.ts",
+      "src/😀.ts",
+      "src/ﭐ.ts",
+    ],
+  );
+  await runEvidence("--record-build", options);
+  const manifestPath = path.join(
+    options.root,
+    "coverage/ci-build-evidence.json",
+  );
+  const recorded = await readFile(manifestPath);
+  const manifest = JSON.parse(recorded);
+  assert.deepEqual(
+    manifest.files.slice(1),
+    ownerRecord.distribution.map((file) => ({
+      ...file,
+      path: `dist/${file.path}`,
+    })),
+  );
+  await runEvidence("--record-build", options);
+  assert.deepEqual(await readFile(manifestPath), recorded);
+  await runEvidence("--verify-build", options);
+});
+
+test("parallel output inspection retains ordinary empty directories and rejects links to empty directories", async (context) => {
+  const options = await buildFixture(context);
+  await runEvidence("--record-build", options);
+  const emptyDirectory = path.join(options.root, "dist/empty");
+  await mkdir(emptyDirectory);
+  await runEvidence("--verify-build", options);
+
+  assert.equal(path.dirname(emptyDirectory), path.join(options.root, "dist"));
+  await rm(emptyDirectory, { recursive: true });
+  const target = path.join(options.root, "coverage/empty-output");
+  await mkdir(target);
+  await symlink(
+    target,
+    emptyDirectory,
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  await assert.rejects(
+    runEvidence("--verify-build", options),
+    /must not contain links/,
+  );
 });
 
 test("build verification rejects foreign producers, runs, source heads, bases, trees and workflows", async (context) => {
