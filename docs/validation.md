@@ -124,7 +124,10 @@ retained. PR metadata changes therefore cannot build an unbounded queue, and
 nightly/manual compatibility runs use separate groups.
 
 Each triggered workflow runs fresh verification, including PR title and
-description edits. Independent jobs partition the canonical required profile:
+description edits. Application and analysis jobs check out `${{ github.sha }}`
+directly, matching the scope job's default checkout. PR runs verify the event's
+merge commit; artifact verification retains the exact commit and tree binding.
+Independent jobs partition the canonical required profile:
 
 | Job                          | Responsibility                                                                            |
 | ---------------------------- | ----------------------------------------------------------------------------------------- |

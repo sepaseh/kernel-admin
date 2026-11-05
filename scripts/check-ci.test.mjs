@@ -594,6 +594,47 @@ test("application suites cannot skip, repeat or redirect actual source and build
   }
 });
 
+test("active application jobs check out the immutable event revision with no repository or credential override", () => {
+  const source = parse(applicationWorkflow());
+  const jobs = Object.entries(source.jobs).filter(
+    ([id]) => !["scope", "check"].includes(id),
+  );
+  for (const [id, job] of jobs) {
+    assert.equal(job.steps[0].with.ref, "${{ github.sha }}", id);
+    for (const mutate of [
+      (checkout) => {
+        checkout.ref = "${{ needs.scope.outputs.commit }}";
+      },
+      (checkout) => {
+        checkout.ref = "${{ github.event.pull_request.head.sha }}";
+      },
+      (checkout) => {
+        checkout.ref = "main";
+      },
+      (checkout) => {
+        delete checkout.ref;
+      },
+      (checkout) => {
+        checkout.repository = "untrusted/other";
+      },
+      (checkout) => {
+        checkout.path = "other";
+      },
+      (checkout) => {
+        checkout["persist-credentials"] = true;
+      },
+    ]) {
+      const changed = structuredClone(source);
+      mutate(changed.jobs[id].steps[0].with);
+      assert.throws(() => inspectCi(stringify(changed), actualManifest()), id);
+      if (id === "analysis")
+        assert.throws(() =>
+          inspectSonarWorkflow(stringify(changed), actualManifest()),
+        );
+    }
+  }
+});
+
 test("application aggregate rejects missing, failed, cancelled and unexpected skipped results", () => {
   const aggregate = parse(applicationWorkflow()).jobs.check;
   assert.equal(aggregate.if, "always()");

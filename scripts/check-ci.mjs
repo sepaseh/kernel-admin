@@ -1052,7 +1052,7 @@ const inspectApplicationJob = (workflow, id, needs, condition) => {
     "Application execution uses only its declared build-reuse environment",
   );
   for (const step of value.steps) rootExecution(step);
-  const ready = setup(value, { ref: "${{ needs.scope.outputs.commit }}" });
+  const ready = setup(value, { ref: "${{ github.sha }}" });
   const checkout = value.steps.find((step) =>
     step.uses?.startsWith("actions/checkout@"),
   );
@@ -1067,7 +1067,7 @@ const inspectApplicationJob = (workflow, id, needs, condition) => {
   requireEqual(
     checkout.with,
     {
-      ref: "${{ needs.scope.outputs.commit }}",
+      ref: "${{ github.sha }}",
       "fetch-depth": 0,
       "persist-credentials": false,
     },
