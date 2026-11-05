@@ -1349,18 +1349,18 @@ const inspectApplicationCommands = (value, id, commands, consumesBuild) => {
     "Application suites retain only their declared execution owners",
   );
   const allowed = new Set(commands);
-  const actions = [
+  const actions = new Set([
     suiteAction.checkout,
     suiteAction.node,
     suiteAction.upload,
     ...(consumesBuild ? [downloadAction] : []),
-  ];
+  ]);
   for (const step of value.steps) {
     if (step.run && !allowed.has(step.run))
       throw new Error(
         "Application suites must run only their declared commands once: " + id,
       );
-    if (step.uses && !actions.includes(step.uses))
+    if (step.uses && !actions.has(step.uses))
       throw new Error(
         "Application suites must retain only their actual pinned execution owners",
       );
