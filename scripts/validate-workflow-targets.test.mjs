@@ -182,8 +182,8 @@ describe("optional verification workflows", () => {
     });
     expect(analyze.steps.map((step) => step.uses)).toEqual([
       "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
-      "github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938",
-      "github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938",
+      "github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
+      "github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
     ]);
     expect(analyze.steps.every((step) => step.run === undefined)).toBe(true);
     expect(analyze.steps[0].with["persist-credentials"]).toBe(false);

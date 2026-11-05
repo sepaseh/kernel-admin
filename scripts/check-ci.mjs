@@ -482,14 +482,14 @@ export const inspectCodeqlWorkflow = (content) => {
         with: { "persist-credentials": false },
       },
       {
-        uses: "github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938",
+        uses: "github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
         with: {
           languages: "javascript-typescript,actions",
           queries: "security-extended",
         },
       },
       {
-        uses: "github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938",
+        uses: "github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370",
       },
     ])
   )
@@ -660,9 +660,9 @@ const suiteNames = {
 const aggregateCommand = `node -e "const needs = JSON.parse(process.env.CI_NEEDS); const required = ['quality', 'audit', 'unit', 'governance']; if (required.some(id => needs[id]?.result !== 'success')) process.exit(1);"`;
 const suiteAction = {
   checkout: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
-  node: "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+  node: "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
   upload: "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
-  scan: "SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9",
+  scan: "SonarSource/sonarqube-scan-action@4d1dc0c91ee400dcf8a6dddf2f705ac36542e304",
 };
 const requireEqual = (actual, expected, message) => {
   if (!isDeepStrictEqual(actual, expected)) throw new Error(message);
