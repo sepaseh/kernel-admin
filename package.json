@@ -86,16 +86,16 @@
     "yaml": "^2.9.1"
   },
   "dependencies": {
-    "antd": "6.6.8",
+    "antd": "6.7.0",
     "antd-style": "4.1.0",
-    "axios": "1.20.0",
+    "axios": "1.21.0",
     "dayjs": "^1.11.23",
-    "i18next": "26.6.0",
+    "i18next": "26.7.2",
     "jalaliday": "^3.1.1",
-    "lucide-react": "1.68.0",
+    "lucide-react": "1.69.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "react-i18next": "^17.1.12",
+    "react-i18next": "^17.1.13",
     "react-router": "8.5.1",
     "web-vitals": "6.2.3"
   },
