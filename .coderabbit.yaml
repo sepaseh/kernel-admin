@@ -15,3 +15,11 @@ reviews:
   poem: false
   profile: chill
   review_status: true
+  path_instructions:
+    - path: "**/*"
+      instructions: >-
+        Report concrete technical defects. Numerical metrics, formatting and
+        import-order scores are advisory; do not request source rewrites, generic
+        abstractions or shallow tests merely to improve them. Preserve assertions,
+        type safety and security controls. When source is protected, record the
+        trigger, evidence and minimal proposal for discussion before a source edit.

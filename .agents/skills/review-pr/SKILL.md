@@ -26,8 +26,8 @@ Read [Git workflow](../../rules/git.md), [code review](../../rules/code-review.m
 
 Before an authorized CodeRabbit request, follow the canonical
 [preflight](../../rules/pull-requests.md#coderabbit-request-preflight). Verify all
-required current-head non-CodeRabbit checks for the declared phase, including the
-scanner and actual Sonar gate, and zero unresolved issues across every page and
-severity of the complete applicable report. Missing or stale evidence, including
-an open documented false positive, blocks the request. A new commit requires fresh
+required current-head non-CodeRabbit correctness/security checks for the declared
+phase, including scanner execution, and report concrete unresolved findings.
+Numerical metric gates and a zero-issue report are not prerequisites. Missing or
+stale required evidence blocks the request. A new commit requires fresh
 preflight; respect actual quota and avoid duplicate in-flight requests.

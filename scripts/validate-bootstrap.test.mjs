@@ -120,6 +120,7 @@ const completeApplicationFiles = [
   "docs/deployment.md",
   "docs/development.md",
   "docs/localization.md",
+  "docs/source-change-requests.md",
   "docs/source-navigation.md",
   "docs/testing.md",
   "docs/usage.md",
@@ -555,7 +556,7 @@ const isGuidancePhaseFile = (file) =>
     "DESIGN.md",
     "CONTRIBUTING.md",
   ].includes(file) ||
-  /^docs\/(?:README|comprehension-evaluation|source-navigation|validation)\.md$/.test(
+  /^docs\/(?:README|comprehension-evaluation|source-change-requests|source-navigation|validation)\.md$/.test(
     file,
   ) ||
   /^scripts\/(?:(?:block-dangerous|post-edit-format|quality-gate)\.test|hooks\.test-support|check-guidance(?:\.test)?)\.mjs$/.test(
@@ -1493,7 +1494,7 @@ test("assistant guidance retains the complete workshop and requires every declar
     current.allowedFiles.length,
   );
   const additions = current.allowedFiles.filter(isGuidancePhaseFile);
-  assert.equal(additions.length, 51);
+  assert.equal(additions.length, 52);
   for (const missing of [
     ...additions,
     "AGENTS.md",

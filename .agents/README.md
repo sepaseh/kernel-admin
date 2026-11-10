@@ -4,7 +4,7 @@ Start with [AGENTS](../AGENTS.md), [source navigation](../docs/source-navigation
 
 The [validation manifest](validation.json) owns commands and profiles. Start with a focused check, then run its full profile on the exact isolated proposed source before an authorized commit, push or handoff. Use [validation](../docs/validation.md) and honest current-revision results; optional hooks and host adapters are not substitutes.
 
-Ordinary local and PR verification uses Chromium. The complete profile substitutes the full browser matrix and adds approved-runtime image comparison; performance follows its separate, time-bounded advisory policy. Preserve these manifest responsibilities and source-bound measured reports when reorganizing checks.
+Ordinary local and PR verification uses Chromium. The complete profile substitutes the full browser matrix and adds approved-runtime image comparison; numerical metrics are advisory under [code quality](rules/code-quality.md). Preserve these manifest responsibilities and source-bound measured reports when reorganizing checks.
 
 Application CI exposes its actual suites independently. The manifest's CI profiles partition every required check once, and `check` aggregates their results. Reuse the verified build across browser, visual and performance jobs and the measured producer reports for Sonar. Follow [validation](../docs/validation.md) when changing source identity, artifacts or producer attempts.
 

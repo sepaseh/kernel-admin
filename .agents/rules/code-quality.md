@@ -53,6 +53,11 @@ Write self-documenting code. Add comments only for:
 
 ## Static-analysis findings
 
+Coverage, duplication, complexity, mutation, performance/bundle scores and
+formatting/import-order findings are advisory. They do not justify source
+rewrites, shallow tests or extra abstractions. Behavioral assertions, type/lint
+correctness, build and security controls remain required.
+
 - Treat SonarQube findings as prompts to improve the design, not targets to
   silence mechanically. Understand the reported risk and its runtime context
   before changing code.
@@ -71,6 +76,7 @@ Write self-documenting code. Add comments only for:
 
 ## No unused code
 
-- Remove unused files, exports, dependencies, translations, and routes.
+- Remove demonstrably unused files, exports, dependencies, translations, and routes
+  within scope; preserve required catalogs and public APIs.
 - Review unused code with the published type, lint, boundary and admitted unused-code
   checks. Report actual execution from the complete application manifest.

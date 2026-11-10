@@ -288,6 +288,7 @@ const storybookFiles = [
   "vitest.storybook.config.ts",
 ];
 const guidanceFiles = new Set([
+  "docs/source-change-requests.md",
   ".agents/README.md",
   ".agents/evaluation/cases.json",
   ".agents/evaluation/run-template.json",

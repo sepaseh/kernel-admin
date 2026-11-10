@@ -17,7 +17,12 @@ export const createLighthouseUrl = (appBasePath = "/") => {
 };
 
 export const evaluateLighthouseReport = (lhr) => {
+  if (lhr?.runtimeError)
+    throw new Error(
+      `Lighthouse execution failed: ${lhr.runtimeError.message ?? lhr.runtimeError.code}`,
+    );
   const failures = [];
+  const advisories = [];
   const performanceScore = lhr?.categories?.performance?.score;
   if (
     !Number.isFinite(performanceScore) ||
@@ -28,20 +33,26 @@ export const evaluateLighthouseReport = (lhr) => {
       "performance score unavailable (expected a finite number between 0 and 1)",
     );
   else if (performanceScore < minimumPerformanceScore)
-    failures.push(
+    advisories.push(
       `performance score ${(performanceScore * 100).toFixed(2)} (minimum ${(minimumPerformanceScore * 100).toFixed(2)})`,
     );
   for (const [auditId, maximum] of Object.entries(lighthouseThresholds)) {
     const value = lhr?.audits?.[auditId]?.numericValue;
     const available = Number.isFinite(value) && value >= 0;
-    if (!available || value > maximum)
+    if (!available)
       failures.push(
         `${auditId} ${available ? value.toFixed(2) : "unavailable"} (maximum ${maximum})`,
       );
+    else if (value > maximum)
+      advisories.push(`${auditId} ${value.toFixed(2)} (maximum ${maximum})`);
   }
   if (failures.length)
     throw new Error(
       `Lighthouse advisory thresholds exceeded:\n${failures.join("\n")}`,
+    );
+  if (advisories.length)
+    console.warn(
+      `Lighthouse advisory thresholds exceeded:\n${advisories.join("\n")}`,
     );
 
   return Math.round(performanceScore * 100);

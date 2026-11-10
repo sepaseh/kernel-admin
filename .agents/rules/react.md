@@ -8,22 +8,22 @@ Route composition and the remaining feature screens are planned for later phases
 ## Components
 
 - Keep one exported React component per `.tsx` file when practical.
-- When a function component receives props, define them as a named `type` and
-  annotate the named component as `FC<Props>`, importing `FC` with a type-only
-  import. Components without props do not need a dummy props type or parameter.
+- When a function component receives props, define a component-specific named
+  `type` and annotate its props parameter directly; infer the return type and
+  do not use `FC` or another component-function type. Components without props
+  do not need a dummy props type or parameter. Use `PropsWithChildren` when
+  children are accepted, directly when children are the only input.
 - Put reusable UI pieces in `src/shared/ui`.
 - Keep route-level screens in their owning `src/features/<feature>` directory.
 - Keep feature-specific forms beside the owning feature.
 - Do not define React components inside another component render body.
 
 ```tsx
-import type { FC } from "react";
-
 type UserCardProps = {
   name: string;
 };
 
-export const UserCard: FC<UserCardProps> = ({ name }) => <div>{name}</div>;
+export const UserCard = ({ name }: UserCardProps) => <div>{name}</div>;
 ```
 
 ## State and hooks
@@ -31,6 +31,11 @@ export const UserCard: FC<UserCardProps> = ({ name }) => <div>{name}</div>;
 - Reusable components receive data through props.
 - Page/domain components may read app state through hooks.
 - Move state down when only a small part of the tree needs it.
+- In page components, place translation and form hooks first, then state
+  alphabetically by variable name, other base hooks alphabetically by hook
+  name, object-destructuring declarations, and other derived constants.
+  Dependencies take precedence over alphabetical ordering. Use blank lines
+  between responsibilities, following [semantic whitespace](code-quality.md#semantic-whitespace).
 - Place `useMemo` declarations after state, context, and other base values but
   before event handlers and helper functions. If a memo depends on a locally
   declared function, place it immediately after that dependency. Do not place
@@ -51,6 +56,15 @@ through retries; a new login must not inherit an old mutation or logout completi
 
 ## Forms
 
+- Give every `Form` a descriptive kebab-case `name`, unique among simultaneously
+  mounted forms, including hidden drawers. Preserve generated label/input/help
+  associations; `Form.Item.name` remains the submitted data path.
+- Keep permission-controlled drawers mounted and derive `open` internally from
+  their own action hash and canonical operation permission. Gate detail reads
+  and submission too. Handle denied actions and missing IDs in the existing
+  effect through `useGoBack`; ignore sibling drawer hashes.
+- Use the existing synchronous/ref submission lock as well as submitting state.
+  Cancel abandoned reads and reject late results before updating the form.
 - Type Ant Design submit handlers as `FormProps<Values>["onFinish"]`.
 - Put the asynchronous submit logic directly in that handler. Do not add a
   `NonNullable` wrapper or a second callback whose only job is to discard the
@@ -72,8 +86,9 @@ through retries; a new login must not inherit an old mutation or logout completi
   an aggregate failure only when the screen genuinely requires the complete set.
 - Preserve cancellation and request-generation guards when parameter or session
   changes invalidate a read. Do not replace them with unguarded async effects.
-- A view-only requirement or read-only permission must not gain placeholder CRUD,
-  mutation drawers or hidden write handlers. Retain only actions supported by
+- A view-only requirement must not gain placeholder CRUD or unsupported write
+  handlers. Mounted drawers must enforce read-only permissions internally.
+  Retain only actions supported by
   the current contract/permissions; the API remains authoritative.
 
 ## Rendering patterns
@@ -92,6 +107,7 @@ through retries; a new login must not inherit an old mutation or logout completi
   from `dataIndex`. Ignore it and destructure the required field from the row
   record instead. This keeps the rendered value explicit and consistently
   tied to the typed record.
+- Use `dataIndex` for plain display; add `render` only for custom output.
 - Use the product's intended empty-value fallback when reading the record. For
   text cells that should treat both `null` and an empty string as missing, use
   `|| "-"`.

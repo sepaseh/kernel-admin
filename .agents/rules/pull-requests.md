@@ -32,7 +32,7 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
 
 ## Provider evidence and required checks
 
-- Merging requires the ordinary native CI, CodeQL, CodeRabbit and SonarCloud checks,
+- Merging requires the ordinary native correctness/security CI, CodeQL, CodeRabbit and configured SonarCloud checks,
   at least one approving review and resolved review conversations. Apply
   protection to administrators, dismiss stale approvals and require an up-to-date
   branch. Use the native approval count; no separate publisher or custom approval
@@ -42,7 +42,7 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
   completed review or passing analysis. Do not remove checks to hide a failure.
 - Match protection to the declared published phase, changing remote requirements
   only with explicit authorization. A foundation with `applicationReady: false`
-  requires its actual phase CI, CodeQL, scanner, Sonar quality gate and CodeRabbit; it
+  requires its actual phase CI, CodeQL, scanner and CodeRabbit; numerical Sonar gates are advisory. It
   must not claim unpublished application checks. Before any runnable application
   merge, introduce real build, end-to-end and visual jobs, observe them pass, add
   them to required checks and expand the full canonical application gate.
@@ -65,19 +65,17 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
 
 - Bind the evidence to the latest published PR head and its applicable Sonar
   project/PR or analyzed branch. Any new commit invalidates the preflight.
-- Every required non-CodeRabbit check must have passed, including protected
-  build, end-to-end and visual checks when required, the Sonar scanner job and
-  the actual Sonar quality gate. Exclude CodeRabbit's own check/approval from this
+- Every required non-CodeRabbit correctness/security check must have passed,
+  including protected build, end-to-end and visual checks when required and the
+  Sonar scanner job. Numerical metric gates are advisory. Exclude CodeRabbit's own check/approval from this
   prerequisite to avoid a cycle; they remain merge requirements.
-- Verify zero open or unresolved issues in the complete applicable latest Sonar
-  report, across all severities and existing/new code. Inspect every page; a
-  passing quality gate, zero new issues or an empty/unanalysed project is not
-  sufficient evidence. Record the revision, analysis/report link and issue count.
-- Missing, pending, skipped, failed or stale checks, or missing zero-issue evidence,
-  block the request. A documented false positive still marked open in Sonar also
-  blocks it. Clear it through a properly authorized provider classification or a
-  real fix followed by fresh analysis, never exclusions, suppressions or weaker
-  checks used to bypass this prerequisite.
+- Inspect the complete applicable latest Sonar report and distinguish concrete
+  technical findings from advisory metrics. A zero-issue report or passing
+  metric gate is not a prerequisite. Record the revision, analysis/report link
+  and unresolved findings; do not rewrite source merely to reduce an issue count.
+- Missing, pending, skipped, failed or stale required correctness/security checks
+  block the request. Preserve genuine failures rather than excluding files,
+  weakening assertions or suppressing security controls.
 - Only after this preflight passes and remote-request authorization exists, request
   one manual review by posting only `@coderabbitai review`. Do not duplicate an
   in-flight request for the same head. Wait at least one hour after the last

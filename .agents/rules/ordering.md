@@ -12,7 +12,7 @@ Sort alphabetically wherever order has no semantic meaning.
 - Translation keys
 - Array items when order does not affect behavior
 
-Imports are sorted automatically by ESLint. Do not manually fight the sorter.
+ESLint import sorting is advisory; apply fixes only through an explicit command.
 
 ## Example
 
