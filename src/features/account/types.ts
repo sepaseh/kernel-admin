@@ -1,29 +1,8 @@
-import type { PermissionKey } from "../roles/types.ts";
+import type { PermissionKey } from "@/features/roles";
+import type { User } from "@/features/users";
 
-export type Account = {
-  email?: string;
-  firstName: string;
-  id: string;
-  isSystemAdmin: boolean;
-  lastName: string;
-  mobile: string;
+export type CurrentUser = Omit<User, "roles"> & {
   permissions: PermissionKey[];
-  status: string;
-  username?: string;
 };
 
-export type EmailVerificationRequest = {
-  email: NonNullable<Account["email"]>;
-};
-
-export type UpdateProfileRequest = Partial<
-  Pick<Account, "firstName" | "lastName">
->;
-
-export type UpdateUsernameRequest = {
-  username: NonNullable<Account["username"]>;
-};
-
-export type VerifyEmailRequest = EmailVerificationRequest & {
-  otp: string;
-};
+export type ProfileRequest = Partial<Pick<User, "firstName" | "lastName">>;

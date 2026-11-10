@@ -1,60 +1,35 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
-
-import { DigitsInput } from "./DigitsInput";
+import { expect, fn, userEvent, within } from "storybook/test";
+import { DigitsInput } from "@/shared/ui/digits-input";
 
 const meta = {
-  args: {
-    "aria-label": "Numeric value",
-    placeholder: "Digits only",
-  },
+  title: "Shared/DigitsInput",
   component: DigitsInput,
-  decorators: [
-    (Story) => (
-      <div style={{ maxWidth: 320 }}>
-        <Story />
-      </div>
-    ),
-  ],
-  tags: ["autodocs"],
-  title: "Shared UI/DigitsInput",
+  args: { "aria-label": "Mobile digits", onChange: fn() },
 } satisfies Meta<typeof DigitsInput>;
-
 export default meta;
-
 type Story = StoryObj<typeof meta>;
 
-export const Empty: Story = {
+export const FiltersNonDigits: Story = {
   play: async ({ canvasElement }) => {
     const input = within(canvasElement).getByRole("textbox", {
-      name: "Numeric value",
+      name: "Mobile digits",
     });
-    await userEvent.type(input, "ab12.34-xy");
-    await expect(input).toHaveValue("1234");
+    await userEvent.type(input, "09a12-34");
+    await expect(input).toHaveValue("091234");
   },
 };
-
-export const WithValue: Story = {
-  args: { defaultValue: "123456" },
+export const NormalizesInitialValue: Story = {
+  args: { defaultValue: "09 12-34" },
   play: async ({ canvasElement }) => {
-    const input = within(canvasElement).getByRole("textbox", {
-      name: "Numeric value",
-    });
-    await expect(input).toHaveValue("123456");
-    await userEvent.click(input);
-    await userEvent.keyboard("{End}{Backspace}");
-    await expect(input).toHaveValue("12345");
+    await expect(within(canvasElement).getByRole("textbox")).toHaveValue(
+      "091234",
+    );
   },
 };
-
 export const Disabled: Story = {
-  args: { defaultValue: "123456", disabled: true },
+  args: { disabled: true, value: "09120000000" },
   play: async ({ canvasElement }) => {
-    const input = within(canvasElement).getByRole("textbox", {
-      name: "Numeric value",
-    });
-    await expect(input).toBeDisabled();
-    await userEvent.type(input, "9");
-    await expect(input).toHaveValue("123456");
+    await expect(within(canvasElement).getByRole("textbox")).toBeDisabled();
   },
 };

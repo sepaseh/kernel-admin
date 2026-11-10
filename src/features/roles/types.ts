@@ -1,19 +1,25 @@
-type Permission = { name: PermissionKey; title: string };
-
-export type PermissionGroup = {
-  name: string;
-  permissions: Permission[];
-  title: string;
-};
-
 export type PermissionKey =
   | "calendar.read"
   | "calendar.update"
+  | "faqs.create"
+  | "faqs.delete"
+  | "faqs.read"
+  | "faqs.update"
+  | "files.delete"
+  | "files.read"
+  | "contents.create"
+  | "contents.delete"
+  | "contents.read"
+  | "contents.update"
   | "roles.create"
   | "roles.delete"
   | "roles.read"
   | "roles.update"
   | "settings.update"
+  | "content-categories.create"
+  | "content-categories.delete"
+  | "content-categories.read"
+  | "content-categories.update"
   | "users.create"
   | "users.delete"
   | "users.read"
@@ -26,3 +32,9 @@ export type Role = {
 };
 
 export type RoleRequest = Pick<Role, "name" | "permissions">;
+
+export type PermissionGroup = {
+  name: string;
+  permissions: { name: PermissionKey; title: string }[];
+  title: string;
+};

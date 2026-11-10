@@ -1,50 +1,54 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Route, Routes } from "react-router";
-import { expect, within } from "storybook/test";
-
-import { useCore } from "@/app/hooks";
-import { StoryShell } from "@/test/storybook/StoryShell";
-
-import { AuthLayout } from "./Auth";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { expect, waitFor, within } from "storybook/test";
+import { useTranslation } from "react-i18next";
+import { AuthLayout } from "@/layouts/auth";
+import { clearAccessToken, getAccessToken, setAccessToken } from "@/shared/api";
+import { i18n } from "@/shared/i18n";
 
 const AuthContent = () => {
-  const { user } = useCore();
+  const { t } = useTranslation();
   return (
-    <section style={{ display: "grid", gap: 16 }}>
-      <h1>Sign in</h1>
+    <section>
+      <h1>{t("login")}</h1>
       <p>Authentication content renders inside the layout.</p>
-      <output aria-label="Session state">
-        {user ? "Signed in" : "Signed out"}
-      </output>
     </section>
   );
 };
 
-const AuthLayoutStory = () => (
-  <StoryShell initialEntries={["/auth"]}>
-    <Routes>
-      <Route element={<AuthLayout />} path="/auth">
-        <Route index element={<AuthContent />} />
-      </Route>
-    </Routes>
-  </StoryShell>
-);
-
 const meta = {
-  component: AuthLayout,
-  render: () => <AuthLayoutStory />,
   title: "Layouts/Auth",
+  component: AuthLayout,
+  parameters: { ownsMain: true },
+  beforeEach: () => {
+    setAccessToken("synthetic-auth-layout-session");
+    return clearAccessToken;
+  },
+  render: () => (
+    <MemoryRouter initialEntries={["/auth"]}>
+      <Routes>
+        <Route element={<AuthLayout />}>
+          <Route path="/auth" element={<AuthContent />} />
+        </Route>
+      </Routes>
+    </MemoryRouter>
+  ),
 } satisfies Meta<typeof AuthLayout>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     await expect(
-      canvas.getByRole("heading", { name: "Sign in" }),
+      within(canvasElement).getByRole("heading", { name: i18n.t("login") }),
     ).toBeVisible();
-    await expect(await canvas.findByText("Signed out")).toBeVisible();
+    await expect(within(canvasElement).getByRole("main")).toContainElement(
+      within(canvasElement).getByRole("heading"),
+    );
+    await waitFor(() => expect(getAccessToken()).toBeNull());
   },
+};
+export const PersianDark: Story = {
+  ...Default,
+  globals: { language: "fa", theme: "dark" },
 };

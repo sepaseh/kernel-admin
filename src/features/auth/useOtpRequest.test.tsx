@@ -1,160 +1,246 @@
-// @vitest-environment jsdom
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { requestOtp } from "./api.ts";
-import type { RegisterParams } from "./types.ts";
-import { useOtpRequest } from "./useOtpRequest.ts";
+import { deferred } from "@/test/deferred";
 
-type OtpValues = Pick<RegisterParams, "mobile" | "otp">;
-type OtpResponse = Awaited<ReturnType<typeof requestOtp>>;
+import type { OtpRequestParams, OtpRequestProps } from "./types";
+import { useOtpRequest } from "./useOtpRequest";
 
-vi.mock("./api.ts", () => ({ requestOtp: vi.fn() }));
+const { requestOtp } = vi.hoisted(() => ({
+  requestOtp:
+    vi.fn<
+      (
+        params: OtpRequestParams,
+        signal?: AbortSignal,
+      ) => Promise<OtpRequestProps>
+    >(),
+}));
+vi.mock("./api", () => ({ requestOtp }));
 
-const createOptions = () => {
-  let mobile = "09120000000";
-  const options = {
-    form: {
-      getFieldValue: vi.fn(() => mobile),
-      setFieldValue: vi.fn(),
-      validateFields: vi.fn(async (): Promise<OtpValues> => ({
-        mobile,
-        otp: "",
-      })),
-    },
-    onError: vi.fn(),
-    onSuccess: vi.fn(),
-    purpose: "forgot_password" as const,
+const setup = () => {
+  const form = {
+    validateFields: vi.fn().mockResolvedValue({ mobile: "09120000000" }),
+    getFieldValue: vi.fn(),
+    setFieldValue: vi.fn(),
   };
-  return {
-    options,
-    changeMobile: (value: RegisterParams["mobile"]) => {
-      mobile = value;
-    },
-  };
+  const onSuccess = vi.fn();
+  const onError = vi.fn();
+  const hook = renderHook(() =>
+    useOtpRequest({ form, onError, onSuccess, purpose: "register" }),
+  );
+
+  return { ...hook, form, onError, onSuccess };
 };
 
 beforeEach(() => {
-  vi.mocked(requestOtp)
-    .mockReset()
-    .mockResolvedValue({ expiresIn: 120, remainingSeconds: 2 });
+  requestOtp.mockReset();
 });
-
 afterEach(() => {
+  cleanup();
   vi.useRealTimers();
 });
 
-describe("useOtpRequest", () => {
-  it("reserves one request before validation and cancels validation work on unmount", async () => {
-    const { options } = createOptions();
-    let resolve!: (value: OtpValues) => void;
-    options.form.validateFields.mockReturnValueOnce(
-      new Promise((done) => {
-        resolve = done;
-      }),
+describe("OTP request intent", () => {
+  it("prevents double submission and waits for the server cooldown", async () => {
+    vi.useFakeTimers();
+    const pending = deferred<{ expiresIn: number; remainingSeconds: number }>();
+    requestOtp.mockReturnValue(pending.promise);
+    const { result, onSuccess } = setup();
+
+    await act(async () => {
+      const first = result.current.handleOtpRequest();
+      await result.current.handleOtpRequest();
+      pending.resolve({ expiresIn: 120, remainingSeconds: 2.1 });
+      await first;
+    });
+
+    expect(requestOtp).toHaveBeenCalledTimes(1);
+    expect(requestOtp).toHaveBeenCalledWith(
+      { mobile: "09120000000", purpose: "register" },
+      expect.any(AbortSignal),
     );
-    const { result, unmount } = renderHook(() => useOtpRequest(options));
+    expect(requestOtp.mock.calls[0][1]?.aborted).toBe(false);
+    expect(result.current.remainingSeconds).toBe(3);
+    expect(onSuccess).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await result.current.handleOtpRequest();
+    });
+    expect(requestOtp).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+    expect(result.current.remainingSeconds).toBe(2);
+  });
+
+  it("discards a response after the mobile number changes and clears the previous code", async () => {
+    const pending = deferred<{ expiresIn: number; remainingSeconds: number }>();
+    requestOtp.mockReturnValue(pending.promise);
+    const { result, form, onSuccess, onError } = setup();
+    let request!: Promise<void>;
+    await act(async () => {
+      request = result.current.handleOtpRequest();
+    });
+    const signal = requestOtp.mock.calls[0][1]!;
+    expect(result.current.requestingOtp).toBe(true);
 
     act(() => {
-      result.current.handleOtpRequest();
-      result.current.handleOtpRequest();
+      result.current.handleValuesChange({ mobile: "09121111111" });
     });
-    expect(options.form.validateFields).toHaveBeenCalledExactlyOnceWith([
-      "mobile",
-    ]);
-    expect(result.current.requestingOtp).toBe(true);
+    expect(signal.aborted).toBe(true);
+    expect(result.current.requestingOtp).toBe(false);
+    await act(async () => {
+      pending.resolve({ expiresIn: 120, remainingSeconds: 60 });
+      await request;
+    });
+
+    expect(form.setFieldValue).toHaveBeenCalledWith("otp", undefined);
+    expect(result.current.remainingSeconds).toBe(0);
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it.each(["success", "error"] as const)(
+    "keeps the replacement request locked when an abandoned request returns %s",
+    async (outcome) => {
+      const previous = deferred<OtpRequestProps>();
+      const replacement = deferred<OtpRequestProps>();
+      requestOtp
+        .mockReturnValueOnce(previous.promise)
+        .mockReturnValueOnce(replacement.promise);
+      const { result, form, onSuccess, onError } = setup();
+      let first!: Promise<void>;
+      let second!: Promise<void>;
+      await act(async () => {
+        first = result.current.handleOtpRequest();
+      });
+      const oldSignal = requestOtp.mock.calls[0][1]!;
+
+      act(() => {
+        result.current.handleValuesChange({ mobile: "09121111111" });
+      });
+      form.validateFields.mockResolvedValue({ mobile: "09121111111" });
+      await act(async () => {
+        second = result.current.handleOtpRequest();
+      });
+      expect(oldSignal.aborted).toBe(true);
+      expect(requestOtp).toHaveBeenNthCalledWith(
+        2,
+        { mobile: "09121111111", purpose: "register" },
+        expect.any(AbortSignal),
+      );
+      const newSignal = requestOtp.mock.calls[1][1]!;
+
+      await act(async () => {
+        if (outcome === "success")
+          previous.resolve({ expiresIn: 120, remainingSeconds: 60 });
+        else previous.reject(new Error("Synthetic obsolete OTP request"));
+        await first;
+      });
+      expect(result.current.requestingOtp).toBe(true);
+      expect(result.current.remainingSeconds).toBe(0);
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(onError).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await result.current.handleOtpRequest();
+      });
+      expect(requestOtp).toHaveBeenCalledTimes(2);
+      expect(newSignal.aborted).toBe(false);
+
+      await act(async () => {
+        replacement.resolve({ expiresIn: 120, remainingSeconds: 3 });
+        await second;
+      });
+      expect(result.current.requestingOtp).toBe(false);
+      expect(result.current.remainingSeconds).toBe(3);
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+      expect(onError).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not call the API when mobile validation fails", async () => {
+    const { result, form, onError } = setup();
+    form.validateFields.mockRejectedValue(
+      new Error("Synthetic invalid mobile"),
+    );
+
+    await act(async () => {
+      await result.current.handleOtpRequest();
+    });
+
     expect(requestOtp).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+    expect(result.current.requestingOtp).toBe(false);
+  });
+
+  it("does not send an OTP after validation completes on an unmounted form", async () => {
+    const validation = deferred<{ mobile: string }>();
+    const { result, form, unmount, onError, onSuccess } = setup();
+    form.validateFields.mockReturnValue(validation.promise);
+    let request!: Promise<void>;
+    await act(async () => {
+      request = result.current.handleOtpRequest();
+    });
+    expect(result.current.requestingOtp).toBe(true);
 
     unmount();
     await act(async () => {
-      resolve({ mobile: "09120000000", otp: "" });
+      validation.resolve({ mobile: "09120000000" });
+      await request;
     });
+
     expect(requestOtp).not.toHaveBeenCalled();
-    expect(options.onError).not.toHaveBeenCalled();
-    expect(options.onSuccess).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
   });
 
-  it("keeps a replacement mobile request pending when an obsolete response arrives", async () => {
-    const { options, changeMobile } = createOptions();
-    let resolveOld!: (value: OtpResponse) => void;
-    let resolveNew!: (value: OtpResponse) => void;
-    vi.mocked(requestOtp)
-      .mockReturnValueOnce(
-        new Promise((done) => {
-          resolveOld = done;
-        }),
-      )
-      .mockReturnValueOnce(
-        new Promise((done) => {
-          resolveNew = done;
-        }),
-      );
-    const { result } = renderHook(() => useOtpRequest(options));
-    act(() => {
-      result.current.handleOtpRequest();
-    });
-    await waitFor(() => expect(requestOtp).toHaveBeenCalledOnce());
-    const oldSignal = vi.mocked(requestOtp).mock.calls[0][1];
-
-    changeMobile("09121111111");
-    act(() => {
-      result.current.handleValuesChange({ mobile: "09121111111" });
-      result.current.handleOtpRequest();
-    });
-    await waitFor(() => expect(requestOtp).toHaveBeenCalledTimes(2));
-    expect(oldSignal?.aborted).toBe(true);
-    expect(options.form.setFieldValue).toHaveBeenCalledWith("otp", "");
-    expect(requestOtp).toHaveBeenLastCalledWith(
-      { mobile: "09121111111", purpose: "forgot_password" },
-      expect.any(AbortSignal),
-    );
+  it("reports an active request failure and releases the submit state", async () => {
+    const error = new Error("Synthetic OTP request failure");
+    requestOtp.mockRejectedValue(error);
+    const { result, onError, onSuccess } = setup();
 
     await act(async () => {
-      resolveOld({ expiresIn: 120, remainingSeconds: 30 });
+      await result.current.handleOtpRequest();
     });
-    expect(result.current.requestingOtp).toBe(true);
-    expect(options.onSuccess).not.toHaveBeenCalled();
-    await act(async () => {
-      resolveNew({ expiresIn: 120, remainingSeconds: 2 });
-    });
+
+    expect(onError).toHaveBeenCalledWith(error);
+    expect(onSuccess).not.toHaveBeenCalled();
     expect(result.current.requestingOtp).toBe(false);
-    expect(result.current.remainingSeconds).toBe(2);
-    expect(options.onSuccess).toHaveBeenCalledOnce();
-  });
-
-  it("allows retry after failure and after the server cooldown expires", async () => {
-    vi.useFakeTimers();
-    const { options } = createOptions();
-    const error = new Error("Temporarily offline");
-    vi.mocked(requestOtp).mockRejectedValueOnce(error);
-    const { result } = renderHook(() => useOtpRequest(options));
-    await act(async () => {
-      result.current.handleOtpRequest();
-    });
-    expect(options.onError).toHaveBeenCalledWith(error);
-    expect(result.current.requestingOtp).toBe(false);
-
-    await act(async () => {
-      result.current.handleOtpRequest();
-    });
-    expect(options.onSuccess).toHaveBeenCalledOnce();
-    expect(result.current.remainingSeconds).toBe(2);
-    act(() => {
-      result.current.handleOtpRequest();
-    });
-    expect(requestOtp).toHaveBeenCalledTimes(2);
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
-    });
-    expect(result.current.remainingSeconds).toBe(1);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1000);
-    });
     expect(result.current.remainingSeconds).toBe(0);
-    await act(async () => {
-      result.current.handleOtpRequest();
-    });
-    expect(requestOtp).toHaveBeenCalledTimes(3);
   });
+
+  it.each(["success", "error"] as const)(
+    "aborts its request and suppresses late %s callbacks after unmount",
+    async (outcome) => {
+      const pending = deferred<{
+        expiresIn: number;
+        remainingSeconds: number;
+      }>();
+      requestOtp.mockReturnValue(pending.promise);
+      const { result, unmount, onError, onSuccess } = setup();
+      let request!: Promise<void>;
+      await act(async () => {
+        request = result.current.handleOtpRequest();
+      });
+      const signal = requestOtp.mock.calls[0][1];
+      expect(signal).toBeInstanceOf(AbortSignal);
+      expect(signal?.aborted).toBe(false);
+
+      unmount();
+      expect(signal?.aborted).toBe(true);
+
+      await act(async () => {
+        if (outcome === "success") {
+          pending.resolve({ expiresIn: 120, remainingSeconds: 60 });
+        } else {
+          pending.reject(new Error("Synthetic abandoned request"));
+        }
+        await request;
+      });
+
+      expect(onError).not.toHaveBeenCalled();
+      expect(onSuccess).not.toHaveBeenCalled();
+    },
+  );
 });

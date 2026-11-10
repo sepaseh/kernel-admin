@@ -1,34 +1,16 @@
-import { Button, Result } from "antd";
 import {
   Component,
   type ErrorInfo,
-  Fragment,
   type PropsWithChildren,
   type ReactElement,
 } from "react";
-import { useTranslation } from "react-i18next";
 
-import { reportError } from "../../lib/observability.ts";
+import { reportError } from "@/shared/lib";
+
+import { ErrorFallback } from "./ErrorFallback";
 
 type State = {
   hasError: boolean;
-};
-
-export const ErrorFallback = (): ReactElement => {
-  const { t } = useTranslation();
-
-  return (
-    <Result
-      status="500"
-      title="500"
-      subTitle={t("unexpectedError")}
-      extra={
-        <Button onClick={() => window.location.reload()} type="primary">
-          {t("reload")}
-        </Button>
-      }
-    />
-  );
 };
 
 export class ErrorBoundary extends Component<PropsWithChildren, State> {
@@ -46,10 +28,8 @@ export class ErrorBoundary extends Component<PropsWithChildren, State> {
   }
 
   public render(): ReactElement {
-    if (!this.state.hasError) {
-      return <Fragment>{this.props.children}</Fragment>;
-    }
+    if (this.state.hasError) return <ErrorFallback />;
 
-    return <ErrorFallback />;
+    return <>{this.props.children}</>;
   }
 }

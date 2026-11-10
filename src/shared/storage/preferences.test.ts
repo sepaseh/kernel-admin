@@ -1,46 +1,38 @@
-// @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { createThemeConfig, defaultTheme, storageKeys } from "@/shared/config";
+import { storageKeys } from "@/shared/config";
 
 import { getCompact, setCompact } from "./compact";
 import { getTheme, setTheme } from "./theme";
 
-beforeEach(() => {
-  localStorage.clear();
-});
+beforeEach(() => localStorage.clear());
+afterEach(() => localStorage.clear());
 
-describe("stored preferences", () => {
-  it("uses the default preferences when values are missing", () => {
+describe("browser appearance preferences", () => {
+  it("defaults to dark, noncompact controls and round trips accepted choices", () => {
+    expect(getTheme()).toBe("dark");
     expect(getCompact()).toBe(false);
-    expect(getTheme()).toBe(defaultTheme);
-  });
 
-  it("updates compact mode", () => {
+    setTheme("light");
     setCompact(true);
 
-    expect(getCompact()).toBe(true);
-    expect(localStorage.getItem(storageKeys.compact)).toBe("true");
-  });
-
-  it("updates the theme", () => {
-    setTheme("light");
-
     expect(getTheme()).toBe("light");
+    expect(getCompact()).toBe(true);
     expect(localStorage.getItem(storageKeys.theme)).toBe('"light"');
+    expect(localStorage.getItem(storageKeys.compact)).toBe("true");
+    expect(localStorage.length).toBe(2);
   });
 
   it.each(["invalid", "null", "{}", '"blue"', "1"])(
-    "rejects corrupt stored theme %s before deriving Ant Design tokens",
+    "rejects corrupt theme %s",
     (value) => {
       localStorage.setItem(storageKeys.theme, value);
-      expect(() => createThemeConfig(getTheme())).not.toThrow();
-      expect(getTheme()).toBe(defaultTheme);
+      expect(getTheme()).toBe("dark");
     },
   );
 
   it.each(["invalid", "null", "{}", '"false"', "1"])(
-    "does not turn malformed compact preference %s into a truthy flag",
+    "rejects corrupt compact preference %s",
     (value) => {
       localStorage.setItem(storageKeys.compact, value);
       expect(getCompact()).toBe(false);

@@ -1,142 +1,151 @@
-// @vitest-environment jsdom
-import { act, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import "@/test/browser";
 
-import { forgotPassword, requestOtp } from "@/features/auth/api.ts";
-import { i18nInstance } from "@/shared/i18n/index.ts";
-import { render, screen } from "@/test/render.tsx";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ForgotPassPage } from "./ForgotPass.tsx";
+import type * as AuthModule from "@/features/auth";
+import { forgotPassword } from "@/features/auth";
+import { i18n } from "@/shared/i18n";
+import { deferred } from "@/test/deferred";
 
-const messages = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }));
-vi.mock("@/features/auth/api.ts", () => ({
+import { ForgotPassPage } from "./ForgotPass";
+
+const { messages } = vi.hoisted(() => ({
+  messages: { error: vi.fn(), success: vi.fn() },
+}));
+vi.mock("@/features/auth", async (original) => ({
+  ...(await original<typeof AuthModule>()),
   forgotPassword: vi.fn(),
-  requestOtp: vi.fn(),
 }));
 vi.mock("@/app/hooks", () => ({ useAntd: () => ({ messageAPI: messages }) }));
-const Location = () => (
-  <output aria-label="location">{useLocation().pathname}</output>
-);
+
 const renderPage = () =>
   render(
     <MemoryRouter initialEntries={["/auth/forgot-password"]}>
-      <Location />
       <Routes>
-        <Route element={<ForgotPassPage />} path="/auth/forgot-password" />
-        <Route element={<h1>Login</h1>} path="/auth" />
+        <Route path="/auth/forgot-password" element={<ForgotPassPage />} />
+        <Route
+          path="/auth"
+          element={
+            <>
+              <h1>Login again</h1>
+              <Link to="/auth/register">Start registration</Link>
+            </>
+          }
+        />
+        <Route
+          path="/auth/register"
+          element={<h1>Registration remains active</h1>}
+        />
       </Routes>
     </MemoryRouter>,
   );
 
-beforeEach(async () => {
-  await i18nInstance.changeLanguage("en");
-  vi.mocked(forgotPassword).mockReset().mockResolvedValue(undefined);
-  vi.mocked(requestOtp)
-    .mockReset()
-    .mockResolvedValue({ expiresIn: 120, remainingSeconds: 30 });
-});
-
-const fillReset = async (user: ReturnType<typeof render>["user"]) => {
-  await user.type(
-    screen.getByLabelText(i18nInstance.t("mobile")),
-    "09120000000",
-  );
-  await user.type(
-    within(
-      screen.getByRole("group", { name: i18nInstance.t("otp") }),
-    ).getAllByRole("textbox")[0],
-    "123456",
-  );
-  await user.type(
-    screen.getByLabelText(i18nInstance.t("newPassword"), { exact: true }),
-    "secret",
-  );
-  await user.type(
-    screen.getByLabelText(i18nInstance.t("confirmPassword")),
-    "secret",
-  );
+const fillRecovery = () => {
+  for (const [label, value] of [
+    [i18n.t("mobile"), "09120000000"],
+    [i18n.t("newPassword"), "synthetic-new-password"],
+    [i18n.t("confirmPassword"), "synthetic-new-password"],
+  ]) {
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  }
+  within(screen.getByRole("group", { name: i18n.t("otp") }))
+    .getAllByRole("textbox")
+    .forEach((input, index) => {
+      fireEvent.input(input, { target: { value: String(index + 1) } });
+    });
 };
 
-describe("ForgotPassPage", () => {
-  it("keeps invalid mobile validation local without sending an OTP request", async () => {
-    const { user } = renderPage();
-    await user.click(
-      screen.getByRole("button", { name: i18nInstance.t("sendCode") }),
-    );
-    await waitFor(() =>
-      expect(screen.getByLabelText(i18nInstance.t("mobile"))).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      ),
-    );
-    expect(requestOtp).not.toHaveBeenCalled();
-    expect(messages.error).not.toHaveBeenCalled();
-  });
+beforeEach(async () => {
+  vi.resetAllMocks();
+  vi.mocked(forgotPassword).mockResolvedValue(undefined);
+  await i18n.changeLanguage("en");
+});
+afterEach(cleanup);
 
-  it("submits a reset without confirmation data and returns to login", async () => {
-    const { user } = renderPage();
-    await fillReset(user);
-    await user.click(
-      screen.getByRole("button", { name: i18nInstance.t("resetPassword") }),
+describe("password recovery form", () => {
+  it("sends the OTP and new password and returns to login after success", async () => {
+    renderPage();
+    fillRecovery();
+    fireEvent.click(
+      screen.getByRole("button", { name: i18n.t("resetPassword") }),
     );
-    await screen.findByRole("heading", { name: "Login" });
-    expect(forgotPassword).toHaveBeenCalledWith(
-      { mobile: "09120000000", otp: "123456", password: "secret" },
+
+    await screen.findByRole("heading", { name: "Login again" });
+    expect(forgotPassword).toHaveBeenCalledExactlyOnceWith(
+      {
+        mobile: "09120000000",
+        otp: "123456",
+        password: "synthetic-new-password",
+      },
       expect.any(AbortSignal),
     );
-    expect(messages.success).toHaveBeenCalledWith(
-      i18nInstance.t("passwordReset"),
-    );
+    expect(messages.success).toHaveBeenCalledWith(i18n.t("passwordReset"));
   });
 
-  it("submits with Enter once while password reset is pending", async () => {
-    let resolve!: (value: Awaited<ReturnType<typeof forgotPassword>>) => void;
-    vi.mocked(forgotPassword).mockReturnValueOnce(
-      new Promise((done) => {
-        resolve = done;
-      }),
+  it("retains recovery fields after a rejected OTP so the user can retry", async () => {
+    vi.mocked(forgotPassword).mockRejectedValue(
+      new Error("Synthetic invalid OTP"),
     );
-    const { user } = renderPage();
-    await fillReset(user);
-    await user.keyboard("{Enter}");
-    await waitFor(() => expect(forgotPassword).toHaveBeenCalledOnce());
+    renderPage();
+    fillRecovery();
+    fireEvent.click(
+      screen.getByRole("button", { name: i18n.t("resetPassword") }),
+    );
 
-    await user.keyboard("{Enter}{Enter}");
-    expect(forgotPassword).toHaveBeenCalledOnce();
-    expect(requestOtp).not.toHaveBeenCalled();
-    expect(vi.mocked(forgotPassword).mock.calls[0][1]?.aborted).toBe(false);
-
-    await act(async () => {
-      resolve(undefined);
-    });
-    await screen.findByRole("heading", { name: "Login" });
-    expect(forgotPassword).toHaveBeenCalledOnce();
+    await waitFor(() =>
+      expect(messages.error).toHaveBeenCalledWith("Synthetic invalid OTP"),
+    );
+    expect(
+      (screen.getByLabelText(i18n.t("mobile")) as HTMLInputElement).value,
+    ).toBe("09120000000");
+    expect(screen.queryByRole("heading", { name: "Login again" })).toBeNull();
   });
 
-  it("aborts its OTP request on unmount without showing a late success", async () => {
-    let resolve!: (value: Awaited<ReturnType<typeof requestOtp>>) => void;
-    vi.mocked(requestOtp).mockReturnValueOnce(
-      new Promise((done) => {
-        resolve = done;
-      }),
-    );
-    const { user } = renderPage();
-    await user.type(
-      screen.getByLabelText(i18nInstance.t("mobile")),
-      "09120000000",
-    );
-    await user.click(
-      screen.getByRole("button", { name: i18nInstance.t("sendCode") }),
-    );
-    await waitFor(() => expect(requestOtp).toHaveBeenCalledOnce());
-    await user.click(
-      screen.getByRole("link", { name: i18nInstance.t("backToLogin") }),
-    );
-    await act(async () => {
-      resolve({ expiresIn: 120, remainingSeconds: 30 });
-    });
-    expect(vi.mocked(requestOtp).mock.calls[0][1]?.aborted).toBe(true);
-    expect(messages.success).not.toHaveBeenCalled();
-  });
+  it.each(["success", "error"] as const)(
+    "ignores a late password-recovery %s after starting another auth flow",
+    async (outcome) => {
+      const pending = deferred<void>();
+      vi.mocked(forgotPassword).mockReturnValue(pending.promise);
+      renderPage();
+      fillRecovery();
+      fireEvent.click(
+        screen.getByRole("button", { name: i18n.t("resetPassword") }),
+      );
+      await waitFor(() => expect(forgotPassword).toHaveBeenCalledTimes(1));
+      const signal = vi.mocked(forgotPassword).mock.calls[0][1]!;
+      expect(signal).toBeInstanceOf(AbortSignal);
+      expect(signal.aborted).toBe(false);
+
+      fireEvent.click(
+        screen.getByRole("link", { name: i18n.t("backToLogin") }),
+      );
+      await screen.findByRole("heading", { name: "Login again" });
+      expect(signal.aborted).toBe(true);
+      fireEvent.click(screen.getByRole("link", { name: "Start registration" }));
+      await screen.findByRole("heading", {
+        name: "Registration remains active",
+      });
+      await act(async () => {
+        if (outcome === "success") pending.resolve();
+        else pending.reject(new Error("Late password recovery failure"));
+      });
+
+      expect(
+        screen.getByRole("heading", { name: "Registration remains active" }),
+      ).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: "Login again" })).toBeNull();
+      expect(messages.error).not.toHaveBeenCalled();
+      expect(messages.success).not.toHaveBeenCalled();
+    },
+  );
 });

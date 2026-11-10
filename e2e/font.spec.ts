@@ -22,7 +22,7 @@ test("loads Vazirmatn from the application origin", async ({ page }) => {
     );
 
     return {
-      family: getComputedStyle(document.documentElement).fontFamily,
+      family: getComputedStyle(document.body).fontFamily,
       fontStatus: vazirmatnFace?.status,
     };
   });

@@ -7,7 +7,7 @@ Use this guide when adding a regression or changing a fixture. [Validation](vali
 | Changed behavior                                  | Test owner                                 | Exercise                                                                 |
 | ------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ |
 | Pure helper, HTTP adapter, hook, provider or form | Closest `src/**/*.test.ts` or `*.test.tsx` | Observable results, error paths, cancellation and stale completions.     |
-| Behavior spanning application modules             | `src/test/integration`                     | Composition, resource/session changes and permissions.                   |
+| Behavior spanning application modules             | Closest composition tests or `e2e/`        | Composition, resource/session changes and permissions.                   |
 | Reusable UI interaction                           | Closest `*.stories.tsx`                    | Real browser interaction and accessibility with complete synthetic APIs. |
 | Source, guidance, CI or helper policy             | Flat `scripts/*.test.mjs`                  | Synthetic accepted and rejected cases for the actual boundary.           |
 | Composed application journey                      | `e2e/`                                     | Built-panel behavior through the browser with explicit API handlers.     |
@@ -47,6 +47,8 @@ The isolated [Storybook Vite configuration](../.storybook/vite.config.ts) disabl
 
 Use the real UI and theme with complete replacements for feature APIs and the shared client; do not use spy passthrough. Mocks reset before every story. Keep `*.stories.tsx` beside the source owner under `src/`. Language/direction/theme controls supply synthetic metadata; they do not create production visitor preferences. A workshop pass covers the component interaction, not composed application or API-provider behavior.
 
+The [harness integration tests](../src/test/storybook/StoryShell.test.tsx) exercise the real [StoryShell](../.storybook/StoryShell.tsx) and [PreviewFrame](../.storybook/PreviewFrame.tsx), with Outlet account context, synthetic settings, the production Core context and Antd provider. They cover toolbar metadata updates while preserving the current route.
+
 ## Test application journeys and contracts
 
 [Playwright](../playwright.config.ts) starts an owned strict-port preview of the built panel. Its fixtures supply explicit synthetic API handlers and reject unexpected external requests. Preserve settings initialization, permission checks before protected page imports, account/session transitions, retained read data and mutation cancellation.
@@ -57,7 +59,7 @@ Ordinary local and PR verification uses Chromium. Complete verification substitu
 
 ## Review appearance
 
-For an affected screen, exercise translated names/errors, keyboard submission, invalid-field focus, Tab containment, Escape and trigger-focus restoration. Read-only overflowing tables need a named keyboard-focusable scroll region. Preserve contrast, reduced motion and logical RTL/LTR layout across light/dark/compact variants. Static font tests inspect licensed WOFF2 data and CSS; the font journey separately checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
+For an affected screen, exercise translated names/errors, keyboard submission, invalid-field focus, Tab containment, Escape and trigger-focus restoration. Read-only overflowing tables need a named keyboard-focusable scroll region. Preserve contrast, reduced motion and logical RTL/LTR layout across light/dark/compact variants. The font journey checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
 
 ### Compare and approve images
 

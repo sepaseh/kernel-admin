@@ -1,181 +1,264 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import "@/test/browser";
+
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { ConfigProvider, theme as antdTheme } from "antd";
-import { useContext } from "react";
+import dayjs from "dayjs";
+import { type ComponentProps, useContext } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router";
-import { afterEach, describe, expect, it } from "vitest";
+import { useLocation, useNavigate, useOutletContext } from "react-router";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { useCore } from "@/app/hooks";
+import type { CurrentUser } from "@/features/account";
+import type { DefaultLayoutContext } from "@/layouts/default";
+import { dayjsLocaleName, i18n } from "@/shared/i18n";
 
 import { PreviewFrame } from "../../../.storybook/PreviewFrame";
-import { useCore } from "@/app/hooks";
-import { i18nInstance } from "@/shared/i18n";
+import { StoryShell } from "../../../.storybook/StoryShell";
+import { sampleSettings, sampleUser } from "../../../.storybook/fixtures";
 
-import { sampleLanguages } from "./fixtures";
-import { StoryShell } from "./StoryShell";
-
-const lightTheme = {
-  colorBgBase: "#fff",
-  colorBgContainer: "#fff",
-  colorBorder: "#767676",
-  colorLink: "#0050b3",
-  colorPrimary: "#1677ff",
-  colorTextBase: "#000",
-  colorTextDescription: "#444",
-};
-
-const AppearanceProbe = () => {
-  const {
-    acceptSettings,
-    currentRoute,
-    language,
-    setCurrentRoute,
-    setTheme,
-    theme,
-  } = useCore();
-  const { direction } = useContext(ConfigProvider.ConfigContext);
-  const { token } = antdTheme.useToken();
-  const { t } = useTranslation();
-  const location = useLocation();
+const ShellProbe = () => {
+  const { currentUser } = useOutletContext<DefaultLayoutContext>();
+  const { hash, pathname, search } = useLocation();
   const navigate = useNavigate();
 
   return (
     <>
-      <output data-testid="core-appearance">
-        {language.code}:{language.direction}:{language.calendar}:{theme}
+      <output aria-label="Story location">
+        {pathname}
+        {search}
+        {hash}
       </output>
-      <output data-testid="antd-appearance">
-        {direction}:{token.colorBgBase}
+      <output aria-label="Story account">
+        {currentUser.id}:{String(currentUser.isSystemAdmin)}:
+        {currentUser.permissions.join(",")}
       </output>
-      <output data-testid="route">
-        {currentRoute}:{location.pathname}
-      </output>
-      <button onClick={() => setTheme("dark")}>Change menu theme</button>
+      <input aria-label="Story draft" defaultValue="" />
       <button
-        onClick={() =>
-          acceptSettings({
-            darkTheme: {
-              ...lightTheme,
-              colorBgBase: "#000",
-              colorBgContainer: "#141414",
-              colorTextBase: "#fff",
-              colorTextDescription: "#ddd",
-            },
-            language: sampleLanguages.fa,
-            lightTheme,
-          })
-        }
-      >
-        Accept settings
-      </button>
-      <button
-        onClick={() => {
-          setCurrentRoute("users");
-          void navigate("/users");
-        }}
+        onClick={() => void navigate("/users?page=2#update")}
+        type="button"
       >
         Navigate users
       </button>
-      <button>{t("submit")}</button>
     </>
   );
 };
 
-afterEach(async () => {
-  await i18nInstance.changeLanguage("fa");
+const AppearanceProbe = () => {
+  const { t } = useTranslation();
+  const { compact, settings, theme } = useCore();
+  const { direction } = useContext(ConfigProvider.ConfigContext);
+  const { token } = antdTheme.useToken();
+
+  return (
+    <>
+      <output aria-label="Core appearance">
+        {settings.language.code}:{settings.language.direction}:
+        {settings.language.calendar}:{theme}:{String(compact)}
+      </output>
+      <output aria-label="Ant Design direction">{direction}</output>
+      <output aria-label="Ant Design background">{token.colorBgBase}</output>
+      <output aria-label="Ant Design control height">
+        {token.controlHeight}
+      </output>
+      <button type="button">{t("submit")}</button>
+    </>
+  );
+};
+
+const renderFrame = (
+  languageCode: ComponentProps<typeof PreviewFrame>["languageCode"],
+  themeMode: ComponentProps<typeof PreviewFrame>["themeMode"],
+  compact = false,
+  direction?: ComponentProps<typeof PreviewFrame>["direction"],
+) => (
+  <PreviewFrame
+    compact={compact}
+    direction={direction}
+    languageCode={languageCode}
+    themeMode={themeMode}
+  >
+    <StoryShell>
+      <ShellProbe />
+      <AppearanceProbe />
+    </StoryShell>
+  </PreviewFrame>
+);
+
+beforeEach(async () => {
+  await i18n.changeLanguage("en");
+  dayjs.calendar("gregory");
+  dayjs.locale(dayjsLocaleName("en"));
 });
 
-describe("StoryShell appearance ownership", () => {
-  it("uses standalone initial metadata and working route state", async () => {
+afterEach(async () => {
+  cleanup();
+  await i18n.changeLanguage("en");
+  dayjs.calendar("gregory");
+  dayjs.locale(dayjsLocaleName("en"));
+  document.documentElement.removeAttribute("dir");
+  document.documentElement.removeAttribute("lang");
+});
+
+describe("StoryShell and preview integration", () => {
+  it("provides the default story route and synthetic account through Outlet", () => {
     render(
-      <StoryShell initialLanguage={sampleLanguages.fa} initialTheme="dark">
-        <AppearanceProbe />
+      <StoryShell>
+        <ShellProbe />
       </StoryShell>,
     );
 
-    expect(screen.getByTestId("core-appearance")).toHaveTextContent(
-      "fa:rtl:jalali:dark",
+    expect(screen.getByLabelText("Story location").textContent).toBe("/faqs");
+    expect(screen.getByLabelText("Story account").textContent).toBe(
+      `${sampleUser.id}:true:`,
     );
-    expect(screen.getByTestId("antd-appearance")).toHaveTextContent("rtl:#000");
-    await screen.findByRole("button", { name: "ثبت" });
-    fireEvent.click(screen.getByRole("button", { name: "Navigate users" }));
-    expect(screen.getByTestId("route")).toHaveTextContent("users:/users");
   });
 
-  it("applies toolbar metadata to real Core and Antd consumers without resetting navigation", async () => {
-    const renderFrame = (
-      languageCode: "en" | "fa",
-      themeMode: "light" | "dark",
-    ) => (
-      <PreviewFrame
-        direction={languageCode === "fa" ? "rtl" : "ltr"}
-        languageCode={languageCode}
-        themeMode={themeMode}
-      >
-        <StoryShell>
-          <AppearanceProbe />
-        </StoryShell>
-      </PreviewFrame>
+  it("keeps a supplied account while navigating from the configured URL", () => {
+    const reader: CurrentUser = {
+      ...sampleUser,
+      id: "synthetic-reader",
+      isSystemAdmin: false,
+      permissions: ["users.read"],
+    };
+    render(
+      <StoryShell initialEntries={["/roles?page=3#update"]} user={reader}>
+        <ShellProbe />
+      </StoryShell>,
     );
-    const { rerender } = render(renderFrame("en", "light"));
-    await screen.findByRole("button", { name: "Submit" });
+
+    expect(screen.getByLabelText("Story location").textContent).toBe(
+      "/roles?page=3#update",
+    );
+    expect(screen.getByLabelText("Story account").textContent).toBe(
+      "synthetic-reader:false:users.read",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Navigate users" }));
+    expect(screen.getByLabelText("Story location").textContent).toBe(
+      "/users?page=2#update",
+    );
+    expect(screen.getByLabelText("Story account").textContent).toBe(
+      "synthetic-reader:false:users.read",
+    );
+  });
+
+  it("applies toolbar appearance changes without resetting navigation or the story draft", async () => {
+    const { rerender } = render(renderFrame("en", "light"));
+    await screen.findByRole("button", { name: i18n.getFixedT("en")("submit") });
+    expect(screen.getByLabelText("Core appearance").textContent).toBe(
+      "en:ltr:gregory:light:false",
+    );
+    expect(screen.getByLabelText("Ant Design background").textContent).toBe(
+      sampleSettings.lightTheme.colorBgBase,
+    );
+    fireEvent.change(screen.getByLabelText("Story draft"), {
+      target: { value: "Keep this unfinished story form" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Navigate users" }));
+
+    rerender(renderFrame("en", "light", false, "rtl"));
+    await waitFor(() => expect(document.documentElement.dir).toBe("rtl"));
+    expect(screen.getByLabelText("Core appearance").textContent).toBe(
+      "en:rtl:gregory:light:false",
+    );
+    expect(screen.getByLabelText("Ant Design direction").textContent).toBe(
+      "rtl",
+    );
+    expect(document.documentElement.lang).toBe("en");
+    expect(dayjs.locale()).toBe(dayjsLocaleName("en"));
+    expect(screen.getByLabelText("Story location").textContent).toBe(
+      "/users?page=2#update",
+    );
+    expect(screen.getByRole("textbox", { name: "Story draft" })).toHaveProperty(
+      "value",
+      "Keep this unfinished story form",
+    );
 
     rerender(renderFrame("fa", "dark"));
-
-    expect(screen.getByTestId("core-appearance")).toHaveTextContent(
-      "fa:rtl:jalali:dark",
+    await screen.findByRole("button", { name: i18n.getFixedT("fa")("submit") });
+    expect(screen.getByLabelText("Core appearance").textContent).toBe(
+      "fa:rtl:jalali:dark:false",
     );
-    expect(screen.getByTestId("antd-appearance")).toHaveTextContent("rtl:#000");
-    expect(screen.getByTestId("route")).toHaveTextContent("users:/users");
-    await screen.findByRole("button", { name: "ثبت" });
-    expect(document.documentElement).toHaveAttribute("lang", "fa");
-    expect(document.documentElement).toHaveAttribute("dir", "rtl");
+    expect(screen.getByLabelText("Ant Design direction").textContent).toBe(
+      "rtl",
+    );
+    expect(screen.getByLabelText("Ant Design background").textContent).toBe(
+      sampleSettings.darkTheme.colorBgBase,
+    );
+    expect(document.documentElement.lang).toBe("fa");
+    expect(document.documentElement.dir).toBe("rtl");
+    expect(dayjs.locale()).toBe(dayjsLocaleName("fa"));
+    expect(dayjs("2026-04-01T12:00:00Z").format("YYYY")).toBe("1405");
+    expect(screen.getByLabelText("Story location").textContent).toBe(
+      "/users?page=2#update",
+    );
+    expect(screen.getByRole("textbox", { name: "Story draft" })).toHaveProperty(
+      "value",
+      "Keep this unfinished story form",
+    );
+
+    rerender(renderFrame("fa", "dark"));
+    expect(screen.getByLabelText("Core appearance").textContent).toBe(
+      "fa:rtl:jalali:dark:false",
+    );
+    expect(screen.getByLabelText("Story location").textContent).toBe(
+      "/users?page=2#update",
+    );
+
+    rerender(renderFrame("en", "light"));
+    await screen.findByRole("button", { name: i18n.getFixedT("en")("submit") });
+    expect(screen.getByLabelText("Core appearance").textContent).toBe(
+      "en:ltr:gregory:light:false",
+    );
+    expect(screen.getByLabelText("Ant Design direction").textContent).toBe(
+      "ltr",
+    );
+    expect(screen.getByLabelText("Ant Design background").textContent).toBe(
+      sampleSettings.lightTheme.colorBgBase,
+    );
+    expect(document.documentElement.lang).toBe("en");
+    expect(document.documentElement.dir).toBe("ltr");
+    expect(dayjs.locale()).toBe(dayjsLocaleName("en"));
+    expect(dayjs("2026-04-01T12:00:00Z").format("YYYY")).toBe("2026");
+    expect(screen.getByLabelText("Story location").textContent).toBe(
+      "/users?page=2#update",
+    );
+    expect(screen.getByRole("textbox", { name: "Story draft" })).toHaveProperty(
+      "value",
+      "Keep this unfinished story form",
+    );
   });
 
-  it("keeps accepted settings and menu theme through unrelated parent and toolbar theme updates", async () => {
-    const renderFrame = (themeMode: "light" | "dark") => (
-      <PreviewFrame direction="ltr" languageCode="en" themeMode={themeMode}>
-        <StoryShell>
-          <AppearanceProbe />
-        </StoryShell>
-      </PreviewFrame>
+  it("applies compact sizing without changing the active language or theme", async () => {
+    const { rerender } = render(renderFrame("en", "light"));
+    const standardHeight = Number(
+      screen.getByLabelText("Ant Design control height").textContent,
     );
-    const { rerender } = render(renderFrame("light"));
-    fireEvent.click(screen.getByRole("button", { name: "Accept settings" }));
-    fireEvent.click(screen.getByRole("button", { name: "Change menu theme" }));
-    await screen.findByRole("button", { name: "ثبت" });
+    expect(standardHeight).toBeGreaterThan(0);
 
-    rerender(renderFrame("light"));
-    rerender(renderFrame("dark"));
-
-    await waitFor(() => {
-      expect(screen.getByTestId("core-appearance")).toHaveTextContent(
-        "fa:rtl:jalali:dark",
-      );
-      expect(screen.getByTestId("antd-appearance")).toHaveTextContent(
-        "rtl:#000",
-      );
-      expect(document.documentElement).toHaveAttribute("lang", "fa");
-      expect(document.documentElement).toHaveAttribute("dir", "rtl");
-    });
-    expect(screen.getByRole("button", { name: "ثبت" })).toBeVisible();
-  });
-
-  it("treats the toolbar direction as independent from the selected language", async () => {
-    render(
-      <PreviewFrame direction="rtl" languageCode="en" themeMode="light">
-        <StoryShell>
-          <AppearanceProbe />
-        </StoryShell>
-      </PreviewFrame>,
+    rerender(renderFrame("en", "light", true));
+    await waitFor(() =>
+      expect(
+        Number(screen.getByLabelText("Ant Design control height").textContent),
+      ).toBeLessThan(standardHeight),
+    );
+    expect(screen.getByLabelText("Core appearance").textContent).toBe(
+      "en:ltr:gregory:light:true",
     );
 
-    expect(screen.getByTestId("core-appearance")).toHaveTextContent(
-      "en:rtl:gregorian:light",
+    rerender(renderFrame("en", "light"));
+    expect(
+      Number(screen.getByLabelText("Ant Design control height").textContent),
+    ).toBe(standardHeight);
+    expect(screen.getByLabelText("Core appearance").textContent).toBe(
+      "en:ltr:gregory:light:false",
     );
-    expect(screen.getByTestId("antd-appearance")).toHaveTextContent("rtl:#fff");
-    await screen.findByRole("button", { name: "Submit" });
-    expect(document.documentElement).toHaveAttribute("lang", "en");
-    expect(document.documentElement).toHaveAttribute("dir", "rtl");
   });
 });

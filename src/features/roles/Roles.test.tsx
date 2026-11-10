@@ -1,117 +1,147 @@
-// @vitest-environment jsdom
-import { act, waitFor } from "@testing-library/react";
-import type * as ReactI18next from "react-i18next";
-import { MemoryRouter } from "react-router";
-import { beforeEach, expect, it, vi } from "vitest";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { MemoryRouter, Outlet, Route, Routes } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { render, screen } from "@/test/render";
+import type { CurrentUser } from "@/features/account";
+import { i18n } from "@/shared/i18n";
+import "@/test/browser";
+import { deferred } from "@/test/deferred";
 
-import { deleteRole, fetchPermissions, fetchRole, fetchRoles } from "./api";
+import { deleteRole, fetchPermissions, fetchRoles } from "./api";
 import { RolesPage } from "./Roles";
+import type { Role } from "./types";
 
-const mocks = vi.hoisted(() => ({
-  messageAPI: { error: vi.fn(), success: vi.fn() },
-  modalAPI: { confirm: vi.fn() },
-  permissions: { canCreate: false, canDelete: true, canUpdate: false },
+const { messages, modal } = vi.hoisted(() => ({
+  messages: { error: vi.fn(), success: vi.fn() },
+  modal: { confirm: vi.fn() },
 }));
-vi.mock("@/app/hooks", () => ({
-  useAntd: () => mocks,
-  useCore: () => ({ user: { id: "admin-1", isSystemAdmin: false } }),
-}));
-vi.mock("@/app/lib", () => ({ getRoutePermissions: () => mocks.permissions }));
 vi.mock("./api", () => ({
   deleteRole: vi.fn(),
   fetchPermissions: vi.fn(),
-  fetchRole: vi.fn(),
   fetchRoles: vi.fn(),
 }));
-vi.mock("@/features/roles/components/role-form/RoleForm", () => ({
-  RoleForm: () => null,
-}));
-vi.mock("react-i18next", async (original) => ({
-  ...(await original<typeof ReactI18next>()),
-  useTranslation: () => ({ t: (key: string) => key }),
+vi.mock("./components/role-form/RoleForm", () => ({ RoleForm: () => null }));
+vi.mock("@/app/hooks", () => ({
+  useAntd: () => ({ messageAPI: messages, modalAPI: modal }),
 }));
 
-beforeEach(() => {
-  mocks.permissions.canCreate = false;
-  mocks.permissions.canDelete = true;
-  mocks.permissions.canUpdate = false;
-  vi.mocked(deleteRole).mockReset().mockResolvedValue(undefined);
-  vi.mocked(fetchPermissions).mockReset().mockResolvedValue([]);
-  vi.mocked(fetchRole)
-    .mockReset()
-    .mockResolvedValue({ id: "role-1", name: "Operators", permissions: [] });
-  vi.mocked(fetchRoles)
-    .mockReset()
-    .mockResolvedValue([{ id: "role-1", name: "Operators", permissions: [] }]);
-});
-
-const renderRoles = () =>
+const role: Role = {
+  id: "role-1",
+  name: "Operators",
+  permissions: ["users.read"],
+};
+const user: CurrentUser = {
+  id: "synthetic-admin",
+  firstName: "Ada",
+  lastName: "Lovelace",
+  mobile: "09120000000",
+  status: "active",
+  isSystemAdmin: false,
+  permissions: ["roles.read"],
+};
+const renderPage = () =>
   render(
     <MemoryRouter>
-      <RolesPage />
+      <Routes>
+        <Route element={<Outlet context={{ currentUser: user }} />}>
+          <Route path="*" element={<RolesPage />} />
+        </Route>
+      </Routes>
     </MemoryRouter>,
   );
 
-it("keeps an initial read failure retryable and distinguishes recovery from empty data", async () => {
-  vi.mocked(fetchRoles)
-    .mockRejectedValueOnce(new Error("Offline"))
-    .mockResolvedValueOnce([]);
-  const { user } = renderRoles();
-  await screen.findByText("requestLoadFailed");
-  expect(screen.queryByRole("table")).not.toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "retry" }));
-  expect(
-    await screen.findByText("No data", { selector: ".ant-empty-description" }),
-  ).toBeVisible();
-  expect(fetchRoles).toHaveBeenCalledTimes(2);
-  expect(mocks.messageAPI.error).not.toHaveBeenCalled();
+beforeEach(async () => {
+  vi.resetAllMocks();
+  user.permissions = ["roles.read"];
+  vi.mocked(fetchRoles).mockResolvedValue([role]);
+  vi.mocked(fetchPermissions).mockResolvedValue([]);
+  await i18n.changeLanguage("en");
 });
+afterEach(cleanup);
 
-it("does not start an old delete confirmation after permission is revoked", async () => {
-  const { user, rerender } = renderRoles();
-  await screen.findByText("Operators");
-  await user.click(screen.getByRole("button", { name: "delete" }));
-  const confirmation = mocks.modalAPI.confirm.mock.calls[0][0] as {
-    onOk: () => Promise<void>;
-  };
-  mocks.permissions.canDelete = false;
-  rerender(
-    <MemoryRouter>
-      <RolesPage />
-    </MemoryRouter>,
-  );
-  await act(async () => confirmation.onOk());
-  expect(deleteRole).not.toHaveBeenCalled();
-  expect(mocks.messageAPI.success).not.toHaveBeenCalled();
-});
+describe("roles listing", () => {
+  it("renders read-only roles without requesting editor-only permission metadata", async () => {
+    renderPage();
 
-it("aborts a pending deletion on unmount without notifying or reloading", async () => {
-  let release!: () => void;
-  vi.mocked(deleteRole).mockReturnValueOnce(
-    new Promise((resolve) => {
-      release = () => resolve(undefined);
-    }),
-  );
-  const { user, unmount } = renderRoles();
-  await screen.findByText("Operators");
-  await user.click(screen.getByRole("button", { name: "delete" }));
-  const confirmation = mocks.modalAPI.confirm.mock.calls[0][0] as {
-    onOk: () => Promise<void>;
-  };
-  let pending!: Promise<void>;
-  act(() => {
-    pending = confirmation.onOk();
+    await screen.findByText("Operators");
+    expect(fetchPermissions).not.toHaveBeenCalled();
+    for (const action of ["create", "update", "delete"] as const) {
+      expect(screen.queryByRole("button", { name: i18n.t(action) })).toBeNull();
+    }
+    expect(modal.confirm).not.toHaveBeenCalled();
   });
-  await waitFor(() => expect(deleteRole).toHaveBeenCalledOnce());
-  unmount();
-  expect(vi.mocked(deleteRole).mock.calls[0][1]?.aborted).toBe(true);
-  await act(async () => {
-    release();
-    await pending;
+
+  it("confirms deletion, waits for it, and refreshes the role list", async () => {
+    user.permissions.push("roles.delete");
+    const pendingDelete = deferred<void>();
+    vi.mocked(deleteRole).mockReturnValue(pendingDelete.promise);
+    renderPage();
+    await screen.findByText("Operators");
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("delete") }));
+    expect(deleteRole).not.toHaveBeenCalled();
+    const confirmation = modal.confirm.mock.calls[0][0] as {
+      onOk: () => Promise<void>;
+    };
+    let pending!: Promise<void>;
+    act(() => {
+      pending = confirmation.onOk();
+    });
+    expect(deleteRole).toHaveBeenCalledExactlyOnceWith("role-1");
+    expect(fetchRoles).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      pendingDelete.resolve();
+      await pending;
+    });
+
+    expect(fetchRoles).toHaveBeenCalledTimes(2);
+    expect(messages.success).toHaveBeenCalledWith(i18n.t("roleDeleted"));
   });
-  expect(mocks.messageAPI.success).not.toHaveBeenCalled();
-  expect(mocks.messageAPI.error).not.toHaveBeenCalled();
-  expect(fetchRoles).toHaveBeenCalledOnce();
+
+  it("aborts its list request and ignores a late rejected read after unmount", async () => {
+    const pending = deferred<Role[]>();
+    vi.mocked(fetchRoles).mockReturnValue(pending.promise);
+    const { unmount } = renderPage();
+    const signal = vi.mocked(fetchRoles).mock.calls[0][0]!;
+    unmount();
+
+    await act(async () => {
+      pending.reject(new Error("Synthetic obsolete response"));
+    });
+
+    expect(signal.aborted).toBe(true);
+    expect(messages.error).not.toHaveBeenCalled();
+  });
+
+  it("keeps a failed delete confirmation rejected and leaves the existing roles visible", async () => {
+    user.permissions.push("roles.delete");
+    vi.mocked(deleteRole).mockRejectedValue(
+      new Error("Synthetic role assigned"),
+    );
+    renderPage();
+    await screen.findByText("Operators");
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("delete") }));
+    const confirmation = modal.confirm.mock.calls[0][0] as {
+      onOk: () => Promise<void>;
+    };
+
+    await act(async () => {
+      await expect(confirmation.onOk()).rejects.toThrow(
+        "Synthetic role assigned",
+      );
+    });
+
+    await waitFor(() =>
+      expect(messages.error).toHaveBeenCalledWith("Synthetic role assigned"),
+    );
+    expect(fetchRoles).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Operators")).toBeDefined();
+  });
 });

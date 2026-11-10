@@ -1,5 +1,10 @@
-import type { ConfigProviderProps } from "antd";
-import { App as AntdApp, ConfigProvider } from "antd";
+import {
+  type ConfigProviderProps,
+  type ThemeConfig,
+  App,
+  ConfigProvider,
+  theme,
+} from "antd";
 import ar from "antd/locale/ar_EG";
 import de from "antd/locale/de_DE";
 import en from "antd/locale/en_GB";
@@ -10,16 +15,10 @@ import it from "antd/locale/it_IT";
 import pt from "antd/locale/pt_PT";
 import ru from "antd/locale/ru_RU";
 import tr from "antd/locale/tr_TR";
-import type { ReactNode } from "react";
-import { useEffect, useMemo } from "react";
+import { type PropsWithChildren, useEffect, useMemo } from "react";
 
 import { useCore } from "@/app/hooks";
-import type { Language } from "@/shared/config";
-import { createThemeConfig } from "@/shared/config";
-
-type AntdProviderProps = {
-  children?: ReactNode;
-};
+import type { Settings } from "@/features/settings";
 
 const antdLocales = {
   ar,
@@ -32,27 +31,34 @@ const antdLocales = {
   pt,
   ru,
   tr,
-} satisfies Record<Language, ConfigProviderProps["locale"]>;
+} satisfies Record<Settings["language"]["code"], ConfigProviderProps["locale"]>;
 
-export const AntdProvider = ({ children }: AntdProviderProps) => {
-  const { compact, language, theme: currentTheme, themePalettes } = useCore();
-  const palette = themePalettes?.[currentTheme];
-  const themeConfig = useMemo(
-    () => createThemeConfig(currentTheme, compact, palette),
-    [currentTheme, compact, palette],
-  );
-  const { token } = themeConfig;
-  const { code, direction } = language;
+export const AntdProvider = ({ children }: PropsWithChildren) => {
+  const { compact, settings, theme: currentTheme } = useCore();
+  const palette = settings[`${currentTheme}Theme`];
+  const themeConfig = useMemo<ThemeConfig>(() => {
+    const algorithm = [
+      currentTheme === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+      ...(compact ? [theme.compactAlgorithm] : []),
+    ];
+    const token = { ...palette, fontFamily: "inherit" };
+    const designToken = theme.getDesignToken({ algorithm, token });
+
+    return {
+      algorithm,
+      components: {
+        Layout: {
+          bodyBg: designToken.colorBgLayout,
+          headerBg: designToken.colorBgContainer,
+          headerPadding: 0,
+        },
+        Menu: { colorSplit: "transparent" },
+      },
+      token,
+    };
+  }, [currentTheme, compact, palette]);
+  const { code, direction } = settings.language;
   const locale = antdLocales[code];
-
-  useEffect(() => {
-    document.body.style.backgroundColor = token?.colorBgBase ?? "";
-    document.body.style.color = token?.colorTextBase ?? "";
-    document.body.style.setProperty(
-      "--admin-focus-color",
-      token?.colorTextBase ?? "CanvasText",
-    );
-  }, [token]);
 
   useEffect(() => {
     document.documentElement.dir = direction;
@@ -66,7 +72,7 @@ export const AntdProvider = ({ children }: AntdProviderProps) => {
       locale={locale}
       theme={themeConfig}
     >
-      <AntdApp component={false}>{children}</AntdApp>
+      <App component={false}>{children}</App>
     </ConfigProvider>
   );
 };

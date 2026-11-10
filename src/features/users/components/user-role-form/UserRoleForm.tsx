@@ -1,109 +1,160 @@
-import { Form, Select } from "antd";
-import { useEffect } from "react";
+import { Checkbox, Form, type FormProps } from "antd";
+import { isCancel } from "axios";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation } from "react-router";
+import { useLocation, useOutletContext } from "react-router";
 
-import { useAntd, useCore } from "@/app/hooks";
+import { useAntd } from "@/app/hooks";
 import { getRoutePermissions } from "@/app/lib";
-import type { Role } from "@/features/roles/types";
-import { updateUserRoles } from "@/features/users/api";
-import { userDrawerKeys } from "@/features/users/constants";
-import type { User, UserRoleRequest } from "@/features/users/types";
-import {
-  isCurrentMutationError,
-  useGoBack,
-  useMutationRequest,
-} from "@/shared/hooks";
-import { getErrorMessage } from "@/shared/lib";
+import type { Role } from "@/features/roles";
+import type { DefaultLayoutContext } from "@/layouts/default";
+import { modalKeys } from "@/shared/config";
+import { useAbortController, useGoBack, useLock } from "@/shared/hooks";
 import { FormDrawer } from "@/shared/ui/form-drawer";
 
+import { fetchUser, updateUserRoles } from "../../api";
+import type { User, UserRoleRequest } from "../../types";
+
 type UserRoleFormProps = {
-  data?: User;
+  id?: User["id"];
   onFinish: () => void;
   options: { roles: Role[] };
 };
 
+const initialFocusField = "roleIds" satisfies keyof UserRoleRequest;
+
 export const UserRoleForm = ({
-  data,
+  id,
   onFinish,
   options: { roles },
 }: UserRoleFormProps) => {
   const { t } = useTranslation();
-  const { messageAPI } = useAntd();
-  const { user } = useCore();
-  const { canUpdate } = getRoutePermissions("users", user);
-  const { hash, pathname, search } = useLocation();
   const [form] = Form.useForm<UserRoleRequest>();
+  const [loadedId, setLoadedId] = useState<User["id"]>();
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { cancel, start } = useAbortController();
+  const { messageAPI } = useAntd();
   const goBack = useGoBack();
-  const open = hash === userDrawerKeys.roles && !!data && canUpdate;
-  const mutation = useMutationRequest(
-    JSON.stringify([pathname, search, hash, data?.id, user?.id]),
-    open,
-  );
+  const { hash } = useLocation();
+  const { lock, unlock } = useLock();
+  const { currentUser } = useOutletContext<DefaultLayoutContext>();
+  const { canUpdate } = getRoutePermissions("users", currentUser);
+  const isRoles = hash === modalKeys.roles;
+  const open = isRoles && canUpdate;
 
-  const handleSubmit = async (values: UserRoleRequest): Promise<void> => {
-    if (!open || !data) return;
+  const handleClose = () => {
+    cancel();
+    goBack();
+  };
+
+  const handleSubmit: FormProps<UserRoleRequest>["onFinish"] = async (
+    values,
+  ) => {
+    if (
+      !open ||
+      loading ||
+      submitting ||
+      id === undefined ||
+      loadedId !== id ||
+      !lock()
+    )
+      return;
+
+    const signal = start();
+    setSubmitting(true);
 
     try {
-      const result = await mutation.run((signal) =>
-        updateUserRoles(data.id, values, signal),
-      );
-      if (!result?.isCurrent()) return;
-      messageAPI.success(t("rolesUpdated"));
-      goBack();
-      onFinish();
+      await updateUserRoles(id, values, signal);
+      if (signal.aborted) return;
+
+      void messageAPI.success(t("rolesUpdated"));
+      void onFinish();
+      handleClose();
     } catch (error) {
-      if (isCurrentMutationError(error))
-        messageAPI.error(getErrorMessage(error.cause));
+      if (signal.aborted || isCancel(error)) return;
+
+      if (error instanceof Error) void messageAPI.error(error.message);
+    } finally {
+      if (!signal.aborted) {
+        unlock();
+        setSubmitting(false);
+      }
     }
   };
 
-  const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) return;
-
-    form.focusField("roleIds");
-  };
+  useLayoutEffect(() => cancel, [cancel, goBack, id, isRoles, open]);
 
   useEffect(() => {
-    if (hash === userDrawerKeys.roles && !open) goBack();
-  }, [goBack, hash, open]);
+    void (async () => {
+      setLoadedId(undefined);
+      setLoading(false);
+      setSubmitting(false);
+      unlock();
 
-  useEffect(() => {
-    if (!open) {
-      form.resetFields();
-      return;
-    }
+      if (!open) {
+        if (isRoles) goBack();
 
-    if (data) {
-      form.setFieldsValue({ roleIds: data.roles.map(({ id }) => id) });
-    }
-  }, [data, form, open]);
+        return;
+      }
+
+      if (id === undefined) {
+        goBack();
+        return;
+      }
+
+      const signal = start();
+      setLoading(true);
+      try {
+        const data = await fetchUser(id, signal);
+        if (signal.aborted) return;
+
+        form.setFieldsValue({ roleIds: data.roles.map(({ id }) => id) });
+        setLoadedId(data.id);
+      } catch (error) {
+        if (signal.aborted) return;
+
+        if (error instanceof Error) void messageAPI.error(error.message);
+        goBack();
+      } finally {
+        if (!signal.aborted) setLoading(false);
+      }
+    })();
+    return cancel;
+  }, [cancel, form, goBack, id, isRoles, messageAPI, open, start, unlock]);
 
   return (
     <FormDrawer
-      afterOpenChange={handleOpenChange}
-      autoFocus={false}
-      onClose={() => {
-        mutation.cancel();
-        goBack();
+      afterOpenChange={(open) => {
+        if (!open) {
+          form.resetFields();
+          return;
+        }
+
+        form.focusField(initialFocusField);
       }}
+      loading={loading}
+      onClose={handleClose}
       onSubmit={() => form.submit()}
       open={open}
-      submitting={mutation.submitting}
+      submitDisabled={
+        loading || submitting || id === undefined || loadedId !== id
+      }
+      submitting={submitting}
       title={t("roles")}
     >
       <Form<UserRoleRequest>
+        disabled={loading || submitting}
         form={form}
+        initialValues={{ roleIds: [] }}
         layout="vertical"
-        onFinish={(values) => void handleSubmit(values)}
+        name="user-role-form"
+        onFinish={handleSubmit}
       >
-        <Form.Item label={t("roles")} name="roleIds">
-          <Select
-            mode="multiple"
-            options={roles.map(({ id, name }) => ({
-              label: name,
-              value: id,
-            }))}
+        <Form.Item<UserRoleRequest> name="roleIds">
+          <Checkbox.Group
+            style={{ display: "flex", flexDirection: "column", gap: 8 }}
+            options={roles.map(({ id, name }) => ({ label: name, value: id }))}
           />
         </Form.Item>
       </Form>

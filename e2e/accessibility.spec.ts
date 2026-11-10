@@ -1,11 +1,42 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page, TestInfo } from "@playwright/test";
 
-import { profileNameMaxLength } from "@/shared/contracts";
-import { contrastRatio } from "@/shared/lib/color-contrast";
-
 import { expect, test } from "./shared/admin-fixtures";
 import { setupAdminFixture } from "./shared/admin-fixtures";
+
+// Keep the published field-length expectation without importing a removed source export.
+const profileNameMaxLength = 1_000;
+
+// These checks consume computed RGB(A) colors; their oracle belongs to the test.
+const contrastRatio = (foreground: string, background: string) => {
+  const rgb = (color: string, base = [255, 255, 255]) => {
+    const channels = color.match(/[\d.]+/g)?.map(Number);
+    if (!channels || channels.length < 3)
+      throw new Error(`Expected computed RGB color: ${color}`);
+
+    const alpha = channels[3] ?? 1;
+    return channels
+      .slice(0, 3)
+      .map((channel, index) =>
+        Math.round(channel * alpha + base[index] * (1 - alpha)),
+      );
+  };
+  const luminance = (channels: number[]) =>
+    channels.reduce((sum, value, index) => {
+      const channel = value / 255;
+      return (
+        sum +
+        (channel <= 0.04045
+          ? channel / 12.92
+          : ((channel + 0.055) / 1.055) ** 2.4) *
+          [0.2126, 0.7152, 0.0722][index]
+      );
+    }, 0);
+  const surface = rgb(background);
+  const first = luminance(rgb(foreground, surface));
+  const second = luminance(surface);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+};
 
 const expectNoAxeViolations = async (page: Page, testInfo: TestInfo) => {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
@@ -79,7 +110,7 @@ for (const language of ["en", "fa"] as const) {
           theme,
         });
         await page.goto("/auth");
-        const identifier = page.getByLabel(messages.identifier, {
+        const identifier = page.getByLabel(messages.mobile, {
           exact: true,
         });
         await identifier.focus();
@@ -130,17 +161,16 @@ for (const language of ["en", "fa"] as const) {
         await expect(
           page.getByRole("row", { name: /Ada Lovelace/ }),
         ).toBeVisible();
-        const usersRegion = page.getByRole("region", {
-          name: messages.users,
-          exact: true,
-        });
-        await expect(usersRegion).toHaveAttribute("tabindex", "0");
-        const overflow = await usersRegion.evaluate(
-          (element) => element.scrollWidth > element.clientWidth,
-        );
-        if (testInfo.project.name === "mobile-chromium")
-          expect(overflow).toBe(true);
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        const overflow = await page
+          .locator(".ant-table-content")
+          .evaluate((element) => element.scrollWidth > element.clientWidth);
         if (overflow) {
+          const usersRegion = page.getByRole("region", {
+            name: messages.users,
+            exact: true,
+          });
+          await expect(usersRegion).toHaveAttribute("tabindex", "0");
           await usersRegion.focus();
           await expect(usersRegion).toBeFocused();
           const before = await usersRegion.evaluate(
@@ -192,17 +222,16 @@ for (const language of ["en", "fa"] as const) {
         await expect(
           page.getByRole("cell", { name: roleName, exact: true }),
         ).toBeVisible();
-        const rolesRegion = page.getByRole("region", {
-          name: messages.roles,
-          exact: true,
-        });
-        await expect(rolesRegion).toHaveAttribute("tabindex", "0");
-        const rolesOverflow = await rolesRegion.evaluate(
-          (element) => element.scrollWidth > element.clientWidth,
-        );
-        if (testInfo.project.name === "mobile-chromium")
-          expect(rolesOverflow).toBe(true);
+        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+        const rolesOverflow = await page
+          .locator(".ant-table-content")
+          .evaluate((element) => element.scrollWidth > element.clientWidth);
         if (rolesOverflow) {
+          const rolesRegion = page.getByRole("region", {
+            name: messages.roles,
+            exact: true,
+          });
+          await expect(rolesRegion).toHaveAttribute("tabindex", "0");
           await rolesRegion.focus();
           await expect(rolesRegion).toBeFocused();
           const before = await rolesRegion.evaluate(

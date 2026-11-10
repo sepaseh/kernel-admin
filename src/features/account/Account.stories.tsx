@@ -1,99 +1,79 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
-
-import { i18nInstance } from "@/shared/i18n";
-import { sampleAccount, sampleLanguages } from "@/test/storybook/fixtures";
-import { StoryShell } from "@/test/storybook/StoryShell";
-
-import { AccountPage } from "./Account";
-import { updateProfile } from "./api";
+import { expect, userEvent, waitFor, within } from "storybook/test";
+import { AccountPage } from "@/features/account";
+import { apiClient } from "@/shared/api";
+import { i18n } from "@/shared/i18n";
+import { StoryShell } from "../../../.storybook/StoryShell";
 
 const meta = {
+  title: "Features/Account",
   component: AccountPage,
   render: () => (
     <StoryShell initialEntries={["/account"]}>
       <AccountPage />
     </StoryShell>
   ),
-  title: "Features/Account/Page",
 } satisfies Meta<typeof AccountPage>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  beforeEach() {
-    mocked(updateProfile).mockResolvedValue({
-      ...sampleAccount,
-      firstName: "Samira",
-    });
-  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const body = within(canvasElement.ownerDocument.body);
-    const firstName = canvas.getByLabelText(i18nInstance.t("firstName"));
+    await expect(canvas.getByLabelText(i18n.t("firstName"))).toHaveValue("Ada");
+    await expect(canvas.getByLabelText(i18n.t("lastName"))).toHaveValue(
+      "Lovelace",
+    );
     await expect(
-      canvas.getByLabelText(i18nInstance.t("mobile")),
-    ).toBeDisabled();
+      canvas.getByLabelText(i18n.t("currentPassword")),
+    ).toBeVisible();
+  },
+};
+export const SaveProfile: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const firstName = canvas.getByLabelText(i18n.t("firstName"));
     await userEvent.clear(firstName);
-    await userEvent.type(firstName, "Samira");
+    await userEvent.type(firstName, "Augusta");
     await userEvent.click(
-      canvas.getByRole("button", { name: i18nInstance.t("saveProfile") }),
+      canvas.getByRole("button", { name: i18n.t("saveProfile") }),
     );
-    await waitFor(() =>
-      expect(updateProfile).toHaveBeenCalledWith(
-        { firstName: "Samira", lastName: "Admin" },
-        expect.any(AbortSignal),
-      ),
+    await expect(apiClient.patch).toHaveBeenCalledWith(
+      "/account/update-profile",
+      { firstName: "Augusta", lastName: "Lovelace" },
+      { signal: expect.any(AbortSignal) },
     );
-    await waitFor(() =>
-      expect(body.getByText(i18nInstance.t("profileUpdated"))).toBeVisible(),
+    const success = await within(canvasElement.ownerDocument.body).findByText(
+      i18n.t("profileUpdated"),
     );
+    await waitFor(() => expect(success).toBeVisible());
   },
 };
-
-export const WithoutAuthenticatedUser: Story = {
+export const RejectMismatchedPassword: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(
-      canvas.queryByLabelText(i18nInstance.t("firstName")),
-    ).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: i18nInstance.t("saveProfile") }),
-    ).not.toBeInTheDocument();
-  },
-  render: () => (
-    <StoryShell initialEntries={["/account"]} withUser={false}>
-      <AccountPage />
-    </StoryShell>
-  ),
-};
-
-export const DarkRtl: Story = {
-  globals: { direction: "rtl", language: "fa", theme: "dark" },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(
-      canvas.getByLabelText(i18nInstance.t("firstName")),
-    ).toHaveValue("Sample");
-    await expect(
-      canvas.getByRole("group", { name: i18nInstance.t("otp") }),
-    ).toBeVisible();
-    await expect(
-      canvas.getByRole("button", { name: i18nInstance.t("saveProfile") }),
-    ).toBeVisible();
-    await expect(canvasElement.ownerDocument.documentElement).toHaveAttribute(
-      "dir",
-      "rtl",
+    await userEvent.type(
+      canvas.getByLabelText(i18n.t("currentPassword")),
+      "Synthetic-current!",
     );
+    await userEvent.type(
+      canvas.getByLabelText(i18n.t("newPassword")),
+      "Synthetic-new!",
+    );
+    await userEvent.type(
+      canvas.getByLabelText(i18n.t("confirmPassword")),
+      "Different-new!",
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: i18n.t("changePassword") }),
+    );
+    await expect(
+      await canvas.findByText(i18n.t("passwordMismatch")),
+    ).toBeVisible();
+    await expect(apiClient.post).not.toHaveBeenCalled();
   },
-  render: () => (
-    <StoryShell
-      initialEntries={["/account"]}
-      initialLanguage={sampleLanguages.fa}
-      initialTheme="dark"
-    >
-      <AccountPage />
-    </StoryShell>
-  ),
+};
+export const PersianDark: Story = {
+  globals: { language: "fa", theme: "dark" },
+  ...Default,
 };

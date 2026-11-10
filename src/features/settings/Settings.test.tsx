@@ -1,271 +1,196 @@
-// @vitest-environment jsdom
-import { act, waitFor } from "@testing-library/react";
-import type * as ReactI18next from "react-i18next";
-import { beforeEach, expect, it, vi } from "vitest";
-
-import { render, screen } from "@/test/render";
-import { clearAccessToken, setAccessToken } from "@/shared/api";
-
 import {
-  fetchApplicationSettings,
-  fetchLanguages,
-  updateApplicationSettings,
-} from "./api";
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { MemoryRouter, Outlet, Route, Routes } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { CurrentUser } from "@/features/account";
+import { i18n } from "@/shared/i18n";
+import "@/test/browser";
+import { deferred } from "@/test/deferred";
+
+import { fetchLanguages, updateSettings } from "./api";
 import { SettingsPage } from "./Settings";
-import type { ApplicationSettings } from "./types";
+import type { Settings } from "./types";
 
-const mocks = vi.hoisted(() => ({
-  messageError: vi.fn(),
-  messageSuccess: vi.fn(),
-  modalConfirm: vi.fn(),
-  acceptSettings: vi.fn(),
-  setLogos: vi.fn(),
-  setThemePalettes: vi.fn(),
-  canUpdate: true,
-  user: { id: "settings-editor", isSystemAdmin: true },
+const { messages, setSettings } = vi.hoisted(() => ({
+  messages: { error: vi.fn(), success: vi.fn() },
+  setSettings: vi.fn(),
 }));
-
-vi.mock("./api", () => ({
-  fetchApplicationSettings: vi.fn(),
-  fetchLanguages: vi.fn(),
-  updateApplicationSettings: vi.fn(),
-}));
-
+vi.mock("./api", () => ({ fetchLanguages: vi.fn(), updateSettings: vi.fn() }));
 vi.mock("@/app/hooks", () => ({
-  useAntd: () => ({
-    messageAPI: { error: mocks.messageError, success: mocks.messageSuccess },
-    modalAPI: { confirm: mocks.modalConfirm },
-  }),
-  useCore: () => ({
-    acceptSettings: mocks.acceptSettings,
-    setLogos: mocks.setLogos,
-    setThemePalettes: mocks.setThemePalettes,
-    user: mocks.user,
-  }),
+  useAntd: () => ({ messageAPI: messages, token: { colorText: "#111" } }),
+  useCore: () => ({ settings, setSettings }),
 }));
 
-vi.mock("@/app/lib", () => ({
-  getRoutePermissions: () => ({ canUpdate: mocks.canUpdate }),
-}));
-
-vi.mock("react-i18next", async (importOriginal) => ({
-  ...(await importOriginal<typeof ReactI18next>()),
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
-
-const settings: ApplicationSettings = {
-  darkLogo: { id: "dark-logo", url: "/dark.svg" },
-  darkTheme: {
-    colorBgBase: "#141414",
-    colorBgContainer: "#1f1f1f",
-    colorBorder: "#424242",
-    colorLink: "#1668dc",
-    colorPrimary: "#1677ff",
-    colorTextBase: "#ffffff",
-    colorTextDescription: "#bfbfbf",
+const palette = {
+  colorBgBase: "#ffffff",
+  colorBgContainer: "#ffffff",
+  colorBorder: "#cccccc",
+  colorLink: "#0055aa",
+  colorPrimary: "#0055aa",
+  colorTextBase: "#111111",
+  colorTextDescription: "#333333",
+};
+const settings: Settings = {
+  darkLogo: {
+    id: "synthetic-dark",
+    url: "/synthetic-dark.svg",
+    size: 128,
+    isUsed: true,
+  },
+  lightLogo: {
+    id: "synthetic-light",
+    url: "/synthetic-light.svg",
+    size: 128,
+    isUsed: true,
+  },
+  darkTheme: palette,
+  lightTheme: palette,
+  imageSettings: {
+    contents: { width: 400, height: 200, size: 4096 },
+    logo: { width: 100, height: 100, size: 1024 },
   },
   language: {
-    calendar: "jalali",
-    code: "fa",
-    direction: "rtl",
-    name: "Persian",
-    nativeName: "فارسی",
-  },
-  lightLogo: { id: "light-logo", url: "/light.svg" },
-  lightTheme: {
-    colorBgBase: "#ffffff",
-    colorBgContainer: "#ffffff",
-    colorBorder: "#d9d9d9",
-    colorLink: "#1677ff",
-    colorPrimary: "#1677ff",
-    colorTextBase: "#000000",
-    colorTextDescription: "#8c8c8c",
+    code: "en",
+    calendar: "gregory",
+    direction: "ltr",
+    name: "English",
+    nativeName: "English",
   },
 };
+const currentUser: CurrentUser = {
+  id: "synthetic-settings-user",
+  firstName: "Ada",
+  lastName: "Lovelace",
+  mobile: "09120000000",
+  isSystemAdmin: true,
+  status: "active",
+  permissions: [],
+};
+const renderPage = () =>
+  render(
+    <MemoryRouter>
+      <Routes>
+        <Route element={<Outlet context={{ currentUser }} />}>
+          <Route path="*" element={<SettingsPage />} />
+        </Route>
+      </Routes>
+    </MemoryRouter>,
+  );
 
-beforeEach(() => {
-  clearAccessToken();
-  mocks.canUpdate = true;
-  mocks.user.id = "settings-editor";
-  mocks.user.isSystemAdmin = true;
-  vi.mocked(fetchApplicationSettings).mockResolvedValue(settings);
+beforeEach(async () => {
+  vi.resetAllMocks();
+  currentUser.isSystemAdmin = true;
+  currentUser.permissions = [];
   vi.mocked(fetchLanguages).mockResolvedValue([settings.language]);
-  vi.mocked(updateApplicationSettings).mockResolvedValue(settings);
+  vi.mocked(updateSettings).mockResolvedValue(settings);
+  await i18n.changeLanguage("en");
 });
+afterEach(cleanup);
 
-const deferred = <T,>() => {
-  let resolve!: (value: T) => void;
-  let reject!: (error: unknown) => void;
-  const promise = new Promise<T>((fulfill, fail) => {
-    resolve = fulfill;
-    reject = fail;
-  });
-  return { promise, reject, resolve };
-};
+describe("settings form", () => {
+  it("submits logo identifiers and accepts the settings returned by the API", async () => {
+    renderPage();
+    await act(async () => undefined);
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("submit") }));
 
-const confirmSave = async (user: ReturnType<typeof render>["user"]) => {
-  await waitFor(() =>
-    expect(screen.getByRole("button", { name: "submit" })).toBeEnabled(),
-  );
-  await user.click(screen.getByRole("button", { name: "submit" }));
-  return mocks.modalConfirm.mock.calls.at(-1)?.[0] as {
-    onOk: () => Promise<void>;
-    onCancel?: () => void;
-  };
-};
-
-it("coalesces repeated confirmation clicks while a save is pending", async () => {
-  const pending = deferred<ApplicationSettings>();
-  vi.mocked(updateApplicationSettings).mockReturnValue(pending.promise);
-  const { user } = render(<SettingsPage />);
-  const confirmation = await confirmSave(user);
-  await act(async () => {
-    const completions = [confirmation.onOk(), confirmation.onOk()];
-    pending.resolve(settings);
-    await Promise.all(completions);
-  });
-  expect(updateApplicationSettings).toHaveBeenCalledOnce();
-  expect(mocks.acceptSettings).toHaveBeenCalledOnce();
-});
-
-it.each(["permission", "language privilege", "session"])(
-  "rejects an old confirmation after its %s changes",
-  async (change) => {
-    const { user, rerender } = render(<SettingsPage />);
-    const confirmation = await confirmSave(user);
-    if (change === "permission") mocks.canUpdate = false;
-    if (change === "language privilege") mocks.user.isSystemAdmin = false;
-    if (change === "session") setAccessToken("synthetic-next-session");
-    rerender(<SettingsPage />);
-    await act(async () => confirmation.onOk());
-    expect(updateApplicationSettings).not.toHaveBeenCalled();
-    expect(mocks.acceptSettings).not.toHaveBeenCalled();
-  },
-);
-
-it.each(["unmount", "session change", "confirmation cancel"])(
-  "does not accept an old settings save after %s",
-  async (reason) => {
-    const pending = deferred<ApplicationSettings>();
-    vi.mocked(updateApplicationSettings).mockReturnValue(pending.promise);
-    const { user, unmount, rerender } = render(<SettingsPage />);
-    const confirmation = await confirmSave(user);
-    let completion!: Promise<void>;
-    act(() => {
-      completion = confirmation.onOk();
-    });
-    if (reason === "unmount") unmount();
-    else if (reason === "session change") {
-      setAccessToken("synthetic-next-session");
-      rerender(<SettingsPage />);
-    } else act(() => confirmation.onCancel?.());
-    await act(async () => {
-      pending.resolve(settings);
-      await completion;
-    });
-    expect(mocks.acceptSettings).not.toHaveBeenCalled();
-    expect(mocks.messageSuccess).not.toHaveBeenCalled();
-    expect(vi.mocked(updateApplicationSettings).mock.calls[0][1]?.aborted).toBe(
-      true,
+    await waitFor(() =>
+      expect(setSettings).toHaveBeenCalledExactlyOnceWith(settings),
     );
-  },
-);
-
-it("loads, confirms, persists, and applies system settings", async () => {
-  const { user } = render(<SettingsPage />);
-
-  await screen.findByText("فارسی");
-  await user.click(screen.getByRole("button", { name: "submit" }));
-
-  const confirmation = mocks.modalConfirm.mock.calls.at(-1)?.[0] as {
-    onOk: () => Promise<void>;
-  };
-  await confirmation.onOk();
-
-  await waitFor(() => expect(updateApplicationSettings).toHaveBeenCalled());
-  expect(mocks.acceptSettings).toHaveBeenCalledWith(settings);
-  expect(mocks.messageSuccess).toHaveBeenCalledWith("settingsUpdated");
-});
-
-it("recovers from an initial settings timeout without displaying an editable empty form", async () => {
-  vi.mocked(fetchApplicationSettings).mockRejectedValueOnce(
-    new Error("Request timed out"),
-  );
-  const { user } = render(<SettingsPage />);
-  await screen.findByText("Request timed out");
-  expect(
-    screen.queryByRole("button", { name: "submit" }),
-  ).not.toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "retry" }));
-  await screen.findByText("فارسی");
-  expect(screen.getByRole("button", { name: "submit" })).toBeEnabled();
-  expect(fetchApplicationSettings).toHaveBeenCalledTimes(2);
-  expect(updateApplicationSettings).not.toHaveBeenCalled();
-  expect(mocks.messageError).not.toHaveBeenCalled();
-});
-
-it("lets ordinary settings editors save appearance without choosing or submitting language", async () => {
-  mocks.user.isSystemAdmin = false;
-  const { user } = render(<SettingsPage />);
-  await waitFor(() =>
-    expect(screen.getByRole("button", { name: "submit" })).toBeEnabled(),
-  );
-  expect(
-    screen.queryByRole("combobox", { name: /language$/ }),
-  ).not.toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "submit" }));
-  const confirmation = mocks.modalConfirm.mock.calls.at(-1)?.[0] as {
-    onOk: () => Promise<void>;
-  };
-  await confirmation.onOk();
-  const payload = vi.mocked(updateApplicationSettings).mock.calls.at(-1)?.[0];
-  expect(payload).toMatchObject({
-    darkTheme: settings.darkTheme,
-    lightTheme: settings.lightTheme,
+    expect(updateSettings).toHaveBeenCalledExactlyOnceWith(
+      {
+        darkTheme: palette,
+        lightTheme: palette,
+        imageSettings: settings.imageSettings,
+        languageCode: "en",
+        darkLogoId: "synthetic-dark",
+        lightLogoId: "synthetic-light",
+      },
+      expect.any(AbortSignal),
+    );
+    expect(messages.success).toHaveBeenCalledWith(i18n.t("settingsUpdated"));
   });
-  expect(payload).not.toHaveProperty("languageCode");
-  expect(mocks.acceptSettings).toHaveBeenCalledWith(settings);
-});
 
-it("reports a current save failure without accepting unpersisted settings", async () => {
-  vi.mocked(updateApplicationSettings).mockRejectedValue(
-    new Error("Save failed"),
+  it("resets edited image limits to the accepted settings", async () => {
+    renderPage();
+    await act(async () => undefined);
+    const width = screen.getAllByRole("spinbutton", {
+      name: i18n.t("imageWidth"),
+    })[0] as HTMLInputElement;
+    expect(width.value).toBe("400");
+    fireEvent.change(width, { target: { value: "512" } });
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("reset") }));
+
+    expect(width.value).toBe("400");
+    expect(updateSettings).not.toHaveBeenCalled();
+  });
+
+  it("blocks writes without settings permission and keeps API language restricted to administrators", async () => {
+    currentUser.isSystemAdmin = false;
+    const { container } = renderPage();
+    await act(async () => undefined);
+    expect(
+      (
+        screen.getByRole("button", {
+          name: i18n.t("submit"),
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(
+      (
+        screen.getByRole("combobox", {
+          name: i18n.t("language"),
+        }) as HTMLInputElement
+      ).disabled,
+    ).toBe(true);
+    fireEvent.submit(container.querySelector("form")!);
+    await act(async () => undefined);
+
+    expect(updateSettings).not.toHaveBeenCalled();
+  });
+
+  it("aborts language metadata loading and ignores a late failure after unmount", async () => {
+    const pending = deferred<Settings["language"][]>();
+    vi.mocked(fetchLanguages).mockReturnValue(pending.promise);
+    const { unmount } = renderPage();
+    const signal = vi.mocked(fetchLanguages).mock.calls[0][0]!;
+    unmount();
+
+    await act(async () => {
+      pending.reject(new Error("Synthetic obsolete language response"));
+    });
+
+    expect(signal.aborted).toBe(true);
+    expect(messages.error).not.toHaveBeenCalled();
+  });
+
+  it.each(["success", "failure"] as const)(
+    "ignores a late save %s after leaving settings",
+    async (outcome) => {
+      const pending = deferred<Settings>();
+      vi.mocked(updateSettings).mockReturnValue(pending.promise);
+      const { unmount } = renderPage();
+      await act(async () => undefined);
+      fireEvent.click(screen.getByRole("button", { name: i18n.t("submit") }));
+      await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1));
+      const signal = vi.mocked(updateSettings).mock.calls[0][1]!;
+
+      unmount();
+      expect(signal.aborted).toBe(true);
+      await act(async () => {
+        if (outcome === "success") pending.resolve(settings);
+        else pending.reject(new Error("Synthetic obsolete settings response"));
+      });
+
+      expect(setSettings).not.toHaveBeenCalled();
+      expect(messages.success).not.toHaveBeenCalled();
+      expect(messages.error).not.toHaveBeenCalled();
+    },
   );
-  const { user } = render(<SettingsPage />);
-  const confirmation = await confirmSave(user);
-  await act(async () => confirmation.onOk());
-  expect(mocks.messageError).toHaveBeenCalledWith("Save failed");
-  expect(mocks.acceptSettings).not.toHaveBeenCalled();
-  expect(screen.getByRole("button", { name: "submit" })).toBeEnabled();
-});
-
-it("ignores a rethrown save error after leaving before its consumer continuation", async () => {
-  const pending = deferred<ApplicationSettings>();
-  vi.mocked(updateApplicationSettings).mockReturnValue(pending.promise);
-  const { user, unmount } = render(<SettingsPage />);
-  const confirmation = await confirmSave(user);
-  let completion!: Promise<void>;
-  act(() => {
-    completion = confirmation.onOk();
-  });
-  await act(async () => {
-    pending.reject(new Error("Obsolete failure"));
-    queueMicrotask(unmount);
-    await completion;
-  });
-  expect(mocks.messageError).not.toHaveBeenCalled();
-  expect(mocks.acceptSettings).not.toHaveBeenCalled();
-});
-
-it("keeps read-only palette values visible without opening editing or submitting", async () => {
-  mocks.canUpdate = false;
-  const { user } = render(<SettingsPage />);
-  const paletteValues = await screen.findAllByText("#FFFFFF");
-
-  expect(screen.getByRole("button", { name: "submit" })).toBeDisabled();
-  await user.click(paletteValues[0]);
-  expect(screen.queryByRole("slider")).not.toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "submit" }));
-  expect(mocks.modalConfirm).not.toHaveBeenCalled();
-  expect(updateApplicationSettings).not.toHaveBeenCalled();
 });

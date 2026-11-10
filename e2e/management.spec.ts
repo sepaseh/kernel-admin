@@ -203,6 +203,7 @@ test.describe("role and user management", () => {
             first_name: "Ada",
             last_name: "Lovelace",
             mobile: "09121111111",
+            status: "active",
             password: expect.any(String),
           });
           users.push({
@@ -233,6 +234,7 @@ test.describe("role and user management", () => {
           first_name: "Augusta",
           last_name: "Lovelace",
           mobile: "09121111111",
+          status: "active",
         });
         users[0] = { ...users[0], first_name: "Augusta" };
         await route.fulfill({

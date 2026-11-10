@@ -33,7 +33,7 @@ describe("Example backend HTTP consumer contract", () => {
       .uponReceiving("a login request during an internal failure")
       .withRequest("POST", "/auth/login", (request) => {
         request.jsonBody({
-          identifier: "09120000001",
+          mobile: "09120000001",
           password: "synthetic-password",
         });
       })
@@ -47,7 +47,7 @@ describe("Example backend HTTP consumer contract", () => {
       .executeTest(async ({ url }) => {
         const [, { login }] = await loadApiFor(url);
         await expect(
-          login({ identifier: "09120000001", password: "synthetic-password" }),
+          login({ mobile: "09120000001", password: "synthetic-password" }),
         ).rejects.toMatchObject({
           message: "Internal server error.",
           requestId: "contract-request-123",
@@ -113,7 +113,7 @@ describe("Example backend HTTP consumer contract", () => {
       .uponReceiving("a login request")
       .withRequest("POST", "/auth/login", (request) => {
         request.jsonBody({
-          identifier: "ada",
+          mobile: "09120000000",
           password: "correct horse battery staple",
         });
       })
@@ -127,7 +127,7 @@ describe("Example backend HTTP consumer contract", () => {
 
         await expect(
           login({
-            identifier: "ada",
+            mobile: "09120000000",
             password: "correct horse battery staple",
           }),
         ).resolves.toEqual({ accessToken: "access-token" });
@@ -146,7 +146,6 @@ describe("Example backend HTTP consumer contract", () => {
       })
       .willRespondWith(200, (response) => {
         response.jsonBody({
-          email: "ada@example.com",
           first_name: "Ada",
           id: "user-1",
           is_system_admin: false,
@@ -154,16 +153,15 @@ describe("Example backend HTTP consumer contract", () => {
           mobile: "09121111111",
           permissions: ["users.read"],
           status: "active",
-          username: "ada",
         });
       })
       .executeTest(async ({ url }) => {
-        const [{ getAccount }, , { setAccessToken }] = await loadApiFor(url);
+        const [{ fetchCurrentUser }, , { setAccessToken }] =
+          await loadApiFor(url);
 
         setAccessToken("access-token");
 
-        await expect(getAccount()).resolves.toEqual({
-          email: "ada@example.com",
+        await expect(fetchCurrentUser()).resolves.toEqual({
           firstName: "Ada",
           id: "user-1",
           isSystemAdmin: false,
@@ -171,7 +169,6 @@ describe("Example backend HTTP consumer contract", () => {
           mobile: "09121111111",
           permissions: ["users.read"],
           status: "active",
-          username: "ada",
         });
       });
   });

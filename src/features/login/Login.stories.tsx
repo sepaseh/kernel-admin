@@ -1,62 +1,87 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { expect, userEvent, within } from "storybook/test";
-
-import { login } from "@/features/auth/api";
-import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
-
-import { LoginPage } from "./Login";
+import { LoginPage } from "@/features/login";
+import { AuthLayout } from "@/layouts/auth";
+import { apiClient } from "@/shared/api";
+import { i18n } from "@/shared/i18n";
 
 const meta = {
-  component: LoginPage,
-  decorators: [
-    (Story) => (
-      <div style={{ margin: "48px auto", maxWidth: 420, padding: 24 }}>
-        <Story />
-      </div>
-    ),
-  ],
-  render: () => (
-    <StoryShell initialEntries={["/auth"]} withUser={false}>
-      <LoginPage />
-    </StoryShell>
-  ),
   title: "Features/Auth/Login",
+  component: LoginPage,
+  parameters: { ownsMain: true },
+  render: () => (
+    <MemoryRouter initialEntries={["/auth"]}>
+      <Routes>
+        <Route element={<AuthLayout />}>
+          <Route path="/auth" element={<LoginPage />} />
+        </Route>
+        <Route path="/" element={<p>Authenticated destination</p>} />
+      </Routes>
+    </MemoryRouter>
+  ),
 } satisfies Meta<typeof LoginPage>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await expect(canvas.getByLabelText(i18n.t("mobile"))).toBeVisible();
+    await expect(canvas.getByLabelText(i18n.t("password"))).toBeVisible();
     await expect(
-      canvas.getByLabelText(i18nInstance.t("identifier")),
-    ).toBeVisible();
-    await expect(
-      canvas.getByLabelText(i18nInstance.t("password")),
-    ).toBeVisible();
-    await expect(
-      canvas.getByRole("link", { name: i18nInstance.t("register") }),
+      canvas.getByRole("link", { name: i18n.t("register") }),
     ).toHaveAttribute("href", "/auth/register");
     await expect(
-      canvas.getByRole("link", { name: i18nInstance.t("forgotPassword") }),
+      canvas.getByRole("link", { name: i18n.t("forgotPassword") }),
     ).toHaveAttribute("href", "/auth/forgot-password");
   },
 };
-
-export const ValidationErrors: Story = {
+export const RequiredFields: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(
-      canvas.getByRole("button", { name: i18nInstance.t("login") }),
+      canvas.getByRole("button", { name: i18n.t("login") }),
+    );
+    await expect(canvas.getByLabelText(i18n.t("mobile"))).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(canvas.getByLabelText(i18n.t("password"))).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(apiClient.post).not.toHaveBeenCalled();
+  },
+};
+export const SuccessfulLogin: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(
+      canvas.getByLabelText(i18n.t("mobile")),
+      "09120000000",
+    );
+    await userEvent.type(
+      canvas.getByLabelText(i18n.t("password")),
+      "Synthetic-password!",
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: i18n.t("login") }),
     );
     await expect(
-      canvas.getByLabelText(i18nInstance.t("identifier")),
-    ).toHaveAttribute("aria-invalid", "true");
-    await expect(
-      canvas.getByLabelText(i18nInstance.t("password")),
-    ).toHaveAttribute("aria-invalid", "true");
-    await expect(login).not.toHaveBeenCalled();
+      await canvas.findByText("Authenticated destination"),
+    ).toBeVisible();
+    await expect(apiClient.post).toHaveBeenCalledWith(
+      "/auth/login",
+      {
+        mobile: "09120000000",
+        password: "Synthetic-password!",
+      },
+      { signal: expect.any(AbortSignal) },
+    );
   },
+};
+export const PersianDark: Story = {
+  globals: { language: "fa", theme: "dark" },
+  ...Default,
 };

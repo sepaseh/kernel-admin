@@ -1,5 +1,4 @@
-import type { InputProps } from "antd";
-import { Input } from "antd";
+import { Input, type InputProps } from "antd";
 import { useState } from "react";
 
 type DigitsInputProps = InputProps;

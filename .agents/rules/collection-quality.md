@@ -6,8 +6,8 @@ after a rename. Do not scan ignored operator state, generated output or
 dependencies, read real environments, or send live API requests to validate an
 example.
 
-Axios/MSW fixtures verify this client's expectations. Pact consumer cases are
-planned for a later phase and must remain synthetic when admitted.
+Axios fixtures verify this client's expectations. Admitted Pact consumer cases
+must remain synthetic.
 Document and test those HTTP expectations locally. The consuming developer
 chooses a compatible backend; external project source or documentation is not a
 prerequisite. Disclose unexecuted deployed-backend verification separately.

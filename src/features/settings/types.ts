@@ -1,29 +1,33 @@
-import type { Language } from "../../shared/config/language.ts";
-import type { ThemePalettes } from "../../shared/contracts/appearance.ts";
+import type { FileContext, StoredFile } from "@/features/files";
+import type { ThemePalettes } from "@/shared/contracts";
+import type { LocaleCode } from "@/shared/i18n";
 
-type Logo = { id: string; url: string };
-
-export type ApplicationLanguage = {
-  calendar: "gregorian" | "jalali";
-  code: Language;
-  direction: "ltr" | "rtl";
-  name: string;
-  nativeName: string;
+export type ImageSettings = {
+  height: number;
+  size: number;
+  width: number;
 };
 
-export type ApplicationSettings = {
-  darkLogo?: Logo;
+export type Settings = {
+  darkLogo?: StoredFile;
   darkTheme: ThemePalettes["dark"];
-  language: ApplicationLanguage;
-  lightLogo?: Logo;
+  imageSettings: Record<FileContext, ImageSettings>;
+  language: {
+    calendar: "gregory" | "jalali";
+    code: LocaleCode;
+    direction: "ltr" | "rtl";
+    name: string;
+    nativeName: string;
+  };
+  lightLogo?: StoredFile;
   lightTheme: ThemePalettes["light"];
 };
 
-export type ApplicationSettingsRequest = Pick<
-  ApplicationSettings,
-  "darkTheme" | "lightTheme"
+export type SettingsRequest = Pick<
+  Settings,
+  "darkTheme" | "imageSettings" | "lightTheme"
 > & {
-  darkLogoId?: Logo["id"];
-  languageCode?: ApplicationLanguage["code"];
-  lightLogoId?: Logo["id"];
+  darkLogoId?: NonNullable<Settings["darkLogo"]>["id"];
+  languageCode?: Settings["language"]["code"];
+  lightLogoId?: NonNullable<Settings["lightLogo"]>["id"];
 };

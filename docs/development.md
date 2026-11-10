@@ -8,15 +8,17 @@ Keep one root npm project with source in `src/`. Developers choose the backend t
 
 Describe the user-visible result and the failure it must handle. For example, a list refresh failure should keep accepted rows and offer retry. Read the closest implementation and tests before selecting an abstraction.
 
-Use [source navigation](source-navigation.md) to locate startup/routes, feature API/types, shared requests, reusable controls, appearance and catalogs. Feature-specific forms and helpers stay beside their feature. Cross-feature vocabulary such as the profile-name limit belongs in `src/shared/contracts`.
+Use [source navigation](source-navigation.md) to locate startup/routes, feature API/types, shared requests, reusable controls, appearance and catalogs. Feature-specific forms and helpers stay beside their feature. Cross-feature appearance vocabulary belongs in `src/shared/contracts`.
 
 ## 2. Change the owning contract and interaction
 
 Keep endpoint paths and HTTP request/response types in the feature's `api.ts` and `types.ts`. Normalize nullable data at that boundary. Keep transport/session behavior in `src/shared/api`; document incompatible HTTP or permission changes and the requirements for a compatible backend.
 
-Before importing from another feature or app module, check the [dependency boundaries](architecture.md#feature-dependency-boundaries) and the exact approved edges in [the checker](../scripts/check-boundaries.mjs). Use the declared authentication or roles API, hook or type leaf and the approved app hooks, route configuration or access policy. Keep another feature's UI/private helpers and app composition internals out of the dependency. A new dependency needs a reviewed ownership requirement and positive/negative boundary regressions. Keep a feature-specific abstraction local until a real shared contract is needed.
+Before importing from another feature or app module, check the [dependency boundaries](architecture.md#feature-dependency-boundaries) and [the checker](../scripts/check-boundaries.mjs). Use public module indices for reviewed API, hook or type exports and app hooks, route configuration, access policy or public layout context. Keep another feature's UI/private helpers and app composition internals out of the dependency. A new dependency needs a reviewed ownership requirement and positive/negative boundary regressions. Keep a feature-specific abstraction local until a real shared contract is needed.
 
-Reuse the existing request hooks for loading, retained-data failure and retry. Keep loaders stable with `useCallback`, include their filters/identifiers and forward the supplied cancellation signal to the feature API. Preserve session generations and stale-result guards described in [authentication and requests](authentication.md).
+Keep loading, retained-data failure and retry in the owning component with direct async/await, `useAbortController` and `useLock`. Keep loaders stable with `useCallback`, include their filters/identifiers and forward the supplied cancellation signal to the feature API. Preserve session cancellation and stale-result guards described in [authentication and requests](authentication.md).
+
+Use both helpers for form submissions too: forward the submission signal to the write API, cancel abandoned forms and check the signal after awaited work before applying results. Keep cancelled completions from changing a newer submission's state or lock. Read and save may share a controller only when the form prevents them from running concurrently.
 
 For interface changes, read [DESIGN](../DESIGN.md), the closest `*.stories.tsx`, and the canonical [React](../.agents/rules/react.md) and [styling](../.agents/rules/styling.md) rules. Keep React, Ant Design/antd-style, React Router and Axios. Reuse component props and semantic tokens before adding custom styling.
 
@@ -26,11 +28,15 @@ Cover the relevant populated, empty, loading, initial failure, retained-data ref
 
 When adding a route, define its path, layout and access metadata in [route configuration](../src/app/config/routes.ts), then connect its page importer in [Routes](../src/app/Routes.tsx). Add a navigation entry only when the product needs one. Keep access decisions in the existing [pure policy](../src/app/lib/access.ts). Client visibility and guards do not enforce server authorization.
 
+Keep action drawers mounted and self-guarded: their own hash and operation
+permission determine opening, detail reads and submission. Use the existing
+effect and `useGoBack` for denied actions or missing IDs; ignore sibling hashes.
+
 Reuse translated labels where their meaning matches. Add a new key to every registered catalog when needed, preserving interpolation names and genuine translations. Follow [localization](localization.md); language, direction and calendar remain API-owned, while theme and compact mode are browser preferences.
 
 ## 4. Verify the behavior
 
-Add or update tests beside the changed owner. Cross-module cases belong in `src/test/integration`; shared render helpers live in `src/test/render.tsx`. Use complete feature API/client mocks or the declared synthetic HTTP fixtures, and make unexpected requests fail. [Testing](testing.md) explains which evidence each suite supplies.
+Add or update tests and stories beside the changed owner. Cross-module cases belong beside their composition owner or in `e2e/`; shared component setup lives in `src/test/browser.ts`. Use complete feature API/client mocks or the declared synthetic HTTP fixtures, and make unexpected requests fail. [Testing](testing.md) explains which evidence each suite supplies.
 
 Run the smallest relevant cases first. For a user-list change, for example:
 

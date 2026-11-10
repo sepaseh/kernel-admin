@@ -1,7 +1,9 @@
-import { storageKeys } from "../config/constants.ts";
-import { defaultTheme } from "../config/theme.ts";
-import type { Theme } from "../contracts/appearance.ts";
+import { storageKeys } from "@/shared/config";
+
+import type { Theme } from "@/shared/contracts";
 import { getState, setState } from "./state";
+
+const defaultTheme: Theme = "dark";
 
 export const getTheme = (): Theme => {
   const stored = getState<unknown>(storageKeys.theme, defaultTheme);

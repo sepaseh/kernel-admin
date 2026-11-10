@@ -8,28 +8,27 @@
       },
       "taskIds": ["admin-request-reliability"],
       "evidence": [
-        "src/shared/hooks/useReadRequest.ts",
-        "src/shared/hooks/useReadResource.ts",
+        "src/shared/hooks/useAbortController.ts",
         "src/shared/api/client.ts",
         "src/shared/api/token.ts",
         "src/features/auth/api.ts",
         "src/layouts/default/Default.tsx",
-        "src/shared/hooks/useReadResource.test.ts",
+        "src/shared/hooks/useAbortController.test.tsx",
         "src/shared/api/client.test.ts",
         "src/layouts/default/Default.test.tsx",
-        "src/features/auth/logout.test.ts"
+        "src/features/auth/api.test.ts"
       ],
       "mustExplain": [
-        "Read sequence/key/mount checks prevent stale commits even when an adapter ignores AbortSignal; cancellation settles busy state and StrictMode cleanup invalidates obsolete work.",
+        "Current callers use useAbortController and explicit aborted-result checks; inspect cancellation cleanup and replacement reads rather than assuming the removed sequence/key hook exists.",
         "A shared refresh must survive one reader cancelling, while original request/session generation remains bound across awaits, retry dispatch and terminal 401 handling.",
         "Old operations must not replay a mutation as a newly logged-in account or clear that account after a delayed refresh failure/retried 401; identify source guards or report an actual missing branch. Public settings reads may survive a session change, but a public-read exemption must not exempt protected writes to the same path.",
         "Logout completion and duplicate requests need generation/mounted-owner protection beyond the shared client's generation checks; examine the helper finally and layout continuation separately.",
-        "Default request and refresh bounds are 15 seconds per attempt and uploads have an explicit 60-second bound; transient timeout/network errors stay retryable without automatically clearing authentication, and cancellation is not a user error.",
+        "Ordinary requests/uploads have no general timeout. Refresh has a 15-second bound and one network/5xx retry; terminal refresh failure expires client state. Cancellation is not a user error.",
         "Transient read retry is manual and has no attempt budget; the protected-401 one-replay rule after a successful same-generation refresh is independent."
       ],
       "mustNot": [
         "Claim AbortSignal alone protects adapters that ignore cancellation or un-signaled mutations.",
-        "Silently replay an old mutation under new credentials or treat a transient refresh timeout as definitive logout.",
+        "Silently replay an old mutation under new credentials or assume every old timeout/retry guarantee remains implemented.",
         "Claim overlapping logout is safe without inspecting both helper finalization and layout state.",
         "Read actual credentials/state, mutate runtime source or execute a live auth service to answer the case."
       ],
@@ -105,8 +104,8 @@
         "Each locale has one code-named flat Record<string, string> catalog; messages use direct root keys without nested objects, common prefixes or duplicate aliases.",
         "All ten languages require genuine nonempty keys and matching i18next placeholders.",
         "All catalog source and integrity evidence are local; translation work requires no external project source or documentation.",
-        "Public API settings alone select the active language; fixed Persian bootstrap is not a remembered visitor preference, and only the system super-admin can change the global setting.",
-        "Core retains validated server direction/calendar/names alongside the normalized supported code. Ant Design/HTML and Day.js/Calendar consume that metadata; local maps only select vendor adapters. Invalid metadata is a settings error."
+        "Public API settings alone select the active language; fixed English bootstrap is not a remembered visitor preference, and only the system super-admin can change the global setting.",
+        "Core retains typed server direction/calendar/names without runtime code normalization or settings validation. Ant Design/HTML and Day.js/Calendar consume that metadata; local maps only select vendor adapters. Identify the pending validation gap rather than claiming it is implemented."
       ],
       "mustNot": [
         "Reintroduce a shared translation package or external project source dependency.",
@@ -124,13 +123,12 @@
       "evidence": [
         "DESIGN.md",
         ".agents/skills/design-ui/SKILL.md",
-        "src/shared/config/theme.ts",
+        "src/app/providers/antd/Antd.tsx",
         "src/features/users/Users.tsx",
         "src/features/users/components/user-form/UserForm.tsx",
         "src/shared/ui/form-drawer/FormDrawer.tsx",
-        "src/shared/ui/request-feedback/RequestFeedback.tsx",
+        "src/shared/ui/request-error/RequestError.tsx",
         "src/app/providers/core/Core.tsx",
-        "src/app/providers/antd/Antd.tsx",
         "src/features/settings/Settings.tsx",
         ".storybook/preview.tsx",
         "docs/testing.md",
@@ -144,7 +142,7 @@
         "Repository implementation keeps React/Vite, Ant Design/antd-style, React Router, Axios and direct Lucide icons. Read actual theme/components/assets rather than adopting a generic tool starter or duplicating a token registry.",
         "Reuse the Users and UserForm/FormDrawer recipes, token-based responsive shell, licensed self-hosted font and existing/API logos; retain feature ownership and request/session guards.",
         "Cover relevant populated/empty/loading/error/retry/stale/submitting/validation and permission-limited states, keyboard/focus, narrow/desktop layouts, themes and long translated copy.",
-        "Ten complete flat catalogs provide messages; validated API metadata owns language/direction/calendar. Preview direction is a fixture, only super-admin changes global language, and ordinary settings editors retain appearance rights.",
+        "Ten complete flat catalogs provide messages; API metadata owns language/direction/calendar. Preview direction is a fixture, only super-admin changes global language, and ordinary settings editors retain appearance rights.",
         "Concept/assets/Figma, runnable repository code and hosted prototypes are distinct deliverables. Choose only available tools and preserve task authorization; native design-system setup/font upload and Sites access/compatibility are separate host work.",
         "Choose relevant checks from the existing manifest; recorded visual approval is not a fresh review, and link/inventory checks or a correct answer do not prove automatic host loading. Report actual loaded-file evidence and manual reads separately.",
         "The application-verification phase admits production build, application browser fixtures and visual/performance checks. Static navigation does not establish host loading, provider compatibility, visual human approval or deployment."

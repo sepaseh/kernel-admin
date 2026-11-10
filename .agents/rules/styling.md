@@ -5,14 +5,14 @@ Use Ant Design and antd-style with the source recipes in
 
 ## Theme architecture
 
-The current theme builder is `src/shared/config/theme.ts`. Reuse Ant Design
-semantic tokens, algorithms and contrast correction; appearance types own Theme
-and all seven palette fields. The `AntdProvider` must follow validated API
+The current theme owner is `src/app/providers/antd/Antd.tsx`. Reuse Ant Design
+semantic tokens and algorithms; appearance types own Theme
+and all seven palette fields. The `AntdProvider` must follow API
 language and direction metadata. Only theme and compact mode are browser preferences.
 
 Prefer Ant Design component props before custom styles. Keep inline `style` or
 Ant Design `styles` for local layout, and shared global styling in
-`src/assets/styles/index.css`. Read [the publication policy](../../.github/bootstrap-policy.json)
+`src/index.css`, `src/GlobalStyle.tsx` and `src/assets/styles`. Read [the publication policy](../../.github/bootstrap-policy.json)
 for admitted entry/build sources and `applicationReady`, and [the manifest](../validation.json)
 for required checks. While readiness is false, a component change cannot establish
 application activation. Introducing an entry point requires its genuine application checks.

@@ -1,4 +1,4 @@
-import { readdir, readFile, realpath } from "node:fs/promises";
+import { lstat, readdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,7 +7,7 @@ import ts from "typescript";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const productionPaths = [
-  "src/main.tsx",
+  "src/GlobalStyle.tsx",
   "src/app/App.tsx",
   "src/app/Routes.tsx",
   "src/app/config/index.ts",
@@ -17,18 +17,24 @@ const productionPaths = [
   "src/app/hooks/index.ts",
   "src/app/hooks/useAntd.ts",
   "src/app/hooks/useCore.ts",
+  "src/app/index.ts",
   "src/app/lib/access.ts",
   "src/app/lib/index.ts",
-  "src/app/not-found/NotFound.tsx",
   "src/app/providers/antd/Antd.tsx",
+  "src/app/providers/antd/index.ts",
   "src/app/providers/core/Core.tsx",
-  "src/app/providers/core/SettingsFeedback.tsx",
+  "src/app/providers/core/index.ts",
   "src/app/providers/index.ts",
   "src/features/account/Account.tsx",
   "src/features/account/api.ts",
+  "src/features/account/components/password-form/PasswordForm.tsx",
+  "src/features/account/components/password-form/index.ts",
+  "src/features/account/components/profile-form/ProfileForm.tsx",
+  "src/features/account/components/profile-form/index.ts",
   "src/features/account/index.ts",
   "src/features/account/types.ts",
   "src/features/auth/api.ts",
+  "src/features/auth/index.ts",
   "src/features/auth/types.ts",
   "src/features/auth/useOtpRequest.ts",
   "src/features/calendar/Calendar.tsx",
@@ -37,58 +43,64 @@ const productionPaths = [
   "src/features/calendar/styles.ts",
   "src/features/dashboard/Dashboard.tsx",
   "src/features/dashboard/index.ts",
+  "src/features/files/Files.tsx",
+  "src/features/files/api.ts",
+  "src/features/files/index.ts",
+  "src/features/files/types.ts",
   "src/features/forgot-pass/ForgotPass.tsx",
   "src/features/forgot-pass/index.ts",
   "src/features/login/Login.tsx",
   "src/features/login/index.ts",
-  "src/features/login/styles.ts",
+  "src/features/not-found/NotFound.tsx",
+  "src/features/not-found/index.ts",
   "src/features/register/Register.tsx",
   "src/features/register/index.ts",
   "src/features/roles/Roles.tsx",
   "src/features/roles/api.ts",
   "src/features/roles/components/role-form/RoleForm.tsx",
-  "src/features/roles/constants.ts",
   "src/features/roles/index.ts",
   "src/features/roles/types.ts",
   "src/features/settings/Settings.tsx",
   "src/features/settings/api.ts",
-  "src/features/settings/components/logo-upload/LogoUpload.tsx",
-  "src/features/settings/components/logo-upload/api.ts",
-  "src/features/settings/components/logo-upload/index.ts",
   "src/features/settings/index.ts",
   "src/features/settings/types.ts",
   "src/features/users/Users.tsx",
   "src/features/users/api.ts",
   "src/features/users/components/user-form/UserForm.tsx",
+  "src/features/users/components/user-form/index.ts",
   "src/features/users/components/user-role-form/UserRoleForm.tsx",
+  "src/features/users/components/user-role-form/index.ts",
   "src/features/users/constants.ts",
-  "src/features/users/hooks/useDebouncedFilters.ts",
-  "src/features/users/hooks/useFilterParams.ts",
   "src/features/users/index.ts",
-  "src/features/users/tools/password.ts",
   "src/features/users/types.ts",
+  "src/index.ts",
   "src/layouts/auth/Auth.tsx",
   "src/layouts/auth/index.ts",
   "src/layouts/default/Default.tsx",
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.tsx",
+  "src/layouts/default/components/breadcrumbs/index.ts",
+  "src/layouts/default/components/navigation/Navigation.tsx",
+  "src/layouts/default/components/navigation/index.ts",
   "src/layouts/default/index.ts",
+  "src/layouts/default/types.ts",
+  "src/main.tsx",
   "src/shared/api/client.ts",
   "src/shared/api/config.ts",
   "src/shared/api/index.ts",
   "src/shared/api/path.ts",
-  "src/shared/api/token-response.ts",
+  "src/shared/api/refresh.ts",
   "src/shared/api/token.ts",
   "src/shared/api/types.ts",
   "src/shared/config/constants.ts",
   "src/shared/config/index.ts",
-  "src/shared/config/language.ts",
-  "src/shared/config/theme.ts",
   "src/shared/contracts/appearance.ts",
   "src/shared/contracts/index.ts",
   "src/shared/hooks/index.ts",
+  "src/shared/hooks/useAbortController.ts",
+  "src/shared/hooks/useDebouncedFilters.ts",
+  "src/shared/hooks/useFilterParams.ts",
   "src/shared/hooks/useGoBack.ts",
-  "src/shared/hooks/useMutationRequest.ts",
-  "src/shared/hooks/useReadRequest.ts",
-  "src/shared/hooks/useReadResource.ts",
+  "src/shared/hooks/useLock.ts",
   "src/shared/i18n/catalogs.ts",
   "src/shared/i18n/date.ts",
   "src/shared/i18n/dayjs/fa.ts",
@@ -104,13 +116,15 @@ const productionPaths = [
   "src/shared/i18n/locales/pt.ts",
   "src/shared/i18n/locales/ru.ts",
   "src/shared/i18n/locales/tr.ts",
-  "src/shared/lib/color-contrast.ts",
-  "src/shared/lib/dialog-focus.ts",
-  "src/shared/lib/error.ts",
+  "src/shared/lib/allowed-value.ts",
+  "src/shared/lib/boolean.ts",
   "src/shared/lib/index.ts",
   "src/shared/lib/observability.ts",
+  "src/shared/lib/pagination.ts",
+  "src/shared/lib/password.ts",
   "src/shared/lib/transform.ts",
   "src/shared/storage/compact.ts",
+  "src/shared/storage/hooks/index.ts",
   "src/shared/storage/hooks/useLocalStorageWatcher.ts",
   "src/shared/storage/index.ts",
   "src/shared/storage/state.ts",
@@ -118,26 +132,29 @@ const productionPaths = [
   "src/shared/ui/digits-input/DigitsInput.tsx",
   "src/shared/ui/digits-input/index.ts",
   "src/shared/ui/error-boundary/ErrorBoundary.tsx",
+  "src/shared/ui/error-boundary/ErrorFallback.tsx",
   "src/shared/ui/error-boundary/index.ts",
   "src/shared/ui/form-drawer/FormDrawer.tsx",
   "src/shared/ui/form-drawer/index.ts",
+  "src/shared/ui/image-upload/ImageUpload.tsx",
+  "src/shared/ui/image-upload/image.ts",
+  "src/shared/ui/image-upload/index.ts",
   "src/shared/ui/otp-input/OtpInput.tsx",
   "src/shared/ui/otp-input/index.ts",
   "src/shared/ui/password-fields/PasswordFields.tsx",
   "src/shared/ui/password-fields/index.ts",
-  "src/shared/ui/request-feedback/RequestFeedback.tsx",
-  "src/shared/ui/request-feedback/index.ts",
+  "src/shared/ui/request-error/RequestError.tsx",
+  "src/shared/ui/request-error/index.ts",
   "src/shared/ui/route-loading/RouteLoading.tsx",
   "src/shared/ui/route-loading/index.ts",
 ];
 const runtimeImports = {
-  "src/main.tsx": ["react", "react-dom/client"],
+  "src/GlobalStyle.tsx": ["antd-style"],
   "src/app/App.tsx": ["react", "react-i18next"],
   "src/app/Routes.tsx": ["react", "react-router", "react-router/dom"],
   "src/app/contexts/Core.ts": ["react"],
   "src/app/hooks/useAntd.ts": ["antd", "react"],
   "src/app/hooks/useCore.ts": ["react"],
-  "src/app/not-found/NotFound.tsx": ["antd", "react-i18next", "react-router"],
   "src/app/providers/antd/Antd.tsx": [
     "antd",
     "antd/locale/ar_EG",
@@ -152,8 +169,53 @@ const runtimeImports = {
     "antd/locale/tr_TR",
     "react",
   ],
-  "src/app/providers/core/Core.tsx": ["dayjs", "react"],
+  "src/app/providers/core/Core.tsx": [
+    "dayjs",
+    "react",
+    "antd",
+    "react-i18next",
+  ],
+  "src/features/account/Account.tsx": [
+    "antd",
+    "antd-style",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/account/components/password-form/PasswordForm.tsx": [
+    "antd",
+    "axios",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/account/components/profile-form/ProfileForm.tsx": [
+    "antd",
+    "axios",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/auth/api.ts": ["axios"],
   "src/features/auth/useOtpRequest.ts": ["axios", "react"],
+  "src/features/calendar/Calendar.tsx": [
+    "antd",
+    "dayjs",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "axios",
+    "react-router",
+  ],
+  "src/features/calendar/styles.ts": ["antd-style"],
+  "src/features/dashboard/Dashboard.tsx": ["antd-style"],
+  "src/features/files/Files.tsx": [
+    "antd",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
   "src/features/forgot-pass/ForgotPass.tsx": [
     "antd",
     "axios",
@@ -169,11 +231,61 @@ const runtimeImports = {
     "react-i18next",
     "react-router",
   ],
-  "src/features/login/styles.ts": ["antd-style"],
+  "src/features/not-found/NotFound.tsx": [
+    "antd",
+    "react-i18next",
+    "react-router",
+  ],
   "src/features/register/Register.tsx": [
     "antd",
     "axios",
     "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/roles/Roles.tsx": [
+    "antd",
+    "antd-style",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+    "axios",
+  ],
+  "src/features/roles/components/role-form/RoleForm.tsx": [
+    "antd",
+    "axios",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/settings/Settings.tsx": [
+    "antd",
+    "axios",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/users/Users.tsx": [
+    "antd",
+    "antd-style",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+    "axios",
+  ],
+  "src/features/users/components/user-form/UserForm.tsx": [
+    "antd",
+    "axios",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/users/components/user-role-form/UserRoleForm.tsx": [
+    "antd",
+    "axios",
     "react",
     "react-i18next",
     "react-router",
@@ -186,9 +298,42 @@ const runtimeImports = {
     "react",
     "react-i18next",
     "react-router",
+    "axios",
   ],
-  "src/shared/config/theme.ts": ["antd"],
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.tsx": [
+    "antd",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/layouts/default/components/navigation/Navigation.tsx": [
+    "antd",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/main.tsx": ["react", "react-dom/client"],
+  "src/shared/api/client.ts": ["axios"],
+  "src/shared/api/refresh.ts": ["axios"],
+  "src/shared/hooks/useAbortController.ts": ["react"],
+  "src/shared/hooks/useDebouncedFilters.ts": ["react"],
+  "src/shared/hooks/useFilterParams.ts": ["react", "react-router"],
   "src/shared/hooks/useGoBack.ts": ["react", "react-router"],
+  "src/shared/hooks/useLock.ts": ["react"],
+  "src/shared/i18n/date.ts": [
+    "dayjs",
+    "jalaliday",
+    "dayjs/plugin/calendar",
+    "dayjs/locale/ar",
+    "dayjs/locale/de",
+    "dayjs/locale/en-gb",
+    "dayjs/locale/es",
+    "dayjs/locale/fr",
+    "dayjs/locale/it",
+    "dayjs/locale/pt",
+    "dayjs/locale/ru",
+    "dayjs/locale/tr",
+    "dayjs/locale/en",
+  ],
+  "src/shared/i18n/index.ts": ["i18next", "react-i18next"],
   "src/shared/lib/observability.ts": ["web-vitals"],
   "src/shared/storage/hooks/useLocalStorageWatcher.ts": ["react"],
   "src/shared/ui/digits-input/DigitsInput.tsx": ["antd", "react"],
@@ -197,98 +342,20 @@ const runtimeImports = {
     "react",
     "react-i18next",
   ],
+  "src/shared/ui/error-boundary/ErrorFallback.tsx": ["antd", "react-i18next"],
   "src/shared/ui/form-drawer/FormDrawer.tsx": ["antd", "react-i18next"],
+  "src/shared/ui/image-upload/ImageUpload.tsx": [
+    "antd",
+    "antd-img-crop",
+    "antd-style",
+    "lucide-react",
+    "react",
+    "react-i18next",
+  ],
   "src/shared/ui/otp-input/OtpInput.tsx": ["antd", "react", "react-i18next"],
   "src/shared/ui/password-fields/PasswordFields.tsx": ["antd", "react-i18next"],
-  "src/shared/ui/request-feedback/RequestFeedback.tsx": [
-    "antd",
-    "react-i18next",
-  ],
+  "src/shared/ui/request-error/RequestError.tsx": ["antd", "react-i18next"],
   "src/shared/ui/route-loading/RouteLoading.tsx": ["antd", "react-i18next"],
-  "src/features/auth/api.ts": ["axios"],
-  "src/shared/api/client.ts": ["axios"],
-  "src/shared/hooks/useReadRequest.ts": ["axios", "react"],
-  "src/shared/hooks/useReadResource.ts": ["react"],
-  "src/shared/i18n/index.ts": ["i18next", "react-i18next"],
-  "src/shared/i18n/date.ts": [
-    "dayjs",
-    "jalaliday",
-    "dayjs/plugin/calendar",
-    ...["ar", "de", "en-gb", "es", "fr", "it", "pt", "ru", "tr"].map(
-      (code) => "dayjs/locale/" + code,
-    ),
-  ],
-  "src/features/account/Account.tsx": [
-    "antd",
-    "antd-style",
-    "react",
-    "react-i18next",
-    "react-router",
-  ],
-  "src/features/account/index.ts": [],
-  "src/features/calendar/Calendar.tsx": [
-    "antd",
-    "dayjs",
-    "lucide-react",
-    "react",
-    "react-i18next",
-  ],
-  "src/features/calendar/index.ts": [],
-  "src/features/calendar/styles.ts": ["antd-style"],
-  "src/features/dashboard/Dashboard.tsx": ["antd-style"],
-  "src/features/dashboard/index.ts": [],
-  "src/features/roles/Roles.tsx": [
-    "antd",
-    "antd-style",
-    "lucide-react",
-    "react",
-    "react-i18next",
-    "react-router",
-  ],
-  "src/features/roles/components/role-form/RoleForm.tsx": [
-    "antd",
-    "react",
-    "react-i18next",
-    "react-router",
-  ],
-  "src/features/roles/constants.ts": [],
-  "src/features/roles/index.ts": [],
-  "src/features/settings/Settings.tsx": ["antd", "react", "react-i18next"],
-  "src/features/settings/components/logo-upload/LogoUpload.tsx": [
-    "antd",
-    "antd-style",
-    "lucide-react",
-    "react",
-    "react-i18next",
-  ],
-  "src/features/settings/components/logo-upload/index.ts": [],
-  "src/features/settings/index.ts": [],
-  "src/features/users/Users.tsx": [
-    "antd",
-    "antd-style",
-    "lucide-react",
-    "react",
-    "react-i18next",
-    "react-router",
-  ],
-  "src/features/users/components/user-form/UserForm.tsx": [
-    "antd",
-    "react",
-    "react-i18next",
-    "react-router",
-  ],
-  "src/features/users/components/user-role-form/UserRoleForm.tsx": [
-    "antd",
-    "react",
-    "react-i18next",
-    "react-router",
-  ],
-  "src/features/users/constants.ts": [],
-  "src/features/users/hooks/useDebouncedFilters.ts": ["react"],
-  "src/features/users/hooks/useFilterParams.ts": ["react", "react-router"],
-  "src/features/users/index.ts": [],
-  "src/features/users/tools/password.ts": [],
-  "src/shared/hooks/useMutationRequest.ts": ["axios", "react"],
 };
 const typeImports = {
   "src/app/App.tsx": ["react"],
@@ -297,88 +364,99 @@ const typeImports = {
   "src/app/providers/antd/Antd.tsx": ["antd", "react"],
   "src/app/providers/core/Core.tsx": ["react"],
   "src/features/auth/useOtpRequest.ts": ["antd"],
+  "src/features/calendar/Calendar.tsx": ["antd", "react"],
   "src/features/forgot-pass/ForgotPass.tsx": ["antd"],
   "src/features/login/Login.tsx": ["antd"],
   "src/features/register/Register.tsx": ["antd"],
+  "src/features/roles/Roles.tsx": ["antd"],
+  "src/features/settings/Settings.tsx": ["antd"],
+  "src/features/users/Users.tsx": ["antd"],
   "src/layouts/default/Default.tsx": ["antd"],
-  "src/shared/config/theme.ts": ["antd"],
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.tsx": ["i18next"],
+  "src/layouts/default/components/navigation/Navigation.tsx": ["i18next"],
+  "src/shared/api/client.ts": ["axios"],
+  "src/shared/api/types.ts": ["axios"],
   "src/shared/hooks/useGoBack.ts": ["react-router"],
-  "src/shared/lib/dialog-focus.ts": ["react"],
+  "src/shared/i18n/date.ts": ["dayjs"],
   "src/shared/lib/observability.ts": ["web-vitals"],
   "src/shared/ui/digits-input/DigitsInput.tsx": ["antd"],
   "src/shared/ui/form-drawer/FormDrawer.tsx": ["react"],
   "src/shared/ui/otp-input/OtpInput.tsx": ["react"],
-  "src/shared/api/client.ts": ["axios"],
-  "src/features/account/Account.tsx": [],
-  "src/features/account/index.ts": [],
-  "src/features/calendar/Calendar.tsx": ["antd", "react"],
-  "src/features/calendar/index.ts": [],
-  "src/features/calendar/styles.ts": [],
-  "src/features/dashboard/Dashboard.tsx": [],
-  "src/features/dashboard/index.ts": [],
-  "src/features/roles/Roles.tsx": ["antd"],
-  "src/features/roles/components/role-form/RoleForm.tsx": [],
-  "src/features/roles/constants.ts": [],
-  "src/features/roles/index.ts": [],
-  "src/features/settings/Settings.tsx": ["antd"],
-  "src/features/settings/components/logo-upload/LogoUpload.tsx": ["antd"],
-  "src/features/settings/components/logo-upload/index.ts": [],
-  "src/features/settings/index.ts": [],
-  "src/features/users/Users.tsx": ["antd"],
-  "src/features/users/components/user-form/UserForm.tsx": [],
-  "src/features/users/components/user-role-form/UserRoleForm.tsx": [],
-  "src/features/users/constants.ts": [],
-  "src/features/users/hooks/useDebouncedFilters.ts": [],
-  "src/features/users/hooks/useFilterParams.ts": [],
-  "src/features/users/index.ts": [],
-  "src/features/users/tools/password.ts": [],
-  "src/shared/hooks/useMutationRequest.ts": [],
 };
 const wireImports = {
+  "src/features/account/types.ts": [
+    "src/features/roles/index.ts",
+    "src/features/users/index.ts",
+  ],
   "src/features/auth/types.ts": [],
-  "src/features/account/types.ts": ["src/features/roles/types.ts"],
+  "src/features/files/types.ts": [],
   "src/features/roles/types.ts": [],
-  "src/features/users/types.ts": ["src/features/roles/types.ts"],
   "src/features/settings/types.ts": [
-    "src/shared/config/language.ts",
-    "src/shared/contracts/appearance.ts",
+    "src/features/files/index.ts",
+    "src/shared/contracts/index.ts",
+    "src/shared/i18n/index.ts",
+  ],
+  "src/features/users/types.ts": [
+    "src/features/roles/index.ts",
+    "src/shared/api/index.ts",
+    "src/features/users/constants.ts",
   ],
 };
 const crossFeatureImports = {
   runtime: {
-    "src/features/account/Account.tsx": ["src/features/auth/api.ts"],
-    "src/features/forgot-pass/ForgotPass.tsx": [
-      "src/features/auth/api.ts",
-      "src/features/auth/useOtpRequest.ts",
-    ],
-    "src/features/login/Login.tsx": ["src/features/auth/api.ts"],
-    "src/features/register/Register.tsx": [
-      "src/features/auth/api.ts",
-      "src/features/auth/useOtpRequest.ts",
-    ],
-    "src/features/users/Users.tsx": ["src/features/roles/api.ts"],
+    "src/features/account/components/password-form/PasswordForm.tsx": {
+      "src/features/auth/index.ts": ["changePassword"],
+    },
+    "src/features/forgot-pass/ForgotPass.tsx": {
+      "src/features/auth/index.ts": ["forgotPassword", "useOtpRequest"],
+    },
+    "src/features/login/Login.tsx": {
+      "src/features/auth/index.ts": ["login"],
+    },
+    "src/features/register/Register.tsx": {
+      "src/features/auth/index.ts": ["register", "useOtpRequest"],
+    },
+    "src/features/settings/Settings.tsx": {
+      "src/features/files/index.ts": ["uploadFile"],
+    },
+    "src/features/users/Users.tsx": {
+      "src/features/roles/index.ts": ["fetchRoles"],
+    },
   },
   type: {
-    "src/features/account/Account.tsx": ["src/features/auth/types.ts"],
-    "src/features/account/api.ts": ["src/features/auth/types.ts"],
-    "src/features/account/types.ts": ["src/features/roles/types.ts"],
-    "src/features/forgot-pass/ForgotPass.tsx": ["src/features/auth/types.ts"],
-    "src/features/login/Login.tsx": ["src/features/auth/types.ts"],
-    "src/features/register/Register.tsx": ["src/features/auth/types.ts"],
-    "src/features/users/components/user-role-form/UserRoleForm.tsx": [
-      "src/features/roles/types.ts",
-    ],
-    "src/features/users/types.ts": ["src/features/roles/types.ts"],
-    "src/features/users/Users.tsx": ["src/features/roles/types.ts"],
+    "src/features/account/components/password-form/PasswordForm.tsx": {
+      "src/features/auth/index.ts": ["ChangePasswordParams"],
+    },
+    "src/features/account/types.ts": {
+      "src/features/roles/index.ts": ["PermissionKey"],
+      "src/features/users/index.ts": ["User"],
+    },
+    "src/features/forgot-pass/ForgotPass.tsx": {
+      "src/features/auth/index.ts": ["ForgotPasswordParams"],
+    },
+    "src/features/login/Login.tsx": {
+      "src/features/auth/index.ts": ["LoginParams"],
+    },
+    "src/features/register/Register.tsx": {
+      "src/features/auth/index.ts": ["RegisterParams"],
+    },
+    "src/features/settings/types.ts": {
+      "src/features/files/index.ts": ["FileContext", "StoredFile"],
+    },
+    "src/features/users/Users.tsx": {
+      "src/features/roles/index.ts": ["Role"],
+    },
+    "src/features/users/components/user-role-form/UserRoleForm.tsx": {
+      "src/features/roles/index.ts": ["Role"],
+    },
+    "src/features/users/types.ts": {
+      "src/features/roles/index.ts": ["Role"],
+    },
   },
 };
 const featureAppImports = new Set([
   "src/app/config/index.ts",
-  "src/app/config/routes.ts",
   "src/app/hooks/index.ts",
-  "src/app/hooks/useAntd.ts",
-  "src/app/hooks/useCore.ts",
-  "src/app/lib/access.ts",
   "src/app/lib/index.ts",
 ]);
 const runtimeDependencies = new Set([
@@ -394,15 +472,17 @@ const runtimeDependencies = new Set([
   "jalaliday",
   "react",
   "react-i18next",
+  "antd-img-crop",
 ]);
 const runtimePaths = new Set([
-  "src/shared/config/language.ts",
   "src/shared/i18n/index.ts",
   "src/shared/i18n/date.ts",
-  "src/shared/lib/error.ts",
 ]);
 const publishedModules = (root) =>
   new Set(productionPaths.map((file) => path.join(root, file)));
+const stylesheetImports = {
+  "src/main.tsx": { "./index.css": "src/index.css" },
+};
 const isErasedTypeReference = (node) => {
   if (ts.isImportTypeNode(node)) return true;
   if (ts.isImportDeclaration(node))
@@ -419,14 +499,43 @@ export const inspectImports = (content, filename = "source.ts") => {
     true,
   );
   const imports = [];
-  const add = (node, value) =>
+  const add = (node, value) => {
+    const typeOnly = isErasedTypeReference(node);
+    const bindings = [];
+    if (ts.isImportDeclaration(node) && node.importClause?.name)
+      bindings.push({ name: "default", typeOnly });
+    const clause = ts.isImportDeclaration(node)
+      ? node.importClause?.namedBindings
+      : ts.isExportDeclaration(node)
+        ? node.exportClause
+        : undefined;
+    if (clause && (ts.isNamedImports(clause) || ts.isNamedExports(clause)))
+      for (const element of clause.elements)
+        bindings.push({
+          name: element.propertyName?.text ?? element.name.text,
+          typeOnly: typeOnly || element.isTypeOnly,
+        });
+    else if (
+      clause ||
+      ts.isExportDeclaration(node) ||
+      ts.isImportEqualsDeclaration(node)
+    )
+      bindings.push({ name: "*", typeOnly });
+    if (ts.isImportTypeNode(node)) {
+      let qualifier = node.qualifier;
+      while (qualifier && ts.isQualifiedName(qualifier))
+        qualifier = qualifier.left;
+      bindings.push({ name: qualifier?.text ?? "*", typeOnly: true });
+    }
     imports.push({
       specifier:
         value && ts.isStringLiteralLike(value) ? value.text : undefined,
       line:
         source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
-      typeOnly: isErasedTypeReference(node),
+      typeOnly,
+      bindings,
     });
+  };
   const visit = (node) => {
     if (
       (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
@@ -463,6 +572,7 @@ const localSourceViolation = ({
   resolved,
   typeOnly,
   relativeFile,
+  bindings = [],
 }) => {
   const target = path.relative(root, resolved).split(path.sep).join("/");
   if (
@@ -493,20 +603,30 @@ const localSourceViolation = ({
     return "Shared source may depend only on shared production modules";
   const sourceFeature = /^src\/features\/([^/]+)\//.exec(relativeFile)?.[1];
   const targetFeature = /^src\/features\/([^/]+)\//.exec(target)?.[1];
+  const layoutContext =
+    target === "src/layouts/default/index.ts" &&
+    typeOnly &&
+    bindings.length === 1 &&
+    bindings[0].typeOnly &&
+    bindings[0].name === "DefaultLayoutContext";
   if (
     sourceFeature &&
     !targetFeature &&
     !target.startsWith("src/shared/") &&
-    !featureAppImports.has(target)
+    !featureAppImports.has(target) &&
+    !layoutContext
   )
     return "Features may use only the approved app hooks, route configuration and access policy outside features and shared";
   if (
     sourceFeature &&
     targetFeature &&
     sourceFeature !== targetFeature &&
-    !crossFeatureImports[typeOnly ? "type" : "runtime"][relativeFile]?.includes(
-      target,
-    )
+    (!bindings.length ||
+      !bindings.every((binding) =>
+        crossFeatureImports[binding.typeOnly ? "type" : "runtime"][
+          relativeFile
+        ]?.[target]?.includes(binding.name),
+      ))
   )
     return "Features may import another feature only through their exact approved API, hook or erased type contracts";
   return undefined;
@@ -553,10 +673,18 @@ export const boundaryViolation = ({
   resolved,
   typeOnly,
   resolvedPackage,
+  bindings = [],
 }) => {
   if (!specifier)
     return "Use literal module paths so source boundaries can be checked";
   const relativeFile = path.relative(root, file).split(path.sep).join("/");
+  const stylesheet = stylesheetImports[relativeFile]?.[specifier];
+  if (stylesheet)
+    return !typeOnly &&
+      !bindings.length &&
+      resolved === path.join(root, stylesheet)
+      ? undefined
+      : "Stylesheets must use their exact contained application or vendor asset";
   if (!specifier.startsWith(".") && !specifier.startsWith("@/"))
     return packageImportViolation({
       root,
@@ -568,7 +696,14 @@ export const boundaryViolation = ({
     });
   if (!resolved || !publishedModules(root).has(path.resolve(resolved)))
     return "Pure source imports must resolve to published production modules in this repository";
-  return localSourceViolation({ root, file, resolved, typeOnly, relativeFile });
+  return localSourceViolation({
+    root,
+    file,
+    resolved,
+    typeOnly,
+    relativeFile,
+    bindings,
+  });
 };
 
 const sourceFiles = async (directory, testRoot) => {
@@ -725,7 +860,22 @@ export const checkBoundaries = async (requestedRoot = repository) => {
             edge.specifier &&
             ts.resolveModuleName(edge.specifier, file, options, ts.sys, cache)
               .resolvedModule;
-          const resolved = module && (await realpath(module.resolvedFileName));
+          const stylesheet =
+            stylesheetImports[
+              path.relative(root, file).split(path.sep).join("/")
+            ]?.[edge.specifier];
+          let resolved = module && (await realpath(module.resolvedFileName));
+          if (stylesheet) {
+            const filename = path.join(root, stylesheet);
+            const entry = await lstat(filename).catch((error) => {
+              if (error.code === "ENOENT") return undefined;
+              throw error;
+            });
+            resolved =
+              entry?.isFile() && !entry.isSymbolicLink()
+                ? await realpath(filename)
+                : undefined;
+          }
           const violation = boundaryViolation({
             root,
             file,
@@ -733,6 +883,7 @@ export const checkBoundaries = async (requestedRoot = repository) => {
             resolved,
             typeOnly: edge.typeOnly,
             resolvedPackage: module?.packageId?.name,
+            bindings: edge.bindings,
           });
           return violation
             ? path.relative(root, file) + ":" + edge.line + ": " + violation

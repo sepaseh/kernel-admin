@@ -16,7 +16,7 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ["**/*.{ts,mjs}"],
+    files: ["**/*.{ts,tsx,mjs}"],
     languageOptions: { globals: globals.node },
     plugins: { "simple-import-sort": simpleImportSort },
     rules: {

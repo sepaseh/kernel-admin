@@ -1,4 +1,4 @@
-import { storageKeys } from "../config/constants.ts";
+import { storageKeys } from "@/shared/config";
 import { getState, setState } from "./state";
 
 const defaultCompact = false;

@@ -1,5 +1,4 @@
-import "@/assets/styles/index.css";
-import "@/assets/styles/vazirmatn.css";
+import "@/index.css";
 import "@/shared/i18n";
 
 import type { Preview } from "@storybook/react-vite";
@@ -8,22 +7,24 @@ import { sb } from "storybook/test";
 import { PreviewFrame } from "./PreviewFrame";
 import { resetStoryMocks } from "./mocks";
 
-sb.mock(import("../src/features/account/api.ts"));
-sb.mock(import("../src/features/auth/api.ts"));
-sb.mock(import("../src/features/calendar/api.ts"));
-sb.mock(import("../src/features/roles/api.ts"));
-sb.mock(import("../src/features/settings/api.ts"));
-sb.mock(import("../src/features/settings/components/logo-upload/api.ts"));
-sb.mock(import("../src/features/users/api.ts"));
 sb.mock(import("../src/shared/api/client.ts"));
 
 const preview: Preview = {
-  beforeEach: () => resetStoryMocks(),
+  beforeEach: ({ parameters }) => resetStoryMocks(parameters.fixtureState),
   decorators: [
     (Story, context) => (
       <PreviewFrame
-        direction={context.globals.direction}
+        compact={
+          context.globals.compact === true || context.globals.compact === "true"
+        }
+        direction={
+          context.globals.direction === "ltr" ||
+          context.globals.direction === "rtl"
+            ? context.globals.direction
+            : undefined
+        }
         languageCode={context.globals.language}
+        ownsMain={context.parameters.ownsMain === true}
         themeMode={context.globals.theme}
       >
         <Story />
@@ -41,15 +42,35 @@ const preview: Preview = {
       },
     },
     direction: {
-      description: "Document direction",
-      toolbar: { items: ["ltr", "rtl"] },
+      description: "Synthetic API direction metadata",
+      toolbar: {
+        items: [
+          { value: "auto", title: "API fixture" },
+          { value: "ltr", title: "LTR" },
+          { value: "rtl", title: "RTL" },
+        ],
+      },
     },
     theme: {
       description: "Ant Design theme",
       toolbar: { items: ["light", "dark"] },
     },
+    compact: {
+      description: "Compact fixture",
+      toolbar: {
+        items: [
+          { value: "false", title: "Normal" },
+          { value: "true", title: "Compact" },
+        ],
+      },
+    },
   },
-  initialGlobals: { direction: "ltr", language: "en", theme: "light" },
+  initialGlobals: {
+    compact: false,
+    direction: "auto",
+    language: "en",
+    theme: "light",
+  },
   parameters: {
     a11y: {
       test: "error",

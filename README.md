@@ -1,6 +1,6 @@
 # Kernel Admin
 
-A standalone React/Vite TypeScript administration panel using Ant Design, React Router and Axios. It provides account, user, role, settings and calendar screens. Developers choose a compatible backend for authentication, authorization, data and storage.
+A standalone React/Vite TypeScript administration panel using Ant Design, React Router and Axios. It provides account, user, role, settings, calendar, FAQ, content/category and file screens. Developers choose a compatible backend for authentication, authorization, data and storage.
 
 ## Start here
 

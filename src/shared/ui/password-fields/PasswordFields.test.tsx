@@ -1,32 +1,49 @@
-// @vitest-environment jsdom
-import { Button, Form } from "antd";
-import { expect, it, vi } from "vitest";
+import "@/test/browser";
 
-import { render, screen } from "@/test/render";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { Button, Form } from "antd";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+import { i18n } from "@/shared/i18n";
 
 import { PasswordFields } from "./PasswordFields";
 
-it("accepts matching passwords and rejects mismatched confirmation", async () => {
+beforeEach(async () => {
+  await i18n.changeLanguage("en");
+});
+afterEach(cleanup);
+
+it("rejects mismatched confirmation and submits matching values with accessible labels", async () => {
   const onFinish = vi.fn();
-  const { user } = render(
-    <Form onFinish={onFinish}>
+  render(
+    <Form name="password-validation" onFinish={onFinish}>
       <PasswordFields size="large" />
-      <Button htmlType="submit">Submit</Button>
+      <Button htmlType="submit">Save</Button>
     </Form>,
   );
-  const password = screen.getByPlaceholderText("رمز عبور");
-  const confirmation = screen.getByPlaceholderText("تکرار رمز عبور");
-
-  await user.type(password, "secret-1");
-  await user.type(confirmation, "different");
-  await user.click(screen.getByRole("button", { name: "Submit" }));
+  const password = screen.getByLabelText<HTMLInputElement>(i18n.t("password"));
+  const confirmation = screen.getByLabelText<HTMLInputElement>(
+    i18n.t("confirmPassword"),
+  );
+  expect(password.id).not.toBe(confirmation.id);
+  fireEvent.change(password, { target: { value: "secret-1" } });
+  fireEvent.change(confirmation, { target: { value: "different" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await screen.findByText(i18n.t("passwordMismatch"));
   expect(onFinish).not.toHaveBeenCalled();
 
-  await user.clear(confirmation);
-  await user.type(confirmation, "secret-1");
-  await user.click(screen.getByRole("button", { name: "Submit" }));
-  expect(onFinish).toHaveBeenCalledWith({
-    confirmPassword: "secret-1",
-    password: "secret-1",
-  });
+  fireEvent.change(confirmation, { target: { value: "secret-1" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  await waitFor(() =>
+    expect(onFinish).toHaveBeenCalledWith({
+      password: "secret-1",
+      confirmPassword: "secret-1",
+    }),
+  );
 });

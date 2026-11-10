@@ -1,54 +1,86 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
-
-import { updateUserRoles } from "@/features/users/api";
-import { roles, user } from "@/test/storybook/fixtures";
-import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
-
-import { UserRoleForm } from "./UserRoleForm";
+import { UserRoleForm } from "@/features/users/components/user-role-form";
+import { apiClient } from "@/shared/api";
+import { i18n } from "@/shared/i18n";
+import { StoryShell } from "../../../../../.storybook/StoryShell";
+import {
+  sampleRoles,
+  sampleUsers,
+  sampleUser,
+} from "../../../../../.storybook/fixtures";
 
 const meta = {
-  args: {
-    data: user,
-    onFinish: fn(),
-    options: { roles },
-  },
+  title: "Features/Users/UserRoleForm",
   component: UserRoleForm,
+  args: {
+    id: sampleUsers[1].id,
+    onFinish: fn(),
+    options: { roles: sampleRoles },
+  },
   render: (args) => (
-    <StoryShell initialEntries={["/#roles"]}>
+    <StoryShell initialEntries={["/users#roles"]}>
       <UserRoleForm {...args} />
     </StoryShell>
   ),
-  title: "Features/Users/UserRoleForm",
 } satisfies Meta<typeof UserRoleForm>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
-  play: async ({ args, canvasElement }) => {
-    const body = within(canvasElement.ownerDocument.body);
-    const dialog = within(await body.findByRole("dialog"));
-    await expect(dialog.getByText("Administrator")).toBeVisible();
-    await userEvent.click(
-      dialog.getByRole("combobox", { name: i18nInstance.t("roles") }),
-    );
-    await userEvent.click(await body.findByText("Editor"));
-    await userEvent.click(
-      dialog.getByRole("button", { name: i18nInstance.t("submit") }),
+export const ExistingSelection: Story = {
+  play: async ({ canvasElement }) => {
+    const dialog = within(
+      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
     );
     await waitFor(() =>
-      expect(updateUserRoles).toHaveBeenCalledWith(
-        "user-1",
-        { roleIds: ["role-admin", "role-editor"] },
-        expect.any(AbortSignal),
-      ),
+      expect(dialog.getByRole("checkbox", { name: "Editor" })).toBeChecked(),
     );
-    await waitFor(() => expect(args.onFinish).toHaveBeenCalledTimes(1));
-    await waitFor(() => {
-      expect(body.queryByRole("dialog")).not.toBeInTheDocument();
-      expect(body.queryByRole("listbox")).not.toBeInTheDocument();
-    });
+    await expect(
+      dialog.getByRole("checkbox", { name: "Administrator" }),
+    ).not.toBeChecked();
+  },
+};
+export const SaveSelection: Story = {
+  play: async ({ args, canvasElement }) => {
+    const dialog = within(
+      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
+    );
+    await waitFor(() =>
+      expect(dialog.getByRole("checkbox", { name: "Editor" })).toBeChecked(),
+    );
+    await userEvent.click(
+      dialog.getByRole("checkbox", { name: "Administrator" }),
+    );
+    await userEvent.click(
+      dialog.getByRole("button", { name: i18n.t("submit") }),
+    );
+    await waitFor(() => expect(args.onFinish).toHaveBeenCalledOnce());
+    await expect(apiClient.put).toHaveBeenCalledWith(
+      "/users/user-2/roles",
+      {
+        roleIds: ["role-admin", "role-editor"],
+      },
+      { signal: expect.any(AbortSignal) },
+    );
+  },
+};
+export const DeniedUpdate: Story = {
+  render: (args) => (
+    <StoryShell
+      initialEntries={["/users#roles"]}
+      user={{
+        ...sampleUser,
+        isSystemAdmin: false,
+        permissions: ["users.read"],
+      }}
+    >
+      <UserRoleForm {...args} />
+    </StoryShell>
+  ),
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement.ownerDocument.body).queryByRole("dialog"),
+    ).not.toBeInTheDocument();
+    await expect(apiClient.get).not.toHaveBeenCalled();
   },
 };

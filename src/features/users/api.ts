@@ -1,10 +1,11 @@
-import { apiClient } from "../../shared/api/index.ts";
-import { encodeIdPathSegment } from "../../shared/api/path.ts";
-import { toSnakeCase } from "../../shared/lib/transform.ts";
+import { apiClient, encodeIdPathSegment } from "@/shared/api";
+import { defaultPageSize } from "@/shared/config";
+import { toSnakeCase } from "@/shared/lib";
+
 import type {
   User,
-  UserListQuery,
   UserPasswordRequest,
+  UserQuery,
   UserRequest,
   UserRoleRequest,
   UserStatusRequest,
@@ -39,11 +40,17 @@ export const fetchUser = async (
 };
 
 export const fetchUsers = async (
-  params: UserListQuery,
+  { page = "1", size = String(defaultPageSize), ...params }: UserQuery = {},
   signal?: AbortSignal,
-): Promise<{ items: User[]; total: number }> => {
-  return apiClient.get<{ items: User[]; total: number }>(basePath, {
-    params: toSnakeCase(params),
+): Promise<{
+  items: User[];
+  total: number;
+}> => {
+  return apiClient.get<{
+    items: User[];
+    total: number;
+  }>(basePath, {
+    params: toSnakeCase({ ...params, page, size }),
     signal,
   });
 };

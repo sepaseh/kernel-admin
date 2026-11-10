@@ -1,97 +1,108 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
-
-import { createUser } from "@/features/users/api";
-import { user } from "@/test/storybook/fixtures";
-import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
-
-import { UserForm } from "./UserForm";
+import { UserForm } from "@/features/users/components/user-form";
+import { apiClient } from "@/shared/api";
+import { i18n } from "@/shared/i18n";
+import { StoryShell } from "../../../../../.storybook/StoryShell";
+import { sampleUsers, sampleUser } from "../../../../../.storybook/fixtures";
 
 const meta = {
-  component: UserForm,
   title: "Features/Users/UserForm",
+  component: UserForm,
+  args: { onFinish: fn() },
+  render: (args) => (
+    <StoryShell initialEntries={["/users#create"]}>
+      <UserForm {...args} />
+    </StoryShell>
+  ),
 } satisfies Meta<typeof UserForm>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Create: Story = {
-  args: { onFinish: fn() },
-  render: (args) => (
-    <StoryShell initialEntries={["/#create"]}>
-      <UserForm {...args} />
-    </StoryShell>
-  ),
   play: async ({ args, canvasElement }) => {
-    const body = within(canvasElement.ownerDocument.body);
-    const dialog = within(await body.findByRole("dialog"));
-    await userEvent.type(
-      dialog.getByLabelText(i18nInstance.t("firstName")),
-      "Mina",
+    const dialog = within(
+      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
     );
+    const firstName = dialog.getByLabelText(i18n.t("firstName"));
+    await waitFor(() => expect(firstName).toHaveFocus());
+    await userEvent.type(firstName, "Katherine");
+    await userEvent.type(dialog.getByLabelText(i18n.t("lastName")), "Johnson");
     await userEvent.type(
-      dialog.getByLabelText(i18nInstance.t("lastName")),
-      "Rahimi",
-    );
-    await userEvent.type(
-      dialog.getByLabelText(i18nInstance.t("mobile")),
-      "09123334444",
+      dialog.getByLabelText(i18n.t("mobile")),
+      "09122222222",
     );
     await userEvent.click(
-      dialog.getByRole("button", { name: i18nInstance.t("submit") }),
+      dialog.getByRole("button", { name: i18n.t("submit") }),
     );
-    await waitFor(() =>
-      expect(createUser).toHaveBeenCalledWith(
-        {
-          firstName: "Mina",
-          lastName: "Rahimi",
-          mobile: "09123334444",
-          password: expect.stringMatching(/^[a-z0-9]{16}$/),
-        },
-        expect.any(AbortSignal),
-      ),
+    await waitFor(() => expect(args.onFinish).toHaveBeenCalledOnce());
+    await expect(apiClient.post).toHaveBeenCalledWith(
+      "/users",
+      {
+        firstName: "Katherine",
+        lastName: "Johnson",
+        mobile: "09122222222",
+        status: "active",
+        password: expect.stringMatching(/^[a-z0-9]{16}$/),
+      },
+      { signal: expect.any(AbortSignal) },
     );
-    await waitFor(() => expect(args.onFinish).toHaveBeenCalledTimes(1));
   },
 };
-
 export const Update: Story = {
-  args: { data: user, onFinish: fn() },
+  args: { id: sampleUsers[1].id },
   render: (args) => (
-    <StoryShell initialEntries={["/#update"]}>
+    <StoryShell initialEntries={["/users#update"]}>
       <UserForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {
-    const body = within(canvasElement.ownerDocument.body);
-    const dialog = within(await body.findByRole("dialog"));
-    await expect(
-      dialog.getByLabelText(i18nInstance.t("firstName")),
-    ).toHaveValue("Sara");
-    await expect(dialog.getByLabelText(i18nInstance.t("lastName"))).toHaveValue(
-      "Ahmadi",
+    const dialog = within(
+      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
     );
-    await expect(dialog.getByLabelText(i18nInstance.t("mobile"))).toHaveValue(
+    await waitFor(() =>
+      expect(dialog.getByLabelText(i18n.t("firstName"))).toHaveValue("Grace"),
+    );
+    await expect(dialog.getByLabelText(i18n.t("lastName"))).toHaveValue(
+      "Hopper",
+    );
+    await expect(dialog.getByLabelText(i18n.t("mobile"))).toHaveValue(
       "09121111111",
     );
   },
 };
-
-export const ValidationErrors: Story = {
-  args: { onFinish: fn() },
+export const RequiredFields: Story = {
+  play: async ({ canvasElement }) => {
+    const dialog = within(
+      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
+    );
+    await userEvent.click(
+      dialog.getByRole("button", { name: i18n.t("submit") }),
+    );
+    await expect(dialog.getByLabelText(i18n.t("firstName"))).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(apiClient.post).not.toHaveBeenCalled();
+  },
+};
+export const DeniedCreate: Story = {
   render: (args) => (
-    <StoryShell initialEntries={["/#create"]}>
+    <StoryShell
+      initialEntries={["/users#create"]}
+      user={{
+        ...sampleUser,
+        isSystemAdmin: false,
+        permissions: ["users.read"],
+      }}
+    >
       <UserForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {
-    const body = within(canvasElement.ownerDocument.body);
-    await userEvent.click(
-      body.getByRole("button", { name: i18nInstance.t("submit") }),
-    );
     await expect(
-      body.getByLabelText(i18nInstance.t("firstName")),
-    ).toHaveAttribute("aria-invalid", "true");
+      within(canvasElement.ownerDocument.body).queryByRole("dialog"),
+    ).not.toBeInTheDocument();
+    await expect(apiClient.get).not.toHaveBeenCalled();
   },
 };
