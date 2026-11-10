@@ -119,6 +119,7 @@ The Antd 6.6.8 OTP regressions were separately identified as dependency compatib
 | Exact source file                              | Prior line:column |
 | ---------------------------------------------- | ----------------- |
 | `src/features/auth/api.test.ts`                | 11:46             |
+| `src/features/content-categories/api.test.ts`  | 7:34              |
 | `src/features/faqs/api.test.ts`                | 7:34              |
 | `src/features/files/api.test.ts`               | 7:34              |
 | `src/features/forgot-pass/ForgotPass.test.tsx` | 24:29             |

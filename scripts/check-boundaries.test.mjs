@@ -1065,6 +1065,7 @@ test("submission forms own only their contained Axios cancellation runtime depen
   for (const source of [
     "src/features/account/components/password-form/PasswordForm.tsx",
     "src/features/account/components/profile-form/ProfileForm.tsx",
+    "src/features/content-categories/components/content-category-form/ContentCategoryForm.tsx",
     "src/features/faqs/components/faq-form/FaqForm.tsx",
     "src/features/roles/components/role-form/RoleForm.tsx",
     "src/features/settings/Settings.tsx",

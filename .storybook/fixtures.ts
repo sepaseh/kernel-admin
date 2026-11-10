@@ -2,6 +2,7 @@ import type { CurrentUser } from "@/features/account";
 import type { Settings } from "@/features/settings";
 import type { PermissionGroup, Role } from "@/features/roles";
 import type { User } from "@/features/users";
+import type { ContentCategory } from "@/features/content-categories";
 import type { StoredFile } from "@/features/files";
 
 export const sampleUser: CurrentUser = {
@@ -104,6 +105,11 @@ export const sampleLanguages: Settings["language"][] = [
     direction: "rtl",
     calendar: "jalali",
   },
+];
+
+export const sampleContentCategories: ContentCategory[] = [
+  { id: "category-1", name: "Documentation" },
+  { id: "category-2", name: "News" },
 ];
 
 const syntheticImage =

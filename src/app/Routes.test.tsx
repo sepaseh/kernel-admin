@@ -37,6 +37,9 @@ vi.mock("@/features/forgot-pass", () => ({
 vi.mock("@/features/register", () => ({ RegisterPage: () => "Register page" }));
 vi.mock("@/features/roles", () => ({ RolesPage: () => "Roles page" }));
 vi.mock("@/features/settings", () => ({ SettingsPage: () => "Settings page" }));
+vi.mock("@/features/content-categories", () => ({
+  ContentCategoriesPage: () => "Categories page",
+}));
 vi.mock("@/features/files", () => ({ FilesPage: () => "Files page" }));
 vi.mock("@/features/dashboard", () => ({
   DashboardPage: () => {
@@ -91,6 +94,7 @@ describe("route composition", () => {
     ["/users", "Users page", "users"],
     ["/roles", "Roles page", "roles"],
     ["/settings", "Settings page", "settings"],
+    ["/content-categories", "Categories page", "contentCategories"],
     ["/files", "Files page", "files"],
     ["/auth", "Login page", "auth"],
     ["/auth/forgot-password", "Forgot password page", "forgotPassword"],
