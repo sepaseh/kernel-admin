@@ -107,6 +107,19 @@ export const routeTree = {
       actions: { canDelete: "files.delete" },
     },
   },
+  contentCategories: {
+    label: "contentCategories",
+    layout: "default",
+    path: "/content-categories",
+    permissions: {
+      access: "content-categories.read",
+      actions: {
+        canCreate: "content-categories.create",
+        canDelete: "content-categories.delete",
+        canUpdate: "content-categories.update",
+      },
+    },
+  },
   users: {
     label: "users",
     layout: "default",
@@ -144,6 +157,11 @@ export const navigationTree: readonly NavigationItem[] = [
     children: [{ route: "users" }, { route: "roles" }],
     key: "userManagement",
     label: "userManagement",
+  },
+  {
+    children: [{ route: "contentCategories" }],
+    key: "content",
+    label: "content",
   },
   { route: "calendar" },
   { route: "faqs" },

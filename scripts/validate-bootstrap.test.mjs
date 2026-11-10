@@ -284,6 +284,14 @@ const completeApplicationFiles = [
   "src/features/calendar/api.ts",
   "src/features/calendar/index.ts",
   "src/features/calendar/styles.ts",
+  "src/features/content-categories/ContentCategories.stories.tsx",
+  "src/features/content-categories/ContentCategories.tsx",
+  "src/features/content-categories/api.test.ts",
+  "src/features/content-categories/api.ts",
+  "src/features/content-categories/components/content-category-form/ContentCategoryForm.stories.tsx",
+  "src/features/content-categories/components/content-category-form/ContentCategoryForm.tsx",
+  "src/features/content-categories/index.ts",
+  "src/features/content-categories/types.ts",
   "src/features/dashboard/Dashboard.tsx",
   "src/features/dashboard/index.ts",
   "src/features/faqs/Faqs.stories.tsx",
@@ -557,6 +565,12 @@ const applicationFiles = [
   "src/features/account/components/profile-form/ProfileForm.tsx",
   "src/features/account/components/profile-form/index.ts",
   "src/features/auth/index.ts",
+  "src/features/content-categories/ContentCategories.tsx",
+  "src/features/content-categories/api.test.ts",
+  "src/features/content-categories/api.ts",
+  "src/features/content-categories/components/content-category-form/ContentCategoryForm.tsx",
+  "src/features/content-categories/index.ts",
+  "src/features/content-categories/types.ts",
   "src/features/faqs/Faqs.tsx",
   "src/features/faqs/api.test.ts",
   "src/features/faqs/api.ts",
@@ -1524,7 +1538,7 @@ test("Storybook verification requires every explicit story, isolated configurati
   const current = await historicalStorybookPolicy();
   assert.equal(current.phase, "storybook-verification");
   const required = current.allowedFiles.filter(isStorybookPhaseFile);
-  assert.equal(required.length, 48);
+  assert.equal(required.length, 50);
   for (const missing of required) {
     assert.throws(
       () =>

@@ -41,6 +41,8 @@ const pageRegistry = {
   root: async () => (await import("@/features/dashboard")).DashboardPage,
   settings: async () => (await import("@/features/settings")).SettingsPage,
   files: async () => (await import("@/features/files")).FilesPage,
+  contentCategories: async () =>
+    (await import("@/features/content-categories")).ContentCategoriesPage,
   users: async () => (await import("@/features/users")).UsersPage,
 } satisfies Record<RouteKey, () => Promise<ComponentType>>;
 

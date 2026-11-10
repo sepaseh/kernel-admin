@@ -8,6 +8,7 @@ import {
   sampleSettings,
   sampleUser,
   sampleUsers,
+  sampleContentCategories,
   sampleFiles,
   sampleLanguages,
 } from "./fixtures";
@@ -20,6 +21,10 @@ export const resetStoryMocks = (state = "populated") => {
   let faqs = state === "empty" ? [] : structuredClone(sampleFaqs);
   let roles = state === "roles-empty" ? [] : structuredClone(sampleRoles);
   let users = state === "users-empty" ? [] : structuredClone(sampleUsers);
+  let categories =
+    state === "content-categories-empty"
+      ? []
+      : structuredClone(sampleContentCategories);
   let files = state === "files-empty" ? [] : structuredClone(sampleFiles);
   let settings = structuredClone(sampleSettings);
   const account = structuredClone(sampleUser);
@@ -44,12 +49,20 @@ export const resetStoryMocks = (state = "populated") => {
       if (url === "/calendar") return [...calendar];
       if (url === "/roles/permissions")
         return structuredClone(samplePermissions);
-      if (url === "/files") {
-        if (state === "files-loading") return new Promise(() => undefined);
-        if (state === "files-error")
-          throw new Error("Synthetic files unavailable");
-        return structuredClone(files);
+      if (["/content-categories", "/files"].includes(url)) {
+        const resource = url.slice(1);
+        if (state === `${resource}-loading`)
+          return new Promise(() => undefined);
+        if (state === `${resource}-error`)
+          throw new Error(`Synthetic ${resource} unavailable`);
+        return url === "/content-categories"
+          ? structuredClone(categories)
+          : structuredClone(files);
       }
+      const category = categories.find(
+        ({ id }) => url === `/content-categories/${id}`,
+      );
+      if (category) return structuredClone(category);
       if (url === "/roles" || url === "/users") {
         const resource = url.slice(1);
         if (state === `${resource}-loading`)
@@ -93,6 +106,14 @@ export const resetStoryMocks = (state = "populated") => {
         calendar.push((request as { date: string }).date);
         return undefined;
       }
+      if (url === "/content-categories") {
+        const created = {
+          id: "category-created",
+          ...(request as { name: string }),
+        };
+        categories.push(created);
+        return structuredClone(created);
+      }
       if (url === "/roles") {
         const created = {
           id: "role-created",
@@ -134,6 +155,18 @@ export const resetStoryMocks = (state = "populated") => {
         faqs.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
         return undefined;
       }
+      if (url === "/content-categories/sort") {
+        const ids = (request as { ids: string[] }).ids;
+        categories.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+        return undefined;
+      }
+      const category = categories.find(
+        ({ id }) => url === `/content-categories/${id}`,
+      );
+      if (category) {
+        Object.assign(category, request);
+        return structuredClone(category);
+      }
       const role = roles.find(({ id }) => url === `/roles/${id}`);
       if (role) {
         Object.assign(role, request);
@@ -170,6 +203,12 @@ export const resetStoryMocks = (state = "populated") => {
       }
       if (users.some(({ id }) => url === `/users/${id}`)) {
         users = users.filter(({ id }) => url !== `/users/${id}`);
+        return undefined;
+      }
+      if (categories.some(({ id }) => url === `/content-categories/${id}`)) {
+        categories = categories.filter(
+          ({ id }) => url !== `/content-categories/${id}`,
+        );
         return undefined;
       }
       if (files.some(({ id, isUsed }) => url === `/files/${id}` && !isUsed)) {
