@@ -3,6 +3,7 @@ import type { Settings } from "@/features/settings";
 import type { PermissionGroup, Role } from "@/features/roles";
 import type { User } from "@/features/users";
 import type { ContentCategory } from "@/features/content-categories";
+import type { Content } from "@/features/contents";
 import type { StoredFile } from "@/features/files";
 
 export const sampleUser: CurrentUser = {
@@ -121,4 +122,23 @@ const syntheticImage =
 export const sampleFiles: StoredFile[] = [
   { id: "file-used", url: syntheticImage, size: 2400, isUsed: true },
   { id: "file-unused", url: syntheticImage, size: 1200, isUsed: false },
+];
+
+export const sampleContents: Content[] = [
+  {
+    id: "content-1",
+    title: "Getting started",
+    excerpt: "Read the administration guide.",
+    body: "<p>Open a record to review its details.</p>",
+    contentCategory: sampleContentCategories[0],
+    coverImage: sampleFiles[0],
+  },
+  {
+    id: "content-2",
+    title: "Release news",
+    excerpt: "A synthetic release announcement.",
+    body: "<p>Review the new administration features.</p>",
+    contentCategory: sampleContentCategories[1],
+    coverImage: sampleFiles[0],
+  },
 ];

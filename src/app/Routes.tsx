@@ -36,6 +36,7 @@ const pageRegistry = {
   forgotPassword: async () =>
     (await import("@/features/forgot-pass")).ForgotPassPage,
   notFound: async () => (await import("@/features/not-found")).NotFoundPage,
+  contents: async () => (await import("@/features/contents")).ContentsPage,
   register: async () => (await import("@/features/register")).RegisterPage,
   roles: async () => (await import("@/features/roles")).RolesPage,
   root: async () => (await import("@/features/dashboard")).DashboardPage,

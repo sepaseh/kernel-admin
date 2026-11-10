@@ -59,6 +59,19 @@ export const routeTree = {
     path: "/auth/forgot-password",
     permissions: { access: "public", actions: {} },
   },
+  contents: {
+    label: "contents",
+    layout: "default",
+    path: "/contents",
+    permissions: {
+      access: "contents.read",
+      actions: {
+        canCreate: "contents.create",
+        canDelete: "contents.delete",
+        canUpdate: "contents.update",
+      },
+    },
+  },
   notFound: {
     layout: "standalone",
     path: "*",
@@ -159,7 +172,7 @@ export const navigationTree: readonly NavigationItem[] = [
     label: "userManagement",
   },
   {
-    children: [{ route: "contentCategories" }],
+    children: [{ route: "contents" }, { route: "contentCategories" }],
     key: "content",
     label: "content",
   },
