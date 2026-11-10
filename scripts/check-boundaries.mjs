@@ -43,6 +43,11 @@ const productionPaths = [
   "src/features/calendar/styles.ts",
   "src/features/dashboard/Dashboard.tsx",
   "src/features/dashboard/index.ts",
+  "src/features/faqs/Faqs.tsx",
+  "src/features/faqs/api.ts",
+  "src/features/faqs/components/faq-form/FaqForm.tsx",
+  "src/features/faqs/index.ts",
+  "src/features/faqs/types.ts",
   "src/features/files/Files.tsx",
   "src/features/files/api.ts",
   "src/features/files/index.ts",
@@ -147,6 +152,8 @@ const productionPaths = [
   "src/shared/ui/request-error/index.ts",
   "src/shared/ui/route-loading/RouteLoading.tsx",
   "src/shared/ui/route-loading/index.ts",
+  "src/shared/ui/sortable-table/SortableTable.tsx",
+  "src/shared/ui/sortable-table/index.ts",
 ];
 const runtimeImports = {
   "src/GlobalStyle.tsx": ["antd-style"],
@@ -209,6 +216,21 @@ const runtimeImports = {
   ],
   "src/features/calendar/styles.ts": ["antd-style"],
   "src/features/dashboard/Dashboard.tsx": ["antd-style"],
+  "src/features/faqs/Faqs.tsx": [
+    "antd",
+    "axios",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/faqs/components/faq-form/FaqForm.tsx": [
+    "antd",
+    "axios",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
   "src/features/files/Files.tsx": [
     "antd",
     "lucide-react",
@@ -356,6 +378,14 @@ const runtimeImports = {
   "src/shared/ui/password-fields/PasswordFields.tsx": ["antd", "react-i18next"],
   "src/shared/ui/request-error/RequestError.tsx": ["antd", "react-i18next"],
   "src/shared/ui/route-loading/RouteLoading.tsx": ["antd", "react-i18next"],
+  "src/shared/ui/sortable-table/SortableTable.tsx": [
+    "@dnd-kit/core",
+    "@dnd-kit/sortable",
+    "@dnd-kit/utilities",
+    "antd",
+    "lucide-react",
+    "react",
+  ],
 };
 const typeImports = {
   "src/app/App.tsx": ["react"],
@@ -389,6 +419,7 @@ const wireImports = {
     "src/features/users/index.ts",
   ],
   "src/features/auth/types.ts": [],
+  "src/features/faqs/types.ts": [],
   "src/features/files/types.ts": [],
   "src/features/roles/types.ts": [],
   "src/features/settings/types.ts": [
@@ -472,6 +503,9 @@ const runtimeDependencies = new Set([
   "jalaliday",
   "react",
   "react-i18next",
+  "@dnd-kit/core",
+  "@dnd-kit/sortable",
+  "@dnd-kit/utilities",
   "antd-img-crop",
 ]);
 const runtimePaths = new Set([

@@ -96,6 +96,9 @@
     "react-i18next": "^17.1.12",
     "react-router": "8.5.1",
     "web-vitals": "6.2.3",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "antd-img-crop": "^4.30.0"
   },
   "overrides": {

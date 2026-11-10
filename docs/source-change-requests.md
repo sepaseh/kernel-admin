@@ -96,6 +96,10 @@ Incomplete/background-overlap entries do not establish a measured contrast ratio
 
 ## Observations that still need a controlled reproduction
 
+- FAQ keyboard sorting: one complete run kept the drag status at the first
+  droppable area after ArrowDown and sent no sort request; earlier runs passed.
+  Sensor-listener readiness is a hypothesis. Establish that boundary before
+  changing [FAQ](../src/features/faqs/Faqs.tsx) or its fixture.
 - [UserRoleForm test](../src/features/users/components/user-role-form/UserRoleForm.test.tsx):
   one complete run saved `roleIds: []` after two checked options; an isolated run
   passed. Determine Checkbox.Group/form readiness before a source/fixture edit.
@@ -115,6 +119,7 @@ The Antd 6.6.8 OTP regressions were separately identified as dependency compatib
 | Exact source file                              | Prior line:column |
 | ---------------------------------------------- | ----------------- |
 | `src/features/auth/api.test.ts`                | 11:46             |
+| `src/features/faqs/api.test.ts`                | 7:34              |
 | `src/features/files/api.test.ts`               | 7:34              |
 | `src/features/forgot-pass/ForgotPass.test.tsx` | 24:29             |
 | `src/features/register/Register.test.tsx`      | 24:29             |

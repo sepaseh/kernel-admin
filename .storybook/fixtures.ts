@@ -46,6 +46,19 @@ export const sampleSettings: Settings = {
   },
 };
 
+export const sampleFaqs = [
+  {
+    id: "faq-1",
+    question: "How do I update a record?",
+    answer: "Open the edit form, make your changes and submit.",
+  },
+  {
+    id: "faq-2",
+    question: "Can I keep my preferred appearance?",
+    answer: "Theme and compact mode stay in this browser.",
+  },
+];
+
 export const sampleRoles: Role[] = [
   {
     id: "role-admin",

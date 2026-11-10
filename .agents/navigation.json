@@ -409,6 +409,7 @@
       "id": "admin-feature",
       "when": "Change published admin screen, form, menu or permission-gated component behavior.",
       "owners": [
+        "src/features/faqs",
         "src/features/files",
         "src/features/roles",
         "src/features/settings",

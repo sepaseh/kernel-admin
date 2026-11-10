@@ -30,6 +30,7 @@ vi.mock("@/layouts/default", () => ({
 vi.mock("@/features/account", () => ({ AccountPage: () => "Account page" }));
 vi.mock("@/features/login", () => ({ LoginPage: () => "Login page" }));
 vi.mock("@/features/calendar", () => ({ CalendarPage: () => "Calendar page" }));
+vi.mock("@/features/faqs", () => ({ FaqsPage: () => "FAQ page" }));
 vi.mock("@/features/forgot-pass", () => ({
   ForgotPassPage: () => "Forgot password page",
 }));
@@ -86,6 +87,7 @@ describe("route composition", () => {
     ["/", "Dashboard page", "root"],
     ["/account", "Account page", "account"],
     ["/calendar", "Calendar page", "calendar"],
+    ["/faqs", "FAQ page", "faqs"],
     ["/users", "Users page", "users"],
     ["/roles", "Roles page", "roles"],
     ["/settings", "Settings page", "settings"],

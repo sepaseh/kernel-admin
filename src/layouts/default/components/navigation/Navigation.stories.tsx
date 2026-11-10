@@ -50,6 +50,21 @@ export const Horizontal: Story = {
     ).toHaveAttribute("href", "/");
   },
 };
+export const RestrictedItems: Story = {
+  args: { items: [{ route: "root" }, { route: "faqs" }], currentRoute: "faqs" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole("link", { name: i18n.t("faqs") }),
+    ).toBeVisible();
+    await expect(
+      canvas.queryByText(i18n.t("userManagement")),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText(i18n.t("settings")),
+    ).not.toBeInTheDocument();
+  },
+};
 export const PersianDark: Story = {
   globals: { language: "fa", theme: "dark" },
   ...Inline,
