@@ -1,5 +1,6 @@
 import { mocked } from "storybook/test";
 import { apiClient } from "@/shared/api";
+import type { ContentRequest } from "@/features/contents";
 import type { SettingsRequest } from "@/features/settings";
 import {
   sampleFaqs,
@@ -9,6 +10,7 @@ import {
   sampleUser,
   sampleUsers,
   sampleContentCategories,
+  sampleContents,
   sampleFiles,
   sampleLanguages,
 } from "./fixtures";
@@ -25,6 +27,8 @@ export const resetStoryMocks = (state = "populated") => {
     state === "content-categories-empty"
       ? []
       : structuredClone(sampleContentCategories);
+  let contents =
+    state === "contents-empty" ? [] : structuredClone(sampleContents);
   let files = state === "files-empty" ? [] : structuredClone(sampleFiles);
   let settings = structuredClone(sampleSettings);
   const account = structuredClone(sampleUser);
@@ -49,20 +53,22 @@ export const resetStoryMocks = (state = "populated") => {
       if (url === "/calendar") return [...calendar];
       if (url === "/roles/permissions")
         return structuredClone(samplePermissions);
-      if (["/content-categories", "/files"].includes(url)) {
+      if (["/content-categories", "/contents", "/files"].includes(url)) {
         const resource = url.slice(1);
         if (state === `${resource}-loading`)
           return new Promise(() => undefined);
         if (state === `${resource}-error`)
           throw new Error(`Synthetic ${resource} unavailable`);
-        return url === "/content-categories"
-          ? structuredClone(categories)
-          : structuredClone(files);
+        if (url === "/content-categories") return structuredClone(categories);
+        if (url === "/files") return structuredClone(files);
+        return { items: structuredClone(contents), total: contents.length };
       }
       const category = categories.find(
         ({ id }) => url === `/content-categories/${id}`,
       );
       if (category) return structuredClone(category);
+      const content = contents.find(({ id }) => url === `/contents/${id}`);
+      if (content) return structuredClone(content);
       if (url === "/roles" || url === "/users") {
         const resource = url.slice(1);
         if (state === `${resource}-loading`)
@@ -112,6 +118,26 @@ export const resetStoryMocks = (state = "populated") => {
           ...(request as { name: string }),
         };
         categories.push(created);
+        return structuredClone(created);
+      }
+      if (url === "/contents") {
+        const { contentCategoryId, coverImageId, ...values } =
+          request as ContentRequest;
+        const contentCategory = categories.find(
+          ({ id }) => id === contentCategoryId,
+        );
+        const coverImage = files.find(({ id }) => id === coverImageId);
+        if (!contentCategory || !coverImage)
+          throw new Error(
+            "Synthetic content requires a known category and image",
+          );
+        const created = {
+          id: "content-created",
+          ...values,
+          contentCategory,
+          coverImage,
+        };
+        contents.push(created);
         return structuredClone(created);
       }
       if (url === "/roles") {
@@ -167,6 +193,21 @@ export const resetStoryMocks = (state = "populated") => {
         Object.assign(category, request);
         return structuredClone(category);
       }
+      const content = contents.find(({ id }) => url === `/contents/${id}`);
+      if (content) {
+        const { contentCategoryId, coverImageId, ...values } =
+          request as ContentRequest;
+        const contentCategory = categories.find(
+          ({ id }) => id === contentCategoryId,
+        );
+        const coverImage = files.find(({ id }) => id === coverImageId);
+        if (!contentCategory || !coverImage)
+          throw new Error(
+            "Synthetic content requires a known category and image",
+          );
+        Object.assign(content, values, { contentCategory, coverImage });
+        return structuredClone(content);
+      }
       const role = roles.find(({ id }) => url === `/roles/${id}`);
       if (role) {
         Object.assign(role, request);
@@ -209,6 +250,10 @@ export const resetStoryMocks = (state = "populated") => {
         categories = categories.filter(
           ({ id }) => url !== `/content-categories/${id}`,
         );
+        return undefined;
+      }
+      if (contents.some(({ id }) => url === `/contents/${id}`)) {
+        contents = contents.filter(({ id }) => url !== `/contents/${id}`);
         return undefined;
       }
       if (files.some(({ id, isUsed }) => url === `/files/${id}` && !isUsed)) {

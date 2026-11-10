@@ -68,9 +68,14 @@ test("captures static, erased, re-export, dynamic, require and computed import e
   ]);
 });
 
-test("only the actual literal application stylesheet edge is admitted", () => {
+test("only the actual literal application and editor stylesheet edges are admitted", () => {
   for (const [source, specifier, target] of [
     ["src/main.tsx", "./index.css", "src/index.css"],
+    [
+      "src/shared/ui/rich-text-editor/RichTextEditor.tsx",
+      "quill/dist/quill.core.css",
+      "node_modules/quill/dist/quill.core.css",
+    ],
   ]) {
     const owner = path.join(root, source),
       resolved = path.join(root, target);
@@ -253,6 +258,18 @@ test("public feature capabilities retain only their approved consumer, export an
       false,
     ],
     [
+      "src/features/contents/Contents.tsx",
+      "src/features/content-categories/index.ts",
+      "fetchContentCategories",
+      false,
+    ],
+    [
+      "src/features/contents/components/content-form/ContentForm.tsx",
+      "src/features/files/index.ts",
+      "uploadFile",
+      false,
+    ],
+    [
       "src/features/forgot-pass/ForgotPass.tsx",
       "src/features/auth/index.ts",
       "forgotPassword",
@@ -310,6 +327,30 @@ test("public feature capabilities retain only their approved consumer, export an
       "src/features/account/types.ts",
       "src/features/users/index.ts",
       "User",
+      true,
+    ],
+    [
+      "src/features/contents/Contents.tsx",
+      "src/features/content-categories/index.ts",
+      "ContentCategory",
+      true,
+    ],
+    [
+      "src/features/contents/components/content-form/ContentForm.tsx",
+      "src/features/content-categories/index.ts",
+      "ContentCategory",
+      true,
+    ],
+    [
+      "src/features/contents/types.ts",
+      "src/features/content-categories/index.ts",
+      "ContentCategory",
+      true,
+    ],
+    [
+      "src/features/contents/types.ts",
+      "src/features/files/index.ts",
+      "StoredFile",
       true,
     ],
     [
@@ -964,6 +1005,11 @@ test("runtime adapters may import only exact declared packages contained in this
       "antd-img-crop",
       "antd-img-crop",
     ],
+    [
+      "src/shared/ui/rich-text-editor/RichTextEditor.tsx",
+      "react-quill-new",
+      "react-quill-new",
+    ],
   ]) {
     const adapter = path.join(root, source);
     const target = path.join(root, "node_modules", dependency, "index.d.ts");
@@ -1066,6 +1112,7 @@ test("submission forms own only their contained Axios cancellation runtime depen
     "src/features/account/components/password-form/PasswordForm.tsx",
     "src/features/account/components/profile-form/ProfileForm.tsx",
     "src/features/content-categories/components/content-category-form/ContentCategoryForm.tsx",
+    "src/features/contents/components/content-form/ContentForm.tsx",
     "src/features/faqs/components/faq-form/FaqForm.tsx",
     "src/features/roles/components/role-form/RoleForm.tsx",
     "src/features/settings/Settings.tsx",

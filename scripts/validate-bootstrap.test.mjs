@@ -256,6 +256,7 @@ const completeApplicationFiles = [
   "src/assets/assets.test.ts",
   "src/assets/fonts/vazirmatn/OFL.txt",
   "src/assets/fonts/vazirmatn/Vazirmatn-Variable.woff2",
+  "src/assets/styles/editor.css",
   "src/assets/styles/index.css",
   "src/assets/styles/vazirmatn.css",
   "src/features/account/Account.stories.tsx",
@@ -292,6 +293,14 @@ const completeApplicationFiles = [
   "src/features/content-categories/components/content-category-form/ContentCategoryForm.tsx",
   "src/features/content-categories/index.ts",
   "src/features/content-categories/types.ts",
+  "src/features/contents/Contents.stories.tsx",
+  "src/features/contents/Contents.tsx",
+  "src/features/contents/api.test.ts",
+  "src/features/contents/api.ts",
+  "src/features/contents/components/content-form/ContentForm.stories.tsx",
+  "src/features/contents/components/content-form/ContentForm.tsx",
+  "src/features/contents/index.ts",
+  "src/features/contents/types.ts",
   "src/features/dashboard/Dashboard.tsx",
   "src/features/dashboard/index.ts",
   "src/features/faqs/Faqs.stories.tsx",
@@ -474,6 +483,13 @@ const completeApplicationFiles = [
   "src/shared/ui/request-error/RequestError.test.tsx",
   "src/shared/ui/request-error/RequestError.tsx",
   "src/shared/ui/request-error/index.ts",
+  "src/shared/ui/rich-text-editor/LazyRichTextEditor.stories.tsx",
+  "src/shared/ui/rich-text-editor/LazyRichTextEditor.tsx",
+  "src/shared/ui/rich-text-editor/RichTextEditor.stories.tsx",
+  "src/shared/ui/rich-text-editor/RichTextEditor.tsx",
+  "src/shared/ui/rich-text-editor/RichTextToolbar.stories.tsx",
+  "src/shared/ui/rich-text-editor/RichTextToolbar.tsx",
+  "src/shared/ui/rich-text-editor/index.ts",
   "src/shared/ui/route-loading/RouteLoading.stories.tsx",
   "src/shared/ui/route-loading/RouteLoading.test.tsx",
   "src/shared/ui/route-loading/RouteLoading.tsx",
@@ -560,6 +576,7 @@ const applicationFiles = [
   "src/app/index.ts",
   "src/app/providers/antd/index.ts",
   "src/app/providers/core/index.ts",
+  "src/assets/styles/editor.css",
   "src/features/account/components/password-form/PasswordForm.tsx",
   "src/features/account/components/password-form/index.ts",
   "src/features/account/components/profile-form/ProfileForm.tsx",
@@ -571,6 +588,12 @@ const applicationFiles = [
   "src/features/content-categories/components/content-category-form/ContentCategoryForm.tsx",
   "src/features/content-categories/index.ts",
   "src/features/content-categories/types.ts",
+  "src/features/contents/Contents.tsx",
+  "src/features/contents/api.test.ts",
+  "src/features/contents/api.ts",
+  "src/features/contents/components/content-form/ContentForm.tsx",
+  "src/features/contents/index.ts",
+  "src/features/contents/types.ts",
   "src/features/faqs/Faqs.tsx",
   "src/features/faqs/api.test.ts",
   "src/features/faqs/api.ts",
@@ -613,6 +636,10 @@ const applicationFiles = [
   "src/shared/ui/image-upload/image.test.ts",
   "src/shared/ui/image-upload/image.ts",
   "src/shared/ui/image-upload/index.ts",
+  "src/shared/ui/rich-text-editor/LazyRichTextEditor.tsx",
+  "src/shared/ui/rich-text-editor/RichTextEditor.tsx",
+  "src/shared/ui/rich-text-editor/RichTextToolbar.tsx",
+  "src/shared/ui/rich-text-editor/index.ts",
   "src/shared/ui/sortable-table/SortableTable.tsx",
   "src/shared/ui/sortable-table/index.ts",
   "src/test/browser.ts",
@@ -1538,7 +1565,7 @@ test("Storybook verification requires every explicit story, isolated configurati
   const current = await historicalStorybookPolicy();
   assert.equal(current.phase, "storybook-verification");
   const required = current.allowedFiles.filter(isStorybookPhaseFile);
-  assert.equal(required.length, 50);
+  assert.equal(required.length, 55);
   for (const missing of required) {
     assert.throws(
       () =>

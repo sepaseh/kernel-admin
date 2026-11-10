@@ -46,6 +46,11 @@ const productionPaths = [
   "src/features/content-categories/components/content-category-form/ContentCategoryForm.tsx",
   "src/features/content-categories/index.ts",
   "src/features/content-categories/types.ts",
+  "src/features/contents/Contents.tsx",
+  "src/features/contents/api.ts",
+  "src/features/contents/components/content-form/ContentForm.tsx",
+  "src/features/contents/index.ts",
+  "src/features/contents/types.ts",
   "src/features/dashboard/Dashboard.tsx",
   "src/features/dashboard/index.ts",
   "src/features/faqs/Faqs.tsx",
@@ -155,6 +160,10 @@ const productionPaths = [
   "src/shared/ui/password-fields/index.ts",
   "src/shared/ui/request-error/RequestError.tsx",
   "src/shared/ui/request-error/index.ts",
+  "src/shared/ui/rich-text-editor/LazyRichTextEditor.tsx",
+  "src/shared/ui/rich-text-editor/RichTextEditor.tsx",
+  "src/shared/ui/rich-text-editor/RichTextToolbar.tsx",
+  "src/shared/ui/rich-text-editor/index.ts",
   "src/shared/ui/route-loading/RouteLoading.tsx",
   "src/shared/ui/route-loading/index.ts",
   "src/shared/ui/sortable-table/SortableTable.tsx",
@@ -230,6 +239,21 @@ const runtimeImports = {
   ],
   "src/features/content-categories/components/content-category-form/ContentCategoryForm.tsx":
     ["antd", "axios", "react", "react-i18next", "react-router"],
+  "src/features/contents/Contents.tsx": [
+    "antd",
+    "axios",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/contents/components/content-form/ContentForm.tsx": [
+    "antd",
+    "axios",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
   "src/features/dashboard/Dashboard.tsx": ["antd-style"],
   "src/features/faqs/Faqs.tsx": [
     "antd",
@@ -392,6 +416,19 @@ const runtimeImports = {
   "src/shared/ui/otp-input/OtpInput.tsx": ["antd", "react", "react-i18next"],
   "src/shared/ui/password-fields/PasswordFields.tsx": ["antd", "react-i18next"],
   "src/shared/ui/request-error/RequestError.tsx": ["antd", "react-i18next"],
+  "src/shared/ui/rich-text-editor/LazyRichTextEditor.tsx": ["antd", "react"],
+  "src/shared/ui/rich-text-editor/RichTextEditor.tsx": [
+    "antd",
+    "antd-style",
+    "react",
+    "react-i18next",
+    "react-quill-new",
+  ],
+  "src/shared/ui/rich-text-editor/RichTextToolbar.tsx": [
+    "lucide-react",
+    "react-i18next",
+    "antd-style",
+  ],
   "src/shared/ui/route-loading/RouteLoading.tsx": ["antd", "react-i18next"],
   "src/shared/ui/sortable-table/SortableTable.tsx": [
     "@dnd-kit/core",
@@ -435,6 +472,11 @@ const wireImports = {
   ],
   "src/features/auth/types.ts": [],
   "src/features/content-categories/types.ts": [],
+  "src/features/contents/types.ts": [
+    "src/features/content-categories/index.ts",
+    "src/features/files/index.ts",
+    "src/shared/api/index.ts",
+  ],
   "src/features/faqs/types.ts": [],
   "src/features/files/types.ts": [],
   "src/features/roles/types.ts": [],
@@ -453,6 +495,12 @@ const crossFeatureImports = {
   runtime: {
     "src/features/account/components/password-form/PasswordForm.tsx": {
       "src/features/auth/index.ts": ["changePassword"],
+    },
+    "src/features/contents/Contents.tsx": {
+      "src/features/content-categories/index.ts": ["fetchContentCategories"],
+    },
+    "src/features/contents/components/content-form/ContentForm.tsx": {
+      "src/features/files/index.ts": ["uploadFile"],
     },
     "src/features/forgot-pass/ForgotPass.tsx": {
       "src/features/auth/index.ts": ["forgotPassword", "useOtpRequest"],
@@ -477,6 +525,16 @@ const crossFeatureImports = {
     "src/features/account/types.ts": {
       "src/features/roles/index.ts": ["PermissionKey"],
       "src/features/users/index.ts": ["User"],
+    },
+    "src/features/contents/Contents.tsx": {
+      "src/features/content-categories/index.ts": ["ContentCategory"],
+    },
+    "src/features/contents/components/content-form/ContentForm.tsx": {
+      "src/features/content-categories/index.ts": ["ContentCategory"],
+    },
+    "src/features/contents/types.ts": {
+      "src/features/content-categories/index.ts": ["ContentCategory"],
+      "src/features/files/index.ts": ["StoredFile"],
     },
     "src/features/forgot-pass/ForgotPass.tsx": {
       "src/features/auth/index.ts": ["ForgotPasswordParams"],
@@ -523,6 +581,8 @@ const runtimeDependencies = new Set([
   "@dnd-kit/sortable",
   "@dnd-kit/utilities",
   "antd-img-crop",
+  "quill",
+  "react-quill-new",
 ]);
 const runtimePaths = new Set([
   "src/shared/i18n/index.ts",
@@ -532,6 +592,9 @@ const publishedModules = (root) =>
   new Set(productionPaths.map((file) => path.join(root, file)));
 const stylesheetImports = {
   "src/main.tsx": { "./index.css": "src/index.css" },
+  "src/shared/ui/rich-text-editor/RichTextEditor.tsx": {
+    "quill/dist/quill.core.css": "node_modules/quill/dist/quill.core.css",
+  },
 };
 const isErasedTypeReference = (node) => {
   if (ts.isImportTypeNode(node)) return true;
