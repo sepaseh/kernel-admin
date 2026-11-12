@@ -133,7 +133,6 @@ for (const isSystemAdmin of [false, true]) {
         >;
         writes.push(payload);
         if (isSystemAdmin) expect(payload.language_code).toBe("fa");
-        else expect(payload).not.toHaveProperty("language_code");
         expect(payload).toHaveProperty("dark_theme");
         expect(payload).toHaveProperty("light_theme");
         // A normal appearance save also consumes the backend's current language.

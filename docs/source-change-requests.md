@@ -10,6 +10,34 @@ that exposes the issue, the observed failure or test evidence, and the smallest
 proposed change. Distinguish confirmed failures, intermittent observations and
 unproven concerns. Discuss the source change before applying it.
 
+## Current PR 19 repair decisions
+
+The investigated head was `5d74d6751f9100dc9ed0e4f3f09e53a63fa1315d`.
+[CI run 43157884027](https://github.com/sepaseh/kernel-admin/actions/runs/43157884027)
+reported failed static, Storybook, application E2E and visual checks. Its unit,
+governance, audit, build and consumer-contract jobs passed. The failures below
+are distinct from the locally unavailable Chromium download (HTTP 403).
+Production edits require discussion with the owner. Do not add timeouts or
+weaken genuine assertions to make a check pass.
+
+| Owner and trigger                                                                                                                                                                                                                                                        | Current evidence                                                                                                                                                                                                                        | Smallest proposal for discussion                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/index.ts`, `src/shared/i18n/index.ts`, `src/features/account/components/password-form/index.ts`, `src/features/account/components/password-form/PasswordForm.tsx`, `src/shared/contracts/index.ts` and `src/shared/contracts/appearance.ts`: run `check:unused` | Two unused exports (`Routes`, `localeCodes`) and three exported-type entries (`PasswordFormParams`, `ThemeColors` in two files). Real consumers already use their owning modules; the standalone app has no external package consumers. | The owner approved removing redundant barrel exports and keeping implementation-only types local. The cleanup retains implementations and real consumers, without synthetic consumers or analyzer exclusions.                                         |
+| `src/features/settings/Settings.tsx`: an ordinary settings editor submits appearance                                                                                                                                                                                     | The disabled language Select contributes its stored value to the PUT payload.                                                                                                                                                           | The owner accepts this behavior because the backend ignores unauthorized language changes. Withdraw the omission assertion; preserve the disabled chooser, appearance updates and API-response language authority. Production code remains unchanged. |
+| `src/app/providers/antd/Antd.tsx`, `src/features/calendar/styles.ts`: render validation errors, placeholders, selected navigation and adjacent-month dates                                                                                                               | The investigated Storybook run reported 20 color-contrast failures, including light error text at 3.26:1 and adjacent-month dates at 1.74:1.                                                                                            | The owner declined color overrides and withdrew contrast thresholds from the current product test scope. Keep source and synthetic API palettes unchanged; retain all unrelated accessibility audits.                                                 |
+| `src/layouts/default/Default.tsx`, `src/features/users/Users.tsx`, `src/features/roles/Roles.tsx`: audit a management page                                                                                                                                               | The investigated E2E run reported missing page-heading and table accessibility findings.                                                                                                                                                | The owner declined extra heading and named keyboard-scrolling requirements. Remove the corresponding assertions and axe rules; retain translated content, RTL layout, ordinary overflow checks and other keyboard behavior.                           |
+| `e2e/accessibility.spec.ts`: audit registration                                                                                                                                                                                                                          | Four cases required `maxlength="1000"`, although the current form and HTTP contract do not define that product limit.                                                                                                                   | The owner withdrew this historical test-only expectation. Preserve required-field, focus and remaining axe assertions without adding a new product limit.                                                                                             |
+
+The investigated visual job reported six stable screenshot differences after the
+page migration. The owner reviewed those six exact images and accepted their use
+as updated baselines, retaining the original failed comparison and its source and
+runtime provenance. The owner also requested a Settings screenshot; the Users
+screenshot already exists. A newly captured Settings image still needs review
+before its promotion. A larger timeout cannot resolve stable image differences.
+Modal focus-boundary failures remain under investigation; native Ant Design
+focus behavior and document focus must be distinguished before proposing a
+production workaround.
+
 The observations below predate the current reset of files outside `src/`.
 Production source was preserved during that reset. Form-submission cancellation,
 the type-only corrections and four narrow ARIA role corrections below were
@@ -46,7 +74,7 @@ validation profiles, security and accessibility checks remain required.
 
 ## Current source decisions and publication status
 
-The user approved only four narrow accessibility changes: the loading Spin in
+The user previously approved four narrow accessibility changes: the loading Spin in
 [RouteLoading](../src/shared/ui/route-loading/RouteLoading.tsx),
 [Core](../src/app/providers/core/Core.tsx) and
 [Default](../src/layouts/default/Default.tsx) now has a status role, and the
@@ -59,34 +87,38 @@ refetch when the window regains focus. Former focus-refresh and malformed-on-foc
 withdrawn; metadata authority tests must use actual accepted settings responses
 or a fresh mount while preserving cancellation and readiness checks.
 
-The user declined further accessibility source changes, a new 1,000-character
-name limit and changes to ordinary Settings editors' language payloads. Preserve
-the genuine accessibility, name-limit and nonadministrator language-authority
-regressions and report their failures. The mandatory full gate remains in force:
-the four application PRs remain blocked while required checks fail. Preparing
-local PR descriptions does not establish publication or approval.
+The owner declined further color, heading and keyboard-scrolling source changes,
+a new 1,000-character name limit and changes to ordinary Settings editors'
+language payloads. The corresponding product expectations are now withdrawn,
+as detailed above and in [test scope](testing.md#review-appearance). Preserve
+unrelated assertions and the canonical validation profiles. The owner permits
+HTTP 403-dependent checks to remain unavailable; report that limitation without
+claiming those checks passed. Other unresolved required failures still need
+investigation.
 
 The unused-code review restored [asset integrity](../src/assets/assets.test.ts)
 and [multipart transport](../src/shared/api/transport.test.ts) coverage and retained
 fontkit and MSW. Only the two directly unused Testing Library development
 dependencies were removed; Storybook still owns its matcher and user-event
-implementations. Public exports and types remain unchanged. The unused Routes,
-localeCodes, PasswordFormParams and ThemeColors export findings remain unresolved
-until their interface or removal is explicitly decided; no synthetic consumers or
-broad analyzer exclusions were introduced.
+implementations. The owner subsequently approved removing the unused Routes,
+localeCodes, PasswordFormParams and ThemeColors exports while retaining local
+implementations and type shapes. No synthetic consumers or broad analyzer
+exclusions were introduced.
 
 ## Pending behavior
 
-| Owner and trigger                                                                                                                                                                                 | Prior evidence                                                                                                                            | Minimal proposal / decision                                                                                                                              |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [FormDrawer](../src/shared/ui/form-drawer/FormDrawer.tsx), [Users confirmation](../src/features/users/Users.tsx), [Antd](../src/app/providers/antd/Antd.tsx): Tab from drawer Submit or modal Yes | Eight English/Persian light/dark browser cases observed BODY as activeElement and `document.hasFocus() === false`.                        | Review supported focus containment while preserving Escape, cancellation and trigger restoration.                                                        |
-| [Users](../src/features/users/Users.tsx), [Roles](../src/features/roles/Roles.tsx), [Default](../src/layouts/default/Default.tsx): render at 390px                                                | Four table cases observed document overflow or an overflowing table without a named keyboard scroll region; axe also reported missing h1. | Contain actual overflow and review headings without forcing the former layout. Fitting tables need no extra scroll region.                               |
-| [Settings](../src/features/settings/Settings.tsx): ordinary `settings.update` editor saves appearance                                                                                             | The language-authority case observed `language_code: "en"` in PUT despite no system-admin language rights.                                | The user declined this source change. Preserve the ordinary-editor language-authority regression and report the failure; required gates remain blocking. |
+| Owner and trigger                                                                                                                                                                                 | Prior evidence                                                                                                                         | Minimal proposal / decision                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [FormDrawer](../src/shared/ui/form-drawer/FormDrawer.tsx), [Users confirmation](../src/features/users/Users.tsx), [Antd](../src/app/providers/antd/Antd.tsx): Tab from drawer Submit or modal Yes | Eight English/Persian light/dark browser cases observed BODY as activeElement and `document.hasFocus() === false`.                     | Review supported focus containment while preserving Escape, cancellation and trigger restoration.                                                        |
+| [Users](../src/features/users/Users.tsx), [Roles](../src/features/roles/Roles.tsx), [Default](../src/layouts/default/Default.tsx): render at 390px                                                | Earlier cases observed document overflow or an overflowing table without a named keyboard scroll region; axe also reported missing h1. | Extra H1 and keyboard-scrolling-region requirements were withdrawn. Retain the separate ordinary viewport/RTL assertions.                                |
+| [Settings](../src/features/settings/Settings.tsx): ordinary `settings.update` editor saves appearance                                                                                             | The language-authority case observed `language_code: "en"` in PUT despite no system-admin language rights.                             | Accepted: the backend ignores unauthorized language changes. Retain response authority and appearance permissions; withdraw only the omission assertion. |
 
 ## Accessibility findings in synthetic palettes
 
 These prior Storybook/browser measurements describe synthetic rendered states,
-not the palette of a live backend. Keep interaction assertions and axe audits.
+not the palette of a live backend. Contrast is no longer a current blocking
+product requirement; the measurements below remain historical observations.
+Keep interaction assertions and the remaining axe audits.
 Incomplete/background-overlap entries do not establish a measured contrast ratio.
 
 | Exact production owner and trigger                                                                                                                                                       | Prior evidence                                                                                                 | Minimal proposal                                                                                       |

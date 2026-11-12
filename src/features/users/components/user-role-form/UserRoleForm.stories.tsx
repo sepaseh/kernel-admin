@@ -42,9 +42,8 @@ export const ExistingSelection: Story = {
 };
 export const SaveSelection: Story = {
   play: async ({ args, canvasElement }) => {
-    const dialog = within(
-      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
-    );
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = within(await body.findByRole("dialog"));
     await waitFor(() =>
       expect(dialog.getByRole("checkbox", { name: "Editor" })).toBeChecked(),
     );
@@ -61,6 +60,9 @@ export const SaveSelection: Story = {
         roleIds: ["role-admin", "role-editor"],
       },
       { signal: expect.any(AbortSignal) },
+    );
+    await waitFor(() =>
+      expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
     );
   },
 };

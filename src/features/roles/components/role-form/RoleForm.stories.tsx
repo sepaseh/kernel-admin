@@ -25,9 +25,8 @@ type Story = StoryObj<typeof meta>;
 
 export const Create: Story = {
   play: async ({ args, canvasElement }) => {
-    const dialog = within(
-      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
-    );
+    const body = within(canvasElement.ownerDocument.body);
+    const dialog = within(await body.findByRole("dialog"));
     const name = dialog.getByLabelText(i18n.t("name"));
     await waitFor(() => expect(name).toHaveFocus());
     await userEvent.type(name, "Reviewers");
@@ -43,6 +42,9 @@ export const Create: Story = {
         permissions: ["users.read"],
       },
       { signal: expect.any(AbortSignal) },
+    );
+    await waitFor(() =>
+      expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
     );
   },
 };

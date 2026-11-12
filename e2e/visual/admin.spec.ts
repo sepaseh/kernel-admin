@@ -1,3 +1,4 @@
+import { applicationSettingsFixture } from "../fixtures";
 import { expect, setupAdminFixture, test } from "../shared/admin-fixtures";
 import { waitForVisualReady } from "./readiness";
 
@@ -68,6 +69,49 @@ test("admin-users-fa-light", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await waitForVisualReady(page, { language: "fa", theme: "light" });
   await expect(page).toHaveScreenshot("admin-users-fa-light.png");
+  expect(fixture.unexpectedRequests).toEqual([]);
+});
+
+test("admin-settings-en-light", async ({ page }) => {
+  const fixture = await setupAdminFixture(page, {
+    baseURL,
+    language: "en",
+    permissions: ["settings.update"],
+    theme: "light",
+  });
+  await page.route("https://api.example.com/languages", (route) =>
+    route.request().method() === "GET"
+      ? route.fulfill({
+          json: [
+            applicationSettingsFixture("en").language,
+            applicationSettingsFixture("fa").language,
+          ],
+        })
+      : route.fallback(),
+  );
+  await page.goto(`${baseURL}/settings`);
+  await expect(page.locator("form")).toBeVisible();
+  await expect(
+    page.getByRole("combobox", {
+      name: fixture.messages.language,
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: fixture.messages.submit, exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page
+      .getByRole("spinbutton", {
+        name: fixture.messages.imageWidth,
+        exact: true,
+      })
+      .first(),
+  ).toHaveValue("1200");
+  await waitForVisualReady(page, { language: "en", theme: "light" });
+  await expect(page).toHaveScreenshot("admin-settings-en-light.png", {
+    fullPage: true,
+  });
   expect(fixture.unexpectedRequests).toEqual([]);
 });
 

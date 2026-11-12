@@ -1,14 +1,7 @@
 import path from "node:path";
 
 import { Pact } from "@pact-foundation/pact";
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-const createPact = () =>
-  new Pact({
-    consumer: "kernel-admin",
-    dir: path.resolve("coverage/contract/pacts"),
-    provider: "local-test-backend",
-  });
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 const loadApiFor = async (baseUrl: string) => {
   vi.resetModules();
@@ -26,8 +19,18 @@ afterEach(() => {
 });
 
 describe("Example backend HTTP consumer contract", () => {
+  let pact: Pact;
+
+  beforeAll(() => {
+    pact = new Pact({
+      consumer: "kernel-admin",
+      dir: path.resolve("coverage/contract/pacts"),
+      provider: "local-test-backend",
+    });
+  });
+
   it("retains the correlation header on a generic server error", async () => {
-    await createPact()
+    await pact
       .addInteraction()
       .given("the authentication provider is unavailable")
       .uponReceiving("a login request during an internal failure")
@@ -56,7 +59,7 @@ describe("Example backend HTTP consumer contract", () => {
   });
 
   it("surfaces a recovery password-policy rejection", async () => {
-    await createPact()
+    await pact
       .addInteraction()
       .given("a recovery OTP exists and the password is too short")
       .uponReceiving("a recovery request outside the password policy")
@@ -83,7 +86,7 @@ describe("Example backend HTTP consumer contract", () => {
   });
 
   it("surfaces the conflict when demoting the final administrator", async () => {
-    await createPact()
+    await pact
       .addInteraction()
       .given("the target is the final active system administrator")
       .uponReceiving("a demotion of the final active administrator")
@@ -107,7 +110,7 @@ describe("Example backend HTTP consumer contract", () => {
   });
 
   it("logs in with the expected request and token response", async () => {
-    await createPact()
+    await pact
       .addInteraction()
       .given("a valid user exists")
       .uponReceiving("a login request")
@@ -135,7 +138,7 @@ describe("Example backend HTTP consumer contract", () => {
   });
 
   it("reads the authenticated account response", async () => {
-    await createPact()
+    await pact
       .addInteraction()
       .given("an authenticated account exists")
       .uponReceiving("an account details request")

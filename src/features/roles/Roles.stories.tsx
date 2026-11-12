@@ -61,13 +61,12 @@ export const ReadOnly: Story = {
 export const CreateRole: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     await canvas.findByText("Administrator");
     await userEvent.click(
       canvas.getByRole("button", { name: i18n.t("create") }),
     );
-    const dialog = within(
-      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
-    );
+    const dialog = within(await body.findByRole("dialog"));
     const name = dialog.getByLabelText(i18n.t("name"));
     await waitFor(() => expect(name).toHaveFocus());
     await userEvent.type(name, "Reviewers");
@@ -84,18 +83,20 @@ export const CreateRole: Story = {
       },
       { signal: expect.any(AbortSignal) },
     );
+    await waitFor(() =>
+      expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
   },
 };
 export const UpdateRole: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     const row = await canvas.findByRole("row", { name: /Editor/ });
     await userEvent.click(
       within(row).getByRole("button", { name: i18n.t("update") }),
     );
-    const dialog = within(
-      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
-    );
+    const dialog = within(await body.findByRole("dialog"));
     const name = dialog.getByLabelText(i18n.t("name"));
     await waitFor(() => expect(name).toHaveFocus());
     await expect(name).toHaveValue("Editor");
@@ -108,6 +109,9 @@ export const UpdateRole: Story = {
       dialog.getByRole("button", { name: i18n.t("submit") }),
     );
     await expect(await canvas.findByText("Content Editor")).toBeVisible();
+    await waitFor(() =>
+      expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
   },
 };
 export const ValidateRole: Story = {

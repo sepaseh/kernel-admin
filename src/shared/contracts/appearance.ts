@@ -12,5 +12,5 @@ export const themeColorFields = [
 
 type ThemeColorField = (typeof themeColorFields)[number];
 
-export type ThemeColors = Record<ThemeColorField, string>;
+type ThemeColors = Record<ThemeColorField, string>;
 export type ThemePalettes = Record<Theme, ThemeColors>;

@@ -39,7 +39,7 @@ normalization or validation. The contract includes a supported code, explicit
 `ltr`/`rtl`, Gregorian/Jalali calendar and names. Malformed metadata handling is
 a pending decision in [source-change requests](source-change-requests.md).
 
-Core applies accepted metadata to i18next and Day.js; it currently has no window-focus refresh. The Ant Design provider selects the matching vendor locale and applies server language and direction to the document. Ordinary settings editors must retain theme and logo rights and omit `languageCode`; the current payload gap is recorded in [source-change requests](source-change-requests.md). Only a system super-admin changes it.
+Core applies accepted metadata to i18next and Day.js; it currently has no window-focus refresh. The Ant Design provider selects the matching vendor locale and applies server language and direction to the document. Ordinary settings editors retain theme and logo rights while the language chooser remains disabled. Their save may include the current `languageCode`; the backend ignores unauthorized language changes. Only a system super-admin changes the selected language, and the accepted API response remains authoritative for every editor.
 
 ## Dates
 

@@ -9,7 +9,7 @@ import { changePassword, type ChangePasswordParams } from "@/features/auth";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { useAbortController, useLock } from "@/shared/hooks";
 
-export type PasswordFormParams = ChangePasswordParams & {
+type PasswordFormParams = ChangePasswordParams & {
   confirmPassword: string;
 };
 

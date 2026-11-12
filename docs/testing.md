@@ -59,7 +59,16 @@ Ordinary local and PR verification uses Chromium. Complete verification substitu
 
 ## Review appearance
 
-For an affected screen, exercise translated names/errors, keyboard submission, invalid-field focus, Tab containment, Escape and trigger-focus restoration. Read-only overflowing tables need a named keyboard-focusable scroll region. Preserve contrast, reduced motion and logical RTL/LTR layout across light/dark/compact variants. The font journey checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
+For an affected screen, exercise translated names/errors, keyboard submission, invalid-field focus, Tab containment, Escape and trigger-focus restoration. Preserve reduced motion and logical RTL/LTR layout across light/dark/compact variants. The font journey checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
+
+The owner withdrew contrast thresholds, mandatory management-page H1 headings,
+named keyboard-scrolling table regions and the historical 1,000-character
+registration-name expectation from the current product requirements. Storybook
+omits only axe's `color-contrast` rule; application accessibility journeys also
+omit `page-has-heading-one` and `scrollable-region-focusable`. Other axe rules,
+accessible names, error associations, keyboard behavior and explicit auth-page
+heading assertions remain required. These scoped product decisions do not
+authorize disabling unrelated checks or adding delays and longer timeouts.
 
 ### Compare and approve images
 
