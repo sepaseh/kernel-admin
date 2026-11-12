@@ -34,9 +34,32 @@ as updated baselines, retaining the original failed comparison and its source an
 runtime provenance. The owner also requested a Settings screenshot; the Users
 screenshot already exists. A newly captured Settings image still needs review
 before its promotion. A larger timeout cannot resolve stable image differences.
-Modal focus-boundary failures remain under investigation; native Ant Design
-focus behavior and document focus must be distinguished before proposing a
-production workaround.
+The native overlay focus decision is detailed below; its production behavior is
+accepted and the corresponding boundary-cycling assertions are withdrawn.
+
+## Native overlay focus decision
+
+[CI run 43164577678](https://github.com/sepaseh/kernel-admin/actions/runs/43164577678)
+tested head `78d8f04aedf3af73d66f9277890d91344462dd50`: all 104 Storybook
+cases passed, while application E2E reported 51 passed and eight failed. All
+eight failures concern cycling Tab across the last control in the role drawer
+or delete confirmation, in English/Persian and light/dark appearances.
+
+The confirmation diagnostics establish a focused document and the Yes button
+before Tab; immediately afterward, `document.hasFocus()` is false and the active
+element is BODY. Activating the isolated browser page before the test did not
+correct this boundary behavior. The locked Ant Design focus utility records a
+desired next element on keydown but restores it through a later `focusin` event;
+moving into browser chrome does not produce that document event.
+
+The production owners are [FormDrawer](../src/shared/ui/form-drawer/FormDrawer.tsx)
+and [Users confirmation](../src/features/users/Users.tsx). The owner accepted the
+existing native Ant Design behavior and explicitly withdrew the custom
+boundary-cycling expectations. Their tests retain initial focus, Escape,
+trigger restoration and no accidental deletion. Remove the diagnostic-only
+page-activation prerequisite along with the rejected cycling assertions;
+preserve the failed run's diagnostic artifacts. No production workaround,
+timeout, sleep or retry is added.
 
 The observations below predate the current reset of files outside `src/`.
 Production source was preserved during that reset. Form-submission cancellation,
@@ -109,7 +132,7 @@ exclusions were introduced.
 
 | Owner and trigger                                                                                                                                                                                 | Prior evidence                                                                                                                         | Minimal proposal / decision                                                                                                                              |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [FormDrawer](../src/shared/ui/form-drawer/FormDrawer.tsx), [Users confirmation](../src/features/users/Users.tsx), [Antd](../src/app/providers/antd/Antd.tsx): Tab from drawer Submit or modal Yes | Eight English/Persian light/dark browser cases observed BODY as activeElement and `document.hasFocus() === false`.                     | Review supported focus containment while preserving Escape, cancellation and trigger restoration.                                                        |
+| [FormDrawer](../src/shared/ui/form-drawer/FormDrawer.tsx), [Users confirmation](../src/features/users/Users.tsx), [Antd](../src/app/providers/antd/Antd.tsx): Tab from drawer Submit or modal Yes | Eight English/Persian light/dark browser cases observed BODY as activeElement and `document.hasFocus() === false`.                     | Accepted native Ant Design behavior; boundary-cycling expectations withdrawn. Preserve initial focus, Escape and trigger restoration.                    |
 | [Users](../src/features/users/Users.tsx), [Roles](../src/features/roles/Roles.tsx), [Default](../src/layouts/default/Default.tsx): render at 390px                                                | Earlier cases observed document overflow or an overflowing table without a named keyboard scroll region; axe also reported missing h1. | Extra H1 and keyboard-scrolling-region requirements were withdrawn. Retain the separate ordinary viewport/RTL assertions.                                |
 | [Settings](../src/features/settings/Settings.tsx): ordinary `settings.update` editor saves appearance                                                                                             | The language-authority case observed `language_code: "en"` in PUT despite no system-admin language rights.                             | Accepted: the backend ignores unauthorized language changes. Retain response authority and appearance permissions; withdraw only the omission assertion. |
 

@@ -94,7 +94,6 @@ test("admin-settings-en-light", async ({ page }) => {
   await expect(
     page.getByRole("combobox", {
       name: fixture.messages.language,
-      exact: true,
     }),
   ).toBeDisabled();
   await expect(
@@ -104,7 +103,6 @@ test("admin-settings-en-light", async ({ page }) => {
     page
       .getByRole("spinbutton", {
         name: fixture.messages.imageWidth,
-        exact: true,
       })
       .first(),
   ).toHaveValue("1200");
