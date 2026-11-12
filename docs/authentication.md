@@ -2,7 +2,7 @@
 
 Use this reference when changing an HTTP adapter, session transition or asynchronous screen. Start with the relevant owner and its tests:
 
-The application composes transport, feature HTTP adapters, settings validation, guarded requests, providers and authentication forms. Local tests use synthetic responses. Live backend integration requires separate verification.
+The application composes transport, feature HTTP adapters, settings metadata, guarded requests, providers and authentication forms. Local tests use synthetic responses. Live backend integration requires separate verification.
 
 | Change                                        | Owner                                                             | Regression examples                                                   |
 | --------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------- |
@@ -66,7 +66,7 @@ To connect a feature read:
 2. Start it from the owning effect and return cancellation cleanup. Render its local loading, data, error and retry states.
 3. Reuse the loader for explicit retry. Cancel an older read before accepting replacement data from a mutation.
 
-Guard permission-dependent reads before starting them. Keep independent list and lookup resources separate so an optional lookup failure does not erase a usable list. Preserve accepted data across a real refresh failure; existing recovery gaps are recorded in [source-change requests](source-change-requests.md).
+Guard permission-dependent reads before starting them. Keep independent list and lookup resources separate so an optional lookup failure does not erase a usable list. When implementing refresh recovery, preserve accepted data after a failed refresh.
 
 ## Mutation guards and privileged screens
 
@@ -88,7 +88,7 @@ The default layout checks the account before rendering protected children and ex
 
 ## Settings and troubleshooting
 
-The settings adapter returns typed palettes, optional logos, language metadata and image settings. Runtime validation remains a pending source decision. Core preserves accepted settings across refresh failures and cancels older reads when a save replaces them. [Settings adapter](../src/features/settings/api.ts) and [localization](localization.md).
+The [settings adapter](../src/features/settings/api.ts) returns typed palettes, optional logos, language metadata and image settings without runtime envelope validation. Core loads public settings on mount, offers retry after an initial failure and cancels a pending read when a save supplies accepted settings. See [localization](localization.md) for language metadata behavior.
 
 | Symptom                                               | First check                                                                                                                            |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |

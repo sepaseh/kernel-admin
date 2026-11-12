@@ -252,7 +252,6 @@ const storybookFiles = [
   "src/shared/ui/request-error/RequestError.stories.tsx",
 ];
 const guidanceFiles = new Set([
-  "docs/source-change-requests.md",
   ".agents/README.md",
   ".agents/evaluation/cases.json",
   ".agents/evaluation/run-template.json",
@@ -298,7 +297,6 @@ const guidanceFiles = new Set([
   "CONTRIBUTING.md",
   "docs/development.md",
   "docs/testing.md",
-  "docs/source-navigation.md",
   "docs/validation.md",
   "scripts/block-dangerous.test.mjs",
   "scripts/post-edit-format.test.mjs",

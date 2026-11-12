@@ -1,6 +1,6 @@
 # Contributing
 
-Use the existing checkout and start with [development](docs/development.md), [source navigation](docs/source-navigation.md), the [publication policy](.github/bootstrap-policy.json) and relevant [Git rules](.agents/rules/git.md). Preserve unrelated work.
+Use the existing checkout and start with [development](docs/development.md), [architecture](docs/architecture.md), the [publication policy](.github/bootstrap-policy.json) and relevant [Git rules](.agents/rules/git.md). Preserve unrelated work.
 
 ## Pull requests
 
@@ -18,11 +18,13 @@ A successful CodeRabbit status can represent a skipped or rate-limited review. A
 
 The [manifest](.agents/validation.json) owns commands, profiles and responsibility. Use the pinned Node release and locked root dependencies. Start with the smallest relevant check, then run `npm run validate -- full` on the exact proposed snapshot before an authorized commit, push or PR handoff.
 
-Preserve all required checks and measured coverage. Numerical metrics are advisory under [code quality](.agents/rules/code-quality.md); they do not justify source rewrites or shallow tests. Do not suppress required failures or use unpublished source to make a partial snapshot pass. Local success does not establish hosted CI, scanner execution, the actual Sonar quality gate or approval. When source is preserved, record failures and minimal proposals in [source-change requests](docs/source-change-requests.md) and discuss a source edit first.
+Preserve all required checks and measured coverage. Numerical metrics are advisory under [code quality](.agents/rules/code-quality.md); they do not justify source rewrites or shallow tests. Do not suppress required failures or use unpublished source to make a partial snapshot pass. Local success does not establish hosted CI, scanner execution, the actual Sonar quality gate or approval. When production source is preserved, explain failures and minimal proposals in the current chat and discuss a source edit first, honoring existing approval for that scope. Keep task evidence in the chat or authorized PR materials.
 
 ## Documentation
 
-Maintain English, current, task-oriented guides using the [documentation map](docs/README.md). Update the existing owner alongside a behavior or workflow change. Link only files admitted by the current snapshot; identify planned paths as plain inline code rather than broken links. Do not add dated QA reports, decision logs or translated companion guides.
+Maintain English, current, task-oriented guides using the [documentation map](docs/README.md). Describe current behavior, contracts and procedures; update the existing owner alongside a behavior or workflow change. Link only files admitted by the current snapshot; identify planned paths as plain inline code rather than broken links. Do not add PR numbers, commit hashes, CI-run results, past owner decisions, dated QA reports, decision logs or translated companion guides. Keep investigation and execution evidence in the current chat or authorized PR materials. Preserve required runtime, source, hash and human-review provenance with technical artifacts such as visual-baseline metadata.
+
+Organize user-facing navigation around installation, capabilities, source work and deployment using the existing guides. Do not create new folders, taxonomies or replacement indexes solely to impose that sequence.
 
 Use public synthetic examples. Keep all ten UI catalogs and Persian calendar data when admitted, with localized product examples clearly identified and explanatory prose in English. Source and optional hooks do not authorize deployment, external review requests or production access.
 

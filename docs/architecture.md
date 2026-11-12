@@ -8,7 +8,7 @@ Kernel Admin is one independent React/Vite TypeScript application. Developers se
 
 1. [The entry point](../src/main.tsx) initializes [optional observability](../src/shared/lib/observability.ts), then mounts [App](../src/app/App.tsx).
 2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings with local state and cancellation. The settings adapter returns typed language, logos and palettes without runtime validation. Bootstrap loading remains outside Ant Design.
-3. `App` composes the Ant Design provider, global styles and lazy routes. Core renders its children after settings are available and offers bootstrap retry. Later settings refresh failures retain the accepted application.
+3. `App` composes the Ant Design provider, global styles and lazy routes. Core renders its children after settings are available and offers bootstrap retry.
 4. [Routes](../src/app/Routes.tsx) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.
 
 The [default layout](../src/layouts/default/Default.tsx) loads the current account before rendering protected children. Menu and route checks describe what the client presents; the API authorizes each request independently.
@@ -17,14 +17,15 @@ Observability collects `window.error`, unhandled promise rejections, React error
 
 ## Locate the owner
 
-| Responsibility                                                | Owner                                                              | Contract                                                                                  |
-| ------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Accepted settings, account context and appearance preferences | [Core](../src/app/providers/core/Core.tsx)                         | Server settings remain authoritative; the browser persists theme and compact mode.        |
-| Paths, wire types and response validation for a feature       | `src/features/<feature>/api.ts` and `types.ts`                     | Keep the contract with its feature.                                                       |
-| Credentials and HTTP behavior                                 | [`src/shared/api`](../src/shared/api)                              | Memory-only tokens, generation checks, bounded refresh, conversion and normalized errors. |
-| Read and mutation state                                       | Owning page/provider and [`src/shared/hooks`](../src/shared/hooks) | Local state, cancellation and synchronous submission locks.                               |
-| Shared product vocabulary                                     | [`src/shared/contracts`](../src/shared/contracts)                  | Reuse appearance contracts across features.                                               |
-| Catalog data and runtime adapters                             | [`src/shared/i18n`](../src/shared/i18n)                            | Keep pure catalog/calendar data separate from UI and vendor initialization.               |
+| Responsibility                                    | Owner                                                              | Contract                                                                                  |
+| ------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Accepted settings and appearance preferences      | [Core](../src/app/providers/core/Core.tsx)                         | Server settings remain authoritative; the browser persists theme and compact mode.        |
+| Current account and protected-page context        | [Default layout](../src/layouts/default/Default.tsx)               | Load the account before protected children and expose it through Outlet context.          |
+| Paths, wire types and HTTP adapters for a feature | `src/features/<feature>/api.ts` and `types.ts`                     | Keep the contract with its feature.                                                       |
+| Credentials and HTTP behavior                     | [`src/shared/api`](../src/shared/api)                              | Memory-only tokens, generation checks, bounded refresh, conversion and normalized errors. |
+| Read and mutation state                           | Owning page/provider and [`src/shared/hooks`](../src/shared/hooks) | Local state, cancellation and synchronous submission locks.                               |
+| Shared product vocabulary                         | [`src/shared/contracts`](../src/shared/contracts)                  | Reuse appearance contracts across features.                                               |
+| Catalog data and runtime adapters                 | [`src/shared/i18n`](../src/shared/i18n)                            | Keep pure catalog/calendar data separate from UI and vendor initialization.               |
 
 The API selects language, text direction, calendar, logos and palettes. A browser theme choice selects which accepted palette to display; it does not change the global settings contract. See [localization](localization.md) and [authentication and requests](authentication.md) for the detailed lifecycles.
 
@@ -36,6 +37,6 @@ Features consume reviewed API, hook or type exports through another feature's pu
 
 ## Trace a change
 
-Use the [source map](source-navigation.md) to find the nearest implementation and tests. [Route tests](../src/app/Routes.test.tsx) exercise startup and lazy-route behavior. [Core tests](../src/app/providers/core/Core.test.tsx) exercise settings acceptance. Feature behavior stays with its tests and stories.
+Start with the responsibility above and read its implementation and nearby tests. [Route tests](../src/app/Routes.test.tsx) exercise startup and lazy-route behavior. [Core tests](../src/app/providers/core/Core.test.tsx) exercise settings acceptance. Feature behavior stays with its tests and stories.
 
 [Testing](testing.md) explains what each kind of evidence establishes. Component, consumer-contract and application-browser results cover different boundaries; provider compatibility and deployed behavior require their own results.

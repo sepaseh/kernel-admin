@@ -69,17 +69,18 @@ Ordinary local and PR verification uses Chromium. Complete verification substitu
 
 For an affected screen, exercise translated names/errors, keyboard submission, invalid-field focus, initial dialog focus, Escape and trigger-focus restoration. Preserve reduced motion and logical RTL/LTR layout across light/dark/compact variants. The font journey checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
 
-The owner withdrew contrast thresholds, mandatory management-page H1 headings,
-named keyboard-scrolling table regions and the historical 1,000-character
-registration-name expectation from the current product requirements. Boundary
-Tab cycling in native Ant Design overlays is also accepted as library behavior;
-retain initial focus, Escape, trigger restoration and no accidental submission.
-Storybook
-omits only axe's `color-contrast` rule; application accessibility journeys also
-omit `page-has-heading-one` and `scrollable-region-focusable`. Other axe rules,
-accessible names, error associations, keyboard behavior and explicit auth-page
-heading assertions remain required. These scoped product decisions do not
-authorize disabling unrelated checks or adding delays and longer timeouts.
+Storybook axe audits exclude `color-contrast`; application accessibility journeys
+also exclude `page-has-heading-one` and `scrollable-region-focusable`. Other axe
+rules, accessible names, error associations, keyboard behavior and explicit
+authentication-page heading assertions remain required. The automated scope
+does not impose contrast thresholds, management-page H1 headings or named
+keyboard-scrolling table regions.
+
+Native Ant Design overlays use the library's focus handling. Tests require
+initial focus, Escape, trigger restoration and no accidental submission, without
+a custom boundary Tab-cycling requirement. Registration tests enforce required
+fields without a fixed maximum name length. Keep these assertions and do not
+add delays or longer timeouts to obtain a pass.
 
 ### Compare and approve images
 
@@ -118,7 +119,7 @@ Keep the first failed command, runtime conditions and diagnostics. Distinguish a
 
 Preserve assertions, stress inputs, measured reports and declared product-test deadlines. Numerical coverage/bundle/performance and analyzer scores are advisory under [code quality](../.agents/rules/code-quality.md); they do not justify source abstractions or shallow tests. Lighthouse remains a real owned-preview audit under [the current performance policy](validation.md#resolve-a-failed-check); injected orchestration tests do not establish an audit. Docker, deployed smoke/staging and DAST remain separate authorized operations described in [deployment](deployment.md).
 
-When production source must remain unchanged, record the exact file, trigger,
-test evidence and minimal proposal in [source-change requests](source-change-requests.md)
-and discuss an edit first. Correct a faulty fixture only with supporting evidence;
-do not weaken a genuine regression to make the check pass.
+When production source must remain unchanged, present the exact file, trigger,
+test evidence and minimal proposal in the current chat or PR and discuss an edit
+first. Correct a faulty fixture only with supporting evidence; do not weaken a
+genuine regression to make the check pass.

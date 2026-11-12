@@ -1,6 +1,6 @@
 # Assistant guidance
 
-Start with [AGENTS](../AGENTS.md), [source navigation](../docs/source-navigation.md) and the rules indexed in [settings](settings.json). Read current source before changing it and preserve unrelated user work.
+Start with [AGENTS](../AGENTS.md) and the rules indexed in [settings](settings.json). Use the existing [architecture](../docs/architecture.md), [development guide](../docs/development.md) and [task map](navigation.json) to locate current owners. Read current source before changing it and preserve unrelated user work.
 
 The [validation manifest](validation.json) owns commands and profiles. Start with a focused check, then run its full profile on the exact isolated proposed source before an authorized commit, push or handoff. Use [validation](../docs/validation.md) and honest current-revision results; optional hooks and host adapters are not substitutes.
 

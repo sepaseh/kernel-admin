@@ -21,7 +21,8 @@ Windows visual cleanup captures and refreshes process identities, pins each proc
 Visual comparison keeps runtime provenance, image hashes, tolerances and human approval. Fresh captures remain pending until the user reviews them; updates are forbidden in CI. Record actual failures, optional host skips and unexecuted work honestly. Routine checks do not require a dated QA report or an additional full-suite invocation.
 
 When production source must remain unchanged, a failing check is evidence for
-discussion, not permission to edit it. Record the exact file, trigger, test
-evidence and minimal proposal in [source-change requests](../../docs/source-change-requests.md).
-Discuss the source change first; correct a faulty fixture only when evidence
+discussion, not permission to edit it. Present the exact file, trigger, test
+evidence and minimal proposal in the current chat and discuss the source change
+before editing, honoring existing approval for that scope. Do not add a maintained
+investigation or decision log. Correct a faulty fixture only when evidence
 supports that conclusion and retain genuine failing assertions.

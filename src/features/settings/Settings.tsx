@@ -204,16 +204,16 @@ export const SettingsPage = () => {
                   {t(context === "logo" ? "logo" : "contents")}
                 </Divider>
                 <Row gutter={16}>
-                  {(["width", "height", "size"] as const).map((field) => (
+                  {(
+                    [
+                      ["width", "imageWidth"],
+                      ["height", "imageHeight"],
+                      ["size", "imageMaxBytes"],
+                    ] as const
+                  ).map(([field, labelKey]) => (
                     <Col key={field} md={8} xs={24}>
                       <Form.Item<SettingsFormValues>
-                        label={t(
-                          field === "width"
-                            ? "imageWidth"
-                            : field === "height"
-                              ? "imageHeight"
-                              : "imageMaxBytes",
-                        )}
+                        label={t(labelKey)}
                         name={["imageSettings", context, field]}
                         rules={[
                           {

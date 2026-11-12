@@ -27,7 +27,7 @@ export const CoreProvider = ({ children }: PropsWithChildren) => {
   const [currentRoute, setCurrentRoute] =
     useState<CoreContextValue["currentRoute"]>("root");
   const [loading, setLoading] = useState(true);
-  const [settings, updateSettings] = useState<Settings>();
+  const [settings, setSettings] = useState<Settings>();
   const [theme, setTheme] = useState(getTheme);
   const { cancel, start } = useAbortController();
   const language = settings?.language;
@@ -40,7 +40,7 @@ export const CoreProvider = ({ children }: PropsWithChildren) => {
       const data = await fetchSettings(signal);
       if (signal.aborted) return;
 
-      updateSettings(data);
+      setSettings(data);
     } catch {
       // The provider offers an inline retry and keeps accepted settings.
     } finally {
@@ -48,10 +48,10 @@ export const CoreProvider = ({ children }: PropsWithChildren) => {
     }
   }, [start]);
 
-  const setSettings = useCallback(
+  const changeSettings = useCallback(
     (value: Settings) => {
       cancel();
-      updateSettings(value);
+      setSettings(value);
       setLoading(false);
     },
     [cancel],
@@ -124,7 +124,7 @@ export const CoreProvider = ({ children }: PropsWithChildren) => {
         settings,
         setCompact: changeCompact,
         setCurrentRoute,
-        setSettings,
+        setSettings: changeSettings,
         setTheme: changeTheme,
         theme,
       }}

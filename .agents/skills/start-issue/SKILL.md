@@ -14,7 +14,8 @@ issue mention or read-only discussion. Read [Git workflow](../../rules/git.md),
    authorized remote metadata using available tools. Do not invent issue state,
    labels, comments or dependencies when access is unavailable.
 2. Separate observed facts, assumptions and unknowns. Verify the issue against
-   current source, locate owners through [source navigation](../../../docs/source-navigation.md),
+   current source, locate owners through the existing [task map](../../navigation.json),
+   [architecture](../../../docs/architecture.md) and [development guide](../../../docs/development.md),
    and identify objective acceptance criteria and a proportionate plan.
 3. Clarify only missing decisions that materially change implementation. A
    duplicate or already-resolved issue is evidence to report, not permission to

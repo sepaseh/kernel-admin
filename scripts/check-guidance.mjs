@@ -428,7 +428,6 @@ const markdownInventory = async (root) => {
       ...source,
       ...roots,
       "AGENTS.md",
-      "docs/source-navigation.md",
       "docs/validation.md",
       "docs/comprehension-evaluation.md",
     ]),

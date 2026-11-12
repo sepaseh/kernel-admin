@@ -1,33 +1,31 @@
 # Documentation
 
-Choose a guide by the result you need. Commands run from the repository root unless a guide explicitly says otherwise.
+Commands run from the repository root unless a guide explicitly says otherwise.
 
-## Complete a task
+## 1. Install and run
 
-| Goal                        | Guide                                      | What it covers                                            |
-| --------------------------- | ------------------------------------------ | --------------------------------------------------------- |
-| Open the panel locally      | [Run Kernel Admin](usage.md)               | Prerequisites, public configuration, startup and recovery |
-| Implement a feature change  | [Develop a feature](development.md)        | Source owners, interaction contracts and focused checks   |
-| Validate proposed source    | [Validate a change](validation.md)         | Check profiles, synthetic setup and publication evidence  |
-| Build and operate a release | [Build, package and deploy](deployment.md) | Immutable artifacts, hosting, target checks and rollback  |
+Follow [Run Kernel Admin](usage.md) for prerequisites, locked dependency installation, public configuration, local startup and recovery.
 
-## Find a contract or source owner
+## 2. Explore the application
 
-| Question                                          | Reference                                                  |
-| ------------------------------------------------- | ---------------------------------------------------------- |
-| Where does a behavior belong?                     | [Source navigation](source-navigation.md)                  |
-| How do startup, providers and routes fit?         | [Application architecture](architecture.md)                |
-| How do sessions, requests and stale results work? | [Authentication and request lifecycles](authentication.md) |
-| Who chooses language, direction and calendar?     | [Localization](localization.md)                            |
-| How should a behavior be tested?                  | [Testing](testing.md)                                      |
-| Which preserved source changes need discussion?   | [Source-change requests](source-change-requests.md)        |
-| What makes an interface change complete?          | [Design conventions](../DESIGN.md)                         |
-| How should a vulnerability be reported?           | [Security policy](../SECURITY.md)                          |
+Read the [included capabilities](../README.md#included-capabilities) for the available screens and features. The [architecture](architecture.md) explains startup, providers, routes and feature boundaries.
 
-## Maintain the documentation
+## 3. Work with the source
 
-Follow the [documentation workflow](../CONTRIBUTING.md#documentation) when behavior, configuration or verification changes. Update the existing owner guide and link it here when its purpose changes. Keep commands and configuration tied to their declared source owners.
+Start with [Develop a feature](development.md) to find the owning implementation, change its contract and interaction, and select focused checks.
 
-[Instruction discovery evaluation](comprehension-evaluation.md) is an optional read-only assessment for maintainers of assistant guidance.
+| Task                                       | Guide                                                      |
+| ------------------------------------------ | ---------------------------------------------------------- |
+| Change sessions, requests or stale results | [Authentication and request lifecycles](authentication.md) |
+| Change language, direction or calendar     | [Localization](localization.md)                            |
+| Add behavioral tests                       | [Testing](testing.md)                                      |
+| Verify proposed source                     | [Validate a change](validation.md)                         |
+| Change an interface                        | [Design conventions](../DESIGN.md)                         |
+| Prepare a contribution                     | [Contributing](../CONTRIBUTING.md)                         |
+| Report a vulnerability                     | [Security policy](../SECURITY.md)                          |
 
-Documentation describes current source and procedures. Test configuration, examples and available commands do not establish an executed deployment or provider verification.
+Follow the [documentation workflow](../CONTRIBUTING.md#documentation) alongside behavior, configuration or verification changes. Update the existing guide and link to configuration and command owners.
+
+## 4. Package and deploy
+
+Follow [Build, package and deploy](deployment.md) for immutable release artifacts, hosting configuration, authorized target checks and rollback.

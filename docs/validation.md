@@ -55,7 +55,7 @@ Implement in the existing checkout and follow the [working-checkout rule](../.ag
 
    A successful result means every required entry completed successfully on that source. The runner stops at the first failure; a focused subset cannot replace `full`. Dependency audit unavailability is a failure.
 
-4. Preserve the first failure and its diagnostics. Resolve it within scope and reverify the affected source. Do not omit files, reduce assertions or weaken controls to obtain a pass. When source is preserved, record the trigger, evidence and minimal proposal in [source-change requests](source-change-requests.md) and discuss an edit first.
+4. Preserve the first failure and its diagnostics. Resolve it within scope and reverify the affected source. Do not omit files, reduce assertions or weaken controls to obtain a pass. When production source must remain unchanged, present the exact file, trigger, evidence and minimal proposal in the current chat or PR and discuss an edit first.
 5. Confirm that maintained source stayed unchanged during validation. Report the checked commit/tree, actual commands, results and remaining limits in the handoff. Keep generated evidence inside the repository's ignored directories.
 
 For `complete`, install browsers with `npm run browser:install:all` before running `npm run validate -- complete`. It substitutes the full configured matrix rather than first repeating the ordinary Chromium run. Approved-image comparison additionally requires the reviewed OS, architecture, Node, Playwright and Chromium runtime; local `full` does not require reproducing that image environment.

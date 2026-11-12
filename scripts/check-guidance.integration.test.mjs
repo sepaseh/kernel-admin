@@ -127,11 +127,7 @@ const createFixture = async (context, state = fixture()) => {
     write("owner.ts", "// synthetic\n"),
     write("test.ts", "// synthetic\n"),
   ]);
-  for (const name of [
-    "source-navigation",
-    "validation",
-    "comprehension-evaluation",
-  ])
+  for (const name of ["development", "validation", "comprehension-evaluation"])
     await write("docs/" + name + ".md", "# Guide\n");
   return {
     root,
@@ -380,7 +376,7 @@ test("documentation language checks exclude private and generated state", async 
 test("unadmitted operator Markdown remains unread while filename checks stay recursive", async (context) => {
   const { root, writeUnadmitted, json } = await createFixture(context);
   await json(".github/bootstrap-policy.json", {
-    allowedFiles: ["docs/source-navigation.md"],
+    allowedFiles: ["docs/development.md"],
   });
   for (const filename of [
     "operator-notes.md",
@@ -409,7 +405,7 @@ test("missing publication inventory fails closed before any Markdown body reads"
     "# یادداشت خصوصی\n[poison](never-read.md)\n",
   );
   await writeUnadmitted(
-    "docs/source-navigation.md",
+    "docs/development.md",
     "# یادداشت خصوصی\n[poison](never-read.md)\n",
   );
   const { errors } = await checkGuidance(root);
@@ -425,7 +421,7 @@ test("maintained guides accept real titled and parenthesized targets", async (co
   await write("docs/file(name).md", "# Synthetic target\n");
   await write("docs/file (name).md", "# Synthetic spaced target\n");
   await write(
-    "docs/source-navigation.md",
+    "docs/development.md",
     [
       "[balanced](file(name).md)",
       "[escaped](file\\(name\\).md)",
@@ -446,7 +442,7 @@ test("local query targets and case-insensitive external schemes resolve correctl
   const { root, write } = await createFixture(context);
   await write("docs/guide.md", "# Synthetic target\n");
   await write(
-    "docs/source-navigation.md",
+    "docs/development.md",
     [
       "[query](guide.md?plain=1#section)",
       "[fragment](guide.md#section?literal)",
@@ -466,10 +462,7 @@ test("only the three reviewed public environment templates are valid guide targe
     "deploy/native/nginx.env.example",
   ]) {
     await write(filename, "SYNTHETIC_PUBLIC_TEMPLATE=true\n");
-    await write(
-      "docs/source-navigation.md",
-      "[template](../" + filename + ")\n",
-    );
+    await write("docs/development.md", "[template](../" + filename + ")\n");
     assert.deepEqual((await checkGuidance(root)).errors, [], filename);
   }
   for (const filename of [
@@ -483,15 +476,10 @@ test("only the three reviewed public environment templates are valid guide targe
     "deploy/docker/.env/README.md",
   ]) {
     await write(filename, "[sentinel](unread-target.md)\n");
-    await write(
-      "docs/source-navigation.md",
-      "[private](../" + filename + ")\n",
-    );
+    await write("docs/development.md", "[private](../" + filename + ")\n");
     const errors = (await checkGuidance(root)).errors;
     assert.ok(
-      errors.includes(
-        "Unsafe guide link: docs/source-navigation.md: ../" + filename,
-      ),
+      errors.includes("Unsafe guide link: docs/development.md: ../" + filename),
       filename,
     );
     assert.ok(
@@ -559,19 +547,19 @@ test("unsafe existing destinations fail for safety while missing targets retain 
         ")\n",
       "<!-- [example](ignored.md) --!> [unsafe](" + destination + ")\n",
     ]) {
-      await write("docs/source-navigation.md", text);
+      await write("docs/development.md", text);
       assert.ok(
         (await checkGuidance(root)).errors.includes(
-          "Unsafe guide link: docs/source-navigation.md: " + destination,
+          "Unsafe guide link: docs/development.md: " + destination,
         ),
         text,
       );
     }
   }
-  await write("docs/source-navigation.md", "[missing](missing(name).md)\n");
+  await write("docs/development.md", "[missing](missing(name).md)\n");
   assert.ok(
     (await checkGuidance(root)).errors.includes(
-      "Missing or unsafe guide link: docs/source-navigation.md: missing(name).md",
+      "Missing or unsafe guide link: docs/development.md: missing(name).md",
     ),
   );
 });
