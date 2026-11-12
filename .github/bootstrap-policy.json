@@ -116,6 +116,7 @@
     "e2e/visual/baselines/application/win32/admin-login-fa-dark.png",
     "e2e/visual/baselines/application/win32/admin-register-en-light.png",
     "e2e/visual/baselines/application/win32/admin-role-drawer-en-dark.png",
+    "e2e/visual/baselines/application/win32/admin-settings-en-light.png",
     "e2e/visual/baselines/application/win32/admin-users-fa-light.png",
     "e2e/visual/baselines/application/win32/metadata.json",
     "e2e/visual/baselines/win32/admin-login-en-light.png",

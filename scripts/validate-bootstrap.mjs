@@ -474,6 +474,7 @@ const applicationFiles = new Set([
   "e2e/visual/baselines/application/win32/admin-users-fa-light.png",
   "e2e/visual/baselines/application/win32/admin-forgot-password-en-light.png",
   "e2e/visual/baselines/application/win32/admin-register-en-light.png",
+  "e2e/visual/baselines/application/win32/admin-settings-en-light.png",
   "e2e/visual/baselines/application/win32/metadata.json",
   "src/GlobalStyle.tsx",
   "src/app/index.ts",

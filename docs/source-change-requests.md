@@ -31,9 +31,16 @@ weaken genuine assertions to make a check pass.
 The investigated visual job reported six stable screenshot differences after the
 page migration. The owner reviewed those six exact images and accepted their use
 as updated baselines, retaining the original failed comparison and its source and
-runtime provenance. The owner also requested a Settings screenshot; the Users
-screenshot already exists. A newly captured Settings image still needs review
-before its promotion. A larger timeout cannot resolve stable image differences.
+runtime provenance. The owner also reviewed and accepted the real full-page
+Settings image (1280 by 1455) captured at head
+`e58e59cc564a2f93b2b9e14357e376bbef27c45d` by
+[CI run 43169442527](https://github.com/sepaseh/kernel-admin/actions/runs/43169442527),
+using its `settings-reference-candidate` attachment. It is admitted as the
+seventh baseline, `admin-settings-en-light.png`, with the actual image hash,
+runtime and source provenance. The original missing-baseline comparison remains
+recorded as failed; human approval does not rewrite that execution result.
+The Users screenshot already exists. A larger timeout cannot resolve stable
+image differences.
 The native overlay focus decision is detailed below; its production behavior is
 accepted and the corresponding boundary-cycling assertions are withdrawn.
 
