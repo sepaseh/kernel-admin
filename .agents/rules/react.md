@@ -11,8 +11,9 @@ authentication screens, route composition and feature screens.
 - When a function component receives props, define a component-specific named
   `type` and annotate its props parameter directly; infer the return type and
   do not use `FC` or another component-function type. Components without props
-  do not need a dummy props type or parameter. Use `PropsWithChildren` when
-  children are accepted, directly when children are the only input.
+  do not need a dummy props type or parameter. Use `PropsWithChildren` for
+  optional `ReactNode` children, directly when children are the only input.
+  Declare required or narrower children types explicitly.
 - Put reusable UI pieces in `src/shared/ui`.
 - Keep route-level screens in their owning `src/features/<feature>` directory.
 - Keep feature-specific forms beside the owning feature.
