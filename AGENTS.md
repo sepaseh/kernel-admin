@@ -10,6 +10,11 @@ Keep one standalone root project. Do not add workspaces, backend SDKs, local-pac
 
 The [publication policy](.github/bootstrap-policy.json) identifies the admitted application source. Follow the [development guide](docs/development.md) for its React, Ant Design, React Router and Axios owners. Preserve memory-only tokens, session generations, bounded shared refresh, cancellation and stale-result guards. Source admission and test configuration do not establish successful execution.
 
+When production source must remain unchanged, record the exact failing file,
+trigger, evidence and minimal proposal in [source-change requests](docs/source-change-requests.md)
+and discuss the change before editing it. A failing test does not authorize a
+source rewrite; retain genuine regressions.
+
 ## Git and review
 
 Use a verified feature branch and PR for every change to `main`. Never push directly to protected `main`, force-push it or bypass protection. Honor existing authorization; committing, publishing, requesting a provider review and merging are distinct action boundaries.
@@ -18,7 +23,7 @@ Before opening a PR, review its scope and aim for at most 80 GitHub changed-file
 
 ## Verification and documentation
 
-The [validation manifest](.agents/validation.json) owns commands and profiles. Start focused, then run its complete `full` profile on the exact proposed publication export before an authorized commit, push or handoff. Keep required checks, coverage thresholds and security controls intact. Report actual results and unavailable evidence.
+The [validation manifest](.agents/validation.json) owns commands and profiles. Start focused, then run its complete `full` profile on the exact proposed publication export before an authorized commit, push or handoff. Keep behavioral assertions, type safety, lint and security controls intact. Numerical coverage, duplication, complexity and analyzer scores are advisory; they do not justify extra abstractions, shallow tests or cosmetic source rewrites. Follow [code quality](.agents/rules/code-quality.md). Report actual results and unavailable evidence.
 
 Maintain English, current, task-oriented documentation through the [documentation map](docs/README.md). When UI catalogs are admitted, retain all ten catalogs and Persian calendar data; the API owns language, direction and calendar, while browser preferences own theme and compact mode.
 

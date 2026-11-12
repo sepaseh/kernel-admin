@@ -15,8 +15,8 @@ guidance when admitted, rather than copying product rules into another design gu
    source upload/publication within existing user authorization and clarify only
    material missing decisions.
 2. Inspect actual components, token/asset owners and affected HTTP types. Reuse
-   Ant Design, antd-style, React Router, Axios and named `FC<Props>` components
-   with named props types and type-only imports. Preserve API-owned language, direction,
+   Ant Design, antd-style, React Router, Axios and directly typed component props
+   with component-specific names and type-only imports. Preserve API-owned language, direction,
    calendar and permissions; preview controls are synthetic fixtures.
 3. Implement the authorized scope with translated labels, request/session guards,
    permission boundaries, keyboard behavior and responsive/theme states. Respect

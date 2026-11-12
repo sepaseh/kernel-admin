@@ -13,7 +13,7 @@ The `core-auth` phase admits shared controls, theme and preference helpers, muta
 | Reusable controls and form containers                                  | [`src/shared/ui`](src/shared/ui); feature-specific forms stay with their feature       |
 | Route vocabulary and presentation permissions                          | [Route metadata](src/app/config/routes.ts) and [access helpers](src/app/lib/access.ts) |
 
-Prefer Ant Design props and tokens. Use antd-style for owned custom styles, logical spacing for RTL/LTR and direct named Lucide icons with explicit size/currentColor. Decorative icons use `aria-hidden`; controls need translated accessible names. Use named props types and `FC<Props>` with type-only React imports.
+Prefer Ant Design props and tokens. Use antd-style for owned custom styles, logical spacing for RTL/LTR and direct named Lucide icons with explicit size/currentColor. Decorative icons use `aria-hidden`; controls need translated accessible names. Use component-specific props types directly on the props parameter, without `FC`; follow the [React rules](.agents/rules/react.md).
 
 The API chooses language, direction, calendar and palettes. A browser preference selects theme/compact presentation. Keep the complete local catalogs and use [localization](docs/localization.md) for language and date behavior. The API authorizes operations independently of the visible menu or control state.
 

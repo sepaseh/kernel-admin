@@ -587,14 +587,40 @@ describe("owned Lighthouse lifecycle", () => {
     expect(fixture.events).toEqual(["preview", "launch", "preview-close"]);
   });
 
-  it("keeps reports from a genuine policy failure and still cleans up", async () => {
+  it("reports advisory scores, keeps the reports and still cleans up", async () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const fixture = lifecycle();
+      fixture.options.audit.mockResolvedValue({
+        lhr: createReport({ score: 0.5 }),
+        report: ["report", "{}"],
+      });
+      await expect(runLighthouse(fixture.options)).resolves.toBe(50);
+      expect(warning).toHaveBeenCalledWith(
+        expect.stringContaining("performance score 50.00"),
+      );
+      expect(fixture.options.writeReports).toHaveBeenCalledExactlyOnceWith(
+        path.resolve("coverage/lighthouse"),
+        ["report", "{}"],
+      );
+      expect(fixture.events.slice(-3)).toEqual([
+        "fixture-close",
+        "chrome-close",
+        "preview-close",
+      ]);
+    } finally {
+      warning.mockRestore();
+    }
+  });
+
+  it("keeps reports from an invalid performance report and still cleans up", async () => {
     const fixture = lifecycle();
     fixture.options.audit.mockResolvedValue({
-      lhr: createReport({ score: 0.5 }),
+      lhr: createReport({ score: NaN }),
       report: ["report", "{}"],
     });
     await expect(runLighthouse(fixture.options)).rejects.toThrow(
-      "performance score 50.00",
+      "performance score unavailable",
     );
     expect(fixture.events).toContain("write");
     expect(fixture.events.slice(-3)).toEqual([

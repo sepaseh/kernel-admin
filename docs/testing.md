@@ -45,7 +45,7 @@ Operational helper imports must stay free of environment-file reads, network req
 
 The isolated [Storybook Vite configuration](../.storybook/vite.config.ts) disables ambient environment-file and VITE discovery. The [browser test configuration](../vitest.storybook.config.ts) runs registered play interactions in real Chromium; accessibility violations fail.
 
-Use the real UI and theme with complete replacements for feature APIs and the shared client; do not use spy passthrough. Mocks reset before every story. Language/direction/theme controls supply synthetic metadata; they do not create production visitor preferences. A workshop pass covers the component interaction, not composed application or API-provider behavior.
+Use the real UI and theme with complete replacements for feature APIs and the shared client; do not use spy passthrough. Mocks reset before every story. Keep `*.stories.tsx` beside the source owner under `src/`. Language/direction/theme controls supply synthetic metadata; they do not create production visitor preferences. A workshop pass covers the component interaction, not composed application or API-provider behavior.
 
 ## Test application journeys and contracts
 
@@ -94,4 +94,9 @@ Governance coverage excludes `*.test.*` fixtures explicitly so executable owners
 
 Keep the first failed command, runtime conditions and diagnostics. Distinguish a product defect, fixture race, unavailable host prerequisite and resource leak before changing code. A later pass does not erase an earlier failure. Optional Bash wrappers report unavailable host prerequisites; portable Node safety regressions remain required.
 
-Preserve assertions, stress inputs, configured coverage/bundle/performance budgets and declared product-test deadlines. Lighthouse remains a real owned-preview audit under [the current performance policy](validation.md#resolve-a-failed-check); injected orchestration tests do not establish an audit. Docker, deployed smoke/staging and DAST remain separate authorized operations described in [deployment](deployment.md).
+Preserve assertions, stress inputs, measured reports and declared product-test deadlines. Numerical coverage/bundle/performance and analyzer scores are advisory under [code quality](../.agents/rules/code-quality.md); they do not justify source abstractions or shallow tests. Lighthouse remains a real owned-preview audit under [the current performance policy](validation.md#resolve-a-failed-check); injected orchestration tests do not establish an audit. Docker, deployed smoke/staging and DAST remain separate authorized operations described in [deployment](deployment.md).
+
+When production source must remain unchanged, record the exact file, trigger,
+test evidence and minimal proposal in [source-change requests](source-change-requests.md)
+and discuss an edit first. Correct a faulty fixture only with supporting evidence;
+do not weaken a genuine regression to make the check pass.

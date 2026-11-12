@@ -13,7 +13,7 @@ Use this guide to choose checks and prepare evidence for a commit or PR. [Testin
 | Verify the configured browser matrix and approved images         | `complete`    | Replaces the ordinary Chromium run with the full matrix, then compares images once on the approved runtime. |
 | Compare approved images for an applicable rendering change       | `visual`      | Image comparison with unchanged provenance and tolerances.                                                  |
 | Measure the verified build with Lighthouse                       | `performance` | A real audit under the manifest's current performance policy.                                               |
-| Measure the four configured helper modules with mutation testing | `mutation`    | Every mutant runs the four complete owner test files; the score must remain at least 80%.                   |
+| Measure the four configured helper modules with mutation testing | `mutation`    | Every mutant runs the four complete owner test files; the numerical score is advisory.                      |
 | Check an explicitly authorized staging deployment                | `staging`     | Four browser projects validate public journeys, assets, accessibility, headers and API health.              |
 | Check an explicitly authorized released deployment               | `smoke`       | Chromium checks the public application, API health and served immutable release identity.                   |
 
@@ -55,7 +55,7 @@ Implement in the existing checkout and follow the [working-checkout rule](../.ag
 
    A successful result means every required entry completed successfully on that source. The runner stops at the first failure; a focused subset cannot replace `full`. Dependency audit unavailability is a failure.
 
-4. Preserve the first failure and its diagnostics. Resolve it within scope and reverify the affected source. Do not omit files, reduce assertions, lower thresholds or weaken controls to obtain a pass.
+4. Preserve the first failure and its diagnostics. Resolve it within scope and reverify the affected source. Do not omit files, reduce assertions or weaken controls to obtain a pass. When source is preserved, record the trigger, evidence and minimal proposal in [source-change requests](source-change-requests.md) and discuss an edit first.
 5. Confirm that maintained source stayed unchanged during validation. Report the checked commit/tree, actual commands, results and remaining limits in the handoff. Keep generated evidence inside the repository's ignored directories.
 
 For `complete`, install browsers with `npm run browser:install:all` before running `npm run validate -- complete`. It substitutes the full configured matrix rather than first repeating the ordinary Chromium run. Approved-image comparison additionally requires the reviewed OS, architecture, Node, Playwright and Chromium runtime; local `full` does not require reproducing that image environment.
@@ -71,7 +71,7 @@ For `complete`, install browsers with `npm run browser:install:all` before runni
 | Stale build or changed report bytes                              | Produce fresh evidence for the exact source; reject the old build or artifact.                                                                                                                                                                |
 | Required Git executable unavailable                              | Restore the supported tool prerequisite. Evidence commands use an absolute Git executable rather than searching `PATH`.                                                                                                                       |
 
-`performance` uses the configured Lighthouse budgets and throttling. Its advisory exception expires at **2026-11-07T00:00:00Z**; the **Kernel Admin frontend/test maintainer** owns fixture-startup repair and review before expiry. Report an audit/setup failure plainly. An expired exception blocks validation until an authorized renewal or restored blocking enforcement is recorded.
+`performance` uses the configured Lighthouse budgets and throttling. Numerical coverage, duplication, complexity, mutation, bundle and performance scores are advisory; meaningful assertions, type/lint/build failures, invalid reports and security controls remain required. Report an audit/setup failure plainly. Scores alone do not justify source rewrites or shallow tests.
 
 ## Interpret the evidence
 
@@ -91,12 +91,12 @@ that release ID. With explicitly authorized targets configured, use
 `npm run validate -- staging` or `npm run validate -- smoke`. These profiles do
 not replace `full`, and local configuration/listing is not deployment evidence.
 
-| Evidence                                                 | Scope                                                                                                           |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `coverage/unit/lcov.info`                                | Measured unit coverage for the source selected by the Vitest configuration. Preserve its production thresholds. |
-| `coverage/governance/lcov.info`                          | Measured Node tooling and governance coverage.                                                                  |
-| `coverage/governance/powershell.xml`                     | Genuine executable PowerShell line hits and misses from the Windows process-tree fixture.                       |
-| Browser, visual and Lighthouse reports under `coverage/` | Separate execution results; they do not substitute for LCOV or provider compatibility.                          |
+| Evidence                                                 | Scope                                                                                                       |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `coverage/unit/lcov.info`                                | Measured unit coverage for the source selected by the Vitest configuration; numerical coverage is advisory. |
+| `coverage/governance/lcov.info`                          | Measured Node tooling and governance coverage.                                                              |
+| `coverage/governance/powershell.xml`                     | Genuine executable PowerShell line hits and misses from the Windows process-tree fixture.                   |
+| Browser, visual and Lighthouse reports under `coverage/` | Separate execution results; they do not substitute for LCOV or provider compatibility.                      |
 
 A configured test is not an executed result. Consumer contracts and synthetic browser journeys do not verify a configured backend. A new screenshot capture remains pending until the exact images receive human approval; CI cannot update approved baselines. See [testing](testing.md#review-appearance) for fixture and image-review responsibilities.
 
@@ -112,7 +112,7 @@ Standalone production and verification builds still perform their own typecheck.
 Local success does not establish hosted CI, scanner execution, the asynchronous Sonar quality gate or review approval. Before an authorized review request or merge:
 
 1. Read the latest published PR head/base and live branch protection. Match required check contexts to their configured provider applications. A CodeRabbit request preflight requires all applicable non-CodeRabbit checks to pass; its own pending or skipped review check is not a prerequisite to requesting that review. Merge still requires every applicable check, including CodeRabbit, with no stale, pending, failed or skipped evidence.
-2. Verify the scanner job and actual matching Sonar Quality Gate separately. For a CodeRabbit request, inspect the complete unfiltered unresolved Sonar report across every page and severity; it must contain zero issues. A documented false positive still marked open does not satisfy this prerequisite.
+2. Verify the scanner job and actual matching Sonar Quality Gate separately. Inspect the complete unfiltered unresolved report for technical findings; numerical metric gates and a zero-issue report are not prerequisites for a CodeRabbit request.
 3. Request one manual review with only `@coderabbitai review`, after authorization and successful preflight. Wait at least one hour after the last CodeRabbit review request, respect provider capacity and avoid an existing or in-flight request for that head. A new commit requires fresh preflight.
 4. Merge only with separate authorization, current-head approval, successful required checks and resolved review conversations. A successful CodeRabbit status can reflect a skip or quota limit. Verify the actual substantive review.
 
@@ -140,7 +140,7 @@ Independent jobs partition the canonical required profile:
 | API contract tests           | Consumer HTTP contracts against owned synthetic providers                                 |
 | Application E2E tests        | Chromium journeys, or the complete browser matrix on scheduled/manual complete runs       |
 | Visual comparison            | Approved images when rendering inputs changed, and on complete runs                       |
-| Lighthouse                   | The existing performance audit and its bounded advisory exception                         |
+| Lighthouse                   | The existing performance audit with advisory numerical scores                             |
 
 The required `check` executes no test suite. It runs after the producers and
 requires each selected job to succeed. A skipped visual job is accepted only

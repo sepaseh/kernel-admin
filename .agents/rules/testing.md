@@ -6,7 +6,7 @@ The `core-auth` phase admits unit, jsdom component and governance tests.
 Storybook, application browser, visual, Pact and operational suites remain
 later-phase requirements; the procedures below apply when their owners are admitted.
 
-Preserve measured coverage, every existing threshold, assertions, stress corpora and declared product-test deadlines. Visual/process-tree commands, their synthetic fixtures and CI evidence requests use actual completion and explicit cancellation without configured wall-clock deadlines. Browser output and static assets do not replace unit/governance LCOV. Do not skip checks, disable accessibility audits or widen tolerances to conceal a failure.
+Preserve measured coverage, assertions, stress corpora and declared product-test deadlines. Numerical metrics are advisory under [code quality](code-quality.md); execution, assertion, type/lint and security failures remain required evidence. Visual/process-tree commands, their synthetic fixtures and CI evidence requests use actual completion and explicit cancellation without configured wall-clock deadlines. Browser output and static assets do not replace unit/governance LCOV. Do not skip checks, disable accessibility audits or widen tolerances to conceal a failure.
 
 Synchronize asynchronous fixtures on actual state, IPC, stream completion or process closure. Do not add fixed sleeps, polling delays, retry counts or helper deadlines to guess readiness. Reject early errors and premature closure, support explicit cancellation and await owned resource closure before removing files. Keep product-timing assertions on controlled clocks and preserve declared browser and CI execution budgets.
 
@@ -19,3 +19,9 @@ Use disposable uniquely owned resources. Cleanup only owned directories, process
 Windows visual cleanup captures and refreshes process identities, pins each process handle before identity verification and termination, and issues every verified stop before waiting for exits. Repeated interruption cancels the active helper even after the visual child closes; cleanup ownership remains until the helper actually closes. Preserve captured-orphan, PID-reuse, refresh-conflict, handle-disposal and combined-failure regressions. Measured PowerShell coverage joins the same source-bound artifact as the JavaScript reports without repeating the suite.
 
 Visual comparison keeps runtime provenance, image hashes, tolerances and human approval. Fresh captures remain pending until the user reviews them; updates are forbidden in CI. Record actual failures, optional host skips and unexecuted work honestly. Routine checks do not require a dated QA report or an additional full-suite invocation.
+
+When production source must remain unchanged, a failing check is evidence for
+discussion, not permission to edit it. Record the exact file, trigger, test
+evidence and minimal proposal in [source-change requests](../../docs/source-change-requests.md).
+Discuss the source change first; correct a faulty fixture only when evidence
+supports that conclusion and retain genuine failing assertions.

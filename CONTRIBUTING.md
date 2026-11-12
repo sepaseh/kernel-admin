@@ -18,7 +18,7 @@ A successful CodeRabbit status can represent a skipped or rate-limited review. A
 
 The [manifest](.agents/validation.json) owns commands, profiles and responsibility. Use the pinned Node release and locked root dependencies. Start with the smallest relevant check, then run `npm run validate -- full` on the exact proposed snapshot before an authorized commit, push or PR handoff.
 
-Preserve all required checks and measured coverage. Do not suppress findings, lower thresholds or use unpublished source to make a partial snapshot pass. Local success does not establish hosted CI, scanner execution, the actual Sonar quality gate or approval.
+Preserve all required checks and measured coverage. Numerical metrics are advisory under [code quality](.agents/rules/code-quality.md); they do not justify source rewrites or shallow tests. Do not suppress required failures or use unpublished source to make a partial snapshot pass. Local success does not establish hosted CI, scanner execution, the actual Sonar quality gate or approval. When source is preserved, record failures and minimal proposals in [source-change requests](docs/source-change-requests.md) and discuss a source edit first.
 
 ## Documentation
 

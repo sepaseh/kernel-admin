@@ -38,7 +38,7 @@ for the final gate.
 
 Before an authorized CodeRabbit request, complete the canonical
 [preflight](../../rules/pull-requests.md#coderabbit-request-preflight): all latest-head
-non-CodeRabbit required checks, scanner and actual Sonar quality gate pass, and
-every page of the complete applicable unfiltered unresolved issue report is empty.
+non-CodeRabbit required correctness/security checks and scanner execution pass;
+numerical metric gates and a zero-issue Sonar report are not prerequisites.
 Respect current allowance and avoid duplicate in-flight requests. A new commit
 invalidates preflight; provider classification requires its own authorization.

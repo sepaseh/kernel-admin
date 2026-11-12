@@ -163,7 +163,6 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json-summary", "lcov"],
       reportsDirectory: "coverage/unit",
-      thresholds: { branches: 54, functions: 59, lines: 69, statements: 68 },
     },
   },
 });

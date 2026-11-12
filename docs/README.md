@@ -20,6 +20,7 @@ Choose a guide by the result you need. Commands run from the repository root unl
 | How do sessions, requests and stale results work? | [Authentication and request lifecycles](authentication.md) |
 | Who chooses language, direction and calendar?     | [Localization](localization.md)                            |
 | How should a behavior be tested?                  | [Testing](testing.md)                                      |
+| Which preserved source changes need discussion?   | [Source-change requests](source-change-requests.md)        |
 | What makes an interface change complete?          | [Design conventions](../DESIGN.md)                         |
 | How should a vulnerability be reported?           | [Security policy](../SECURITY.md)                          |
 

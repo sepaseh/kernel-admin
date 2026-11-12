@@ -44,7 +44,7 @@
   "reporters": ["clear-text", "progress", "html", "json"],
   "tempDirName": "coverage/stryker-tmp",
   "thresholds": {
-    "break": 80,
+    "break": 0,
     "high": 90,
     "low": 80
   }

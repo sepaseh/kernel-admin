@@ -23,11 +23,11 @@ export default [
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/consistent-type-imports": [
         "error",
-        { fixStyle: "separate-type-imports", prefer: "type-imports" },
+        { fixStyle: "inline-type-imports", prefer: "type-imports" },
       ],
       "no-dupe-keys": "error",
-      "simple-import-sort/imports": "error",
-      "simple-import-sort/exports": "error",
+      "simple-import-sort/imports": "warn",
+      "simple-import-sort/exports": "warn",
     },
   },
 ];

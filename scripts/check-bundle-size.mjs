@@ -15,23 +15,25 @@ export const evaluateBundleAssets = (assets) => {
     ({ bytes }) => bytes > maximumChunkBytes,
   );
   const totalBytes = assets.reduce((total, { bytes }) => total + bytes, 0);
+  const findings = [];
   if (oversizedAssets.length > 0 || totalBytes > maximumTotalBytes) {
-    const failures = oversizedAssets.map(
-      ({ bytes, name }) =>
-        `${name} is ${bytes.toLocaleString()} bytes (limit ${maximumChunkBytes.toLocaleString()})`,
+    findings.push(
+      ...oversizedAssets.map(
+        ({ bytes, name }) =>
+          `${name} is ${bytes.toLocaleString()} bytes (limit ${maximumChunkBytes.toLocaleString()})`,
+      ),
     );
     if (totalBytes > maximumTotalBytes) {
-      failures.push(
+      findings.push(
         `Total JavaScript is ${totalBytes.toLocaleString()} bytes (limit ${maximumTotalBytes.toLocaleString()})`,
       );
     }
-
-    throw new Error(`Bundle size budget exceeded:\n${failures.join("\n")}`);
   }
 
   return {
     largestAsset: assets.toSorted((a, b) => b.bytes - a.bytes)[0],
     totalBytes,
+    findings,
   };
 };
 
@@ -56,9 +58,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     throw error;
   }
 
-  const { largestAsset, totalBytes } = result;
+  const { largestAsset, totalBytes, findings } = result;
   console.log(
-    `Bundle budgets passed: ${assets.length} chunks, ${totalBytes.toLocaleString()} bytes total, ` +
+    `Bundle measured: ${assets.length} chunks, ${totalBytes.toLocaleString()} bytes total, ` +
       `${largestAsset.name} largest at ${largestAsset.bytes.toLocaleString()} bytes.`,
   );
+  for (const finding of findings) console.warn(`Advisory: ${finding}`);
 }

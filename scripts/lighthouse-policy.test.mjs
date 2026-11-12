@@ -1,10 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createLighthouseUrl,
   evaluateLighthouseReport,
 } from "./lighthouse-policy.mjs";
 import { createReport } from "./lighthouse-policy.test-support.mjs";
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("Lighthouse advisory", () => {
   it.each([
@@ -20,7 +22,8 @@ describe("Lighthouse advisory", () => {
   });
 
   it("reports the score and every audit that exceeds its threshold", () => {
-    expect(() =>
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(
       evaluateLighthouseReport(
         createReport({
           audits: {
@@ -30,8 +33,11 @@ describe("Lighthouse advisory", () => {
           score: 0.599,
         }),
       ),
-    ).toThrow(
-      /performance score 59\.90 \(minimum 60\.00\).*first-contentful-paint 6001\.00.*largest-contentful-paint 6501\.00/s,
+    ).toBe(60);
+    expect(warning).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /performance score 59\.90 \(minimum 60\.00\).*first-contentful-paint 6001\.00.*largest-contentful-paint 6501\.00/s,
+      ),
     );
   });
 
@@ -40,10 +46,21 @@ describe("Lighthouse advisory", () => {
     expect(evaluateLighthouseReport(createReport({ score: 0.606 }))).toBe(61);
   });
 
-  it("rejects a below-threshold score even when its diagnostic rounds to the minimum", () => {
+  it("reports a below-threshold score even when its diagnostic rounds to the minimum", () => {
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(evaluateLighthouseReport(createReport({ score: 0.59999 }))).toBe(60);
+    expect(warning).toHaveBeenCalledWith(
+      expect.stringContaining("performance score 60.00 (minimum 60.00)"),
+    );
+  });
+
+  it("keeps execution errors blocking even when numerical measurements exist", () => {
     expect(() =>
-      evaluateLighthouseReport(createReport({ score: 0.59999 })),
-    ).toThrow("performance score 60.00 (minimum 60.00)");
+      evaluateLighthouseReport({
+        ...createReport(),
+        runtimeError: { message: "Synthetic audit failure" },
+      }),
+    ).toThrow("Lighthouse execution failed: Synthetic audit failure");
   });
 
   it.each([

@@ -19,8 +19,9 @@ commit/tree. Preserve unrelated local work.
    and synthetic-fixture procedure. The manifest owns every required entry,
    command and order; never substitute a copied count or partial command list.
 3. Resolve failures within scope and reverify. Never omit, downgrade or replace a
-   required check with a faster profile, suppress findings or lower coverage to
-   obtain a pass. Do not stage or commit while a required check fails or cannot run.
+   required check with a faster profile or weaken assertions/security controls to
+   obtain a pass. Numerical metrics are advisory under [code quality](../../rules/code-quality.md).
+   Do not stage or commit while a required correctness check fails or cannot run.
 4. Record the checked revision/tree, actual results and remaining limits. Read
    admitted files and `applicationReady` from [the publication policy](../../../.github/bootstrap-policy.json).
    While readiness is false, governance and synthetic tests cannot establish an

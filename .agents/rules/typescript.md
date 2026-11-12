@@ -87,7 +87,7 @@ Fail fast for required internal values, but validate untrusted external data bef
   inputs and `Request` for write bodies. Use `Response` for an actual wrapper or
   materially different response shape; prefer singular domain names in query
   names even when the result is a list.
-- Prefer `Props` for React component inputs. Preserve established library/wire
+- Use component-specific names such as `ImageUploadProps` for React component inputs. Preserve established library/wire
   names and existing public types during unrelated work; naming guidance does
   not authorize a cosmetic rename sweep.
 

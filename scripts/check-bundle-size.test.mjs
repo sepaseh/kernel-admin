@@ -16,6 +16,7 @@ describe("bundle size budgets", () => {
     ).toEqual({
       largestAsset: { bytes: 200, name: "large.js" },
       totalBytes: 300,
+      findings: [],
     });
   });
 
@@ -23,18 +24,21 @@ describe("bundle size budgets", () => {
     expect(() => evaluateBundleAssets([])).toThrow("No JavaScript assets");
   });
 
-  it("rejects an oversized chunk", () => {
-    expect(() =>
-      evaluateBundleAssets([{ bytes: maximumChunkBytes + 1, name: "app.js" }]),
-    ).toThrow("app.js");
+  it("reports an oversized chunk as advisory", () => {
+    expect(
+      evaluateBundleAssets([{ bytes: maximumChunkBytes + 1, name: "app.js" }])
+        .findings,
+    ).toEqual([expect.stringContaining("app.js")]);
   });
 
-  it("rejects an oversized total", () => {
-    expect(() =>
+  it("reports an oversized total as advisory", () => {
+    expect(
       evaluateBundleAssets([
         { bytes: maximumTotalBytes / 2 + 1, name: "a.js" },
         { bytes: maximumTotalBytes / 2, name: "b.js" },
-      ]),
-    ).toThrow("Total JavaScript");
+      ]).findings,
+    ).toEqual(
+      expect.arrayContaining([expect.stringContaining("Total JavaScript")]),
+    );
   });
 });
