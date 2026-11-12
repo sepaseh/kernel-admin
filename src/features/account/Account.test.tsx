@@ -141,6 +141,93 @@ describe("account forms", () => {
     expect(messages.success).toHaveBeenCalledWith(i18n.t("passwordChanged"));
   });
 
+  it("keeps the session and password fields after rejection and allows retry", async () => {
+    const pendingChange = deferred<void>();
+    vi.mocked(changePassword)
+      .mockReturnValueOnce(pendingChange.promise)
+      .mockResolvedValueOnce();
+    renderPage();
+    const fields = [
+      [i18n.t("currentPassword"), "synthetic-old"],
+      [i18n.t("newPassword"), "synthetic-new"],
+      [i18n.t("confirmPassword"), "synthetic-new"],
+    ] as const;
+    for (const [label, value] of fields) {
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    }
+    const submit = screen.getByRole("button", {
+      name: i18n.t("changePassword"),
+    });
+    fireEvent.click(submit);
+
+    await waitFor(() => expect(changePassword).toHaveBeenCalledTimes(1));
+    for (const [label] of fields) {
+      expect((screen.getByLabelText(label) as HTMLInputElement).disabled).toBe(
+        true,
+      );
+    }
+    expect(messages.success).not.toHaveBeenCalled();
+    expect(clearSession).not.toHaveBeenCalled();
+
+    await act(async () => {
+      pendingChange.reject(new Error("Synthetic password rejection"));
+    });
+
+    expect(messages.error).toHaveBeenCalledExactlyOnceWith(
+      "Synthetic password rejection",
+    );
+    for (const [label, value] of fields) {
+      const input = screen.getByLabelText(label) as HTMLInputElement;
+      expect(input.value).toBe(value);
+      expect(input.disabled).toBe(false);
+    }
+    expect(messages.success).not.toHaveBeenCalled();
+    expect(clearSession).not.toHaveBeenCalled();
+
+    fireEvent.click(submit);
+
+    await waitFor(() => expect(clearSession).toHaveBeenCalledTimes(1));
+    expect(changePassword).toHaveBeenCalledTimes(2);
+    expect(changePassword).toHaveBeenLastCalledWith(
+      { currentPassword: "synthetic-old", newPassword: "synthetic-new" },
+      expect.any(AbortSignal),
+    );
+    expect(messages.success).toHaveBeenCalledExactlyOnceWith(
+      i18n.t("passwordChanged"),
+    );
+    for (const [label] of fields) {
+      expect((screen.getByLabelText(label) as HTMLInputElement).value).toBe("");
+    }
+  });
+
+  it("ignores an accepted password change after leaving the account page", async () => {
+    const pendingChange = deferred<void>();
+    vi.mocked(changePassword).mockReturnValue(pendingChange.promise);
+    const { unmount } = renderPage();
+    for (const [label, value] of [
+      [i18n.t("currentPassword"), "synthetic-old"],
+      [i18n.t("newPassword"), "synthetic-new"],
+      [i18n.t("confirmPassword"), "synthetic-new"],
+    ]) {
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    }
+    fireEvent.click(
+      screen.getByRole("button", { name: i18n.t("changePassword") }),
+    );
+    await waitFor(() => expect(changePassword).toHaveBeenCalledTimes(1));
+    const signal = vi.mocked(changePassword).mock.calls[0]?.[1];
+
+    unmount();
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      pendingChange.resolve();
+    });
+
+    expect(clearSession).not.toHaveBeenCalled();
+    expect(messages.success).not.toHaveBeenCalled();
+    expect(messages.error).not.toHaveBeenCalled();
+  });
+
   it("keeps profile edits after a failed save without refreshing the account", async () => {
     vi.mocked(updateProfile).mockRejectedValue(
       new Error("Synthetic profile conflict"),

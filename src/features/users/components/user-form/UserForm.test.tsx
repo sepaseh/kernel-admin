@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -11,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CurrentUser } from "@/features/account";
 import { i18n } from "@/shared/i18n";
 import "@/test/browser";
+import { deferred } from "@/test/deferred";
 
 import { createUser, fetchUser, updateUser } from "../../api";
 import type { User } from "../../types";
@@ -130,4 +132,74 @@ describe("user drawer", () => {
     expect(notification.success).not.toHaveBeenCalled();
     expect(createUser).not.toHaveBeenCalled();
   });
+
+  it.each(["create", "update"] as const)(
+    "retains edits after a rejected %s and allows a successful retry",
+    async (action) => {
+      const pending = deferred<User>();
+      const save =
+        action === "create" ? vi.mocked(createUser) : vi.mocked(updateUser);
+      save.mockReturnValueOnce(pending.promise);
+      renderForm(
+        `/users#${action}`,
+        action === "update" ? "user-1" : undefined,
+      );
+      const firstName =
+        action === "update"
+          ? await screen.findByDisplayValue<HTMLInputElement>("Ada")
+          : await screen.findByRole<HTMLInputElement>("textbox", {
+              name: i18n.t("firstName"),
+            });
+      await waitFor(() => expect(firstName.disabled).toBe(false));
+      const values = {
+        firstName: "Grace",
+        lastName: "Hopper",
+        mobile: "09120000042",
+      };
+      const fields = ["firstName", "lastName", "mobile"] as const;
+      for (const field of fields) {
+        fireEvent.change(screen.getByLabelText(i18n.t(field)), {
+          target: { value: values[field] },
+        });
+      }
+      const submit = screen.getByRole<HTMLButtonElement>("button", {
+        name: i18n.t("submit"),
+      });
+      fireEvent.click(submit);
+      await waitFor(() => {
+        expect(save).toHaveBeenCalledTimes(1);
+        expect(submit.disabled).toBe(true);
+      });
+      expect(firstName.disabled).toBe(true);
+
+      await act(async () => {
+        pending.reject(new Error("Synthetic user save rejected"));
+      });
+
+      await waitFor(() => expect(submit.disabled).toBe(false));
+      expect(messages.error).toHaveBeenCalledExactlyOnceWith(
+        "Synthetic user save rejected",
+      );
+      expect(screen.getByRole("dialog")).toBeDefined();
+      for (const field of fields) {
+        expect(
+          screen.getByLabelText<HTMLInputElement>(i18n.t(field)).value,
+        ).toBe(values[field]);
+      }
+      expect(firstName.disabled).toBe(false);
+      expect(onFinish).not.toHaveBeenCalled();
+      expect(messages.success).not.toHaveBeenCalled();
+      expect(notification.success).not.toHaveBeenCalled();
+
+      fireEvent.click(submit);
+
+      await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
+      expect(save).toHaveBeenCalledTimes(2);
+      const savedValues =
+        action === "create"
+          ? vi.mocked(createUser).mock.calls[1][0]
+          : vi.mocked(updateUser).mock.calls[1][1];
+      expect(savedValues).toMatchObject({ ...values, status: "active" });
+    },
+  );
 });

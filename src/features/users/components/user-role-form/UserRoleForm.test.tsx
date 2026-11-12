@@ -97,6 +97,60 @@ describe("user role drawer", () => {
     expect(messages.success).toHaveBeenCalledWith(i18n.t("rolesUpdated"));
   });
 
+  it("keeps selected roles after a rejected save and allows a successful retry", async () => {
+    const pending = deferred<void>();
+    vi.mocked(updateUserRoles)
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValueOnce(undefined);
+    renderForm();
+    const readers = await screen.findByRole<HTMLInputElement>("checkbox", {
+      name: "Readers",
+    });
+    await waitFor(() => expect(readers.checked).toBe(true));
+    const editors = screen.getByRole<HTMLInputElement>("checkbox", {
+      name: "Editors",
+    });
+    fireEvent.click(editors);
+    const submit = screen.getByRole<HTMLButtonElement>("button", {
+      name: i18n.t("submit"),
+    });
+    await waitFor(() => expect(submit.disabled).toBe(false));
+    fireEvent.click(submit);
+    await waitFor(() => {
+      expect(updateUserRoles).toHaveBeenCalledTimes(1);
+      expect(submit.disabled).toBe(true);
+    });
+    expect(editors.disabled).toBe(true);
+
+    await act(async () => {
+      pending.reject(new Error("Synthetic user roles save rejected"));
+    });
+
+    await waitFor(() => expect(submit.disabled).toBe(false));
+    expect(messages.error).toHaveBeenCalledExactlyOnceWith(
+      "Synthetic user roles save rejected",
+    );
+    expect(screen.getByRole("dialog")).toBeDefined();
+    expect(readers.checked).toBe(true);
+    expect(editors.checked).toBe(true);
+    expect(editors.disabled).toBe(false);
+    expect(onFinish).not.toHaveBeenCalled();
+    expect(messages.success).not.toHaveBeenCalled();
+
+    fireEvent.click(submit);
+
+    await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
+    expect(updateUserRoles).toHaveBeenCalledTimes(2);
+    expect(updateUserRoles).toHaveBeenLastCalledWith(
+      "user-1",
+      { roleIds: ["role-1", "role-2"] },
+      expect.any(AbortSignal),
+    );
+    expect(messages.success).toHaveBeenCalledExactlyOnceWith(
+      i18n.t("rolesUpdated"),
+    );
+  });
+
   it("ignores a sibling drawer hash without loading user roles", async () => {
     renderForm("/users#update");
     await act(async () => undefined);

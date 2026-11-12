@@ -95,7 +95,7 @@ export const RoleForm = ({
         void messageAPI.success(t("roleCreated"));
       }
 
-      void onFinish();
+      onFinish();
       handleClose();
     } catch (error) {
       if (signal.aborted || isCancel(error)) return;

@@ -41,6 +41,14 @@ Keep the declared browser and CI execution budgets as outer failure limits.
 
 Operational helper imports must stay free of environment-file reads, network requests, process startup and writes. Synthetic drivers do not launch infrastructure. Never read real environments, credentials, databases, uploads or browser profiles as fixtures, or reset/prune shared resources to obtain a pass.
 
+The [image upload request tests](../src/shared/ui/image-upload/ImageUpload.test.tsx)
+drive Ant Design's real file input and request lifecycle. They replace only the
+canvas crop and image-decoding boundaries with synthetic results to exercise
+upload failure, retry and late completion after unmount. They do not verify the
+cropper's browser rendering or image transformation; the separate
+[dimension tests](../src/shared/ui/image-upload/image.test.ts) exercise decoding
+success, failure and temporary URL cleanup.
+
 ## Test components in Storybook
 
 The isolated [Storybook Vite configuration](../.storybook/vite.config.ts) disables ambient environment-file and VITE discovery. The [browser test configuration](../vitest.storybook.config.ts) runs registered play interactions in real Chromium; accessibility violations fail.

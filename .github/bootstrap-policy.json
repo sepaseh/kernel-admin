@@ -416,6 +416,7 @@
     "src/shared/ui/form-drawer/index.ts",
     "src/shared/ui/icon/Icon.stories.tsx",
     "src/shared/ui/image-upload/ImageUpload.stories.tsx",
+    "src/shared/ui/image-upload/ImageUpload.test.tsx",
     "src/shared/ui/image-upload/ImageUpload.tsx",
     "src/shared/ui/image-upload/image.test.ts",
     "src/shared/ui/image-upload/image.ts",

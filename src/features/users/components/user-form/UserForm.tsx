@@ -85,7 +85,7 @@ export const UserForm = ({ id, onFinish }: UserFormProps) => {
         if (signal.aborted) return;
       }
 
-      void onFinish();
+      onFinish();
       handleClose();
     } catch (error) {
       if (signal.aborted || isCancel(error)) return;

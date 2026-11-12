@@ -69,7 +69,7 @@ export const UserRoleForm = ({
       if (signal.aborted) return;
 
       void messageAPI.success(t("rolesUpdated"));
-      void onFinish();
+      onFinish();
       handleClose();
     } catch (error) {
       if (signal.aborted || isCancel(error)) return;

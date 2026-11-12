@@ -517,6 +517,7 @@ const applicationFiles = new Set([
   "src/shared/lib/pagination.ts",
   "src/shared/storage/hooks/index.ts",
   "src/shared/ui/error-boundary/ErrorFallback.tsx",
+  "src/shared/ui/image-upload/ImageUpload.test.tsx",
   "src/shared/ui/image-upload/ImageUpload.tsx",
   "src/shared/ui/image-upload/image.test.ts",
   "src/shared/ui/image-upload/image.ts",
