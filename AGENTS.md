@@ -19,7 +19,7 @@ source rewrite; retain genuine regressions.
 
 Use a verified feature branch and PR for every change to `main`. Never push directly to protected `main`, force-push it or bypass protection. Honor existing authorization; committing, publishing, requesting a provider review and merging are distinct action boundaries.
 
-Before opening a PR, review its scope and aim for at most 80 GitHub changed-file entries initially. Split independent changes when useful and explain why a larger cohesive change belongs together. Count additions, deletions, renames and binaries. File count is advisory: exceeding 100 files alone must not fail CI or require deleting and recreating a PR. Follow [Git workflow](.agents/rules/git.md), [PR policy](.agents/rules/pull-requests.md) and the [review skill](.agents/skills/review-pr/SKILL.md).
+Plan for at most 80 GitHub changed-file entries per PR; 100 is the mandatory publication maximum. Before opening a PR or pushing further changes, count its complete live base-to-proposed-head diff, including additions, deletions, renames and binaries; one rename is one entry. Split larger work into reviewable PRs. Do not publish more than 100 entries without prior explicit user authorization for that specific oversized scope; cohesion alone is not an exception. Recount after scope or base changes. Follow [Git workflow](.agents/rules/git.md), [PR policy](.agents/rules/pull-requests.md) and the [review skill](.agents/skills/review-pr/SKILL.md).
 
 ## Verification and documentation
 

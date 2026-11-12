@@ -141,7 +141,7 @@ describe("core settings ownership", () => {
     expect(screen.getByText("fa/rtl/light/true")).toBeDefined();
     expect(localStorage.getItem("theme")).toBe('"light"');
     expect(localStorage.getItem("compact")).toBe("true");
-    expect(localStorage.length).toBe(2);
+    expect(localStorage).toHaveLength(2);
 
     fireEvent.click(screen.getByRole("button", { name: "Accept settings" }));
     await waitFor(() => expect(i18n.language).toBe("en"));

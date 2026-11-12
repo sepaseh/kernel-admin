@@ -12,11 +12,17 @@ for the final gate.
 
 1. Verify repository, current head, live intended base and available host tools.
    Preserve unrelated and unpublished work; a local draft is not remote publication.
-2. Before opening a PR, review the complete base-to-head diff and aim for at most
-   80 GitHub changed-file entries initially. Split independent changes when useful
-   and explain why a larger cohesive change belongs together. Count additions,
-   deletions, renames and binaries; a rename is one entry. File count is advisory:
-   exceeding 100 files alone must not fail CI or require deleting and recreating a PR.
+2. Before opening a PR or pushing further changes, verify the live intended base
+   and count the complete base-to-proposed-head GitHub diff. Plan for at most 80
+   changed-file entries; 100 is the mandatory publication maximum. Count
+   additions, deletions, renames and binaries; one rename is one entry. Recount
+   the whole PR after scope or base changes, not only the latest commit. Split
+   work exceeding 100 entries into reviewable PRs, or prepare a concrete scope
+   proposal and obtain prior explicit user authorization for that specific
+   exception. Cohesion or ordinary commit/push authorization does not waive the
+   maximum. Record the count and any approved exception in the PR description.
+   Discuss an existing oversized PR before further publication; do not silently
+   close/recreate it, rewrite history or remove required source/tests.
 3. Read the declared phase, `applicationReady` and exact admitted inventory from
    [the publication policy](../../../.github/bootstrap-policy.json). Run the
    [canonical full profile](../../validation.json) on the exact proposed snapshot

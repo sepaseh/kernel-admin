@@ -178,7 +178,24 @@ boundaries.
 
 ## Review PR scope before opening
 
-Review the complete base-to-head diff and aim for at most 80 changed-file entries initially. Count additions, deletions, renames and binaries. Split independent changes when useful and explain a larger cohesive scope. File count is advisory. Exceeding 100 entries alone does not fail CI or require recreating a PR.
+Before opening a PR or pushing further changes, verify its live intended base and
+count the complete base-to-proposed-head GitHub diff. Include additions,
+deletions, renames and binaries; one rename counts once. Recount the whole PR
+after scope or base changes, rather than counting only the latest commit.
+
+| Proposed PR scope     | Required assistant action                                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| At most 80 entries    | Preferred planning target; retain a coherent, reviewable scope.                                                                                                     |
+| 81 to 100 entries     | Within the mandatory maximum; review whether independent work should be split.                                                                                      |
+| More than 100 entries | Stop publication, prepare a reviewable split or concrete oversized scope, and obtain prior explicit user authorization for a scoped exception before publishing it. |
+
+Record the verified count and any approved exception in the PR description.
+Cohesion, a scope explanation, or ordinary permission to commit/push does not
+waive the mandatory maximum. For an existing oversized PR, discuss its actual
+count and proposed split/exception before further publication; do not silently
+close/recreate it, rewrite history, remove required source/tests or change the
+base just to reduce the count. This assistant publication rule does not limit
+the repository's total admitted source inventory or change CI/branch protection.
 
 ## Release automation
 

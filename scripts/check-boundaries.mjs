@@ -504,11 +504,9 @@ export const inspectImports = (content, filename = "source.ts") => {
     const bindings = [];
     if (ts.isImportDeclaration(node) && node.importClause?.name)
       bindings.push({ name: "default", typeOnly });
-    const clause = ts.isImportDeclaration(node)
-      ? node.importClause?.namedBindings
-      : ts.isExportDeclaration(node)
-        ? node.exportClause
-        : undefined;
+    let clause;
+    if (ts.isImportDeclaration(node)) clause = node.importClause?.namedBindings;
+    else if (ts.isExportDeclaration(node)) clause = node.exportClause;
     if (clause && (ts.isNamedImports(clause) || ts.isNamedExports(clause)))
       for (const element of clause.elements)
         bindings.push({

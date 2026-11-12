@@ -20,7 +20,7 @@ describe("browser appearance preferences", () => {
     expect(getCompact()).toBe(true);
     expect(localStorage.getItem(storageKeys.theme)).toBe('"light"');
     expect(localStorage.getItem(storageKeys.compact)).toBe("true");
-    expect(localStorage.length).toBe(2);
+    expect(localStorage).toHaveLength(2);
   });
 
   it.each(["invalid", "null", "{}", '"blue"', "1"])(
