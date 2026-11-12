@@ -161,11 +161,20 @@ Incomplete/background-overlap entries do not establish a measured contrast ratio
 | [RoleForm](../src/features/roles/components/role-form/RoleForm.tsx): permission-group checkbox inside Divider                                                                            | Six create/update/validation scenarios reported axe `nested-interactive` for the separator container.          | The user-authorized presentation role is applied to the Divider. Fresh verification is still required. |
 | [Users](../src/features/users/Users.tsx): Select placeholders                                                                                                                            | Light placeholder 1.74:1.                                                                                      | Review accepted Select placeholder tokens.                                                             |
 
+## User-role fixture readiness
+
+The [UserRoleForm test](../src/features/users/components/user-role-form/UserRoleForm.test.tsx)
+intermittently submitted `roleIds: []` instead of the two selected identifiers,
+including in [CI 208](https://github.com/sepaseh/kernel-admin/actions/runs/43193852506/job/131105640676).
+A checked option alone does not establish that the remounted Checkbox.Group has
+finished its option-registration effects. The fixture now resolves its owned
+initial read inside awaited `act`, verifies enabled controls and the initial
+selection, and checks both selected options before submission. The exact
+two-identifier request assertion remains unchanged. No application or vendor
+implementation is replaced to obtain that result; the original failure is retained.
+
 ## Observations that still need a controlled reproduction
 
-- [UserRoleForm test](../src/features/users/components/user-role-form/UserRoleForm.test.tsx):
-  one complete run saved `roleIds: []` after two checked options; an isolated run
-  passed. Determine Checkbox.Group/form readiness before a source/fixture edit.
 - [Routes test](../src/app/Routes.test.tsx): one complete run exceeded the existing
   five-second first-route limit; isolated 16/16 passed. Identify the delayed
   import/render boundary without weakening the assertion or deadline.

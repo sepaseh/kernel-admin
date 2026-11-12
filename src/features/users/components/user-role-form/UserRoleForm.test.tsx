@@ -76,13 +76,40 @@ afterEach(cleanup);
 
 describe("user role drawer", () => {
   it("loads selected roles and persists role identifiers instead of labels", async () => {
+    const pendingUser = deferred<User>();
+    vi.mocked(fetchUser).mockReturnValueOnce(pendingUser.promise);
     renderForm();
-    const readers = await screen.findByRole("checkbox", { name: "Readers" });
-    await waitFor(() =>
-      expect((readers as HTMLInputElement).checked).toBe(true),
-    );
-    fireEvent.click(screen.getByRole("checkbox", { name: "Editors" }));
-    fireEvent.click(screen.getByRole("button", { name: i18n.t("submit") }));
+    const submit = screen.getByRole<HTMLButtonElement>("button", {
+      name: i18n.t("submit"),
+    });
+    expect(submit.disabled).toBe(true);
+
+    await act(async () => {
+      pendingUser.resolve(user);
+    });
+
+    const readers = screen.getByRole<HTMLInputElement>("checkbox", {
+      name: "Readers",
+    });
+    const editors = screen.getByRole<HTMLInputElement>("checkbox", {
+      name: "Editors",
+    });
+    expect(readers.checked).toBe(true);
+    expect(editors.checked).toBe(false);
+    expect(readers.disabled).toBe(false);
+    expect(editors.disabled).toBe(false);
+    expect(submit.disabled).toBe(false);
+
+    fireEvent.click(editors);
+    expect(
+      screen.getByRole<HTMLInputElement>("checkbox", { name: "Readers" })
+        .checked,
+    ).toBe(true);
+    expect(
+      screen.getByRole<HTMLInputElement>("checkbox", { name: "Editors" })
+        .checked,
+    ).toBe(true);
+    fireEvent.click(submit);
 
     await waitFor(() =>
       expect(updateUserRoles).toHaveBeenCalledExactlyOnceWith(
@@ -98,23 +125,43 @@ describe("user role drawer", () => {
   });
 
   it("keeps selected roles after a rejected save and allows a successful retry", async () => {
+    const pendingUser = deferred<User>();
     const pending = deferred<void>();
+    vi.mocked(fetchUser).mockReturnValueOnce(pendingUser.promise);
     vi.mocked(updateUserRoles)
       .mockReturnValueOnce(pending.promise)
       .mockResolvedValueOnce(undefined);
     renderForm();
-    const readers = await screen.findByRole<HTMLInputElement>("checkbox", {
-      name: "Readers",
-    });
-    await waitFor(() => expect(readers.checked).toBe(true));
-    const editors = screen.getByRole<HTMLInputElement>("checkbox", {
-      name: "Editors",
-    });
-    fireEvent.click(editors);
     const submit = screen.getByRole<HTMLButtonElement>("button", {
       name: i18n.t("submit"),
     });
-    await waitFor(() => expect(submit.disabled).toBe(false));
+    expect(submit.disabled).toBe(true);
+
+    await act(async () => {
+      pendingUser.resolve(user);
+    });
+
+    const readers = screen.getByRole<HTMLInputElement>("checkbox", {
+      name: "Readers",
+    });
+    const editors = screen.getByRole<HTMLInputElement>("checkbox", {
+      name: "Editors",
+    });
+    expect(readers.checked).toBe(true);
+    expect(editors.checked).toBe(false);
+    expect(readers.disabled).toBe(false);
+    expect(editors.disabled).toBe(false);
+    expect(submit.disabled).toBe(false);
+
+    fireEvent.click(editors);
+    expect(
+      screen.getByRole<HTMLInputElement>("checkbox", { name: "Readers" })
+        .checked,
+    ).toBe(true);
+    expect(
+      screen.getByRole<HTMLInputElement>("checkbox", { name: "Editors" })
+        .checked,
+    ).toBe(true);
     fireEvent.click(submit);
     await waitFor(() => {
       expect(updateUserRoles).toHaveBeenCalledTimes(1);
