@@ -72,7 +72,7 @@ test("admin-users-fa-light", async ({ page }) => {
   expect(fixture.unexpectedRequests).toEqual([]);
 });
 
-test("admin-settings-en-light", async ({ page }) => {
+test("admin-settings-en-light", async ({ page }, testInfo) => {
   const fixture = await setupAdminFixture(page, {
     baseURL,
     language: "en",
@@ -107,6 +107,15 @@ test("admin-settings-en-light", async ({ page }) => {
       .first(),
   ).toHaveValue("1200");
   await waitForVisualReady(page, { language: "en", theme: "light" });
+  await testInfo.attach("settings-reference-candidate", {
+    body: await page.screenshot({
+      animations: "disabled",
+      caret: "hide",
+      fullPage: true,
+      scale: "css",
+    }),
+    contentType: "image/png",
+  });
   await expect(page).toHaveScreenshot("admin-settings-en-light.png", {
     fullPage: true,
   });
