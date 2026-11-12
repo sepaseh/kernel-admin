@@ -286,6 +286,14 @@ const completeApplicationFiles = [
   "src/features/calendar/styles.ts",
   "src/features/dashboard/Dashboard.tsx",
   "src/features/dashboard/index.ts",
+  "src/features/faqs/Faqs.stories.tsx",
+  "src/features/faqs/Faqs.tsx",
+  "src/features/faqs/api.test.ts",
+  "src/features/faqs/api.ts",
+  "src/features/faqs/components/faq-form/FaqForm.stories.tsx",
+  "src/features/faqs/components/faq-form/FaqForm.tsx",
+  "src/features/faqs/index.ts",
+  "src/features/faqs/types.ts",
   "src/features/files/Files.stories.tsx",
   "src/features/files/Files.tsx",
   "src/features/files/api.test.ts",
@@ -462,6 +470,9 @@ const completeApplicationFiles = [
   "src/shared/ui/route-loading/RouteLoading.test.tsx",
   "src/shared/ui/route-loading/RouteLoading.tsx",
   "src/shared/ui/route-loading/index.ts",
+  "src/shared/ui/sortable-table/SortableTable.stories.tsx",
+  "src/shared/ui/sortable-table/SortableTable.tsx",
+  "src/shared/ui/sortable-table/index.ts",
   "src/test/browser.ts",
   "src/test/deferred.ts",
   "src/test/resource-paths.test.ts",
@@ -546,6 +557,12 @@ const applicationFiles = [
   "src/features/account/components/profile-form/ProfileForm.tsx",
   "src/features/account/components/profile-form/index.ts",
   "src/features/auth/index.ts",
+  "src/features/faqs/Faqs.tsx",
+  "src/features/faqs/api.test.ts",
+  "src/features/faqs/api.ts",
+  "src/features/faqs/components/faq-form/FaqForm.tsx",
+  "src/features/faqs/index.ts",
+  "src/features/faqs/types.ts",
   "src/features/files/Files.tsx",
   "src/features/files/api.test.ts",
   "src/features/files/api.ts",
@@ -582,6 +599,8 @@ const applicationFiles = [
   "src/shared/ui/image-upload/image.test.ts",
   "src/shared/ui/image-upload/image.ts",
   "src/shared/ui/image-upload/index.ts",
+  "src/shared/ui/sortable-table/SortableTable.tsx",
+  "src/shared/ui/sortable-table/index.ts",
   "src/test/browser.ts",
   "src/test/deferred.ts",
   "src/test/resource-paths.test.ts",
@@ -1505,7 +1524,7 @@ test("Storybook verification requires every explicit story, isolated configurati
   const current = await historicalStorybookPolicy();
   assert.equal(current.phase, "storybook-verification");
   const required = current.allowedFiles.filter(isStorybookPhaseFile);
-  assert.equal(required.length, 45);
+  assert.equal(required.length, 48);
   for (const missing of required) {
     assert.throws(
       () =>

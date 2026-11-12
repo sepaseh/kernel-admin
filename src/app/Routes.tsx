@@ -32,6 +32,7 @@ const pageRegistry = {
   account: async () => (await import("@/features/account")).AccountPage,
   auth: async () => (await import("@/features/login")).LoginPage,
   calendar: async () => (await import("@/features/calendar")).CalendarPage,
+  faqs: async () => (await import("@/features/faqs")).FaqsPage,
   forgotPassword: async () =>
     (await import("@/features/forgot-pass")).ForgotPassPage,
   notFound: async () => (await import("@/features/not-found")).NotFoundPage,

@@ -2,6 +2,7 @@ import { mocked } from "storybook/test";
 import { apiClient } from "@/shared/api";
 import type { SettingsRequest } from "@/features/settings";
 import {
+  sampleFaqs,
   samplePermissions,
   sampleRoles,
   sampleSettings,
@@ -16,6 +17,7 @@ export { assertNoUnexpectedRequests } from "./request-guard";
 
 export const resetStoryMocks = (state = "populated") => {
   resetRequestGuard();
+  let faqs = state === "empty" ? [] : structuredClone(sampleFaqs);
   let roles = state === "roles-empty" ? [] : structuredClone(sampleRoles);
   let users = state === "users-empty" ? [] : structuredClone(sampleUsers);
   let files = state === "files-empty" ? [] : structuredClone(sampleFiles);
@@ -62,6 +64,14 @@ export const resetStoryMocks = (state = "populated") => {
       if (role) return structuredClone(role);
       const user = users.find(({ id }) => url === `/users/${id}`);
       if (user) return structuredClone(user);
+      if (url === "/faqs") {
+        if (state === "loading") return new Promise(() => undefined);
+        if (state === "error")
+          throw new Error("Synthetic FAQ service unavailable");
+        return structuredClone(faqs);
+      }
+      const item = faqs.find(({ id }) => url === `/faqs/${id}`);
+      if (item) return structuredClone(item);
       return rejectUnexpectedRequest("GET", url);
     });
   mocked(apiClient.post)
@@ -104,7 +114,13 @@ export const resetStoryMocks = (state = "populated") => {
         users.push(created);
         return structuredClone(created);
       }
-      return rejectUnexpectedRequest("POST", url);
+      if (url !== "/faqs") return rejectUnexpectedRequest("POST", url);
+      const created = {
+        id: "faq-created",
+        ...(request as { question: string; answer: string }),
+      };
+      faqs = [...faqs, created];
+      return structuredClone(created);
     });
   mocked(apiClient.patch)
     .mockReset()
@@ -112,6 +128,11 @@ export const resetStoryMocks = (state = "populated") => {
       if (url === "/account/update-profile") {
         Object.assign(account, request);
         return structuredClone(account);
+      }
+      if (url === "/faqs/sort") {
+        const ids = (request as { ids: string[] }).ids;
+        faqs.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+        return undefined;
       }
       const role = roles.find(({ id }) => url === `/roles/${id}`);
       if (role) {
@@ -128,7 +149,10 @@ export const resetStoryMocks = (state = "populated") => {
         Object.assign(user, request);
         return structuredClone(user);
       }
-      return rejectUnexpectedRequest("PATCH", url);
+      const item = faqs.find(({ id }) => url === `/faqs/${id}`);
+      if (!item) return rejectUnexpectedRequest("PATCH", url);
+      Object.assign(item, request);
+      return structuredClone(item);
     });
   mocked(apiClient.del)
     .mockReset()
@@ -152,7 +176,10 @@ export const resetStoryMocks = (state = "populated") => {
         files = files.filter(({ id }) => url !== `/files/${id}`);
         return undefined;
       }
-      return rejectUnexpectedRequest("DELETE", url);
+      const item = faqs.find(({ id }) => url === `/faqs/${id}`);
+      if (!item) return rejectUnexpectedRequest("DELETE", url);
+      faqs = faqs.filter(({ id }) => id !== item.id);
+      return undefined;
     });
   mocked(apiClient.put)
     .mockReset()

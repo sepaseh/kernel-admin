@@ -945,6 +945,21 @@ test("runtime adapters may import only exact declared packages contained in this
     ["src/features/calendar/styles.ts", "antd-style", "antd-style"],
     ["src/layouts/default/Default.tsx", "lucide-react", "lucide-react"],
     [
+      "src/shared/ui/sortable-table/SortableTable.tsx",
+      "@dnd-kit/core",
+      "@dnd-kit/core",
+    ],
+    [
+      "src/shared/ui/sortable-table/SortableTable.tsx",
+      "@dnd-kit/sortable",
+      "@dnd-kit/sortable",
+    ],
+    [
+      "src/shared/ui/sortable-table/SortableTable.tsx",
+      "@dnd-kit/utilities",
+      "@dnd-kit/utilities",
+    ],
+    [
       "src/shared/ui/image-upload/ImageUpload.tsx",
       "antd-img-crop",
       "antd-img-crop",
@@ -1050,6 +1065,7 @@ test("submission forms own only their contained Axios cancellation runtime depen
   for (const source of [
     "src/features/account/components/password-form/PasswordForm.tsx",
     "src/features/account/components/profile-form/ProfileForm.tsx",
+    "src/features/faqs/components/faq-form/FaqForm.tsx",
     "src/features/roles/components/role-form/RoleForm.tsx",
     "src/features/settings/Settings.tsx",
     "src/features/users/components/user-form/UserForm.tsx",
