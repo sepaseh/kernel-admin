@@ -90,7 +90,8 @@ export const LoadError: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await expect(await body.findByText("Unable to load roles")).toBeVisible();
+    const message = await body.findByText("Unable to load roles");
+    await waitFor(() => expect(message).toBeVisible());
     await expect(canvas.getByRole("table")).toBeVisible();
   },
 };

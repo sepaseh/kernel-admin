@@ -174,7 +174,11 @@ export const UserForm = ({ id, onFinish }: UserFormProps) => {
           return;
         }
 
-        if (isCreate) form.focusField(initialFocusField);
+        if (
+          isCreate ||
+          (isUpdate && !loading && id !== undefined && loadedId === id)
+        )
+          form.focusField(initialFocusField);
       }}
       loading={loading}
       onClose={handleClose}

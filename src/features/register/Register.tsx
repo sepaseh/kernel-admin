@@ -1,17 +1,14 @@
-import { Button, Flex, Form, Input, Typography } from "antd";
+import { Button, Flex, Form, type FormProps, Input, Typography } from "antd";
 import { isCancel } from "axios";
 import { UserRound } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
 
 import { routeTree } from "@/app/config";
 import { useAntd } from "@/app/hooks";
-import { register } from "@/features/auth/api.ts";
-import type { RegisterParams } from "@/features/auth/types.ts";
-import { useOtpRequest } from "@/features/auth/useOtpRequest.ts";
-import { profileNameMaxLength } from "@/shared/contracts";
-import { getErrorMessage } from "@/shared/lib";
+import { register, type RegisterParams, useOtpRequest } from "@/features/auth";
+import { useAbortController, useLock } from "@/shared/hooks";
 import { DigitsInput } from "@/shared/ui/digits-input";
 import { OtpInput } from "@/shared/ui/otp-input";
 import { PasswordFields } from "@/shared/ui/password-fields";
@@ -22,11 +19,11 @@ type RegisterFormParams = RegisterParams & {
 
 export const RegisterPage = () => {
   const { t } = useTranslation();
-  const [submitting, setSubmitting] = useState(false);
-  const submission = useRef<AbortController | undefined>(undefined);
-  const { messageAPI } = useAntd();
   const [form] = Form.useForm<RegisterFormParams>();
-  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
+  const { cancel, start } = useAbortController();
+  const { messageAPI } = useAntd();
+  const { lock, unlock } = useLock();
   const {
     handleOtpRequest,
     handleValuesChange,
@@ -35,7 +32,9 @@ export const RegisterPage = () => {
   } = useOtpRequest({
     form,
     onError: (error) => {
-      void messageAPI.error(getErrorMessage(error));
+      void messageAPI.error(
+        error instanceof Error ? error.message : t("unexpectedError"),
+      );
     },
     onSuccess: () => {
       void messageAPI.success(t("codeRequested"));
@@ -43,43 +42,37 @@ export const RegisterPage = () => {
     purpose: "register",
   });
 
-  const handleSubmit = async ({
+  const navigate = useNavigate();
+
+  const handleSubmit: FormProps<RegisterFormParams>["onFinish"] = async ({
     firstName,
     lastName,
     mobile,
     otp,
     password,
-  }: RegisterFormParams): Promise<void> => {
-    if (submission.current) return;
+  }) => {
+    if (!lock()) return;
 
-    const controller = new AbortController();
-    submission.current = controller;
+    const signal = start();
     setSubmitting(true);
     try {
-      await register(
-        { firstName, lastName, mobile, otp, password },
-        controller.signal,
-      );
-      if (controller.signal.aborted) return;
+      await register({ firstName, lastName, mobile, otp, password }, signal);
+      if (signal.aborted) return;
+
       void navigate(routeTree.root.path, { replace: true });
     } catch (error) {
-      if (!controller.signal.aborted && !isCancel(error))
-        void messageAPI.error(getErrorMessage(error));
+      if (signal.aborted || isCancel(error)) return;
+
+      if (error instanceof Error) void messageAPI.error(error.message);
     } finally {
-      if (submission.current === controller) {
-        submission.current = undefined;
-        if (!controller.signal.aborted) setSubmitting(false);
+      if (!signal.aborted) {
+        unlock();
+        setSubmitting(false);
       }
     }
   };
 
-  useEffect(
-    () => () => {
-      submission.current?.abort();
-      submission.current = undefined;
-    },
-    [],
-  );
+  useLayoutEffect(() => cancel, [cancel]);
 
   return (
     <Flex gap={32} vertical>
@@ -89,10 +82,12 @@ export const RegisterPage = () => {
           {t("register")}
         </Typography.Title>
       </Flex>
-      <Form
+      <Form<RegisterFormParams>
+        disabled={submitting}
         form={form}
         layout="vertical"
-        onFinish={(values) => void handleSubmit(values)}
+        name="register-form"
+        onFinish={handleSubmit}
         onValuesChange={handleValuesChange}
         requiredMark={false}
         scrollToFirstError={{ focus: true }}
@@ -101,26 +96,18 @@ export const RegisterPage = () => {
           <Form.Item<RegisterFormParams>
             label={t("firstName")}
             name="firstName"
-            rules={[{ required: true, max: profileNameMaxLength }]}
+            rules={[{ required: true }]}
             style={{ flex: 1 }}
           >
-            <Input
-              maxLength={profileNameMaxLength}
-              placeholder={t("firstName")}
-              size="large"
-            />
+            <Input placeholder={t("firstName")} size="large" />
           </Form.Item>
           <Form.Item<RegisterFormParams>
             label={t("lastName")}
             name="lastName"
-            rules={[{ required: true, max: profileNameMaxLength }]}
+            rules={[{ required: true }]}
             style={{ flex: 1 }}
           >
-            <Input
-              maxLength={profileNameMaxLength}
-              placeholder={t("lastName")}
-              size="large"
-            />
+            <Input placeholder={t("lastName")} size="large" />
           </Form.Item>
         </Flex>
         <Form.Item<RegisterFormParams>

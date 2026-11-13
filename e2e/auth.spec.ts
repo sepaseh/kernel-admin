@@ -36,7 +36,7 @@ test.describe("public authentication", () => {
     await page.goto("/auth");
 
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-    await expect(page.getByLabel("Username, email, or mobile")).toBeVisible();
+    await expect(page.getByLabel("Mobile number")).toBeVisible();
     await expect(page.getByLabel("Password")).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Create account" }),
@@ -51,7 +51,7 @@ test.describe("public authentication", () => {
   }) => {
     await page.route("https://api.example.com/auth/login", async (route) => {
       expect(route.request().postDataJSON()).toEqual({
-        identifier: "ada",
+        mobile: "09120000000",
         password: syntheticCredential,
       });
 
@@ -63,7 +63,7 @@ test.describe("public authentication", () => {
     });
     await page.goto("/auth");
 
-    await page.getByLabel("Username, email, or mobile").fill("ada");
+    await page.getByLabel("Mobile number").fill("09120000000");
     await page.getByLabel("Password").fill(syntheticCredential);
     await page.getByRole("button", { name: "Sign in" }).click();
 
@@ -90,7 +90,7 @@ test.describe("public authentication", () => {
     });
     await page.goto("/auth");
 
-    await page.getByLabel("Username, email, or mobile").fill("ada");
+    await page.getByLabel("Mobile number").fill("09120000000");
     await page.getByLabel("Password").fill(syntheticCredential);
     await page.getByRole("button", { name: "Sign in" }).click();
 
@@ -219,7 +219,7 @@ test.describe("public authentication", () => {
       await route.fulfill({ status: 204 });
     });
     await page.goto("/auth");
-    await page.getByLabel("Username, email, or mobile").fill("ada");
+    await page.getByLabel("Mobile number").fill("09120000000");
     await page.getByLabel("Password").fill(syntheticCredential);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("link", { name: "Logo" })).toBeVisible();

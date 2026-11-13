@@ -22,6 +22,8 @@ Developers choose a compatible backend through `VITE_API_BASE_URL`. The local fe
 
 Use the [synthetic HTTP handlers](../src/test/mocks/handlers.ts), [settings fixture](../e2e/fixtures.ts), [application HTTP fixtures](../e2e/shared/admin-fixtures.ts) and [consumer contracts](../contract/api.contract.test.ts) for request and response examples. Startup requires a valid `/settings` response before routes render. Authenticated features require compatible login, refresh and permission behavior. Builds and synthetic tests need no running backend. Verify the chosen service separately when real integration testing is authorized.
 
+Login accepts `mobile` and `password`. Authentication screens import only their named services, OTP hook and erased request models from the [authentication public index](../src/features/auth/index.ts). Registration and password recovery request an OTP for the current mobile number. The response must contain finite numeric `expiresIn` and nonnegative `remainingSeconds` values. Existing account email verification and password changes keep their current endpoints and request models.
+
 ## Transport contract
 
 The shared client configures Axios with credentials and explicit cancellation, without a general request timeout. Refresh alone has a 15-second bound per attempt. [`config.ts`](../src/shared/api/config.ts) reads the public `VITE_API_BASE_URL`, falling back to the browser origin when that value is absent. See [usage](usage.md) for configuration.
@@ -58,7 +60,7 @@ Login/registration validate a nonblank access token and check both cancellation 
 
 Business screens bind direct effects to their filters, route identifiers and owned AbortControllers. A replacement request or cleanup aborts the previous intent; handlers check cancellation before accepting data or presenting errors. Keep list and optional lookup state independent. Shared filter hooks parse query state and debounce text input without changing the transport contract.
 
-Account and authentication consumers also use the following request hooks:
+Account consumers also use the following request hooks:
 
 [`useReadRequest`](../src/shared/hooks/useReadRequest.ts) binds each read intent to a sequence and AbortController. A new read, accepted replacement, resource identity change or unmount invalidates older work, including loaders that ignore their signal. Cancellation settles loading without exposing a failure. A real refresh failure keeps previously accepted data.
 
@@ -78,9 +80,13 @@ The shared `useMutationRequest` hook binds work to its identity, enabled state a
 
 When adding a feature form that uses this hook, connect cancellation and submitting state to the owning form.
 
+Authentication forms use [`useAbortController`](../src/shared/hooks/useAbortController.ts) for caller cancellation and [`useLock`](../src/shared/hooks/useLock.ts) for synchronous duplicate-submit protection alongside local submitting state. They check cancellation after requests before navigation or notifications, and ignore cancelled errors. Login displays the optional logo selected from the current settings by the browser theme.
+
 An admitted authentication form must cancel its OTP request and clear old OTP/cooldown state when the mobile number changes. Its pending-operation guard must bind the intent before asynchronous OTP validation. Enter and button submission must use the same form validation and duplicate-request guard. The current login and registration APIs already guard credential installation after transport fulfillment.
 
-The [user form](../src/features/users/components/user-form/UserForm.tsx) and [password reset](../src/features/users/Users.tsx) must reveal a generated password only after a successful API response and while the initiating login is current. They must display a notification and attempt to copy the value to the clipboard. The notification must still appear if clipboard access fails. The form's navigation and completion callbacks also require the mutation to remain current. Preserve those separate guards and reuse `profileNameMaxLength` from `src/shared/contracts`.
+Changing the mobile number releases OTP loading and its lock immediately. An older cancelled request cannot unlock a replacement request when it later settles. Registration requires first and last names without imposing a client-side length ceiling.
+
+The [user form](../src/features/users/components/user-form/UserForm.tsx) and [password reset](../src/features/users/Users.tsx) must reveal a generated password only after a successful API response and while the initiating login is current. They must display a notification and attempt to copy the value to the clipboard. The notification must still appear if clipboard access fails. The form's navigation and completion callbacks also require the mutation to remain current. Preserve those separate guards and the owning feature's field validation.
 
 The default layout checks the account before rendering protected children and exposes explicit loading, error and retry states. The API independently enforces administrator safeguards and authorizes each mutation. Cancellation protects client continuation. Server mutations and browser cookie effects can persist after cancellation.
 

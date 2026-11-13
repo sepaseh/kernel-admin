@@ -24,12 +24,12 @@
         "A shared refresh must survive one reader cancelling, while original request/session generation remains bound across awaits, retry dispatch and terminal 401 handling.",
         "Old operations must not replay a mutation as a newly logged-in account or clear that account after a delayed refresh failure/retried 401; identify source guards or report an actual missing branch. Public settings reads may survive a session change, but a public-read exemption must not exempt protected writes to the same path.",
         "Logout completion and duplicate requests need generation/mounted-owner protection beyond the shared client's generation checks; examine the helper finally and layout continuation separately.",
-        "Default request and refresh bounds are 15 seconds per attempt and uploads have an explicit 60-second bound; transient timeout/network errors stay retryable without automatically clearing authentication, and cancellation is not a user error.",
+        "Ordinary requests/uploads have no general timeout. Refresh has a 15-second bound and one network/5xx retry; terminal refresh failure expires client state. Cancellation is not a user error.",
         "Transient read retry is manual and has no attempt budget; the protected-401 one-replay rule after a successful same-generation refresh is independent."
       ],
       "mustNot": [
         "Claim AbortSignal alone protects adapters that ignore cancellation or un-signaled mutations.",
-        "Silently replay an old mutation under new credentials or treat a transient refresh timeout as definitive logout.",
+        "Silently replay an old mutation under new credentials or assume every old timeout/retry guarantee remains implemented.",
         "Claim overlapping logout is safe without inspecting both helper finalization and layout state.",
         "Read actual credentials/state, mutate runtime source or execute a live auth service to answer the case."
       ],
@@ -74,12 +74,18 @@
         "src/shared/api/client.ts",
         "src/shared/api/token.ts",
         "src/features/auth/api.ts",
-        "src/shared/api/refresh.ts"
+        "src/shared/api/refresh.ts",
+        "src/features/auth/index.ts",
+        "src/features/auth/api.test.ts",
+        "src/features/auth/logout.test.ts",
+        "src/features/auth/useOtpRequest.test.tsx"
       ],
       "mustExplain": [
         "Bearer credentials remain in memory.",
         "Single-flight refresh and originating request generation protect new logins.",
-        "Terminal refresh failure clears client state; server revocation is an API responsibility."
+        "Terminal refresh failure clears client state; server revocation is an API responsibility.",
+        "Login submits mobile and password through the named auth public service. Login and registration validate access tokens before installing credentials and check caller cancellation plus session identity after fulfillment.",
+        "OTP response validation and mobile-change cancellation prevent stale codes and cooldowns. Legacy account email verification and password changes retain their existing HTTP contract."
       ],
       "mustNot": [
         "Claim JWT rotation/reuse detection exists.",

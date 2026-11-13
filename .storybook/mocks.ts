@@ -1,7 +1,7 @@
 import { mocked } from "storybook/test";
 
 import * as accountAPI from "@/features/account/api";
-import * as authAPI from "@/features/auth/api";
+import * as authAPI from "@/features/auth";
 import * as calendarAPI from "@/features/calendar/api";
 import * as rolesAPI from "@/features/roles/api";
 import type { Settings, SettingsRequest } from "@/features/settings/types";

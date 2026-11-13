@@ -59,6 +59,66 @@ const fillReset = async (user: ReturnType<typeof render>["user"]) => {
 };
 
 describe("ForgotPassPage", () => {
+  it("retains recovery fields after an invalid OTP and allows correction", async () => {
+    vi.mocked(forgotPassword).mockRejectedValueOnce(new Error("Invalid OTP"));
+    const { user } = renderPage();
+    await fillReset(user);
+    await user.click(
+      screen.getByRole("button", { name: i18nInstance.t("resetPassword") }),
+    );
+
+    await waitFor(() =>
+      expect(messages.error).toHaveBeenCalledWith("Invalid OTP"),
+    );
+    expect(screen.getByLabelText(i18nInstance.t("mobile"))).toHaveValue(
+      "09120000000",
+    );
+    expect(screen.getByLabelText(i18nInstance.t("mobile"))).toBeEnabled();
+    expect(messages.success).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole("button", { name: i18nInstance.t("resetPassword") }),
+    );
+    await screen.findByRole("heading", { name: "Login" });
+    expect(forgotPassword).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["success", "failure"] as const)(
+    "ignores a late password-reset %s after leaving the page",
+    async (outcome) => {
+      let resolve!: () => void;
+      let reject!: (error: Error) => void;
+      vi.mocked(forgotPassword).mockReturnValueOnce(
+        new Promise((yes, no) => {
+          resolve = yes;
+          reject = no;
+        }),
+      );
+      const { user } = renderPage();
+      await fillReset(user);
+      await user.click(
+        screen.getByRole("button", { name: i18nInstance.t("resetPassword") }),
+      );
+      await waitFor(() => expect(forgotPassword).toHaveBeenCalledOnce());
+
+      await user.click(
+        screen.getByRole("link", { name: i18nInstance.t("backToLogin") }),
+      );
+      await screen.findByRole("heading", { name: "Login" });
+      expect(vi.mocked(forgotPassword).mock.calls[0][1]?.aborted).toBe(true);
+      await act(async () => {
+        if (outcome === "success") resolve();
+        else reject(new Error("Obsolete password-reset failure"));
+      });
+
+      expect(
+        screen.getByRole("heading", { name: "Login" }),
+      ).toBeInTheDocument();
+      expect(messages.error).not.toHaveBeenCalled();
+      expect(messages.success).not.toHaveBeenCalled();
+    },
+  );
+
   it("keeps invalid mobile validation local without sending an OTP request", async () => {
     const { user } = renderPage();
     await user.click(

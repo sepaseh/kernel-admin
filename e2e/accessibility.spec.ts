@@ -65,10 +65,10 @@ for (const language of ["en", "fa"] as const) {
           theme,
         });
         await page.goto("/auth");
-        const identifier = page.getByLabel(messages.identifier, {
+        const mobile = page.getByLabel(messages.mobile, {
           exact: true,
         });
-        await identifier.focus();
+        await mobile.focus();
         await page.keyboard.press("Tab");
         await expect(
           page.getByLabel(messages.password, { exact: true }),
@@ -76,12 +76,12 @@ for (const language of ["en", "fa"] as const) {
         await page
           .getByRole("button", { name: messages.login, exact: true })
           .click();
-        await expect(identifier).toBeFocused();
-        await expect(identifier).toHaveAttribute("aria-invalid", "true");
-        await expect(identifier).toHaveAttribute("aria-describedby", /.+/);
-        const errorId = (await identifier.getAttribute(
-          "aria-describedby",
-        ))!.split(" ")[0];
+        await expect(mobile).toBeFocused();
+        await expect(mobile).toHaveAttribute("aria-invalid", "true");
+        await expect(mobile).toHaveAttribute("aria-describedby", /.+/);
+        const errorId = (await mobile.getAttribute("aria-describedby"))!.split(
+          " ",
+        )[0];
         await expect(page.locator(`[id="${errorId}"]`)).toBeVisible();
         await expectNoAxeViolations(page, testInfo);
         expect(unexpectedRequests).toEqual([]);

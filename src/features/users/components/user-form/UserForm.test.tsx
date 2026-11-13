@@ -20,14 +20,21 @@ import { createUser, fetchUser, updateUser } from "../../api";
 import type { User } from "../../types";
 import { UserForm } from "./UserForm";
 
-const { clipboard, drawerOpenChange, messages, notification, onFinish } =
-  vi.hoisted(() => ({
-    clipboard: vi.fn(),
-    drawerOpenChange: vi.fn(),
-    messages: { error: vi.fn(), success: vi.fn() },
-    notification: { success: vi.fn() },
-    onFinish: vi.fn(),
-  }));
+const {
+  clipboard,
+  drawerLifecycle,
+  drawerOpenChange,
+  messages,
+  notification,
+  onFinish,
+} = vi.hoisted(() => ({
+  clipboard: vi.fn(),
+  drawerLifecycle: { completeOpening: vi.fn(), holdOpening: false },
+  drawerOpenChange: vi.fn(),
+  messages: { error: vi.fn(), success: vi.fn() },
+  notification: { success: vi.fn() },
+  onFinish: vi.fn(),
+}));
 vi.mock("../../api", () => ({
   createUser: vi.fn(),
   fetchUser: vi.fn(),
@@ -41,15 +48,22 @@ vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
     await importOriginal<typeof import("@/shared/ui/form-drawer")>();
 
   return {
-    FormDrawer: (props: ComponentProps<typeof FormDrawer>) => (
-      <FormDrawer
-        {...props}
-        afterOpenChange={(open) => {
-          props.afterOpenChange?.(open);
-          drawerOpenChange(open);
-        }}
-      />
-    ),
+    FormDrawer: (props: ComponentProps<typeof FormDrawer>) => {
+      drawerLifecycle.completeOpening.mockImplementation(() =>
+        props.afterOpenChange?.(true),
+      );
+
+      return (
+        <FormDrawer
+          {...props}
+          afterOpenChange={(open) => {
+            if (!open || !drawerLifecycle.holdOpening)
+              props.afterOpenChange?.(open);
+            drawerOpenChange(open);
+          }}
+        />
+      );
+    },
   };
 });
 
@@ -92,6 +106,7 @@ const renderForm = (entry = "/users#create", id?: string) =>
 
 beforeEach(async () => {
   vi.resetAllMocks();
+  drawerLifecycle.holdOpening = false;
   clearAccessToken();
   clipboard.mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", {
@@ -163,6 +178,29 @@ describe("user drawer", () => {
     );
     expect(notification.success).not.toHaveBeenCalled();
     expect(createUser).not.toHaveBeenCalled();
+  });
+
+  it("focuses loaded user details when drawer opening completes", async () => {
+    drawerLifecycle.holdOpening = true;
+    renderForm("/users#update", "user-1");
+    const firstName = await screen.findByDisplayValue("Ada");
+    await waitFor(() => expect(drawerOpenChange).toHaveBeenCalledWith(true));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: i18n.t("submit") }),
+      ).toBeEnabled(),
+    );
+    const drawer = screen
+      .getByRole("dialog")
+      .closest<HTMLElement>(".ant-drawer")!;
+    drawer.focus();
+    expect(drawer).toHaveFocus();
+    expect(firstName).not.toHaveFocus();
+
+    act(() => drawerLifecycle.completeOpening());
+
+    expect(firstName).toHaveFocus();
+    expect(firstName).toHaveValue("Ada");
   });
 
   it("focuses the first name after user details arrive in an already opened drawer", async () => {

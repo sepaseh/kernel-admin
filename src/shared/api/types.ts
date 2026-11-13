@@ -4,8 +4,11 @@ export type AccessTokenProps = {
   accessToken: string;
 };
 
+export type PaginationQuery = {
+  page?: string;
+  size?: string;
+};
+
 export type UploadProgressHandler = NonNullable<
   AxiosRequestConfig["onUploadProgress"]
 >;
-
-export type PaginationQuery = { page?: string; size?: string };

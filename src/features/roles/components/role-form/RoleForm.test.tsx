@@ -27,11 +27,14 @@ import { createRole, fetchRole, updateRole } from "../../api";
 import type { PermissionGroup, Role } from "../../types";
 import { RoleForm } from "./RoleForm";
 
-const { drawerOpenChange, messages, onFinish } = vi.hoisted(() => ({
-  drawerOpenChange: vi.fn(),
-  messages: { error: vi.fn(), success: vi.fn() },
-  onFinish: vi.fn(),
-}));
+const { drawerLifecycle, drawerOpenChange, messages, onFinish } = vi.hoisted(
+  () => ({
+    drawerLifecycle: { completeOpening: vi.fn(), holdOpening: false },
+    drawerOpenChange: vi.fn(),
+    messages: { error: vi.fn(), success: vi.fn() },
+    onFinish: vi.fn(),
+  }),
+);
 vi.mock("../../api", () => ({
   createRole: vi.fn(),
   fetchRole: vi.fn(),
@@ -43,15 +46,22 @@ vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
     await importOriginal<typeof import("@/shared/ui/form-drawer")>();
 
   return {
-    FormDrawer: (props: ComponentProps<typeof FormDrawer>) => (
-      <FormDrawer
-        {...props}
-        afterOpenChange={(open) => {
-          props.afterOpenChange?.(open);
-          drawerOpenChange(open);
-        }}
-      />
-    ),
+    FormDrawer: (props: ComponentProps<typeof FormDrawer>) => {
+      drawerLifecycle.completeOpening.mockImplementation(() =>
+        props.afterOpenChange?.(true),
+      );
+
+      return (
+        <FormDrawer
+          {...props}
+          afterOpenChange={(open) => {
+            if (!open || !drawerLifecycle.holdOpening)
+              props.afterOpenChange?.(open);
+            drawerOpenChange(open);
+          }}
+        />
+      );
+    },
   };
 });
 
@@ -105,6 +115,7 @@ const renderForm = (entry = "/roles#create", id?: string, navigation = false) =>
 
 beforeEach(async () => {
   vi.resetAllMocks();
+  drawerLifecycle.holdOpening = false;
   currentUser.isSystemAdmin = true;
   vi.mocked(fetchRole).mockResolvedValue({
     id: "role-1",
@@ -169,6 +180,29 @@ describe("role drawer", () => {
       ),
     );
     expect(createRole).not.toHaveBeenCalled();
+  });
+
+  it("focuses loaded role details when drawer opening completes", async () => {
+    drawerLifecycle.holdOpening = true;
+    renderForm("/roles#update", "role-1");
+    const name = await screen.findByDisplayValue("Operators");
+    await waitFor(() => expect(drawerOpenChange).toHaveBeenCalledWith(true));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: i18n.t("submit") }),
+      ).toBeEnabled(),
+    );
+    const drawer = screen
+      .getByRole("dialog")
+      .closest<HTMLElement>(".ant-drawer")!;
+    drawer.focus();
+    expect(drawer).toHaveFocus();
+    expect(name).not.toHaveFocus();
+
+    act(() => drawerLifecycle.completeOpening());
+
+    expect(name).toHaveFocus();
+    expect(name).toHaveValue("Operators");
   });
 
   it("focuses the name after role details arrive in an already opened drawer", async () => {

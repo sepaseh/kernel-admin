@@ -74,6 +74,10 @@ const mocks = vi.hoisted(() => {
     },
     core: {
       logos: { dark: "/dark-logo.svg", light: "/light-logo.svg" },
+      settings: {
+        darkLogo: { url: "/dark-logo.svg" },
+        lightLogo: { url: "/light-logo.svg" },
+      },
       setUser,
       theme: "light" as const,
       user: account as typeof account | undefined,
@@ -250,13 +254,13 @@ describe("authentication pages", () => {
       "src",
       "/light-logo.svg",
     );
-    await user.type(screen.getByLabelText("identifier"), "ada");
+    await user.type(screen.getByLabelText("mobile"), "09120000000");
     await user.type(screen.getByLabelText("password"), "secret");
     await user.click(screen.getByRole("button", { name: "login" }));
 
     expect(api.login).toHaveBeenCalledWith(
       {
-        identifier: "ada",
+        mobile: "09120000000",
         password: "secret",
       },
       expect.any(AbortSignal),
@@ -270,7 +274,7 @@ describe("authentication pages", () => {
     vi.mocked(api.login).mockRejectedValueOnce(new Error("Invalid login"));
     const { user } = renderPage(<LoginPage />, "/auth");
 
-    await user.type(screen.getByLabelText("identifier"), "ada");
+    await user.type(screen.getByLabelText("mobile"), "09120000000");
     await user.type(screen.getByLabelText("password"), "incorrect");
     await user.click(screen.getByRole("button", { name: "login" }));
 
