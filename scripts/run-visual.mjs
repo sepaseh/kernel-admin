@@ -767,7 +767,11 @@ export async function runVisual({
   const runtime = await drivers.runtime();
   const baseline = update ? undefined : await drivers.baseline();
   if (!update) {
-    assertReviewedVisualBaseline(baseline, { ...runtime, platform });
+    const nodeWarning = assertReviewedVisualBaseline(baseline, {
+      ...runtime,
+      platform,
+    });
+    if (nodeWarning) console.warn(nodeWarning);
     await drivers.baselineImages(baseline);
   }
   const releaseLock = await drivers.lock();
@@ -842,6 +846,9 @@ async function createVisualDrivers(platform, inherited) {
   );
   if (version !== lock.packages["node_modules/@playwright/test"]?.version)
     throw new Error("Installed Playwright must match the committed lockfile.");
+  const { engines } = JSON.parse(
+    await readFile(path.join(repository, "package.json"), "utf8"),
+  );
   const baselineDirectory = path.join(
     repository,
     "e2e/visual/baselines",
@@ -865,6 +872,7 @@ async function createVisualDrivers(platform, inherited) {
       playwright: version,
       arch: process.arch,
       node: process.version,
+      nodeRange: engines?.node,
       osRelease: release(),
       strictProvenance: true,
     }),
@@ -901,6 +909,7 @@ async function createVisualDrivers(platform, inherited) {
         arch: process.arch,
         osRelease: release(),
         node: process.version,
+        nodeRange: engines?.node,
         playwright: version,
         browser: "bundled-chromium",
         browserVersion,

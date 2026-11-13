@@ -2,6 +2,8 @@ import { mkdir, open, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
 
+import semver from "semver";
+
 const playwright1641DisabledFeatures = [
   "AvoidUnnecessaryBeforeUnloadCheckSync",
   "DestroyProfileOnBrowserClose",
@@ -214,11 +216,43 @@ export function assertReviewedVisualBaseline(metadata, expected) {
     metadata.browserVersion !== expected.browserVersion
   )
     throw new Error("Installed Chromium does not match reviewed baselines.");
-  for (const key of ["arch", "node", "osRelease"])
+  for (const key of ["arch", "osRelease"])
     if (expected[key] !== undefined && metadata[key] !== expected[key])
       throw new Error(
         `Reviewed baseline ${key} does not match the current runtime.`,
       );
+
+  let nodeWarning;
+  if (expected.node !== undefined || expected.strictProvenance) {
+    const baselineNode =
+      typeof metadata.node === "string" ? semver.parse(metadata.node) : null;
+    const currentNode =
+      typeof expected.node === "string" ? semver.parse(expected.node) : null;
+    if (
+      !baselineNode ||
+      !currentNode ||
+      baselineNode.prerelease.length ||
+      currentNode.prerelease.length
+    )
+      throw new Error("Visual Node provenance is missing or invalid.");
+    if (baselineNode.major !== currentNode.major)
+      throw new Error(
+        "Reviewed baseline Node major does not match the current runtime.",
+      );
+    if (
+      typeof expected.nodeRange !== "string" ||
+      !expected.nodeRange.trim() ||
+      !semver.validRange(expected.nodeRange) ||
+      !semver.satisfies(baselineNode, expected.nodeRange) ||
+      !semver.satisfies(currentNode, expected.nodeRange)
+    )
+      throw new Error(
+        "Visual Node versions must satisfy the project's supported range.",
+      );
+
+    if (baselineNode.version !== currentNode.version)
+      nodeWarning = `Reviewed baseline Node ${metadata.node} differs from current Node ${expected.node} within supported range ${expected.nodeRange}; comparing the approved images.`;
+  }
   if (
     expected.strictProvenance &&
     (!/^[a-f0-9]{64}$/.test(metadata.sourceFingerprint ?? "") ||
@@ -238,6 +272,8 @@ export function assertReviewedVisualBaseline(metadata, expected) {
     throw new Error(
       "Reviewed baseline source provenance is missing or invalid.",
     );
+
+  return nodeWarning;
 }
 
 export function visualEnvironment(inherited = process.env) {
