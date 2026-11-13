@@ -41,6 +41,8 @@ import {
 import { useReadResource } from "@/shared/hooks";
 import { RequestFeedback } from "@/shared/ui/request-feedback";
 
+import type { DefaultLayoutContext } from "./types";
+
 const { useBreakpoint } = Grid;
 
 export const DefaultLayout = () => {
@@ -320,7 +322,17 @@ export const DefaultLayout = () => {
           items={breadcrumbItems}
           style={{ marginBottom: token.marginMD }}
         />
-        <Outlet />
+        <Outlet
+          context={
+            {
+              clearSession,
+              currentUser: user,
+              fetchCurrentUser: async () => {
+                await session.reload();
+              },
+            } satisfies DefaultLayoutContext
+          }
+        />
       </main>
       <Drawer
         closeIcon={false}

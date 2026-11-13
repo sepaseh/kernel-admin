@@ -1,1 +1,1 @@
-export { AntdProvider } from "./antd/Antd";
+export { AntdProvider } from "@/app/providers/antd";

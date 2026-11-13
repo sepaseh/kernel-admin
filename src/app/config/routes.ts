@@ -41,6 +41,15 @@ export const routeTree = {
       actions: { canUpdate: "calendar.update" },
     },
   },
+  files: {
+    label: "files",
+    layout: "default",
+    path: "/files",
+    permissions: {
+      access: "files.read",
+      actions: { canDelete: "files.delete" },
+    },
+  },
   forgotPassword: {
     layout: "auth",
     path: "/auth/forgot-password",
@@ -124,6 +133,7 @@ export const navigationTree: readonly NavigationItem[] = [
     label: "userManagement",
   },
   { route: "calendar" },
+  { route: "files" },
   { route: "settings" },
 ];
 

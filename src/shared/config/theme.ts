@@ -1,7 +1,6 @@
 import type { Theme, ThemeColors } from "../contracts/appearance.ts";
 
-export type { Theme, ThemePalettes } from "../contracts/appearance.ts";
-export { themeColorFields } from "../contracts/appearance.ts";
+export type { Theme } from "../contracts/appearance.ts";
 
 export const brandPrimaryColor = "#61dafb";
 

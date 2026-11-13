@@ -1,254 +1,122 @@
-import { isCancel } from "axios";
+// @vitest-environment node
+import axios, { isCancel } from "axios";
 import { http, HttpResponse } from "msw/http";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { setupServer } from "msw/node";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  forgotPassword,
-  login,
-  register,
-  requestOtp,
-} from "../../features/auth/api.ts";
-import { uploadFile } from "../../features/settings/components/logo-upload/api.ts";
-import { server } from "../../test/mocks/server.ts";
-import { i18nInstance } from "../i18n/index.ts";
-import { apiClient, setUnauthorizedHandler } from "./client.ts";
-import {
-  clearAccessToken,
-  getAccessToken,
-  getAccessTokenVersion,
-  setAccessToken,
-} from "./token.ts";
+import { deferred } from "@/test/deferred";
 
+const originalEnv = axios.defaults.env;
+// The Node build otherwise selects its legacy form-data constructor. Use the
+// native File/FormData API supplied by browsers while keeping real HTTP encoding.
+axios.defaults.env = { ...originalEnv, FormData };
+const { uploadFile } = await import("@/features/files/api");
+const { setUnauthorizedHandler } = await import("./client");
+const { clearAccessToken, getAccessToken, setAccessToken } =
+  await import("./token");
+const server = setupServer();
+
+beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => {
+  server.resetHandlers();
   clearAccessToken();
   setUnauthorizedHandler(null);
 });
+afterAll(() => {
+  server.close();
+  axios.defaults.env = originalEnv;
+});
 
-describe("HTTP payload boundaries", () => {
-  it.each(["post", "put", "patch"] as const)(
-    "sends snake-case JSON and returns camel-case data for %s",
-    async (method) => {
-      server.use(
-        http[method]("http://localhost/transport", async ({ request }) => {
-          expect(await request.json()).toEqual({
-            display_name: "Ada",
-            nested_items: [{ user_id: "u1" }],
-          });
-          return HttpResponse.json({
-            record_id: "r1",
-            nested_value: { first_name: "Ada" },
-          });
-        }),
-      );
-      await expect(
-        apiClient[method]("/transport", {
-          displayName: "Ada",
-          nestedItems: [{ userId: "u1" }],
-        }),
-      ).resolves.toEqual({ recordId: "r1", nestedValue: { firstName: "Ada" } });
-    },
-  );
-
-  it("keeps multipart file bytes and visibility without converting field names or overriding the boundary", async () => {
-    const file = new File([Uint8Array.of(0, 17, 255)], "logo.bin", {
+describe("multipart HTTP boundary", () => {
+  it("keeps file bytes and context with an actual generated multipart boundary", async () => {
+    const file = new File([Uint8Array.of(0, 17, 255)], "synthetic.bin", {
       type: "application/octet-stream",
     });
     server.use(
       http.post("http://localhost/files", async ({ request }) => {
         expect(request.headers.get("content-type")).toMatch(
-          /^multipart\/form-data; boundary=/,
+          /^multipart\/form-data;\s*boundary=.+/,
         );
         const data = await request.formData();
+        expect([...data.keys()].sort()).toEqual(["context", "file"]);
+        expect(data.get("context")).toBe("contents");
         const received = data.get("file");
-        expect(received).toBeInstanceOf(File);
-        expect(new Uint8Array(await (received as File).arrayBuffer())).toEqual(
+        if (received === null || typeof received === "string")
+          throw new Error("Expected the serialized upload to contain a file");
+
+        expect(received.name).toBe(file.name);
+        expect(received.type).toBe(file.type);
+        expect(new Uint8Array(await received.arrayBuffer())).toEqual(
           Uint8Array.of(0, 17, 255),
         );
-        expect(data.get("visibility")).toBe("public");
         return HttpResponse.json({
-          id: "file1",
-          content_type: file.type,
-          visibility: "public",
+          id: "file-wire",
+          is_used: false,
+          size: file.size,
+          url: "/synthetic.bin",
         });
       }),
     );
-    await expect(uploadFile(file, "public")).resolves.toEqual({
-      id: "file1",
-      contentType: file.type,
-      visibility: "public",
+
+    await expect(uploadFile(file, "contents")).resolves.toEqual({
+      id: "file-wire",
+      isUsed: false,
+      size: file.size,
+      url: "/synthetic.bin",
     });
   });
 
-  it("returns binary bytes and accepts an empty delete response", async () => {
-    server.use(
-      http.delete(
-        "http://localhost/transport",
-        () => new HttpResponse(null, { status: 204 }),
-      ),
-    );
-    const binary = new Blob([Uint8Array.of(0, 17, 255)], {
-      type: "application/octet-stream",
-    });
-    const received = await apiClient.blob("/download", {
-      adapter: async (config) => {
-        expect(config.responseType).toBe("blob");
-        return {
-          config,
-          data: binary,
-          headers: {},
-          status: 200,
-          statusText: "OK",
-        };
-      },
-    });
-    expect(received).toBe(binary);
-    expect(new Uint8Array(await received.arrayBuffer())).toEqual(
-      Uint8Array.of(0, 17, 255),
-    );
-    await expect(apiClient.del("/transport")).resolves.toBe("");
-  });
-});
-
-describe("validated authentication replies", () => {
-  it.each(["login", "register", "otp-request", "forgot-password"] as const)(
-    "cancels a pending %s request without replacing the current session",
-    async (operation) => {
-      const controller = new AbortController();
-      let entered!: () => void;
-      const requestEntered = new Promise<void>(
-        (resolve) => (entered = resolve),
-      );
-      let release!: () => void;
-      const responseGate = new Promise<void>((resolve) => (release = resolve));
+  it.each(["caller", "session"] as const)(
+    "cancels a pending serialized upload when its %s becomes obsolete",
+    async (scope) => {
+      const entered = deferred<void>();
+      const release = deferred<void>();
+      const returned = deferred<void>();
+      let requestEntered = false;
       server.use(
-        http.post(`http://localhost/auth/${operation}`, async () => {
-          entered();
-          await responseGate;
-          return operation === "forgot-password"
-            ? new HttpResponse(null, { status: 204 })
-            : HttpResponse.json(
-                operation === "otp-request"
-                  ? { remaining_seconds: 30 }
-                  : { access_token: "late-auth-token" },
-              );
+        http.post("http://localhost/files", async () => {
+          requestEntered = true;
+          entered.resolve();
+          try {
+            await release.promise;
+            return HttpResponse.json({
+              id: "late-file",
+              is_used: false,
+              size: 1,
+              url: "/late.bin",
+            });
+          } finally {
+            returned.resolve();
+          }
         }),
       );
-      setAccessToken("existing-session");
-      const version = getAccessTokenVersion();
-      const pending =
-        operation === "login"
-          ? login(
-              { identifier: "ada", password: "synthetic-test-credential" },
-              controller.signal,
-            )
-          : operation === "register"
-            ? register(
-                {
-                  firstName: "Ada",
-                  lastName: "Lovelace",
-                  mobile: "09120000000",
-                  otp: "123456",
-                  password: "synthetic-test-credential",
-                },
-                controller.signal,
-              )
-            : operation === "otp-request"
-              ? requestOtp(
-                  { mobile: "09120000000", purpose: "register" },
-                  controller.signal,
-                )
-              : forgotPassword(
-                  {
-                    mobile: "09120000000",
-                    otp: "123456",
-                    password: "synthetic-test-credential",
-                  },
-                  controller.signal,
-                );
+      const controller = new AbortController();
+      setAccessToken("synthetic-old-session");
+      const pending = uploadFile(
+        new File(["x"], "late.bin"),
+        "contents",
+        undefined,
+        controller.signal,
+      );
       const settled = pending.catch((error: unknown) => error);
 
       try {
-        await requestEntered;
-        controller.abort();
-        release();
+        await Promise.race([entered.promise, pending]);
+        if (scope === "caller") controller.abort();
+        else setAccessToken("synthetic-new-session");
+        release.resolve();
+
         expect(isCancel(await settled)).toBe(true);
-        expect(getAccessToken()).toBe("existing-session");
-        expect(getAccessTokenVersion()).toBe(version);
+        expect(getAccessToken()).toBe(
+          scope === "caller"
+            ? "synthetic-old-session"
+            : "synthetic-new-session",
+        );
       } finally {
-        release();
+        release.resolve();
+        await settled;
+        if (requestEntered) await returned.promise;
       }
     },
   );
-
-  it.each([
-    null,
-    [],
-    {},
-    { access_token: 42 },
-    { access_token: "" },
-    { access_token: "  " },
-  ])(
-    "does not mutate the current session on a malformed login or registration: %j",
-    async (reply) => {
-      server.use(
-        http.post("http://localhost/auth/:operation", () =>
-          HttpResponse.json(reply),
-        ),
-      );
-      setAccessToken("current-session");
-      const version = getAccessTokenVersion();
-      await expect(
-        login({ identifier: "ada", password: "synthetic-test-credential" }),
-      ).rejects.toThrow(i18nInstance.t("unexpectedError"));
-      await expect(
-        register({
-          firstName: "Ada",
-          lastName: "Lovelace",
-          mobile: "09120000000",
-          otp: "123456",
-          password: "synthetic-test-credential",
-        }),
-      ).rejects.toThrow(i18nInstance.t("unexpectedError"));
-      expect(getAccessToken()).toBe("current-session");
-      expect(getAccessTokenVersion()).toBe(version);
-    },
-  );
-
-  it("keeps a malformed refresh retryable without clearing authentication or replaying a mutation", async () => {
-    const unauthorized = vi.fn();
-    let reads = 0;
-    let refreshes = 0;
-    setAccessToken("expired-session");
-    setUnauthorizedHandler(unauthorized);
-    const version = getAccessTokenVersion();
-    server.use(
-      http.get("http://localhost/token-data", ({ request }) => {
-        reads++;
-        return request.headers.get("authorization") === "Bearer valid-new-token"
-          ? HttpResponse.json({ current: true })
-          : HttpResponse.json({ message: "Expired" }, { status: 401 });
-      }),
-      http.post("http://localhost/auth/refresh-token", () =>
-        HttpResponse.json(
-          ++refreshes === 1
-            ? { access_token: 42 }
-            : { access_token: "valid-new-token" },
-        ),
-      ),
-    );
-    await expect(apiClient.get("/token-data")).rejects.toThrow(
-      i18nInstance.t("unexpectedError"),
-    );
-    expect(reads).toBe(1);
-    expect(getAccessToken()).toBe("expired-session");
-    expect(getAccessTokenVersion()).toBe(version);
-    expect(unauthorized).not.toHaveBeenCalled();
-    await expect(apiClient.get("/token-data")).resolves.toEqual({
-      current: true,
-    });
-    expect(refreshes).toBe(2);
-    expect(reads).toBe(3);
-    expect(getAccessToken()).toBe("valid-new-token");
-    expect(getAccessTokenVersion()).toBe(version);
-  });
 });

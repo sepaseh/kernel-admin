@@ -24,7 +24,6 @@ const productionPaths = [
   "src/app/not-found/NotFound.tsx",
   "src/app/providers/antd/Antd.tsx",
   "src/app/providers/core/Core.tsx",
-  "src/app/providers/core/SettingsFeedback.tsx",
   "src/app/providers/index.ts",
   "src/features/account/Account.tsx",
   "src/features/account/api.ts",
@@ -39,6 +38,10 @@ const productionPaths = [
   "src/features/calendar/styles.ts",
   "src/features/dashboard/Dashboard.tsx",
   "src/features/dashboard/index.ts",
+  "src/features/files/Files.tsx",
+  "src/features/files/api.ts",
+  "src/features/files/index.ts",
+  "src/features/files/types.ts",
   "src/features/forgot-pass/ForgotPass.tsx",
   "src/features/forgot-pass/index.ts",
   "src/features/login/Login.tsx",
@@ -54,9 +57,6 @@ const productionPaths = [
   "src/features/roles/types.ts",
   "src/features/settings/Settings.tsx",
   "src/features/settings/api.ts",
-  "src/features/settings/components/logo-upload/LogoUpload.tsx",
-  "src/features/settings/components/logo-upload/api.ts",
-  "src/features/settings/components/logo-upload/index.ts",
   "src/features/settings/index.ts",
   "src/features/settings/types.ts",
   "src/features/users/Users.tsx",
@@ -73,6 +73,7 @@ const productionPaths = [
   "src/layouts/auth/index.ts",
   "src/layouts/default/Default.tsx",
   "src/layouts/default/index.ts",
+  "src/layouts/default/types.ts",
   "src/shared/api/client.ts",
   "src/shared/api/config.ts",
   "src/shared/api/index.ts",
@@ -131,8 +132,36 @@ const productionPaths = [
   "src/shared/ui/request-feedback/index.ts",
   "src/shared/ui/route-loading/RouteLoading.tsx",
   "src/shared/ui/route-loading/index.ts",
+  "src/GlobalStyle.tsx",
+  "src/app/providers/antd/index.ts",
+  "src/app/providers/core/index.ts",
+  "src/shared/api/refresh.ts",
+  "src/shared/hooks/useAbortController.ts",
+  "src/shared/hooks/useLock.ts",
+  "src/shared/ui/image-upload/ImageUpload.tsx",
+  "src/shared/ui/image-upload/image.ts",
+  "src/shared/ui/image-upload/index.ts",
 ];
 const runtimeImports = {
+  "src/GlobalStyle.tsx": ["antd-style"],
+  "src/features/files/Files.tsx": [
+    "antd",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/shared/api/refresh.ts": ["axios"],
+  "src/shared/hooks/useAbortController.ts": ["react"],
+  "src/shared/hooks/useLock.ts": ["react"],
+  "src/shared/ui/image-upload/ImageUpload.tsx": [
+    "antd",
+    "antd-img-crop",
+    "antd-style",
+    "lucide-react",
+    "react",
+    "react-i18next",
+  ],
   "src/shared/ui/error-boundary/ErrorFallback.tsx": ["antd", "react-i18next"],
   "src/main.tsx": ["react", "react-dom/client"],
   "src/app/App.tsx": ["react", "react-i18next"],
@@ -155,7 +184,12 @@ const runtimeImports = {
     "antd/locale/tr_TR",
     "react",
   ],
-  "src/app/providers/core/Core.tsx": ["dayjs", "react"],
+  "src/app/providers/core/Core.tsx": [
+    "antd",
+    "dayjs",
+    "react",
+    "react-i18next",
+  ],
   "src/features/auth/useOtpRequest.ts": ["axios", "react"],
   "src/features/forgot-pass/ForgotPass.tsx": [
     "antd",
@@ -256,15 +290,13 @@ const runtimeImports = {
   ],
   "src/features/roles/constants.ts": [],
   "src/features/roles/index.ts": [],
-  "src/features/settings/Settings.tsx": ["antd", "react", "react-i18next"],
-  "src/features/settings/components/logo-upload/LogoUpload.tsx": [
+  "src/features/settings/Settings.tsx": [
     "antd",
-    "antd-style",
-    "lucide-react",
+    "axios",
     "react",
     "react-i18next",
+    "react-router",
   ],
-  "src/features/settings/components/logo-upload/index.ts": [],
   "src/features/settings/index.ts": [],
   "src/features/users/Users.tsx": [
     "antd",
@@ -294,6 +326,7 @@ const runtimeImports = {
   "src/shared/hooks/useMutationRequest.ts": ["axios", "react"],
 };
 const typeImports = {
+  "src/shared/api/types.ts": ["axios"],
   "src/app/App.tsx": ["react"],
   "src/app/Routes.tsx": ["react", "react-router"],
   "src/app/config/routes.ts": ["i18next"],
@@ -324,8 +357,6 @@ const typeImports = {
   "src/features/roles/constants.ts": [],
   "src/features/roles/index.ts": [],
   "src/features/settings/Settings.tsx": ["antd"],
-  "src/features/settings/components/logo-upload/LogoUpload.tsx": ["antd"],
-  "src/features/settings/components/logo-upload/index.ts": [],
   "src/features/settings/index.ts": [],
   "src/features/users/Users.tsx": ["antd"],
   "src/features/users/components/user-form/UserForm.tsx": [],
@@ -341,10 +372,12 @@ const wireImports = {
   "src/features/auth/types.ts": [],
   "src/features/account/types.ts": ["src/features/roles/types.ts"],
   "src/features/roles/types.ts": [],
+  "src/features/files/types.ts": [],
   "src/features/users/types.ts": ["src/features/roles/types.ts"],
   "src/features/settings/types.ts": [
-    "src/shared/config/language.ts",
-    "src/shared/contracts/appearance.ts",
+    "src/features/files/index.ts",
+    "src/shared/contracts/index.ts",
+    "src/shared/i18n/index.ts",
   ],
 };
 const crossFeatureImports = {
@@ -384,7 +417,24 @@ const featureAppImports = new Set([
   "src/app/lib/access.ts",
   "src/app/lib/index.ts",
 ]);
+const namedCrossFeatureImports = {
+  runtime: {
+    "src/features/settings/Settings.tsx": {
+      "src/features/files/index.ts": ["uploadFile"],
+    },
+  },
+  type: {
+    "src/features/settings/types.ts": {
+      "src/features/files/index.ts": ["FileContext", "StoredFile"],
+    },
+  },
+};
+const layoutContextConsumers = new Set([
+  "src/features/files/Files.tsx",
+  "src/features/settings/Settings.tsx",
+]);
 const runtimeDependencies = new Set([
+  "antd-img-crop",
   "antd-style",
   "lucide-react",
   "antd",
@@ -422,14 +472,41 @@ export const inspectImports = (content, filename = "source.ts") => {
     true,
   );
   const imports = [];
-  const add = (node, value) =>
+  const add = (node, value) => {
+    const typeOnly = isErasedTypeReference(node);
+    const bindings = [];
+    if (ts.isImportDeclaration(node) && node.importClause?.name)
+      bindings.push({ name: "default", typeOnly });
+    let clause;
+    if (ts.isImportDeclaration(node)) clause = node.importClause?.namedBindings;
+    else if (ts.isExportDeclaration(node)) clause = node.exportClause;
+    if (clause && (ts.isNamedImports(clause) || ts.isNamedExports(clause)))
+      for (const element of clause.elements)
+        bindings.push({
+          name: element.propertyName?.text ?? element.name.text,
+          typeOnly: typeOnly || element.isTypeOnly,
+        });
+    else if (
+      clause ||
+      ts.isExportDeclaration(node) ||
+      ts.isImportEqualsDeclaration(node)
+    )
+      bindings.push({ name: "*", typeOnly });
+    if (ts.isImportTypeNode(node)) {
+      let qualifier = node.qualifier;
+      while (qualifier && ts.isQualifiedName(qualifier))
+        qualifier = qualifier.left;
+      bindings.push({ name: qualifier?.text ?? "*", typeOnly: true });
+    }
     imports.push({
       specifier:
         value && ts.isStringLiteralLike(value) ? value.text : undefined,
       line:
         source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
-      typeOnly: isErasedTypeReference(node),
+      typeOnly,
+      bindings,
     });
+  };
   const visit = (node) => {
     if (
       (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
@@ -466,6 +543,7 @@ const localSourceViolation = ({
   resolved,
   typeOnly,
   relativeFile,
+  bindings = [],
 }) => {
   const target = path.relative(root, resolved).split(path.sep).join("/");
   if (
@@ -496,11 +574,18 @@ const localSourceViolation = ({
     return "Shared source may depend only on shared production modules";
   const sourceFeature = /^src\/features\/([^/]+)\//.exec(relativeFile)?.[1];
   const targetFeature = /^src\/features\/([^/]+)\//.exec(target)?.[1];
+  const layoutContext =
+    layoutContextConsumers.has(relativeFile) &&
+    target === "src/layouts/default/index.ts" &&
+    bindings.length === 1 &&
+    bindings[0].typeOnly &&
+    bindings[0].name === "DefaultLayoutContext";
   if (
     sourceFeature &&
     !targetFeature &&
     !target.startsWith("src/shared/") &&
-    !featureAppImports.has(target)
+    !featureAppImports.has(target) &&
+    !layoutContext
   )
     return "Features may use only the approved app hooks, route configuration and access policy outside features and shared";
   if (
@@ -509,7 +594,13 @@ const localSourceViolation = ({
     sourceFeature !== targetFeature &&
     !crossFeatureImports[typeOnly ? "type" : "runtime"][relativeFile]?.includes(
       target,
-    )
+    ) &&
+    (!bindings.length ||
+      !bindings.every((binding) =>
+        namedCrossFeatureImports[binding.typeOnly ? "type" : "runtime"][
+          relativeFile
+        ]?.[target]?.includes(binding.name),
+      ))
   )
     return "Features may import another feature only through their exact approved API, hook or erased type contracts";
   return undefined;
@@ -556,6 +647,7 @@ export const boundaryViolation = ({
   resolved,
   typeOnly,
   resolvedPackage,
+  bindings = [],
 }) => {
   if (!specifier)
     return "Use literal module paths so source boundaries can be checked";
@@ -571,7 +663,14 @@ export const boundaryViolation = ({
     });
   if (!resolved || !publishedModules(root).has(path.resolve(resolved)))
     return "Pure source imports must resolve to published production modules in this repository";
-  return localSourceViolation({ root, file, resolved, typeOnly, relativeFile });
+  return localSourceViolation({
+    root,
+    file,
+    resolved,
+    typeOnly,
+    relativeFile,
+    bindings,
+  });
 };
 
 const sourceFiles = async (directory, testRoot) => {
@@ -736,6 +835,7 @@ export const checkBoundaries = async (requestedRoot = repository) => {
             resolved,
             typeOnly: edge.typeOnly,
             resolvedPackage: module?.packageId?.name,
+            bindings: edge.bindings,
           });
           return violation
             ? path.relative(root, file) + ":" + edge.line + ": " + violation

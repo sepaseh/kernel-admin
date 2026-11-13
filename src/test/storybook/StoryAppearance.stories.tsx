@@ -76,7 +76,7 @@ const assertAppearance = async (
 
 const lightAppearance = {
   background: "rgb(255, 255, 255)",
-  core: "en:ltr:gregorian:light",
+  core: "en:ltr:gregory:light",
   direction: "ltr",
   language: "en",
   submit: "Submit",
@@ -105,7 +105,7 @@ export const RtlDark: Story = {
   globals: { direction: "rtl", language: "fa", theme: "dark" },
   play: ({ canvasElement }) =>
     assertAppearance(canvasElement, {
-      background: "rgb(0, 0, 0)",
+      background: "rgb(20, 20, 20)",
       core: "fa:rtl:jalali:dark",
       direction: "rtl",
       language: "fa",

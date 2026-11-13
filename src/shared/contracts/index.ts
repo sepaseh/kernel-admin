@@ -2,3 +2,6 @@
 export const profileNameMaxLength = 1_000;
 
 export type { Theme } from "./appearance";
+
+export { themeColorFields } from "./appearance";
+export type { ThemePalettes } from "./appearance";

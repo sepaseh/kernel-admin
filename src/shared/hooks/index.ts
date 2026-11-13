@@ -5,3 +5,6 @@ export {
 } from "./useMutationRequest";
 export { useReadRequest } from "./useReadRequest";
 export { useReadResource } from "./useReadResource";
+
+export { useAbortController } from "./useAbortController";
+export { useLock } from "./useLock";

@@ -43,7 +43,8 @@ describe("OtpInput", () => {
       expect(group).toHaveAccessibleDescription(
         "Use the code sent to your phone. Required field",
       );
-      expect(group).toHaveAttribute("aria-invalid", "true");
+      for (const input of screen.getAllByRole("textbox"))
+        expect(input).toHaveAttribute("aria-invalid", "true");
       expect(group).not.toHaveAttribute("aria-required");
       expect(screen.getAllByRole("textbox")).toHaveLength(6);
     },

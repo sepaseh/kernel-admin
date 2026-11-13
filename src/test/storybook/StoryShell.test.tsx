@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { ConfigProvider, theme as antdTheme } from "antd";
 import { useContext } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,7 +16,7 @@ import { PreviewFrame } from "../../../.storybook/PreviewFrame";
 import { useCore } from "@/app/hooks";
 import { i18nInstance } from "@/shared/i18n";
 
-import { sampleLanguages } from "./fixtures";
+import { sampleLanguages, sampleSettings } from "./fixtures";
 import { StoryShell } from "./StoryShell";
 
 const lightTheme = {
@@ -25,7 +31,7 @@ const lightTheme = {
 
 const AppearanceProbe = () => {
   const {
-    acceptSettings,
+    setSettings,
     currentRoute,
     language,
     setCurrentRoute,
@@ -52,7 +58,8 @@ const AppearanceProbe = () => {
       <button onClick={() => setTheme("dark")}>Change menu theme</button>
       <button
         onClick={() =>
-          acceptSettings({
+          setSettings({
+            ...sampleSettings,
             darkTheme: {
               ...lightTheme,
               colorBgBase: "#000",
@@ -81,6 +88,7 @@ const AppearanceProbe = () => {
 };
 
 afterEach(async () => {
+  cleanup();
   await i18nInstance.changeLanguage("fa");
 });
 
@@ -95,7 +103,9 @@ describe("StoryShell appearance ownership", () => {
     expect(screen.getByTestId("core-appearance")).toHaveTextContent(
       "fa:rtl:jalali:dark",
     );
-    expect(screen.getByTestId("antd-appearance")).toHaveTextContent("rtl:#000");
+    expect(screen.getByTestId("antd-appearance")).toHaveTextContent(
+      `rtl:${sampleSettings.darkTheme.colorBgBase}`,
+    );
     await screen.findByRole("button", { name: "ثبت" });
     fireEvent.click(screen.getByRole("button", { name: "Navigate users" }));
     expect(screen.getByTestId("route")).toHaveTextContent("users:/users");
@@ -125,7 +135,9 @@ describe("StoryShell appearance ownership", () => {
     expect(screen.getByTestId("core-appearance")).toHaveTextContent(
       "fa:rtl:jalali:dark",
     );
-    expect(screen.getByTestId("antd-appearance")).toHaveTextContent("rtl:#000");
+    expect(screen.getByTestId("antd-appearance")).toHaveTextContent(
+      `rtl:${sampleSettings.darkTheme.colorBgBase}`,
+    );
     expect(screen.getByTestId("route")).toHaveTextContent("users:/users");
     await screen.findByRole("button", { name: "ثبت" });
     expect(document.documentElement).toHaveAttribute("lang", "fa");
@@ -171,9 +183,11 @@ describe("StoryShell appearance ownership", () => {
     );
 
     expect(screen.getByTestId("core-appearance")).toHaveTextContent(
-      "en:rtl:gregorian:light",
+      "en:rtl:gregory:light",
     );
-    expect(screen.getByTestId("antd-appearance")).toHaveTextContent("rtl:#fff");
+    expect(screen.getByTestId("antd-appearance")).toHaveTextContent(
+      `rtl:${sampleSettings.lightTheme.colorBgBase}`,
+    );
     await screen.findByRole("button", { name: "Submit" });
     expect(document.documentElement).toHaveAttribute("lang", "en");
     expect(document.documentElement).toHaveAttribute("dir", "rtl");

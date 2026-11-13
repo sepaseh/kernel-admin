@@ -73,7 +73,8 @@
       "evidence": [
         "src/shared/api/client.ts",
         "src/shared/api/token.ts",
-        "src/features/auth/api.ts"
+        "src/features/auth/api.ts",
+        "src/shared/api/refresh.ts"
       ],
       "mustExplain": [
         "Bearer credentials remain in memory.",
@@ -143,11 +144,14 @@
         ".storybook/request-guard.test.ts",
         "src/app/App.tsx",
         "src/app/Routes.tsx",
-        "e2e/visual/admin.spec.ts"
+        "e2e/visual/admin.spec.ts",
+        "src/shared/ui/image-upload/ImageUpload.tsx",
+        "src/features/files/api.ts",
+        "src/layouts/default/types.ts"
       ],
       "mustExplain": [
         "Repository implementation keeps React/Vite, Ant Design/antd-style, React Router, Axios and direct Lucide icons. Read actual theme/components/assets rather than adopting a generic tool starter or duplicating a token registry.",
-        "Reuse the Users and UserForm/FormDrawer recipes, token-based responsive shell, licensed self-hosted font and existing/API logos; retain feature ownership and request/session guards.",
+        "Reuse the Users and UserForm/FormDrawer recipes, token-based responsive shell, licensed self-hosted font and ImageUpload with the Files HTTP adapter; preserve automatic image upload, output preview, feature ownership and request/session guards.",
         "Cover relevant populated/empty/loading/error/retry/stale/submitting/validation and permission-limited states, keyboard/focus, narrow/desktop layouts, themes and long translated copy.",
         "Ten complete flat catalogs provide messages; validated API metadata owns language/direction/calendar. Preview direction is a fixture, only super-admin changes global language, and ordinary settings editors retain appearance rights.",
         "Concept/assets/Figma, runnable repository code and hosted prototypes are distinct deliverables. Choose only available tools and preserve task authorization; native design-system setup/font upload and Sites access/compatibility are separate host work.",

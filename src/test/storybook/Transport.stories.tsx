@@ -8,11 +8,8 @@ import {
 
 import { apiClient } from "@/shared/api";
 import { fetchUser, fetchUsers, updateUserRoles } from "@/features/users/api";
-import {
-  fetchApplicationSettings,
-  updateApplicationSettings,
-} from "@/features/settings/api";
-import { uploadFile } from "@/features/settings/components/logo-upload/api";
+import { fetchSettings, updateSettings } from "@/features/settings/api";
+import { uploadFile } from "@/features/files/api";
 
 const meta = {
   render: () => <h1>Synthetic API isolation</h1>,
@@ -26,7 +23,6 @@ export const UnexpectedRequest: Story = {
   play: async () => {
     await expect(assertNoUnexpectedRequests).not.toThrow();
     const requests = [
-      [apiClient.blob, "GET(blob)"],
       [apiClient.get, "GET"],
       [apiClient.post, "POST"],
       [apiClient.put, "PUT"],
@@ -39,6 +35,13 @@ export const UnexpectedRequest: Story = {
       );
       await expect(mocked(request)).toHaveBeenCalledOnce();
     }
+    await expect(
+      apiClient.upload("/__unexpected_storybook_probe__", {}),
+    ).rejects.toThrow("Unexpected synthetic API request: UPLOAD");
+    await expect(mocked(apiClient.upload)).toHaveBeenCalledOnce();
+    await expect(assertNoUnexpectedRequests).toThrow(
+      "UPLOAD /__unexpected_storybook_probe__",
+    );
     await expect(assertNoUnexpectedRequests).toThrow(
       "DELETE /__unexpected_storybook_probe__",
     );
@@ -68,38 +71,40 @@ export const SavedUserRoles: Story = {
 
 export const SavedUploadedLogos: Story = {
   play: async () => {
-    const original = await fetchApplicationSettings();
+    const original = await fetchSettings();
     const darkLogo = await uploadFile(
       new File(["dark synthetic logo"], "dark.svg", { type: "image/svg+xml" }),
-      "public",
+      "logo",
     );
     const lightLogo = await uploadFile(
       new File(["light synthetic logo"], "light.svg", {
         type: "image/svg+xml",
       }),
-      "public",
+      "logo",
     );
-    const accepted = await updateApplicationSettings({
+    const accepted = await updateSettings({
       darkLogoId: darkLogo.id,
       darkTheme: original.darkTheme,
       lightLogoId: lightLogo.id,
       lightTheme: original.lightTheme,
+      imageSettings: original.imageSettings,
     });
     await expect(accepted).toMatchObject({
       darkLogo: { id: darkLogo.id, url: "/logo.svg" },
       language: original.language,
       lightLogo: { id: lightLogo.id, url: "/logo.svg" },
     });
-    await expect(fetchApplicationSettings()).resolves.toEqual(accepted);
+    await expect(fetchSettings()).resolves.toEqual(accepted);
     accepted.darkLogo!.url = "/changed-outside-fixture.svg";
-    await expect(fetchApplicationSettings()).resolves.toMatchObject({
+    await expect(fetchSettings()).resolves.toMatchObject({
       darkLogo: { id: darkLogo.id, url: "/logo.svg" },
     });
-    await updateApplicationSettings({
+    await updateSettings({
       darkTheme: original.darkTheme,
+      imageSettings: original.imageSettings,
       lightTheme: original.lightTheme,
     });
-    await expect(fetchApplicationSettings()).resolves.toMatchObject({
+    await expect(fetchSettings()).resolves.toMatchObject({
       darkLogo: undefined,
       language: original.language,
       lightLogo: undefined,

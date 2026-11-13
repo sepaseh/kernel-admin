@@ -240,7 +240,6 @@ const completeApplicationFiles = [
   "src/app/providers/antd/Antd.tsx",
   "src/app/providers/core/Core.test.tsx",
   "src/app/providers/core/Core.tsx",
-  "src/app/providers/core/SettingsFeedback.tsx",
   "src/app/providers/index.ts",
   "src/assets/assets.test.ts",
   "src/assets/fonts/vazirmatn/OFL.txt",
@@ -298,12 +297,6 @@ const completeApplicationFiles = [
   "src/features/settings/Settings.tsx",
   "src/features/settings/api.test.ts",
   "src/features/settings/api.ts",
-  "src/features/settings/components/logo-upload/LogoUpload.stories.tsx",
-  "src/features/settings/components/logo-upload/LogoUpload.test.tsx",
-  "src/features/settings/components/logo-upload/LogoUpload.tsx",
-  "src/features/settings/components/logo-upload/api.test.ts",
-  "src/features/settings/components/logo-upload/api.ts",
-  "src/features/settings/components/logo-upload/index.ts",
   "src/features/settings/index.ts",
   "src/features/settings/types.ts",
   "src/features/users/Users.stories.tsx",
@@ -458,6 +451,27 @@ const completeApplicationFiles = [
   "vitest.contract.config.ts",
   "vitest.shims.d.ts",
   "vitest.storybook.config.ts",
+  "src/GlobalStyle.tsx",
+  "src/app/providers/antd/index.ts",
+  "src/app/providers/core/index.ts",
+  "src/features/files/Files.tsx",
+  "src/features/files/api.test.ts",
+  "src/features/files/api.ts",
+  "src/features/files/index.ts",
+  "src/features/files/types.ts",
+  "src/layouts/default/types.ts",
+  "src/shared/api/refresh.test.ts",
+  "src/shared/api/refresh.ts",
+  "src/shared/hooks/useAbortController.test.tsx",
+  "src/shared/hooks/useAbortController.ts",
+  "src/shared/hooks/useLock.test.tsx",
+  "src/shared/hooks/useLock.ts",
+  "src/shared/ui/image-upload/ImageUpload.test.tsx",
+  "src/shared/ui/image-upload/ImageUpload.tsx",
+  "src/shared/ui/image-upload/image.test.ts",
+  "src/shared/ui/image-upload/image.ts",
+  "src/shared/ui/image-upload/index.ts",
+  "src/test/deferred.ts",
 ];
 const applicationPolicy = () =>
   policy({
@@ -517,6 +531,27 @@ const applicationFiles = [
   "e2e/visual/baselines/application/win32/admin-forgot-password-en-light.png",
   "e2e/visual/baselines/application/win32/admin-register-en-light.png",
   "e2e/visual/baselines/application/win32/metadata.json",
+  "src/GlobalStyle.tsx",
+  "src/app/providers/antd/index.ts",
+  "src/app/providers/core/index.ts",
+  "src/features/files/Files.tsx",
+  "src/features/files/api.test.ts",
+  "src/features/files/api.ts",
+  "src/features/files/index.ts",
+  "src/features/files/types.ts",
+  "src/layouts/default/types.ts",
+  "src/shared/api/refresh.test.ts",
+  "src/shared/api/refresh.ts",
+  "src/shared/hooks/useAbortController.test.tsx",
+  "src/shared/hooks/useAbortController.ts",
+  "src/shared/hooks/useLock.test.tsx",
+  "src/shared/hooks/useLock.ts",
+  "src/shared/ui/image-upload/ImageUpload.test.tsx",
+  "src/shared/ui/image-upload/ImageUpload.tsx",
+  "src/shared/ui/image-upload/image.test.ts",
+  "src/shared/ui/image-upload/image.ts",
+  "src/shared/ui/image-upload/index.ts",
+  "src/test/deferred.ts",
 ];
 const isCoreAuthPhaseFile = (file) =>
   /^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|register))\/|docs\/architecture\.md$)/.test(
@@ -1300,7 +1335,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 97);
+  assert.equal(required.length, 95);
   for (const missing of required)
     assert.throws(
       () =>
@@ -1353,7 +1388,7 @@ test("core-auth preserves its complete prior closure, owners and tests without a
     current.allowedFiles.length,
   );
   const phaseFiles = current.allowedFiles.filter(isCoreAuthPhaseFile);
-  assert.equal(phaseFiles.length, 40);
+  assert.equal(phaseFiles.length, 39);
   for (const missing of phaseFiles)
     assert.throws(
       () =>
@@ -1447,7 +1482,7 @@ test("Storybook verification requires every explicit story, isolated configurati
   const current = await historicalStorybookPolicy();
   assert.equal(current.phase, "storybook-verification");
   const required = current.allowedFiles.filter(isStorybookPhaseFile);
-  assert.equal(required.length, 35);
+  assert.equal(required.length, 34);
   for (const missing of required) {
     assert.throws(
       () =>
