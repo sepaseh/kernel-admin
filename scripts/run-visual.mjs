@@ -755,6 +755,54 @@ export function runVisualChild({
   });
 }
 
+async function captureVisualResult({
+  update,
+  platform,
+  drivers,
+  runtime,
+  baseline,
+}) {
+  await drivers.ports();
+  const browserVersion = await drivers.browserVersion();
+  if (!update)
+    assertReviewedVisualBaseline(baseline, {
+      ...runtime,
+      platform,
+      browserVersion,
+    });
+  const metadata = await drivers.metadata(runtime, browserVersion);
+  if (
+    !/^[a-f0-9]{64}$/.test(metadata.sourceFingerprint ?? "") ||
+    !Array.isArray(metadata.sourceInputs) ||
+    !metadata.sourceInputs.length
+  )
+    throw new Error("Visual source provenance is required before capture.");
+
+  const sourceBefore = {
+    sourceFingerprint: metadata.sourceFingerprint,
+    sourceInputs: [...metadata.sourceInputs],
+  };
+  if (update) await drivers.markPending(metadata);
+  const exitCode = await drivers.capture({ update, metadata });
+  const sourceAfter = await drivers.metadata(runtime, browserVersion);
+  if (
+    sourceBefore.sourceFingerprint !== sourceAfter.sourceFingerprint ||
+    JSON.stringify(sourceBefore.sourceInputs) !==
+      JSON.stringify(sourceAfter.sourceInputs)
+  )
+    throw new Error("Visual source changed while the child built or captured.");
+
+  if (!update) await drivers.baselineImages(baseline);
+  const result = {
+    ...metadata,
+    baselineIdentity: baseline,
+    mode: update ? "update" : "compare",
+    exitCode,
+  };
+  await drivers.writeResult(result);
+  return result;
+}
+
 export async function runVisual({
   update = false,
   ci = "",
@@ -764,6 +812,7 @@ export async function runVisual({
   assertVisualMode({ update, ci, platform });
   if (!drivers)
     throw new Error("Explicit visual fixture drivers are required.");
+
   const runtime = await drivers.runtime();
   const baseline = update ? undefined : await drivers.baseline();
   if (!update) {
@@ -778,44 +827,13 @@ export async function runVisual({
   let result, failure;
   let failed = false;
   try {
-    await drivers.ports();
-    const browserVersion = await drivers.browserVersion();
-    if (!update)
-      assertReviewedVisualBaseline(baseline, {
-        ...runtime,
-        platform,
-        browserVersion,
-      });
-    const metadata = await drivers.metadata(runtime, browserVersion);
-    if (
-      !/^[a-f0-9]{64}$/.test(metadata.sourceFingerprint ?? "") ||
-      !Array.isArray(metadata.sourceInputs) ||
-      !metadata.sourceInputs.length
-    )
-      throw new Error("Visual source provenance is required before capture.");
-    const sourceBefore = {
-      sourceFingerprint: metadata.sourceFingerprint,
-      sourceInputs: [...metadata.sourceInputs],
-    };
-    if (update) await drivers.markPending(metadata);
-    const exitCode = await drivers.capture({ update, metadata });
-    const sourceAfter = await drivers.metadata(runtime, browserVersion);
-    if (
-      sourceBefore.sourceFingerprint !== sourceAfter.sourceFingerprint ||
-      JSON.stringify(sourceBefore.sourceInputs) !==
-        JSON.stringify(sourceAfter.sourceInputs)
-    )
-      throw new Error(
-        "Visual source changed while the child built or captured.",
-      );
-    if (!update) await drivers.baselineImages(baseline);
-    result = {
-      ...metadata,
-      baselineIdentity: baseline,
-      mode: update ? "update" : "compare",
-      exitCode,
-    };
-    await drivers.writeResult(result);
+    result = await captureVisualResult({
+      update,
+      platform,
+      drivers,
+      runtime,
+      baseline,
+    });
   } catch (error) {
     failed = true;
     failure = error;
