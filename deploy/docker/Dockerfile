@@ -1,4 +1,4 @@
-FROM node:24.18.0-bookworm-slim AS build
+FROM node:24.22.2-bookworm-slim AS build
 WORKDIR /app
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 KERNEL_SYNTHETIC_ENV=1
 COPY package.json package-lock.json ./
