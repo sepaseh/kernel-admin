@@ -52,7 +52,6 @@ const productionPaths = [
   "src/features/roles/Roles.tsx",
   "src/features/roles/api.ts",
   "src/features/roles/components/role-form/RoleForm.tsx",
-  "src/features/roles/constants.ts",
   "src/features/roles/index.ts",
   "src/features/roles/types.ts",
   "src/features/settings/Settings.tsx",
@@ -64,10 +63,7 @@ const productionPaths = [
   "src/features/users/components/user-form/UserForm.tsx",
   "src/features/users/components/user-role-form/UserRoleForm.tsx",
   "src/features/users/constants.ts",
-  "src/features/users/hooks/useDebouncedFilters.ts",
-  "src/features/users/hooks/useFilterParams.ts",
   "src/features/users/index.ts",
-  "src/features/users/tools/password.ts",
   "src/features/users/types.ts",
   "src/layouts/auth/Auth.tsx",
   "src/layouts/auth/index.ts",
@@ -108,7 +104,6 @@ const productionPaths = [
   "src/shared/i18n/locales/ru.ts",
   "src/shared/i18n/locales/tr.ts",
   "src/shared/lib/color-contrast.ts",
-  "src/shared/lib/dialog-focus.ts",
   "src/shared/lib/error.ts",
   "src/shared/lib/index.ts",
   "src/shared/lib/observability.ts",
@@ -141,6 +136,13 @@ const productionPaths = [
   "src/shared/ui/image-upload/ImageUpload.tsx",
   "src/shared/ui/image-upload/image.ts",
   "src/shared/ui/image-upload/index.ts",
+  "src/features/users/components/user-form/index.ts",
+  "src/features/users/components/user-role-form/index.ts",
+  "src/shared/hooks/useDebouncedFilters.ts",
+  "src/shared/hooks/useFilterParams.ts",
+  "src/shared/lib/allowed-value.ts",
+  "src/shared/lib/pagination.ts",
+  "src/shared/lib/password.ts",
 ];
 const runtimeImports = {
   "src/GlobalStyle.tsx": ["antd-style"],
@@ -153,6 +155,8 @@ const runtimeImports = {
   ],
   "src/shared/api/refresh.ts": ["axios"],
   "src/shared/hooks/useAbortController.ts": ["react"],
+  "src/shared/hooks/useDebouncedFilters.ts": ["react"],
+  "src/shared/hooks/useFilterParams.ts": ["react", "react-router"],
   "src/shared/hooks/useLock.ts": ["react"],
   "src/shared/ui/image-upload/ImageUpload.tsx": [
     "antd",
@@ -265,10 +269,12 @@ const runtimeImports = {
   "src/features/account/index.ts": [],
   "src/features/calendar/Calendar.tsx": [
     "antd",
+    "axios",
     "dayjs",
     "lucide-react",
     "react",
     "react-i18next",
+    "react-router",
   ],
   "src/features/calendar/index.ts": [],
   "src/features/calendar/styles.ts": ["antd-style"],
@@ -277,6 +283,7 @@ const runtimeImports = {
   "src/features/roles/Roles.tsx": [
     "antd",
     "antd-style",
+    "axios",
     "lucide-react",
     "react",
     "react-i18next",
@@ -284,11 +291,11 @@ const runtimeImports = {
   ],
   "src/features/roles/components/role-form/RoleForm.tsx": [
     "antd",
+    "axios",
     "react",
     "react-i18next",
     "react-router",
   ],
-  "src/features/roles/constants.ts": [],
   "src/features/roles/index.ts": [],
   "src/features/settings/Settings.tsx": [
     "antd",
@@ -301,6 +308,7 @@ const runtimeImports = {
   "src/features/users/Users.tsx": [
     "antd",
     "antd-style",
+    "axios",
     "lucide-react",
     "react",
     "react-i18next",
@@ -308,21 +316,20 @@ const runtimeImports = {
   ],
   "src/features/users/components/user-form/UserForm.tsx": [
     "antd",
+    "axios",
     "react",
     "react-i18next",
     "react-router",
   ],
   "src/features/users/components/user-role-form/UserRoleForm.tsx": [
     "antd",
+    "axios",
     "react",
     "react-i18next",
     "react-router",
   ],
   "src/features/users/constants.ts": [],
-  "src/features/users/hooks/useDebouncedFilters.ts": ["react"],
-  "src/features/users/hooks/useFilterParams.ts": ["react", "react-router"],
   "src/features/users/index.ts": [],
-  "src/features/users/tools/password.ts": [],
   "src/shared/hooks/useMutationRequest.ts": ["axios", "react"],
 };
 const typeImports = {
@@ -339,7 +346,6 @@ const typeImports = {
   "src/layouts/default/Default.tsx": ["antd"],
   "src/shared/config/theme.ts": ["antd"],
   "src/shared/hooks/useGoBack.ts": ["react-router"],
-  "src/shared/lib/dialog-focus.ts": ["react"],
   "src/shared/lib/observability.ts": ["web-vitals"],
   "src/shared/ui/digits-input/DigitsInput.tsx": ["antd"],
   "src/shared/ui/form-drawer/FormDrawer.tsx": ["react"],
@@ -354,7 +360,6 @@ const typeImports = {
   "src/features/dashboard/index.ts": [],
   "src/features/roles/Roles.tsx": ["antd"],
   "src/features/roles/components/role-form/RoleForm.tsx": [],
-  "src/features/roles/constants.ts": [],
   "src/features/roles/index.ts": [],
   "src/features/settings/Settings.tsx": ["antd"],
   "src/features/settings/index.ts": [],
@@ -362,10 +367,7 @@ const typeImports = {
   "src/features/users/components/user-form/UserForm.tsx": [],
   "src/features/users/components/user-role-form/UserRoleForm.tsx": [],
   "src/features/users/constants.ts": [],
-  "src/features/users/hooks/useDebouncedFilters.ts": [],
-  "src/features/users/hooks/useFilterParams.ts": [],
   "src/features/users/index.ts": [],
-  "src/features/users/tools/password.ts": [],
   "src/shared/hooks/useMutationRequest.ts": [],
 };
 const wireImports = {
@@ -373,7 +375,11 @@ const wireImports = {
   "src/features/account/types.ts": ["src/features/roles/types.ts"],
   "src/features/roles/types.ts": [],
   "src/features/files/types.ts": [],
-  "src/features/users/types.ts": ["src/features/roles/types.ts"],
+  "src/features/users/types.ts": [
+    "src/features/roles/index.ts",
+    "src/shared/api/index.ts",
+    "src/features/users/constants.ts",
+  ],
   "src/features/settings/types.ts": [
     "src/features/files/index.ts",
     "src/shared/contracts/index.ts",
@@ -392,7 +398,6 @@ const crossFeatureImports = {
       "src/features/auth/api.ts",
       "src/features/auth/useOtpRequest.ts",
     ],
-    "src/features/users/Users.tsx": ["src/features/roles/api.ts"],
   },
   type: {
     "src/features/account/Account.tsx": ["src/features/auth/types.ts"],
@@ -401,11 +406,6 @@ const crossFeatureImports = {
     "src/features/forgot-pass/ForgotPass.tsx": ["src/features/auth/types.ts"],
     "src/features/login/Login.tsx": ["src/features/auth/types.ts"],
     "src/features/register/Register.tsx": ["src/features/auth/types.ts"],
-    "src/features/users/components/user-role-form/UserRoleForm.tsx": [
-      "src/features/roles/types.ts",
-    ],
-    "src/features/users/types.ts": ["src/features/roles/types.ts"],
-    "src/features/users/Users.tsx": ["src/features/roles/types.ts"],
   },
 };
 const featureAppImports = new Set([
@@ -422,16 +422,34 @@ const namedCrossFeatureImports = {
     "src/features/settings/Settings.tsx": {
       "src/features/files/index.ts": ["uploadFile"],
     },
+    "src/features/users/Users.tsx": {
+      "src/features/roles/index.ts": ["fetchRoles"],
+    },
   },
   type: {
     "src/features/settings/types.ts": {
       "src/features/files/index.ts": ["FileContext", "StoredFile"],
     },
+    "src/features/users/Users.tsx": {
+      "src/features/roles/index.ts": ["Role"],
+    },
+    "src/features/users/components/user-role-form/UserRoleForm.tsx": {
+      "src/features/roles/index.ts": ["Role"],
+    },
+    "src/features/users/types.ts": {
+      "src/features/roles/index.ts": ["Role"],
+    },
   },
 };
 const layoutContextConsumers = new Set([
+  "src/features/calendar/Calendar.tsx",
   "src/features/files/Files.tsx",
+  "src/features/roles/Roles.tsx",
+  "src/features/roles/components/role-form/RoleForm.tsx",
   "src/features/settings/Settings.tsx",
+  "src/features/users/Users.tsx",
+  "src/features/users/components/user-form/UserForm.tsx",
+  "src/features/users/components/user-role-form/UserRoleForm.tsx",
 ]);
 const runtimeDependencies = new Set([
   "antd-img-crop",

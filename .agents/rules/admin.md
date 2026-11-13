@@ -11,14 +11,16 @@ imports use only the exact approved API, hook or erased type leaves in
 [the import policy](imports.md); feature barrels are not a blanket public interface.
 HTTP types and paths stay with their feature;
 transport contracts stay in `src/shared/api` and cross-feature profile limits in
-`src/shared/contracts`. User filters/password tools belong to users, image uploads
+`src/shared/contracts`. Query filters belong to shared hooks and password generation
+to shared library helpers, image uploads
 to shared UI with file services in files, and permission contracts to roles. Frontends never import backend
 API/database/auth/storage modules.
 These alias conventions apply to `src`; pure catalog data references local
 data modules within `src/shared/i18n`.
 
 Use named `type` shapes and existing component/hook conventions. Prefer derived
-state, accessible controls and existing shared request hooks. Preserve request
+state and accessible controls. Follow the owning screen's direct request lifecycle
+or its existing request hook. Preserve request
 identity across retries and authentication changes. See
 [request reliability](../../docs/authentication.md).
 Use root ESLint for configured import/type rules and the AST boundary checker for

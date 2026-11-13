@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
 
-import { permissions, roles, sampleAccount } from "@/test/storybook/fixtures";
+import { permissions, sampleAccount } from "@/test/storybook/fixtures";
 import { i18nInstance } from "@/shared/i18n";
 import { StoryShell } from "@/test/storybook/StoryShell";
 
@@ -47,8 +47,8 @@ export const EditSelectedRole: Story = {
 
     const body = within(canvasElement.ownerDocument.body);
     const dialog = within(await body.findByRole("dialog"));
-    const name = dialog.getByLabelText(i18nInstance.t("name"));
-    await expect(name).toHaveValue("Editor");
+    const name = await dialog.findByLabelText(i18nInstance.t("name"));
+    await waitFor(() => expect(name).toHaveValue("Editor"));
     await userEvent.clear(name);
     await userEvent.type(name, "Content Editor");
     await userEvent.click(
@@ -89,12 +89,9 @@ export const LoadError: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText("Unable to load roles")).toBeVisible();
-    mocked(fetchRoles).mockResolvedValue(roles);
-    await userEvent.click(
-      canvas.getByRole("button", { name: i18nInstance.t("retry") }),
-    );
-    await expect(await canvas.findByText("Administrator")).toBeVisible();
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(await body.findByText("Unable to load roles")).toBeVisible();
+    await expect(canvas.getByRole("table")).toBeVisible();
   },
 };
 

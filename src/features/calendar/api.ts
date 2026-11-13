@@ -1,4 +1,4 @@
-import { apiClient } from "../../shared/api/index.ts";
+import { apiClient } from "@/shared/api";
 
 const basePath = "/calendar";
 

@@ -102,7 +102,6 @@ export const permissions: PermissionGroup[] = [
 ];
 
 export const user: User = {
-  email: "sara@example.com",
   firstName: "Sara",
   id: "user-1",
   isSystemAdmin: false,
@@ -110,7 +109,6 @@ export const user: User = {
   mobile: "09121111111",
   roles: [{ id: "role-admin", name: "Administrator" }],
   status: "active",
-  username: "sara",
 };
 
 export const users: User[] = [

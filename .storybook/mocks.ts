@@ -190,7 +190,7 @@ export const resetStoryMocks = () => {
     }));
   mocked(usersAPI.createUser)
     .mockReset()
-    .mockImplementation(async ({ firstName, lastName, mobile }) => {
+    .mockImplementation(async ({ firstName, lastName, mobile, status }) => {
       const user = {
         firstName,
         id: `story-user-${++sequence}`,
@@ -198,7 +198,7 @@ export const resetStoryMocks = () => {
         lastName,
         mobile,
         roles: [],
-        status: "active" as const,
+        status,
       };
       userList.push(user);
       return structuredClone(user);

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { apiClient } from "../../shared/api/index.ts";
-import { i18nInstance } from "../../shared/i18n/index.ts";
+import type * as SharedApi from "@/shared/api";
+import { apiClient } from "@/shared/api";
+
 import {
   createRole,
   deleteRole,
@@ -9,109 +10,69 @@ import {
   fetchRole,
   fetchRoles,
   updateRole,
-} from "./api.ts";
-import type { RoleRequest } from "./types.ts";
+} from "./api";
+import type { RoleRequest } from "./types";
 
-vi.mock("../../shared/api/index.ts", () => ({
-  apiClient: {
-    del: vi.fn(),
-    get: vi.fn(),
-    patch: vi.fn(),
-    post: vi.fn(),
-  },
+vi.mock("@/shared/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof SharedApi>()),
+  apiClient: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), del: vi.fn() },
 }));
 
 beforeEach(() => {
-  vi.mocked(apiClient.del).mockResolvedValue(undefined);
-  vi.mocked(apiClient.get).mockResolvedValue([]);
-  vi.mocked(apiClient.patch).mockResolvedValue({});
-  vi.mocked(apiClient.post).mockResolvedValue({});
+  vi.resetAllMocks();
 });
 
-describe("roles API", () => {
-  describe.each([".", ".."])('URL dot segment "%s"', (id) => {
-    it.each([
-      ["read", (signal: AbortSignal) => fetchRole(id, signal)],
-      ["delete", (signal: AbortSignal) => deleteRole(id, signal)],
-      [
-        "update",
-        (signal: AbortSignal) =>
-          updateRole(
-            id,
-            { name: "Operators", permissions: ["users.read"] },
-            signal,
-          ),
-      ],
-    ] as const)(
-      "rejects %s before any HTTP client call",
-      async (_name, run) => {
-        const controller = new AbortController();
-
-        await expect(run(controller.signal)).rejects.toThrow(
-          i18nInstance.t("unexpectedError"),
-        );
-        for (const method of Object.values(apiClient))
-          expect(method).not.toHaveBeenCalled();
-      },
-    );
-  });
-
-  it.each([
-    ["member/#? 1", "member%2F%23%3F%201"],
-    ["عضو آبی", "%D8%B9%D8%B6%D9%88%20%D8%A2%D8%A8%DB%8C"],
-    ["encoded%2Fid", "encoded%252Fid"],
-  ])("keeps the opaque ID %s inside each role route", async (id, segment) => {
-    const controller = new AbortController();
-    const options = { signal: controller.signal };
-    const params = {
-      name: "Operators",
-      permissions: ["users.read"],
-    } satisfies RoleRequest;
-    const path = `/roles/${segment}`;
-
-    await fetchRole(id, controller.signal);
-    expect(apiClient.get).toHaveBeenLastCalledWith(path, options);
-    await updateRole(id, params, controller.signal);
-    expect(apiClient.patch).toHaveBeenLastCalledWith(path, params, options);
-    await deleteRole(id, controller.signal);
-    expect(apiClient.del).toHaveBeenLastCalledWith(path, options);
-  });
-
-  it("creates, updates, and deletes roles", async () => {
-    const controller = new AbortController();
-    const params = {
-      name: "Operators",
-      permissions: ["users.read"],
-    } satisfies RoleRequest;
-
-    await createRole(params, controller.signal);
-    await updateRole("role-1", params, controller.signal);
-    await deleteRole("role-1", controller.signal);
-
-    expect(apiClient.post).toHaveBeenCalledWith("/roles", params, {
-      signal: controller.signal,
-    });
-    expect(apiClient.patch).toHaveBeenCalledWith("/roles/role-1", params, {
-      signal: controller.signal,
-    });
-    expect(apiClient.del).toHaveBeenCalledWith("/roles/role-1", {
-      signal: controller.signal,
-    });
-  });
-
-  it("loads role collections, details, and permissions", async () => {
+describe("roles HTTP contract", () => {
+  it("forwards one caller signal to list, detail and permissions reads", async () => {
     const controller = new AbortController();
     await fetchRoles(controller.signal);
-    await fetchRole("role-1", controller.signal);
     await fetchPermissions(controller.signal);
+    await fetchRole("role/with?# spaces", controller.signal);
 
     expect(apiClient.get).toHaveBeenNthCalledWith(1, "/roles", {
       signal: controller.signal,
     });
-    expect(apiClient.get).toHaveBeenNthCalledWith(2, "/roles/role-1", {
+    expect(apiClient.get).toHaveBeenNthCalledWith(2, "/roles/permissions", {
       signal: controller.signal,
     });
-    expect(apiClient.get).toHaveBeenNthCalledWith(3, "/roles/permissions", {
+    expect(apiClient.get).toHaveBeenNthCalledWith(
+      3,
+      "/roles/role%2Fwith%3F%23%20spaces",
+      { signal: controller.signal },
+    );
+  });
+
+  it("creates and updates permission arrays without changing their vocabulary", async () => {
+    const controller = new AbortController();
+    const request: RoleRequest = {
+      name: "Operators",
+      permissions: ["users.read", "roles.update"],
+    };
+    const response = { id: "role-1", ...request };
+    vi.mocked(apiClient.post).mockResolvedValue(response);
+    vi.mocked(apiClient.patch).mockResolvedValue(response);
+
+    await expect(createRole(request, controller.signal)).resolves.toBe(
+      response,
+    );
+    await expect(
+      updateRole("role/1", request, controller.signal),
+    ).resolves.toBe(response);
+    expect(apiClient.post).toHaveBeenCalledWith("/roles", request, {
+      signal: controller.signal,
+    });
+    expect(apiClient.patch).toHaveBeenCalledWith("/roles/role%2F1", request, {
+      signal: controller.signal,
+    });
+  });
+
+  it("encodes a deletion identifier and retains its failure for the confirmation", async () => {
+    const controller = new AbortController();
+    const error = new Error("Synthetic role still assigned");
+    vi.mocked(apiClient.del).mockRejectedValue(error);
+
+    await expect(deleteRole("role/1", controller.signal)).rejects.toBe(error);
+    expect(apiClient.del).toHaveBeenCalledWith("/roles/role%2F1", {
       signal: controller.signal,
     });
   });

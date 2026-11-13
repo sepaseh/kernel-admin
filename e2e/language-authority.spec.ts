@@ -176,9 +176,7 @@ for (const isSystemAdmin of [false, true]) {
       page.getByRole("button", { name: catalogs.en.submit, exact: true }),
     ).toBeEnabled();
     await expect(
-      page
-        .getByRole("spinbutton", { name: catalogs.en.imageWidth, exact: true })
-        .first(),
+      page.getByRole("spinbutton", { name: catalogs.en.imageWidth }).first(),
     ).toHaveValue("1200");
     const languageControl = page.getByRole("combobox", {
       name: catalogs.en.language,

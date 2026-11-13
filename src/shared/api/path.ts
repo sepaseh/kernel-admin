@@ -1,8 +1,9 @@
-import { i18nInstance } from "../i18n/index.ts";
-
 export const encodeIdPathSegment = (id: string): string => {
-  if (!id || id === "." || id === "..")
-    throw new Error(i18nInstance.t("unexpectedError"));
+  if (!id || id === "." || id === "..") {
+    throw new TypeError(
+      "A resource identifier must be a nonempty path segment.",
+    );
+  }
 
   return encodeURIComponent(id);
 };

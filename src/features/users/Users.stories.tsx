@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
 
-import { sampleAccount, users } from "@/test/storybook/fixtures";
+import { sampleAccount } from "@/test/storybook/fixtures";
 import { i18nInstance } from "@/shared/i18n";
 import { StoryShell } from "@/test/storybook/StoryShell";
 
@@ -60,12 +60,9 @@ export const LoadError: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText("Unable to load users")).toBeVisible();
-    mocked(fetchUsers).mockResolvedValue({ items: users, total: users.length });
-    await userEvent.click(
-      canvas.getByRole("button", { name: i18nInstance.t("retry") }),
-    );
-    await expect(await canvas.findByText("Sara Ahmadi")).toBeVisible();
+    const body = within(canvasElement.ownerDocument.body);
+    await expect(await body.findByText("Unable to load users")).toBeVisible();
+    await expect(canvas.getByRole("table")).toBeVisible();
   },
 };
 

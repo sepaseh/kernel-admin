@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { act, renderHook } from "@testing-library/react";
+import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { useDebouncedFilters } from "./useDebouncedFilters";
 
 beforeEach(() => vi.useFakeTimers());
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 it("applies only the latest filters after a complete 500ms pause", () => {
   const setFilters = vi.fn();
@@ -13,26 +16,26 @@ it("applies only the latest filters after a complete 500ms pause", () => {
   act(() => result.current({ firstName: "A" }));
   act(() => vi.advanceTimersByTime(499));
   expect(setFilters).not.toHaveBeenCalled();
-  act(() => result.current({ firstName: "Ada", offset: undefined }));
+  act(() => result.current({ firstName: "Ada", page: undefined }));
   act(() => vi.advanceTimersByTime(499));
   expect(setFilters).not.toHaveBeenCalled();
   act(() => vi.advanceTimersByTime(1));
   expect(setFilters).toHaveBeenCalledExactlyOnceWith({
     firstName: "Ada",
-    offset: undefined,
+    page: undefined,
   });
 });
 
-it("does not write query parameters after its consumer unmounts", () => {
+it("cancels a pending URL write when its consumer unmounts", () => {
   const setFilters = vi.fn();
   const { result, unmount } = renderHook(() => useDebouncedFilters(setFilters));
-  act(() => result.current({ firstName: "obsolete" }));
+  act(() => result.current({ name: "obsolete" }));
   unmount();
   act(() => vi.advanceTimersByTime(500));
   expect(setFilters).not.toHaveBeenCalled();
 });
 
-it("cancels a queued update when the query parameter owner changes", () => {
+it("cancels obsolete writes when navigation replaces the setter", () => {
   const previous = vi.fn();
   const current = vi.fn();
   const { result, rerender } = renderHook(
@@ -41,12 +44,13 @@ it("cancels a queued update when the query parameter owner changes", () => {
       initialProps: { setter: previous },
     },
   );
-  act(() => result.current({ firstName: "obsolete" }));
+  act(() => result.current({ name: "obsolete" }));
   rerender({ setter: current });
   act(() => vi.advanceTimersByTime(500));
   expect(previous).not.toHaveBeenCalled();
   expect(current).not.toHaveBeenCalled();
-  act(() => result.current({ firstName: "current" }));
+
+  act(() => result.current({ name: "current" }));
   act(() => vi.advanceTimersByTime(500));
-  expect(current).toHaveBeenCalledExactlyOnceWith({ firstName: "current" });
+  expect(current).toHaveBeenCalledExactlyOnceWith({ name: "current" });
 });

@@ -16,10 +16,12 @@ const accountResponse = {
 };
 
 const fillOtp = async (page: Page, otp: string) => {
+  const inputs = page
+    .getByRole("group", { name: "Verification code", exact: true })
+    .getByRole("textbox");
+
   for (const [index, digit] of [...otp].entries()) {
-    await page
-      .getByRole("textbox", { name: `OTP Input ${index + 1}` })
-      .fill(digit);
+    await inputs.nth(index).fill(digit);
   }
 };
 

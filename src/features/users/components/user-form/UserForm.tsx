@@ -1,142 +1,210 @@
-import { Form, Input } from "antd";
-import { useEffect, useRef } from "react";
+import { Form, type FormProps, Input, Select } from "antd";
+import { isCancel } from "axios";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation } from "react-router";
+import { useLocation, useOutletContext } from "react-router";
 
-import { useAntd, useCore } from "@/app/hooks";
+import { useAntd } from "@/app/hooks";
 import { getRoutePermissions } from "@/app/lib";
-import { createUser, updateUser } from "@/features/users/api";
-import { userDrawerKeys } from "@/features/users/constants";
-import { generatePassword } from "@/features/users/tools/password";
-import type { User, UserRequest } from "@/features/users/types";
-import { getAccessTokenVersion } from "@/shared/api/token";
-import { profileNameMaxLength } from "@/shared/contracts";
-import {
-  isCurrentMutationError,
-  useGoBack,
-  useMutationRequest,
-} from "@/shared/hooks";
-import { getErrorMessage } from "@/shared/lib";
+import type { DefaultLayoutContext } from "@/layouts/default";
+import { getSessionSignal } from "@/shared/api";
+import { modalKeys } from "@/shared/config";
+import { useAbortController, useGoBack, useLock } from "@/shared/hooks";
+import { generatePassword } from "@/shared/lib";
 import { DigitsInput } from "@/shared/ui/digits-input";
 import { FormDrawer } from "@/shared/ui/form-drawer";
 
+import { createUser, fetchUser, updateUser } from "../../api";
+import { userStatuses } from "../../constants";
+import type { User, UserRequest } from "../../types";
+
 type UserFormProps = {
-  data?: User;
+  id?: User["id"];
   onFinish: () => void;
 };
 
-export const UserForm = ({ data, onFinish }: UserFormProps) => {
-  const { t } = useTranslation();
-  const { messageAPI, notificationAPI } = useAntd();
-  const { user } = useCore();
-  const { canCreate, canUpdate } = getRoutePermissions("users", user);
-  const { hash, pathname, search } = useLocation();
-  const [form] = Form.useForm<UserRequest>();
-  const receivedFormFocus = useRef(false);
-  const goBack = useGoBack();
-  const isUpdate = hash === userDrawerKeys.update && !!data;
-  const isCreate = hash === userDrawerKeys.create;
-  const open = (isCreate && canCreate) || (isUpdate && canUpdate);
-  const mutation = useMutationRequest(
-    JSON.stringify([pathname, search, hash, data?.id, user?.id]),
-    open,
-  );
+const initialFocusField = "firstName" satisfies keyof UserRequest;
 
-  const handleSubmit = async (values: UserRequest): Promise<void> => {
-    if (!open) return;
+export const UserForm = ({ id, onFinish }: UserFormProps) => {
+  const { t } = useTranslation();
+  const [form] = Form.useForm<UserRequest>();
+  const [loadedId, setLoadedId] = useState<User["id"]>();
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { cancel, start } = useAbortController();
+  const { messageAPI, notificationAPI } = useAntd();
+  const goBack = useGoBack();
+  const { hash } = useLocation();
+  const { lock, unlock } = useLock();
+  const { currentUser } = useOutletContext<DefaultLayoutContext>();
+  const { canCreate, canUpdate } = getRoutePermissions("users", currentUser);
+  const isCreate = hash === modalKeys.create;
+  const isUpdate = hash === modalKeys.update;
+  const open = (isCreate && canCreate) || (isUpdate && canUpdate);
+
+  const handleClose = () => {
+    cancel();
+    goBack();
+  };
+
+  const handleSubmit: FormProps<UserRequest>["onFinish"] = async (values) => {
+    if (
+      !open ||
+      loading ||
+      submitting ||
+      (isUpdate && loadedId !== id) ||
+      !lock()
+    )
+      return;
+
+    const sessionSignal = getSessionSignal();
+    const signal = start();
+    setSubmitting(true);
 
     try {
-      const loginVersion = getAccessTokenVersion();
-      let appliedPassword: string | undefined;
-      const result = await mutation.run(async (signal) => {
-        if (isUpdate) {
-          await updateUser(data.id, values, signal);
-          return undefined;
-        }
+      if (isUpdate) {
+        if (id === undefined) return;
+
+        await updateUser(id, values, signal);
+        if (signal.aborted || sessionSignal.aborted) return;
+
+        void messageAPI.success(t("userUpdated"));
+      } else {
         const password = generatePassword();
         await createUser({ ...values, password }, signal);
-        appliedPassword = password;
-      });
-      if (appliedPassword && getAccessTokenVersion() === loginVersion) {
-        void navigator.clipboard
-          ?.writeText(appliedPassword)
-          .catch(() => undefined);
-        notificationAPI.success({
-          description: appliedPassword,
-          message: t("password"),
-        });
-      }
-      if (!result?.isCurrent()) return;
+        if (sessionSignal.aborted) return;
 
-      messageAPI.success(t(isUpdate ? "userUpdated" : "userCreated"));
-      goBack();
+        notificationAPI.success({
+          description: password,
+          title: t("userCreated"),
+        });
+
+        try {
+          await navigator.clipboard?.writeText(password);
+        } catch {
+          // The generated password remains available in the notification.
+        }
+        if (signal.aborted || sessionSignal.aborted) return;
+      }
+
       onFinish();
+      handleClose();
     } catch (error) {
-      if (isCurrentMutationError(error))
-        messageAPI.error(getErrorMessage(error.cause));
+      if (signal.aborted || sessionSignal.aborted || isCancel(error)) return;
+
+      if (error instanceof Error) void messageAPI.error(error.message);
+    } finally {
+      if (!signal.aborted) {
+        unlock();
+        setSubmitting(false);
+      }
     }
   };
 
-  useEffect(() => {
-    if ((isCreate || hash === userDrawerKeys.update) && !open) goBack();
-  }, [goBack, hash, isCreate, open]);
+  useLayoutEffect(() => cancel, [cancel, goBack, id, isCreate, isUpdate, open]);
 
   useEffect(() => {
-    if (!open) {
-      receivedFormFocus.current = false;
-      return;
-    }
-    form.resetFields();
-    if (isUpdate) {
-      form.setFieldsValue({
-        firstName: data.firstName,
-        lastName: data.lastName,
-        mobile: data.mobile,
-      });
-    }
-  }, [data, form, isUpdate, open]);
+    void (async () => {
+      setLoadedId(undefined);
+      setLoading(false);
+      setSubmitting(false);
+      unlock();
+
+      if (!open) {
+        if (isCreate || isUpdate) goBack();
+
+        return;
+      }
+
+      if (!isUpdate) return;
+
+      if (id === undefined) {
+        goBack();
+        return;
+      }
+
+      const signal = start();
+      setLoading(true);
+
+      try {
+        const data = await fetchUser(id, signal);
+        if (signal.aborted) return;
+
+        form.setFieldsValue({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          mobile: data.mobile,
+          status: data.status,
+        });
+        setLoadedId(data.id);
+      } catch (error) {
+        if (signal.aborted) return;
+
+        if (error instanceof Error) void messageAPI.error(error.message);
+        goBack();
+      } finally {
+        if (!signal.aborted) setLoading(false);
+      }
+    })();
+
+    return cancel;
+  }, [
+    cancel,
+    form,
+    goBack,
+    id,
+    isCreate,
+    isUpdate,
+    messageAPI,
+    open,
+    start,
+    unlock,
+  ]);
+
+  useEffect(() => {
+    if (open && isUpdate && !loading && id !== undefined && loadedId === id)
+      form.focusField(initialFocusField);
+  }, [form, id, isUpdate, loadedId, loading, open]);
 
   return (
     <FormDrawer
-      afterOpenChange={(isOpen) => {
-        if (isOpen) {
-          if (!receivedFormFocus.current) form.focusField("firstName");
-        } else {
-          receivedFormFocus.current = false;
+      afterOpenChange={(open) => {
+        if (!open) {
           form.resetFields();
+          return;
         }
+
+        if (isCreate) form.focusField(initialFocusField);
       }}
-      onClose={() => {
-        mutation.cancel();
-        goBack();
-      }}
+      loading={loading}
+      onClose={handleClose}
       onSubmit={() => form.submit()}
       open={open}
-      submitting={mutation.submitting}
+      submitDisabled={loading || submitting || (isUpdate && loadedId !== id)}
+      submitting={submitting}
       title={t(isUpdate ? "update" : "create")}
     >
       <Form<UserRequest>
+        disabled={loading || submitting}
         form={form}
-        initialValues={isUpdate ? data : undefined}
+        initialValues={{ status: "active" }}
         layout="vertical"
-        onFocusCapture={() => {
-          receivedFormFocus.current = true;
-        }}
-        onFinish={(values) => void handleSubmit(values)}
+        name="user-form"
+        onFinish={handleSubmit}
       >
         <Form.Item<UserRequest>
           label={t("firstName")}
           name="firstName"
-          rules={[{ required: true, max: profileNameMaxLength }]}
+          rules={[{ required: true }]}
         >
-          <Input maxLength={profileNameMaxLength} />
+          <Input />
         </Form.Item>
         <Form.Item<UserRequest>
           label={t("lastName")}
           name="lastName"
-          rules={[{ required: true, max: profileNameMaxLength }]}
+          rules={[{ required: true }]}
         >
-          <Input maxLength={profileNameMaxLength} />
+          <Input />
         </Form.Item>
         <Form.Item<UserRequest>
           label={t("mobile")}
@@ -144,6 +212,15 @@ export const UserForm = ({ data, onFinish }: UserFormProps) => {
           rules={[{ required: true }]}
         >
           <DigitsInput />
+        </Form.Item>
+        <Form.Item<UserRequest>
+          label={t("status")}
+          name="status"
+          rules={[{ required: true }]}
+        >
+          <Select
+            options={userStatuses.map((value) => ({ label: t(value), value }))}
+          />
         </Form.Item>
       </Form>
     </FormDrawer>
