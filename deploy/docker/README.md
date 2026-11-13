@@ -37,7 +37,7 @@ The [Compose definition](compose.yaml) maps the selected public ports to interna
 
    On a host using the local Unix socket, use `unix:///var/run/docker.sock` instead. Do not change a global Docker context or builder to select this deployment.
 
-2. Resolve and inspect the public Compose configuration. [Shell environment variables take precedence](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/) over the explicit `--env-file` during interpolation. A blank or stale `VITE_OBSERVABILITY_URL` left by a previous build can override the receiver in the public input file. Use a fresh terminal, or clear that override in the current PowerShell session if it exists:
+2. Resolve and inspect the public Compose configuration. [Shell environment variables take precedence](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/) over the explicit `--env-file` during interpolation. A blank or stale `VITE_OBSERVABILITY_URL` left by a previous build can override the receiver in the public input file. In the terminal where you assigned `$dockerEngine` in step 1, clear that override if it exists. If you open a fresh terminal, repeat step 1 before continuing:
 
    ```powershell
    if (Test-Path Env:VITE_OBSERVABILITY_URL) {
