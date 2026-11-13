@@ -34,6 +34,8 @@ Browser build values are public. The API must allow the actual frontend origin a
 
 The [optional reporter](../src/shared/lib/observability.ts) uses the configured receiver for sanitized error and performance events. The receiver is separate from this standalone frontend; building or packaging the panel does not provision one. The examples leave the receiver URL blank.
 
+When enabling reporting, set `VITE_OBSERVABILITY_URL` to the same receiver URL in both the browser build values and the separate [native Nginx input](../deploy/native/nginx.env.example). The [renderer](../scripts/render-deployment.mjs) reads that input through `--config-file` and adds the receiver's origin to CSP `connect-src`. Render and install the updated configuration so the browser can reach the receiver.
+
 ## Build an immutable package
 
 After complete source verification, this PowerShell example builds and packages a local demonstration release. Choose an unused release ID and keep the environment value and `--release` argument identical.
