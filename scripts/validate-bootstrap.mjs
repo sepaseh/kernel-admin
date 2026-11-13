@@ -104,6 +104,8 @@ const httpFiles = [
   "docs/authentication.md",
 ];
 const uiFiles = [
+  "src/shared/storage/hooks/index.ts",
+  "src/shared/ui/error-boundary/ErrorFallback.tsx",
   "src/shared/hooks/useMutationRequest.test.tsx",
   "src/shared/hooks/useMutationRequest.ts",
   "src/shared/lib/dialog-focus.ts",

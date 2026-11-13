@@ -7,6 +7,8 @@ import ts from "typescript";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const productionPaths = [
+  "src/shared/storage/hooks/index.ts",
+  "src/shared/ui/error-boundary/ErrorFallback.tsx",
   "src/main.tsx",
   "src/app/App.tsx",
   "src/app/Routes.tsx",
@@ -131,6 +133,7 @@ const productionPaths = [
   "src/shared/ui/route-loading/index.ts",
 ];
 const runtimeImports = {
+  "src/shared/ui/error-boundary/ErrorFallback.tsx": ["antd", "react-i18next"],
   "src/main.tsx": ["react", "react-dom/client"],
   "src/app/App.tsx": ["react", "react-i18next"],
   "src/app/Routes.tsx": ["react", "react-router", "react-router/dom"],

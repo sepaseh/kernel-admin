@@ -34,4 +34,4 @@ await i18nInstance.init({
   returnNull: false,
 });
 
-export { i18nInstance };
+export { i18nInstance as i18n, i18nInstance };
