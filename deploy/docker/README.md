@@ -37,13 +37,21 @@ The [Compose definition](compose.yaml) maps the selected public ports to interna
 
    On a host using the local Unix socket, use `unix:///var/run/docker.sock` instead. Do not change a global Docker context or builder to select this deployment.
 
-2. Resolve and inspect the public Compose configuration:
+2. Resolve and inspect the public Compose configuration. [Shell environment variables take precedence](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/) over the explicit `--env-file` during interpolation. A blank or stale `VITE_OBSERVABILITY_URL` left by a previous build can override the receiver in the public input file. Use a fresh terminal, or clear that override in the current PowerShell session if it exists:
+
+   ```powershell
+   if (Test-Path Env:VITE_OBSERVABILITY_URL) {
+     Remove-Item Env:VITE_OBSERVABILITY_URL
+   }
+   ```
+
+   Clear or correct any other public input overrides before resolving the configuration:
 
    ```powershell
    docker --host $dockerEngine compose --env-file coverage/deployment/compose-public.conf -f deploy/docker/compose.yaml config
    ```
 
-   Confirm the image tag, build arguments, bindings and TLS mount source. This result describes the configuration; it does not establish a built image or healthy service.
+   Confirm the image tag, build arguments (including the intended `VITE_OBSERVABILITY_URL`), bindings and TLS mount source. This result describes the configuration; it does not establish a built image or healthy service.
 
 3. Build the new release image and start the service:
 
