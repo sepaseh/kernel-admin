@@ -18,6 +18,8 @@ import {
   getSessionSignal,
   setAccessToken,
 } from "@/shared/api/token";
+import type * as SharedHooks from "@/shared/hooks";
+import type * as FormDrawerModule from "@/shared/ui/form-drawer";
 import { render, screen } from "@/test/render";
 
 const mocks = vi.hoisted(() => {
@@ -71,7 +73,7 @@ vi.mock("@/app/hooks", () => ({
 }));
 
 vi.mock("@/shared/hooks", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/shared/hooks")>();
+  const actual = await importOriginal<typeof SharedHooks>();
   return {
     ...actual,
     useGoBack: () => {
@@ -87,8 +89,7 @@ vi.mock("react-i18next", async (importOriginal) => ({
 }));
 
 vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/shared/ui/form-drawer")>();
+  const actual = await importOriginal<typeof FormDrawerModule>();
   return {
     ...actual,
     FormDrawer: (props: ComponentProps<typeof actual.FormDrawer>) => (

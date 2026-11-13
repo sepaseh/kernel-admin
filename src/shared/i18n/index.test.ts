@@ -1,6 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
 
-import { defaultLanguage } from "../config/language";
 import { catalogs } from "./catalogs";
 import { localeCodes } from "./locales";
 
@@ -9,16 +8,22 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it("bootstraps in Persian without reading or writing a visitor language", async () => {
-  const storage = { getItem: vi.fn(() => '"en"'), setItem: vi.fn() };
+it("bootstraps in English without reading or mutating a visitor language", async () => {
+  const storage = {
+    getItem: vi.fn(() => '"fa"'),
+    removeItem: vi.fn(),
+    setItem: vi.fn(),
+  };
   vi.stubGlobal("localStorage", storage);
   vi.resetModules();
-  const { i18nInstance } = await import("./index");
+  const { i18n, i18nInstance } = await import("./index");
+  expect(i18n).toBe(i18nInstance);
   expect(i18nInstance.isInitialized).toBe(true);
-  expect(i18nInstance.resolvedLanguage).toBe(defaultLanguage);
-  expect(i18nInstance.t("login")).toBe(catalogs.fa.login);
+  expect(i18nInstance.resolvedLanguage).toBe("en");
+  expect(i18nInstance.t("login")).toBe(catalogs.en.login);
   expect(storage.getItem).not.toHaveBeenCalled();
   expect(storage.setItem).not.toHaveBeenCalled();
+  expect(storage.removeItem).not.toHaveBeenCalled();
 });
 
 it("registers every complete local catalog with the real translation engine", async () => {
@@ -32,13 +37,13 @@ it("registers every complete local catalog with the real translation engine", as
     expect(i18nInstance.resolvedLanguage).toBe(code);
     expect(i18nInstance.t("login")).toBe(catalogs[code].login);
   }
-  await i18nInstance.changeLanguage(defaultLanguage);
+  await i18nInstance.changeLanguage("en");
 });
 
-it("uses Persian fallback and reports missing keys without swallowing their identity", async () => {
+it("uses English fallback and reports missing keys without swallowing their identity", async () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
   const { i18nInstance } = await import("./index");
-  expect(i18nInstance.t("login", { lng: "xx" })).toBe(catalogs.fa.login);
+  expect(i18nInstance.t("login", { lng: "xx" })).toBe(catalogs.en.login);
   expect(
     i18nInstance.t("syntheticMissingKey", {
       defaultValue: "syntheticMissingKey",

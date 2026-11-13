@@ -1,5 +1,4 @@
-import "@/assets/styles/index.css";
-import "@/assets/styles/vazirmatn.css";
+import "@/index.css";
 import "@/shared/i18n";
 
 import type { Preview } from "@storybook/react-vite";

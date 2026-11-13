@@ -1,0 +1,16 @@
+@import "./assets/styles/index.css";
+@import "./assets/styles/vazirmatn.css";
+
+body {
+  margin: 0;
+  font-family: Vazirmatn, system-ui, sans-serif;
+}
+
+html:lang(fa),
+html:lang(fa) :is(button, input, select, textarea) {
+  font-feature-settings: "ss01";
+}
+
+main {
+  padding: 24px;
+}

@@ -1,10 +1,22 @@
 // @vitest-environment jsdom
 import { Button, Form } from "antd";
-import { expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
+import { i18nInstance } from "@/shared/i18n";
 import { render, screen } from "@/test/render";
 
 import { PasswordFields } from "./PasswordFields";
+
+let previousLanguage: string;
+
+beforeEach(async () => {
+  previousLanguage = i18nInstance.language;
+  await i18nInstance.changeLanguage("fa");
+});
+
+afterEach(async () => {
+  await i18nInstance.changeLanguage(previousLanguage);
+});
 
 it("accepts matching passwords and rejects mismatched confirmation", async () => {
   const onFinish = vi.fn();

@@ -1,6 +1,6 @@
 import type { ParseKeys } from "i18next";
 
-import type { PermissionKey } from "@/features/roles/types";
+import type { PermissionKey } from "@/features/roles";
 
 export type AccessRule = "authenticated" | "public" | PermissionKey;
 export type RouteLayout = "auth" | "default" | "standalone";

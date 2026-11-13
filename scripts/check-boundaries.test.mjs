@@ -3,7 +3,9 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  rename,
   rm,
+  rmdir,
   symlink,
   writeFile,
 } from "node:fs/promises";
@@ -118,8 +120,11 @@ const dependencyForms = [
   (specifier) => `import type Value = require("${specifier}");`,
 ];
 
-test("retired request infrastructure cannot regain local imports or former package capabilities", () => {
+test("retired helpers cannot regain local imports or former package capabilities", () => {
   const retired = [
+    ["src/shared/config/theme.ts", ["antd"]],
+    ["src/shared/config/language.ts", []],
+    ["src/shared/lib/color-contrast.ts", []],
     ["src/shared/hooks/useReadRequest.ts", ["axios", "react"]],
     ["src/shared/hooks/useReadResource.ts", ["react"]],
     ["src/shared/hooks/useMutationRequest.ts", ["axios", "react"]],
@@ -1703,4 +1708,61 @@ test("application composition admits only its explicit runtime and type package 
     ),
     /not allowed/,
   );
+});
+
+test("only the actual literal application stylesheet edge is admitted", () => {
+  for (const [source, specifier, target] of [
+    ["src/main.tsx", "./index.css", "src/index.css"],
+  ]) {
+    const owner = path.join(root, source),
+      resolved = path.join(root, target);
+    assert.equal(check(specifier, resolved, owner), undefined);
+    assert.match(
+      check(specifier, path.resolve(root, "../outside.css"), owner),
+      /exact contained/,
+    );
+    assert.match(check(specifier, resolved, owner, true), /exact contained/);
+    assert.match(
+      check(specifier, resolved, owner, false, undefined, [
+        { name: "default", typeOnly: false },
+      ]),
+      /exact contained/,
+    );
+    assert.match(
+      check(specifier, resolved, file),
+      /(?:not allowed|published production)/,
+    );
+  }
+});
+
+test("application stylesheet resolution rejects missing, directory and linked assets", async (context) => {
+  const { directory, put } = await fixture(context);
+  await put("src/main.tsx", 'import "./index.css";\n');
+  const failures = async () =>
+    (await checkBoundaries(directory)).violations.join("\n");
+  assert.match(await failures(), /exact contained/);
+  await mkdir(path.join(directory, "src/index.css"));
+  assert.match(await failures(), /exact contained/);
+  await rmdir(path.join(directory, "src/index.css"));
+  await put("src/index.css", "body { margin: 0; }\n");
+  assert.equal(await failures(), "");
+  await rm(path.join(directory, "src/index.css"));
+  await put("outside.css", "body { margin: 1px; }\n");
+  if (process.platform === "win32") {
+    // Directory junctions exercise linked-source rejection without file-link privileges.
+    const source = path.resolve(directory, "src");
+    const linked = path.resolve(directory, "linked-source");
+    assert.equal(path.dirname(source), path.resolve(directory));
+    assert.equal(path.dirname(linked), path.resolve(directory));
+    await rename(source, linked);
+    await symlink(linked, source, "junction");
+    assert.match(await failures(), /Unpublished production module/);
+    return;
+  }
+  await symlink(
+    path.join(directory, "outside.css"),
+    path.join(directory, "src/index.css"),
+    "file",
+  );
+  assert.match(await failures(), /exact contained/);
 });

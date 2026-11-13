@@ -34,7 +34,7 @@ const pageRegistry = {
   calendar: async () => (await import("@/features/calendar")).CalendarPage,
   forgotPassword: async () =>
     (await import("@/features/forgot-pass")).ForgotPassPage,
-  notFound: async () => (await import("@/app/not-found/NotFound")).NotFoundPage,
+  notFound: async () => (await import("@/features/not-found")).NotFoundPage,
   register: async () => (await import("@/features/register")).RegisterPage,
   roles: async () => (await import("@/features/roles")).RolesPage,
   root: async () => (await import("@/features/dashboard")).DashboardPage,

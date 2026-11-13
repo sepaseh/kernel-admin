@@ -259,9 +259,9 @@ const completeApplicationFiles = [
   "src/app/lib/access.test.ts",
   "src/app/lib/access.ts",
   "src/app/lib/index.ts",
-  "src/app/not-found/NotFound.stories.tsx",
-  "src/app/not-found/NotFound.test.tsx",
-  "src/app/not-found/NotFound.tsx",
+  "src/features/not-found/NotFound.stories.tsx",
+  "src/features/not-found/NotFound.test.tsx",
+  "src/features/not-found/NotFound.tsx",
   "src/app/providers/antd/Antd.test.tsx",
   "src/app/providers/antd/Antd.tsx",
   "src/app/providers/core/Core.test.tsx",
@@ -358,10 +358,6 @@ const completeApplicationFiles = [
   "src/shared/api/types.ts",
   "src/shared/config/constants.ts",
   "src/shared/config/index.ts",
-  "src/shared/config/language.test.ts",
-  "src/shared/config/language.ts",
-  "src/shared/config/theme.test.ts",
-  "src/shared/config/theme.ts",
   "src/shared/contracts/appearance.test.ts",
   "src/shared/contracts/appearance.ts",
   "src/shared/contracts/index.ts",
@@ -387,8 +383,6 @@ const completeApplicationFiles = [
   "src/shared/i18n/locales/pt.ts",
   "src/shared/i18n/locales/ru.ts",
   "src/shared/i18n/locales/tr.ts",
-  "src/shared/lib/color-contrast.test.ts",
-  "src/shared/lib/color-contrast.ts",
   "src/shared/lib/error.test.ts",
   "src/shared/lib/error.ts",
   "src/shared/lib/index.ts",
@@ -485,6 +479,12 @@ const completeApplicationFiles = [
   "src/shared/lib/pagination.ts",
   "src/shared/lib/password.test.ts",
   "src/shared/lib/password.ts",
+  "src/app/index.ts",
+  "src/features/not-found/index.ts",
+  "src/index.css",
+  "src/index.ts",
+  "src/test/resource-paths.test.ts",
+  "e2e/visual/baselines/application/win32/admin-settings-en-light.png",
 ];
 const applicationPolicy = () =>
   policy({
@@ -594,9 +594,15 @@ const applicationFiles = [
   "src/shared/lib/pagination.ts",
   "src/shared/lib/password.test.ts",
   "src/shared/lib/password.ts",
+  "src/app/index.ts",
+  "src/features/not-found/index.ts",
+  "src/index.css",
+  "src/index.ts",
+  "src/test/resource-paths.test.ts",
+  "e2e/visual/baselines/application/win32/admin-settings-en-light.png",
 ];
 const isCoreAuthPhaseFile = (file) =>
-  /^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|register))\/|docs\/architecture\.md$)/.test(
+  /^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|not-found|register))\/|docs\/architecture\.md$)/.test(
     file,
   ) ||
   [
@@ -833,8 +839,6 @@ const foundationFiles = [
   "src/shared/contracts/index.ts",
   "src/shared/lib/transform.ts",
   "src/shared/lib/transform.test.ts",
-  "src/shared/lib/color-contrast.ts",
-  "src/shared/lib/color-contrast.test.ts",
   "tsconfig.json",
 ];
 const foundationPolicy = (overrides = {}) =>
@@ -1113,7 +1117,7 @@ test("repository foundation requires its verification toolchain and canonical Gi
 
 test("foundation requires every pure application primitive after the repository-only phase", () => {
   const primitives = foundationFiles.filter((file) => file.startsWith("src/"));
-  assert.equal(primitives.length, 8);
+  assert.equal(primitives.length, 6);
   for (const missing of primitives)
     assert.throws(
       () =>
@@ -1275,8 +1279,6 @@ test("generated output names cannot hide files or links", async (context) => {
 
 const runtimeFiles = [
   "tooling/paths.ts",
-  "src/shared/config/language.ts",
-  "src/shared/config/language.test.ts",
   "src/shared/i18n/index.ts",
   "src/shared/i18n/index.test.ts",
   "src/shared/i18n/date.ts",
@@ -1371,7 +1373,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 81);
+  assert.equal(required.length, 79);
   for (const missing of required)
     assert.throws(
       () =>
@@ -1850,6 +1852,12 @@ test("application admission requires the exact runnable closure and matching rea
     validateBootstrapPolicy({ ...current, applicationReady: false }),
   );
   for (const file of [
+    "src/shared/config/language.ts",
+    "src/shared/config/language.test.ts",
+    "src/shared/config/theme.ts",
+    "src/shared/config/theme.test.ts",
+    "src/shared/lib/color-contrast.ts",
+    "src/shared/lib/color-contrast.test.ts",
     "src/shared/hooks/useReadRequest.ts",
     "src/shared/hooks/useReadResource.ts",
     "src/shared/hooks/useReadResource.test.ts",

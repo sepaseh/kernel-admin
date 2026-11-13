@@ -1,13 +1,12 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
-import { defaultLanguage } from "../config/language";
 import { catalogs } from "./catalogs.ts";
 
 declare module "i18next" {
   interface CustomTypeOptions {
     resources: {
-      translation: typeof catalogs.fa;
+      translation: typeof catalogs.en;
     };
   }
 }
@@ -17,9 +16,9 @@ const i18nInstance = i18n.use(initReactI18next);
 await i18nInstance.init({
   debug: false,
   defaultNS: "translation",
-  fallbackLng: defaultLanguage,
+  fallbackLng: "en",
   interpolation: { escapeValue: false },
-  lng: defaultLanguage,
+  lng: "en",
   parseMissingKeyHandler: (key) => {
     console.warn(`Missing translation key: ${key}`);
     return key;

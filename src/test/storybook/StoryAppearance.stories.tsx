@@ -9,7 +9,8 @@ import { useCore } from "@/app/hooks";
 import { StoryShell } from "../../../.storybook/StoryShell";
 
 const AppearanceReadout = () => {
-  const { language, theme } = useCore();
+  const { settings, theme } = useCore();
+  const { language } = settings;
   const { direction } = useContext(ConfigProvider.ConfigContext);
   const { token } = antdTheme.useToken();
   const { t } = useTranslation();

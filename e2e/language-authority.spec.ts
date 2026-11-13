@@ -9,7 +9,7 @@ test("failed initial settings retain bootstrap error language and retry before r
 }) => {
   let available = false;
   await page.addInitScript(() => {
-    localStorage.setItem("language", '"en"');
+    localStorage.setItem("language", '"fa"');
   });
   await page.route("https://api.example.com/settings", (route) =>
     available
@@ -20,19 +20,19 @@ test("failed initial settings retain bootstrap error language and retry before r
         }),
   );
   await page.goto("/auth");
-  await expect(page.getByText(catalogs.fa.settingsLoadFailed)).toBeVisible();
-  await expect(page.locator("html")).toHaveAttribute("lang", "fa");
-  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await expect(page.getByText(catalogs.en.settingsLoadFailed)).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   await expect(page.getByRole("heading")).toHaveCount(0);
   await expect(page.getByRole("textbox")).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("language"))).toBe(
-    '"en"',
+    '"fa"',
   );
   available = true;
   await page
-    .getByRole("button", { name: catalogs.fa.retry, exact: true })
+    .getByRole("button", { name: catalogs.en.retry, exact: true })
     .click();
-  await expect(page.getByText(catalogs.fa.settingsLoadFailed)).toHaveCount(0);
+  await expect(page.getByText(catalogs.en.settingsLoadFailed)).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   await expect(

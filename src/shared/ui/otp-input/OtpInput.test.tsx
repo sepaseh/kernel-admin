@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "@testing-library/react";
-import { Input } from "antd";
+import type { Input } from "antd";
 import type { ComponentRef } from "react";
 import { createRef } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";

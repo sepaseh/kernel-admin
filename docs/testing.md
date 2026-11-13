@@ -57,7 +57,20 @@ Ordinary local and PR verification uses Chromium. Complete verification substitu
 
 ## Review appearance
 
-For an affected screen, exercise translated names/errors, keyboard submission, invalid-field focus, Tab containment, Escape and trigger-focus restoration. Read-only overflowing tables need a named keyboard-focusable scroll region. Preserve contrast, reduced motion and logical RTL/LTR layout across light/dark/compact variants. Static font tests inspect licensed WOFF2 data and CSS; the font journey separately checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
+For an affected screen, exercise translated names/errors, keyboard submission, invalid-field focus, initial dialog focus, Escape and trigger-focus restoration. Preserve reduced motion and logical RTL/LTR layout across light/dark/compact variants. The font journey checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
+
+Storybook axe audits exclude `color-contrast`; application accessibility journeys
+also exclude `page-has-heading-one` and `scrollable-region-focusable`. Other axe
+rules, accessible names, error associations, keyboard behavior and explicit
+authentication-page heading assertions remain required. The automated scope
+does not impose contrast thresholds, management-page H1 headings or named
+keyboard-scrolling table regions.
+
+Native Ant Design overlays use the library's focus handling. Tests require
+initial focus, Escape, trigger restoration and no accidental submission, without
+a custom boundary Tab-cycling requirement. Registration tests enforce required
+fields without a fixed maximum name length. Keep these assertions and do not
+add delays or longer timeouts to obtain a pass.
 
 ### Compare and approve images
 

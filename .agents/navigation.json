@@ -43,14 +43,13 @@
       "when": "Change admitted shared runtime helpers, language catalogs or date adapters.",
       "owners": [
         "src/shared/api/token.ts",
-        "src/shared/config/language.ts",
-        "src/shared/i18n/catalogs.ts",
         "src/shared/i18n/index.ts",
+        "src/shared/i18n/catalogs.ts",
         "src/shared/i18n/date.ts",
         "src/shared/i18n/dayjs/fa.ts",
         "src/shared/lib/transform.ts",
         "src/shared/lib/error.ts",
-        "src/shared/lib/color-contrast.ts"
+        "src/app/providers/antd/Antd.tsx"
       ],
       "contracts": [
         "src/shared/api/types.ts",
@@ -60,14 +59,13 @@
       ],
       "tests": [
         "src/shared/api/token.test.ts",
-        "src/shared/config/language.test.ts",
-        "src/shared/i18n/catalogs.test.ts",
         "src/shared/i18n/index.test.ts",
+        "src/shared/i18n/catalogs.test.ts",
         "src/shared/i18n/date.test.ts",
         "src/shared/i18n/dayjs.test.ts",
         "src/shared/lib/transform.test.ts",
         "src/shared/lib/error.test.ts",
-        "src/shared/lib/color-contrast.test.ts"
+        "src/app/providers/antd/Antd.test.tsx"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [".agents/rules/code-quality.md", ".agents/rules/safety.md"],
@@ -203,7 +201,7 @@
         "src/app/providers/antd/Antd.tsx",
         "src/app/config/routes.ts",
         "src/app/lib/access.ts",
-        "src/app/not-found/NotFound.tsx",
+        "src/features/not-found/NotFound.tsx",
         "src/layouts/default/Default.tsx"
       ],
       "contracts": [
@@ -216,7 +214,7 @@
         "src/app/providers/core/Core.test.tsx",
         "src/app/providers/antd/Antd.test.tsx",
         "src/app/lib/access.test.ts",
-        "src/app/not-found/NotFound.test.tsx",
+        "src/features/not-found/NotFound.test.tsx",
         "src/layouts/default/Default.test.tsx"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
@@ -251,7 +249,7 @@
     },
     {
       "id": "active-language",
-      "when": "Trace validated API language code/direction/calendar/names, fixed bootstrap, vendor adapters, calendar display or super-admin language changes.",
+      "when": "Trace API-owned typed language code/direction/calendar/names, fixed English bootstrap, vendor adapters, calendar display or super-admin language changes.",
       "owners": [
         "src/app/providers/core/Core.tsx",
         "src/app/providers/antd/Antd.tsx",
@@ -281,7 +279,7 @@
         ".agents/rules/react.md",
         ".agents/rules/imports.md"
       ],
-      "limitations": "Validated API metadata owns active language, direction, calendar and names. Local code maps select catalogs/vendor adapters only; toolbar choices are synthetic fixtures."
+      "limitations": "API metadata owns active language, direction, calendar and names. The settings adapter returns typed metadata without runtime normalization or validation. Local code maps select catalogs/vendor adapters only; toolbar choices are synthetic fixtures."
     },
     {
       "id": "shared-translation",
@@ -411,7 +409,7 @@
       "id": "ui-foundation",
       "when": "Change admitted shared UI controls, themes, browser preferences, cancellation and lock hooks, observability or local assets.",
       "owners": [
-        "src/shared/config/theme.ts",
+        "src/app/providers/antd/Antd.tsx",
         "src/shared/storage/state.ts",
         "src/shared/storage/theme.ts",
         "src/shared/storage/compact.ts",
@@ -440,7 +438,8 @@
         "src/shared/ui/request-error/RequestError.tsx",
         "src/test/setup.ts",
         "src/test/browser.ts",
-        "vitest.config.ts"
+        "vitest.config.ts",
+        "src/index.css"
       ],
       "contracts": [
         "src/shared/contracts/appearance.ts",
@@ -450,7 +449,7 @@
         ".agents/rules/styling.md"
       ],
       "tests": [
-        "src/shared/config/theme.test.ts",
+        "src/app/providers/antd/Antd.test.tsx",
         "src/shared/storage/state.test.ts",
         "src/shared/storage/preferences.test.ts",
         "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
@@ -529,10 +528,10 @@
     },
     {
       "id": "accessibility-visual",
-      "when": "Change component contrast, keyboard/focus behavior or responsive fixtures, and plan later visual-baseline verification.",
+      "when": "Change component contrast, keyboard/focus behavior or responsive fixtures, and verify admitted visual baselines.",
       "owners": [
         "src/shared/ui",
-        "src/shared/config/theme.ts",
+        "src/app/providers/antd/Antd.tsx",
         ".storybook/preview.tsx",
         ".storybook/StoryShell.tsx",
         ".storybook/PreviewFrame.tsx",
@@ -545,7 +544,7 @@
         "docs/development.md"
       ],
       "tests": [
-        "src/shared/lib/color-contrast.test.ts",
+        "src/app/providers/antd/Antd.test.tsx",
         "src/test/storybook/StoryShell.test.tsx",
         "src/shared/ui/form-drawer/FormDrawer.stories.tsx"
       ],
@@ -565,7 +564,7 @@
       "owners": [
         "DESIGN.md",
         ".agents/skills/design-ui/SKILL.md",
-        "src/shared/config/theme.ts",
+        "src/app/providers/antd/Antd.tsx",
         "src/layouts/default/Default.tsx",
         "src/features/users/Users.tsx",
         "src/shared/ui",
@@ -665,7 +664,12 @@
         "src/app/App.tsx",
         "src/app/Routes.tsx",
         "vite.config.ts",
-        "src/GlobalStyle.tsx"
+        "src/GlobalStyle.tsx",
+        "src/app/index.ts",
+        "src/index.ts",
+        "src/index.css",
+        "src/features/not-found/NotFound.tsx",
+        "src/features/not-found/index.ts"
       ],
       "contracts": [".github/bootstrap-policy.json", ".agents/validation.json"],
       "rules": [
@@ -678,7 +682,8 @@
         "src/test/integration/pages.test.tsx",
         "contract/api.contract.test.ts",
         "e2e/auth.spec.ts",
-        "e2e/visual/admin.spec.ts"
+        "e2e/visual/admin.spec.ts",
+        "src/features/not-found/NotFound.test.tsx"
       ],
       "checks": [
         "snapshot",

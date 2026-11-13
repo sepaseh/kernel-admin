@@ -17,7 +17,7 @@ const meta = {
       </Routes>
     </StoryShell>
   ),
-  title: "App/NotFound",
+  title: "Features/NotFound",
 } satisfies Meta<typeof NotFoundPage>;
 
 export default meta;
