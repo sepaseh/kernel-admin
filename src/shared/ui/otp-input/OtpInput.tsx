@@ -1,6 +1,5 @@
 import { Input } from "antd";
-import type { ComponentProps } from "react";
-import { useId } from "react";
+import { useId, type ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
 
 const Otp = Input.OTP;

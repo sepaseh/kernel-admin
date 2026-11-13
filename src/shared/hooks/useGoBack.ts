@@ -1,9 +1,13 @@
 import { useCallback } from "react";
-import type { NavigateOptions, To } from "react-router";
-import { useLocation, useNavigate } from "react-router";
+import {
+  type NavigateOptions,
+  type To,
+  useLocation,
+  useNavigate,
+} from "react-router";
 
 export const useGoBack = (): ((to?: To, options?: NavigateOptions) => void) => {
-  const { pathname, state } = useLocation();
+  const { pathname, search, state } = useLocation();
   const navigate = useNavigate();
 
   const goBack = useCallback(
@@ -13,10 +17,10 @@ export const useGoBack = (): ((to?: To, options?: NavigateOptions) => void) => {
       } else if (to) {
         void navigate(to, options);
       } else {
-        void navigate(pathname, { replace: true });
+        void navigate({ hash: "", pathname, search }, { replace: true });
       }
     },
-    [navigate, pathname, state],
+    [navigate, pathname, search, state],
   );
   return goBack;
 };

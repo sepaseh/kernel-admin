@@ -30,6 +30,8 @@ const policy = (overrides = {}) => ({
   ...overrides,
 });
 const completeApplicationFiles = [
+  "src/shared/storage/hooks/index.ts",
+  "src/shared/ui/error-boundary/ErrorFallback.tsx",
   ".agents/README.md",
   ".agents/evaluation/cases.json",
   ".agents/evaluation/run-template.json",
@@ -1298,7 +1300,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 95);
+  assert.equal(required.length, 97);
   for (const missing of required)
     assert.throws(
       () =>

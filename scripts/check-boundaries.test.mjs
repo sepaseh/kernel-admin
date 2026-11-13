@@ -724,7 +724,7 @@ test("the published phase retains every admitted production module", async () =>
   );
   assert.equal(
     result.files,
-    publication.applicationReady ? 122 : production.length,
+    publication.applicationReady ? 124 : production.length,
   );
   assert.deepEqual(result.violations, []);
 });

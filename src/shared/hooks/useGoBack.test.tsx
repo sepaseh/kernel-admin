@@ -1,42 +1,165 @@
 // @vitest-environment jsdom
-import { act, renderHook } from "@testing-library/react";
-import type * as ReactRouter from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, renderHook } from "@testing-library/react";
+import type { PropsWithChildren } from "react";
+import { MemoryRouter, useLocation, useNavigate } from "react-router";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { useGoBack } from "./useGoBack";
 
-const mocks = vi.hoisted(() => ({
-  location: { pathname: "/users", state: null as unknown },
-  navigate: vi.fn(),
-}));
+afterEach(cleanup);
 
-vi.mock("react-router", async (importOriginal) => ({
-  ...(await importOriginal<typeof ReactRouter>()),
-  useLocation: () => mocks.location,
-  useNavigate: () => mocks.navigate,
-}));
+describe("drawer return navigation", () => {
+  it("clears only the hash and preserves the current query after filters change", () => {
+    const { result } = renderHook(
+      () => ({
+        goBack: useGoBack(),
+        location: useLocation(),
+        navigate: useNavigate(),
+      }),
+      {
+        wrapper: ({ children }: PropsWithChildren) => (
+          <MemoryRouter initialEntries={["/roles?keep=initial#create"]}>
+            {children}
+          </MemoryRouter>
+        ),
+      },
+    );
 
-beforeEach(() => {
-  mocks.location = { pathname: "/users", state: null };
-});
+    act(() => {
+      void result.current.navigate("/roles?keep=reviewed&page=2#create", {
+        replace: true,
+      });
+    });
+    act(() => {
+      result.current.goBack();
+    });
 
-describe("useGoBack", () => {
-  it("returns to history when route state exists", () => {
-    mocks.location.state = { from: "/roles" };
-    const { result } = renderHook(() => useGoBack());
-    act(() => result.current("/fallback"));
-    expect(mocks.navigate).toHaveBeenCalledWith(-1);
+    expect(result.current.location).toMatchObject({
+      pathname: "/roles",
+      search: "?keep=reviewed&page=2",
+      hash: "",
+    });
   });
 
-  it("navigates to an explicit fallback with options", () => {
-    const { result } = renderHook(() => useGoBack());
-    act(() => result.current("/fallback", { replace: true }));
-    expect(mocks.navigate).toHaveBeenCalledWith("/fallback", { replace: true });
+  it("replaces a direct drawer URL so history cannot restore the cleared hash", () => {
+    const { result } = renderHook(
+      () => ({
+        goBack: useGoBack(),
+        location: useLocation(),
+        navigate: useNavigate(),
+      }),
+      {
+        wrapper: ({ children }: PropsWithChildren) => (
+          <MemoryRouter
+            initialEntries={["/account", "/roles?keep=role-list#create"]}
+            initialIndex={1}
+          >
+            {children}
+          </MemoryRouter>
+        ),
+      },
+    );
+
+    act(() => {
+      result.current.goBack();
+    });
+    act(() => {
+      void result.current.navigate(-1);
+    });
+    expect(result.current.location.pathname).toBe("/account");
+
+    act(() => {
+      void result.current.navigate(1);
+    });
+    expect(result.current.location).toMatchObject({
+      pathname: "/roles",
+      search: "?keep=role-list",
+      hash: "",
+    });
   });
 
-  it("replaces the current path when no destination exists", () => {
-    const { result } = renderHook(() => useGoBack());
-    act(() => result.current());
-    expect(mocks.navigate).toHaveBeenCalledWith("/users", { replace: true });
+  it("returns to the actual previous entry when the drawer has navigation state", () => {
+    const { result } = renderHook(
+      () => ({
+        goBack: useGoBack(),
+        location: useLocation(),
+        navigate: useNavigate(),
+      }),
+      {
+        wrapper: ({ children }: PropsWithChildren) => (
+          <MemoryRouter
+            initialEntries={[
+              "/roles?keep=previous-list",
+              {
+                pathname: "/roles",
+                search: "?keep=drawer-list",
+                hash: "#update",
+                state: true,
+              },
+            ]}
+            initialIndex={1}
+          >
+            {children}
+          </MemoryRouter>
+        ),
+      },
+    );
+
+    act(() => {
+      result.current.goBack("/users", { replace: true });
+    });
+    expect(result.current.location).toMatchObject({
+      pathname: "/roles",
+      search: "?keep=previous-list",
+      hash: "",
+    });
+
+    act(() => {
+      void result.current.navigate(1);
+    });
+    expect(result.current.location).toMatchObject({
+      pathname: "/roles",
+      search: "?keep=drawer-list",
+      hash: "#update",
+      state: true,
+    });
+  });
+
+  it("honors an explicit fallback destination and its navigation options", () => {
+    const { result } = renderHook(
+      () => ({
+        goBack: useGoBack(),
+        location: useLocation(),
+        navigate: useNavigate(),
+      }),
+      {
+        wrapper: ({ children }: PropsWithChildren) => (
+          <MemoryRouter
+            initialEntries={["/account", "/roles?keep=role-list#create"]}
+            initialIndex={1}
+          >
+            {children}
+          </MemoryRouter>
+        ),
+      },
+    );
+
+    act(() => {
+      result.current.goBack(
+        { pathname: "/users", search: "?status=active", hash: "#details" },
+        { replace: true, state: { source: "role-drawer" } },
+      );
+    });
+    expect(result.current.location).toMatchObject({
+      pathname: "/users",
+      search: "?status=active",
+      hash: "#details",
+      state: { source: "role-drawer" },
+    });
+
+    act(() => {
+      void result.current.navigate(-1);
+    });
+    expect(result.current.location.pathname).toBe("/account");
   });
 });

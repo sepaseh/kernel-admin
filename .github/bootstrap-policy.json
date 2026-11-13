@@ -141,6 +141,7 @@
     "scripts/check-guidance.mjs",
     "scripts/check-guidance.test-support.mjs",
     "scripts/check-guidance.test.mjs",
+    "scripts/ci-application-single-pass.test.yml",
     "scripts/ci-evidence.mjs",
     "scripts/ci-evidence.test.mjs",
     "scripts/ci-single-pass.test.yml",
@@ -373,6 +374,7 @@
     "src/shared/lib/transform.test.ts",
     "src/shared/lib/transform.ts",
     "src/shared/storage/compact.ts",
+    "src/shared/storage/hooks/index.ts",
     "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
     "src/shared/storage/hooks/useLocalStorageWatcher.ts",
     "src/shared/storage/index.ts",
@@ -387,6 +389,7 @@
     "src/shared/ui/error-boundary/ErrorBoundary.stories.tsx",
     "src/shared/ui/error-boundary/ErrorBoundary.test.tsx",
     "src/shared/ui/error-boundary/ErrorBoundary.tsx",
+    "src/shared/ui/error-boundary/ErrorFallback.tsx",
     "src/shared/ui/error-boundary/index.ts",
     "src/shared/ui/form-drawer/FormDrawer.stories.tsx",
     "src/shared/ui/form-drawer/FormDrawer.test.tsx",
@@ -434,7 +437,6 @@
     "vitest.config.ts",
     "vitest.contract.config.ts",
     "vitest.shims.d.ts",
-    "vitest.storybook.config.ts",
-    "scripts/ci-application-single-pass.test.yml"
+    "vitest.storybook.config.ts"
   ]
 }

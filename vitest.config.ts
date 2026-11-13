@@ -30,6 +30,8 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       include: [
+        "src/shared/storage/hooks/index.ts",
+        "src/shared/ui/error-boundary/ErrorFallback.tsx",
         "src/app/App.tsx",
         "src/app/Routes.tsx",
         "src/app/config/index.ts",

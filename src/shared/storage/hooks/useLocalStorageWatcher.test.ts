@@ -1,49 +1,54 @@
 // @vitest-environment jsdom
-import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, cleanup, renderHook } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { storageKeys } from "@/shared/config";
 
 import { useLocalStorageWatcher } from "./useLocalStorageWatcher";
 
-describe("useLocalStorageWatcher", () => {
-  it("calls the callback when the watched key changes", () => {
-    const callback = vi.fn();
-    renderHook(() => useLocalStorageWatcher(storageKeys.compact, callback));
+afterEach(cleanup);
 
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent("storage", { key: storageKeys.compact }),
-      );
-    });
-
-    expect(callback).toHaveBeenCalledOnce();
+const dispatch = (key: string | null, storageArea: Storage = localStorage) => {
+  act(() => {
+    window.dispatchEvent(new StorageEvent("storage", { key, storageArea }));
   });
+};
 
-  it("ignores changes to other storage keys", () => {
+describe("cross-tab preference updates", () => {
+  it("accepts its key and clear events from local storage only", () => {
     const callback = vi.fn();
     renderHook(() => useLocalStorageWatcher(storageKeys.theme, callback));
 
-    act(() => {
-      window.dispatchEvent(new StorageEvent("storage", { key: "language" }));
-    });
-
+    dispatch(storageKeys.compact);
+    dispatch(storageKeys.theme, sessionStorage);
     expect(callback).not.toHaveBeenCalled();
+
+    dispatch(storageKeys.theme);
+    dispatch(null);
+    expect(callback).toHaveBeenCalledTimes(2);
   });
 
-  it("stops watching storage events after unmount", () => {
-    const callback = vi.fn();
-    const { unmount } = renderHook(() =>
-      useLocalStorageWatcher(storageKeys.theme, callback),
+  it("uses the current callback/key and removes its listener on unmount", () => {
+    const previous = vi.fn();
+    const current = vi.fn();
+    const { rerender, unmount } = renderHook(
+      ({ key, callback }) => useLocalStorageWatcher(key, callback),
+      {
+        initialProps: {
+          key: storageKeys.theme as (typeof storageKeys)[keyof typeof storageKeys],
+          callback: previous,
+        },
+      },
     );
 
-    unmount();
-    act(() => {
-      window.dispatchEvent(
-        new StorageEvent("storage", { key: storageKeys.theme }),
-      );
-    });
+    rerender({ key: storageKeys.compact, callback: current });
+    dispatch(storageKeys.theme);
+    dispatch(storageKeys.compact);
+    expect(previous).not.toHaveBeenCalled();
+    expect(current).toHaveBeenCalledOnce();
 
-    expect(callback).not.toHaveBeenCalled();
+    unmount();
+    dispatch(storageKeys.compact);
+    expect(current).toHaveBeenCalledOnce();
   });
 });
