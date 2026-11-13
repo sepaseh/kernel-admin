@@ -63,6 +63,8 @@ For an affected screen, exercise translated names/errors, keyboard submission, i
 
 `npm run test:visual` compares the reviewed images under `e2e/visual/baselines/application/<platform>`. The runner checks image inventory/hashes and runtime/source provenance before and after its child run. Missing approval, source changes during execution, linked paths and incompatible runtime fail verification. Screenshots do not replace keyboard or assistive-technology review.
 
+The reviewed OS release, architecture, Playwright and Chromium versions must match the comparison environment. Both the original capture and current Node versions must be valid, satisfy `engines.node` in [package.json](../package.json) and share the same major version. A supported minor or patch difference emits a warning and continues with the actual image comparison. Missing or malformed Node provenance, unsupported versions and major-version differences fail verification. The result retains the exact original and current Node versions; approved metadata and images keep their original provenance.
+
 `npm run test:visual:update` requires explicit authorization and creates pending candidates under `coverage/visual/captures`. It leaves approved images intact and is forbidden in CI. Present the exact candidate bytes and metadata for human approval before promotion; preserve original baseline provenance and failure artifacts.
 
 Keep the original capture result separate from the baseline's human review record. Top-level capture-only or pending-review markers block comparison.
