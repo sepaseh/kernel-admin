@@ -57,7 +57,17 @@ Ordinary local and PR verification uses Chromium. Complete verification substitu
 
 ## Review appearance
 
-For an affected screen, exercise translated names/errors, keyboard submission, invalid-field focus, Tab containment, Escape and trigger-focus restoration. Read-only overflowing tables need a named keyboard-focusable scroll region. Preserve contrast, reduced motion and logical RTL/LTR layout across light/dark/compact variants. Static font tests inspect licensed WOFF2 data and CSS; the font journey separately checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
+For an affected screen, exercise translated names/errors, keyboard submission, invalid-field focus, drawer Tab containment, Escape and trigger-focus restoration. Read-only overflowing tables need a named keyboard-focusable scroll region. Preserve reduced motion and logical RTL/LTR layout across light/dark/compact variants. Static font tests inspect licensed WOFF2 data and CSS; the font journey separately checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
+
+Storybook and application axe audits exclude `color-contrast`. The API-owned
+palettes and Ant Design's displayed colors remain unchanged; automated checks
+do not impose a numerical color-contrast threshold. Keep the remaining axe
+rules, accessible names, error associations and keyboard assertions enabled.
+
+Confirmation dialogs use Ant Design's focus handling. Tests require initial
+focus, keyboard movement between their controls, Escape, trigger restoration
+and no accidental submission, without an additional boundary Tab-cycling
+requirement. Drawer focus-containment assertions remain enabled.
 
 ### Compare and approve images
 

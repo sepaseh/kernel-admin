@@ -175,11 +175,11 @@ for (const isSystemAdmin of [false, true]) {
     await expect(
       page.getByRole("button", { name: catalogs.en.submit, exact: true }),
     ).toBeEnabled();
-    await expect(
-      page
-        .getByRole("spinbutton", { name: catalogs.en.imageWidth, exact: true })
-        .first(),
-    ).toHaveValue("1200");
+    const imageWidth = page
+      .getByLabel(catalogs.en.imageWidth, { exact: true })
+      .first();
+    await expect(imageWidth).toHaveRole("spinbutton");
+    await expect(imageWidth).toHaveValue("1200");
     const languageControl = page.getByRole("combobox", {
       name: catalogs.en.language,
     });

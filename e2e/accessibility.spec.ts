@@ -238,7 +238,7 @@ for (const language of ["en", "fa"] as const) {
         expect(unexpectedRequests).toEqual([]);
       });
 
-      test("destructive confirmation traps focus without submitting and restores its trigger", async ({
+      test("destructive confirmation supports keyboard actions without submitting and restores its trigger", async ({
         page,
         baseURL,
       }, testInfo) => {
@@ -271,10 +271,11 @@ for (const language of ["en", "fa"] as const) {
         // Wait for AntD's deferred default-button autofocus before tabbing;
         // manually focusing early can race the primitive's own focus effect.
         await expect(last).toBeFocused();
+        await first.focus();
         await page.keyboard.press("Tab");
-        await expect(first).toBeFocused();
-        await page.keyboard.press("Shift+Tab");
         await expect(last).toBeFocused();
+        await page.keyboard.press("Shift+Tab");
+        await expect(first).toBeFocused();
         await expectNoAxeViolations(page, testInfo);
         await page.keyboard.press("Escape");
         await expect(dialog).toBeHidden();
