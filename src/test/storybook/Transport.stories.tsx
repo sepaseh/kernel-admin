@@ -7,9 +7,9 @@ import {
 } from "../../../.storybook/request-guard";
 
 import { apiClient } from "@/shared/api";
-import { fetchUser, fetchUsers, updateUserRoles } from "@/features/users/api";
 import { fetchSettings, updateSettings } from "@/features/settings/api";
 import { uploadFile } from "@/features/files/api";
+import { fetchUser, fetchUsers, updateUserRoles } from "@/features/users/api";
 
 const meta = {
   render: () => <h1>Synthetic API isolation</h1>,
@@ -22,31 +22,34 @@ type Story = StoryObj<typeof meta>;
 export const UnexpectedRequest: Story = {
   play: async () => {
     await expect(assertNoUnexpectedRequests).not.toThrow();
-    const requests = [
-      [apiClient.get, "GET"],
-      [apiClient.post, "POST"],
-      [apiClient.put, "PUT"],
-      [apiClient.patch, "PATCH"],
-      [apiClient.del, "DELETE"],
-    ] as const;
-    for (const [request, method] of requests) {
-      await expect(request("/__unexpected_storybook_probe__")).rejects.toThrow(
-        `Unexpected synthetic API request: ${method}`,
+    try {
+      const requests = [
+        [apiClient.get, "GET"],
+        [apiClient.post, "POST"],
+        [apiClient.put, "PUT"],
+        [apiClient.patch, "PATCH"],
+        [apiClient.del, "DELETE"],
+      ] as const;
+      for (const [request, method] of requests) {
+        await expect(
+          request("/__unexpected_storybook_probe__"),
+        ).rejects.toThrow(`Unexpected synthetic API request: ${method}`);
+        await expect(mocked(request)).toHaveBeenCalledOnce();
+      }
+      await expect(
+        apiClient.upload("/__unexpected_storybook_probe__", {}),
+      ).rejects.toThrow("Unexpected synthetic API request: UPLOAD");
+      await expect(mocked(apiClient.upload)).toHaveBeenCalledOnce();
+      await expect(assertNoUnexpectedRequests).toThrow(
+        "UPLOAD /__unexpected_storybook_probe__",
       );
-      await expect(mocked(request)).toHaveBeenCalledOnce();
+      await expect(assertNoUnexpectedRequests).toThrow(
+        "DELETE /__unexpected_storybook_probe__",
+      );
+    } finally {
+      // This story deliberately exercises the failure boundary; ordinary stories never reset it.
+      resetRequestGuard();
     }
-    await expect(
-      apiClient.upload("/__unexpected_storybook_probe__", {}),
-    ).rejects.toThrow("Unexpected synthetic API request: UPLOAD");
-    await expect(mocked(apiClient.upload)).toHaveBeenCalledOnce();
-    await expect(assertNoUnexpectedRequests).toThrow(
-      "UPLOAD /__unexpected_storybook_probe__",
-    );
-    await expect(assertNoUnexpectedRequests).toThrow(
-      "DELETE /__unexpected_storybook_probe__",
-    );
-    // This story deliberately exercises the failure boundary; ordinary stories never reset it.
-    resetRequestGuard();
     await expect(assertNoUnexpectedRequests).not.toThrow();
   },
 };

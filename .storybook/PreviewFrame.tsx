@@ -1,70 +1,128 @@
 import "@/shared/i18n/date";
 
-import { ConfigProvider } from "antd";
-import en from "antd/locale/en_GB";
-import fa from "antd/locale/fa_IR";
+import { theme as antdTheme } from "antd";
 import dayjs from "dayjs";
-import type { CSSProperties, ReactNode } from "react";
-import { useLayoutEffect, useMemo } from "react";
+import type { ReactNode } from "react";
+import { useLayoutEffect, useState } from "react";
 
-import { createThemeConfig } from "@/shared/config";
-import { i18nInstance } from "@/shared/i18n";
-import { sampleLanguages } from "@/test/storybook/fixtures";
-import { StoryAppearanceContext } from "@/test/storybook/StoryAppearance";
+import type { RouteKey } from "@/app/config/routes";
+import { CoreContext, type CoreContextValue } from "@/app/contexts";
+import { AntdProvider } from "@/app/providers";
+import type { ApplicationLanguage, Settings } from "@/features/settings/types";
+import { GlobalStyle } from "@/GlobalStyle";
+import { defaultLogos } from "@/shared/config";
+import type { Theme } from "@/shared/contracts";
+import { dayjsLocaleName, i18n } from "@/shared/i18n";
+
+import { sampleLanguages, sampleSettings } from "./fixtures";
 
 type PreviewFrameProps = {
   children: ReactNode;
-  direction: "ltr" | "rtl";
+  compact?: boolean;
+  direction?: "ltr" | "rtl";
+  initialLanguage?: ApplicationLanguage;
   languageCode: "en" | "fa";
-  themeMode: "dark" | "light";
+  ownsMain?: boolean;
+  themeMode: Theme;
+};
+
+type StorySurfaceProps = {
+  children: ReactNode;
+  language: Settings["language"];
+  ownsMain?: boolean;
+};
+
+const StorySurface = ({ children, language, ownsMain }: StorySurfaceProps) => {
+  const { token } = antdTheme.useToken();
+  const Frame = ownsMain ? "div" : "main";
+
+  return (
+    <Frame
+      data-story-frame
+      dir={language.direction}
+      lang={language.code}
+      style={{
+        backgroundColor: token.colorBgBase,
+        color: token.colorTextBase,
+        minHeight: "100vh",
+        padding: 24,
+      }}
+    >
+      {children}
+    </Frame>
+  );
 };
 
 export const PreviewFrame = ({
   children,
+  compact: toolbarCompact = false,
   direction,
+  initialLanguage,
   languageCode,
+  ownsMain,
   themeMode,
 }: PreviewFrameProps) => {
-  const language = useMemo(
-    () => ({ ...sampleLanguages[languageCode], direction }),
-    [direction, languageCode],
-  );
-  const appearance = useMemo(
-    () => ({ language, theme: themeMode }),
-    [language, themeMode],
-  );
-  const themeConfig = useMemo(() => createThemeConfig(themeMode), [themeMode]);
-  const frameStyle: CSSProperties & { "--admin-focus-color": string } = {
-    "--admin-focus-color": String(themeConfig.token?.colorTextBase),
-    backgroundColor: String(themeConfig.token?.colorBgBase),
-    color: String(themeConfig.token?.colorTextBase),
-    minHeight: "100vh",
+  const language = initialLanguage ?? sampleLanguages[languageCode];
+  const fixtureLanguage: Settings["language"] = {
+    ...language,
+    calendar: language.calendar === "gregorian" ? "gregory" : language.calendar,
+    direction: direction ?? language.direction,
   };
-  useLayoutEffect(() => {
-    document.documentElement.dir = direction;
-    document.documentElement.lang = languageCode;
-  }, [direction, languageCode]);
+  const languageKey = JSON.stringify(fixtureLanguage);
+  const [compact, setCompact] = useState(toolbarCompact);
+  const [currentRoute, setCurrentRoute] = useState<RouteKey>("root");
+  const [settings, setSettings] = useState<Settings>(() => ({
+    ...structuredClone(sampleSettings),
+    language: fixtureLanguage,
+  }));
+  const [theme, setTheme] = useState(themeMode);
+  const [previousCompact, setPreviousCompact] = useState(toolbarCompact);
+  const [previousLanguage, setPreviousLanguage] = useState(languageKey);
+  const [previousTheme, setPreviousTheme] = useState(themeMode);
+
+  if (previousCompact !== toolbarCompact) {
+    setPreviousCompact(toolbarCompact);
+    setCompact(toolbarCompact);
+  }
+  if (previousLanguage !== languageKey) {
+    setPreviousLanguage(languageKey);
+    setSettings((current) => ({ ...current, language: fixtureLanguage }));
+  }
+  if (previousTheme !== themeMode) {
+    setPreviousTheme(themeMode);
+    setTheme(themeMode);
+  }
+
+  const value: CoreContextValue = {
+    compact,
+    currentRoute,
+    language: settings.language,
+    logos: {
+      dark: settings.darkLogo?.url ?? defaultLogos.dark,
+      light: settings.lightLogo?.url ?? defaultLogos.light,
+    },
+    setCompact,
+    setCurrentRoute,
+    setSettings,
+    setTheme,
+    settings,
+    theme,
+  };
 
   useLayoutEffect(() => {
-    void i18nInstance.changeLanguage(language.code);
-    dayjs.calendar(
-      language.calendar === "gregorian" ? "gregory" : language.calendar,
-    );
-    dayjs.locale(language.code === "en" ? "en-gb" : language.code);
-  }, [language.calendar, language.code]);
+    void i18n.changeLanguage(settings.language.code);
+    dayjs.calendar(settings.language.calendar);
+    dayjs.locale(dayjsLocaleName(settings.language.code));
+  }, [settings.language.calendar, settings.language.code]);
 
   return (
-    <ConfigProvider
-      direction={direction}
-      form={{ scrollToFirstError: { focus: true } }}
-      locale={languageCode === "fa" ? fa : en}
-      theme={themeConfig}
-    >
-      <StoryAppearanceContext.Provider value={appearance}>
-        <div dir={direction} lang={languageCode} style={frameStyle}>
+    <CoreContext.Provider value={value}>
+      <AntdProvider>
+        <GlobalStyle />
+        <StorySurface language={settings.language} ownsMain={ownsMain}>
           {children}
-        </div>
-      </StoryAppearanceContext.Provider>
-    </ConfigProvider>
+        </StorySurface>
+      </AntdProvider>
+    </CoreContext.Provider>
   );
 };

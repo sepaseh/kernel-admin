@@ -1,11 +1,4 @@
-export {
-  changePassword,
-  forgotPassword,
-  login,
-  logout,
-  register,
-  requestOtp,
-} from "./api";
+export { changePassword, forgotPassword, login, logout, register } from "./api";
 export type {
   ChangePasswordParams,
   ForgotPasswordParams,

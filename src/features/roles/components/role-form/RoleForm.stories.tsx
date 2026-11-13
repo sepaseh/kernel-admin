@@ -1,10 +1,14 @@
+import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
-import { createRole } from "@/features/roles/api";
-import { permissions, roles } from "@/test/storybook/fixtures";
+import {
+  permissions,
+  roles,
+  sampleAccount,
+} from "../../../../../.storybook/fixtures";
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { StoryShell } from "../../../../../.storybook/StoryShell";
 
 import { RoleForm } from "./RoleForm";
 
@@ -35,9 +39,10 @@ export const Create: Story = {
       dialog.getByRole("button", { name: i18nInstance.t("submit") }),
     );
     await waitFor(() =>
-      expect(createRole).toHaveBeenCalledWith(
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/roles",
         { name: "Reviewers", permissions: ["users.read"] },
-        expect.any(AbortSignal),
+        { signal: expect.any(AbortSignal) },
       ),
     );
     await waitFor(() => expect(args.onFinish).toHaveBeenCalledTimes(1));
@@ -85,5 +90,27 @@ export const ValidationErrors: Story = {
       "aria-invalid",
       "true",
     );
+  },
+};
+
+export const DeniedCreate: Story = {
+  args: { onFinish: fn(), options: { permissions } },
+  render: (args) => (
+    <StoryShell
+      initialEntries={["/roles#create"]}
+      initialUser={{
+        ...sampleAccount,
+        isSystemAdmin: false,
+        permissions: ["roles.read"],
+      }}
+    >
+      <RoleForm {...args} />
+    </StoryShell>
+  ),
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement.ownerDocument.body).queryByRole("dialog"),
+    ).not.toBeInTheDocument();
+    await expect(apiClient.get).not.toHaveBeenCalled();
   },
 };

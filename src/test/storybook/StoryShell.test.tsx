@@ -14,14 +14,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { PreviewFrame } from "../../../.storybook/PreviewFrame";
 import { useCore } from "@/app/hooks";
-import { fetchCurrentUser } from "@/features/account/api";
+import { apiClient } from "@/shared/api";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { i18nInstance } from "@/shared/i18n";
 
-import { sampleAccount, sampleLanguages, sampleSettings } from "./fixtures";
-import { StoryShell } from "./StoryShell";
+import {
+  sampleAccount,
+  sampleLanguages,
+  sampleSettings,
+} from "../../../.storybook/fixtures";
+import { StoryShell } from "../../../.storybook/StoryShell";
 
-vi.mock("@/features/account/api", () => ({ fetchCurrentUser: vi.fn() }));
+vi.mock("@/shared/api", () => ({ apiClient: { get: vi.fn() } }));
 
 const SessionProbe = () => {
   const { currentUser, fetchCurrentUser, clearSession } =
@@ -214,7 +218,7 @@ describe("StoryShell appearance ownership", () => {
   });
 
   it("supplies and reloads current-user Outlet context and handles session cleanup", async () => {
-    vi.mocked(fetchCurrentUser).mockResolvedValueOnce({
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
       ...sampleAccount,
       firstName: "Updated story user",
     });

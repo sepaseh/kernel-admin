@@ -1,11 +1,11 @@
+import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { sampleAccount } from "@/test/storybook/fixtures";
+import { sampleAccount } from "../../../.storybook/fixtures";
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { StoryShell } from "../../../.storybook/StoryShell";
 
-import { fetchUsers, updateUserPassword } from "./api";
 import { UsersPage } from "./Users";
 
 const meta = {
@@ -33,9 +33,7 @@ export const Populated: Story = {
 };
 
 export const Empty: Story = {
-  beforeEach() {
-    mocked(fetchUsers).mockResolvedValue({ items: [], total: 0 });
-  },
+  parameters: { fixtureState: "users-empty" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("table")).toBeVisible();
@@ -44,9 +42,7 @@ export const Empty: Story = {
 };
 
 export const Loading: Story = {
-  beforeEach() {
-    mocked(fetchUsers).mockReturnValue(new Promise(() => undefined));
-  },
+  parameters: { fixtureState: "users-loading" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("table")).toBeVisible();
@@ -55,13 +51,11 @@ export const Loading: Story = {
 };
 
 export const LoadError: Story = {
-  beforeEach() {
-    mocked(fetchUsers).mockRejectedValue(new Error("Unable to load users"));
-  },
+  parameters: { fixtureState: "users-error" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    const message = await body.findByText("Unable to load users");
+    const message = await body.findByText("Synthetic users unavailable");
     await waitFor(() => expect(message).toBeVisible());
     await expect(canvas.getByRole("table")).toBeVisible();
   },
@@ -86,7 +80,7 @@ export const PasswordConfirmation: Story = {
       dialog.getByRole("button", { name: i18nInstance.t("no") }),
     );
     await waitFor(() => expect(confirmation).not.toBeVisible());
-    await expect(updateUserPassword).not.toHaveBeenCalled();
+    await expect(apiClient.put).not.toHaveBeenCalled();
   },
 };
 
@@ -117,4 +111,105 @@ export const ReadOnly: Story = {
       <UsersPage />
     </StoryShell>
   ),
+};
+
+export const CreateDrawer: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("row", { name: /Ahmadi/ });
+    await userEvent.click(
+      canvas.getByRole("button", { name: i18nInstance.t("create") }),
+    );
+    const dialog = within(
+      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
+    );
+    const firstName = dialog.getByLabelText(i18nInstance.t("firstName"));
+    await waitFor(() => expect(firstName).toHaveFocus());
+    await userEvent.type(firstName, "Katherine");
+    await userEvent.type(
+      dialog.getByLabelText(i18nInstance.t("lastName")),
+      "Johnson",
+    );
+    await userEvent.type(
+      dialog.getByLabelText(i18nInstance.t("mobile")),
+      "09122222222",
+    );
+    await expect(
+      canvas.getByRole("textbox", { name: i18nInstance.t("firstName") }),
+    ).not.toHaveAttribute("id", firstName.id);
+    await userEvent.click(
+      dialog.getByRole("button", { name: i18nInstance.t("submit") }),
+    );
+    await expect(
+      await canvas.findByRole("row", { name: /Johnson/ }),
+    ).toBeVisible();
+    await expect(apiClient.post).toHaveBeenCalledWith(
+      "/users",
+      {
+        firstName: "Katherine",
+        lastName: "Johnson",
+        mobile: "09122222222",
+        status: "active",
+        password: expect.stringMatching(/^.{16}$/),
+      },
+      { signal: expect.any(AbortSignal) },
+    );
+    await waitFor(() =>
+      expect(
+        within(canvasElement.ownerDocument.body).queryByRole("dialog"),
+      ).not.toBeInTheDocument(),
+    );
+  },
+};
+
+export const UpdateDrawer: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = await canvas.findByRole("row", { name: /Karimi/ });
+    await userEvent.click(
+      within(row).getByRole("button", { name: i18nInstance.t("update") }),
+    );
+    const dialog = within(
+      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
+    );
+    const firstName = dialog.getByLabelText(i18nInstance.t("firstName"));
+    await waitFor(() => expect(firstName).toHaveFocus());
+    await expect(firstName).toHaveValue("Ali");
+    await expect(dialog.getByLabelText(i18nInstance.t("mobile"))).toHaveValue(
+      "09122222222",
+    );
+  },
+};
+
+export const RoleDrawer: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = await canvas.findByRole("row", { name: /Ahmadi/ });
+    await userEvent.click(
+      within(row).getByRole("button", { name: i18nInstance.t("roles") }),
+    );
+    const dialog = within(
+      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
+    );
+    const administrator = await dialog.findByRole("checkbox", {
+      name: "Administrator",
+    });
+    await waitFor(() => expect(administrator).toBeChecked());
+    await userEvent.click(dialog.getByRole("checkbox", { name: "Editor" }));
+    await userEvent.click(
+      dialog.getByRole("button", { name: i18nInstance.t("submit") }),
+    );
+    await expect(apiClient.put).toHaveBeenCalledWith(
+      "/users/user-1/roles",
+      {
+        roleIds: ["role-admin", "role-editor"],
+      },
+      { signal: expect.any(AbortSignal) },
+    );
+    await waitFor(() =>
+      expect(
+        within(canvasElement.ownerDocument.body).queryByRole("dialog"),
+      ).not.toBeInTheDocument(),
+    );
+  },
 };

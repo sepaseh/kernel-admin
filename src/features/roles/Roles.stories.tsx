@@ -1,17 +1,14 @@
+import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { permissions, sampleAccount } from "@/test/storybook/fixtures";
+import { sampleAccount } from "../../../.storybook/fixtures";
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { StoryShell } from "../../../.storybook/StoryShell";
 
-import { fetchPermissions, fetchRoles } from "./api";
 import { RolesPage } from "./Roles";
 
 const meta = {
-  async beforeEach() {
-    mocked(fetchPermissions).mockResolvedValue(permissions);
-  },
   component: RolesPage,
   render: () => (
     <StoryShell initialEntries={["/roles"]}>
@@ -62,9 +59,7 @@ export const EditSelectedRole: Story = {
 };
 
 export const Empty: Story = {
-  beforeEach() {
-    mocked(fetchRoles).mockResolvedValue([]);
-  },
+  parameters: { fixtureState: "roles-empty" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("table")).toBeVisible();
@@ -73,9 +68,7 @@ export const Empty: Story = {
 };
 
 export const Loading: Story = {
-  beforeEach() {
-    mocked(fetchRoles).mockReturnValue(new Promise(() => undefined));
-  },
+  parameters: { fixtureState: "roles-loading" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("table")).toBeVisible();
@@ -84,13 +77,11 @@ export const Loading: Story = {
 };
 
 export const LoadError: Story = {
-  beforeEach() {
-    mocked(fetchRoles).mockRejectedValue(new Error("Unable to load roles"));
-  },
+  parameters: { fixtureState: "roles-error" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    const message = await body.findByText("Unable to load roles");
+    const message = await body.findByText("Synthetic roles unavailable");
     await waitFor(() => expect(message).toBeVisible());
     await expect(canvas.getByRole("table")).toBeVisible();
   },
@@ -122,4 +113,57 @@ export const ReadOnly: Story = {
       <RolesPage />
     </StoryShell>
   ),
+};
+
+export const CreateRole: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await canvas.findByText("Administrator");
+    await userEvent.click(
+      canvas.getByRole("button", { name: i18nInstance.t("create") }),
+    );
+    const dialog = within(await body.findByRole("dialog"));
+    const name = dialog.getByLabelText(i18nInstance.t("name"));
+    await waitFor(() => expect(name).toHaveFocus());
+    await userEvent.type(name, "Reviewers");
+    await userEvent.click(dialog.getByRole("checkbox", { name: "View users" }));
+    await userEvent.click(
+      dialog.getByRole("button", { name: i18nInstance.t("submit") }),
+    );
+    await expect(await canvas.findByText("Reviewers")).toBeVisible();
+    await expect(apiClient.post).toHaveBeenCalledWith(
+      "/roles",
+      {
+        name: "Reviewers",
+        permissions: ["users.read"],
+      },
+      { signal: expect.any(AbortSignal) },
+    );
+    await waitFor(() =>
+      expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  },
+};
+
+export const ValidateRole: Story = {
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByText("Administrator");
+    await userEvent.click(
+      within(canvasElement).getByRole("button", {
+        name: i18nInstance.t("create"),
+      }),
+    );
+    const dialog = within(
+      await within(canvasElement.ownerDocument.body).findByRole("dialog"),
+    );
+    await userEvent.click(
+      dialog.getByRole("button", { name: i18nInstance.t("submit") }),
+    );
+    await expect(dialog.getByLabelText(i18nInstance.t("name"))).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(apiClient.post).not.toHaveBeenCalled();
+  },
 };

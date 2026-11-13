@@ -125,6 +125,9 @@ for (const language of ["en", "fa"] as const) {
       drawer.getByLabel(messages.mobile, { exact: true }),
     ).toHaveValue(userRecord.mobile);
     await expect(
+      page.locator(".ant-drawer-content-wrapper").filter({ has: drawer }),
+    ).not.toHaveClass(/ant-drawer-panel-motion-/);
+    await expect(
       drawer.getByLabel(messages.firstName, { exact: true }),
     ).toBeFocused();
     await drawer.getByLabel(messages.status, { exact: true }).click();

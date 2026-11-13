@@ -3,7 +3,7 @@ import { Route, Routes } from "react-router";
 import { expect, within } from "storybook/test";
 
 import { getAccessToken } from "@/shared/api";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { StoryShell } from "../../../.storybook/StoryShell";
 
 import { AuthLayout } from "./Auth";
 
@@ -31,6 +31,7 @@ const AuthLayoutStory = () => (
 
 const meta = {
   component: AuthLayout,
+  parameters: { ownsMain: true },
   render: () => <AuthLayoutStory />,
   title: "Layouts/Auth",
 } satisfies Meta<typeof AuthLayout>;

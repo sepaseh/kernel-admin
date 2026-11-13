@@ -1,12 +1,12 @@
+import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { i18nInstance } from "@/shared/i18n";
-import { sampleAccount, sampleLanguages } from "@/test/storybook/fixtures";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { sampleLanguages } from "../../../.storybook/fixtures";
+import { StoryShell } from "../../../.storybook/StoryShell";
 
 import { AccountPage } from "./Account";
-import { updateProfile } from "./api";
 
 const meta = {
   component: AccountPage,
@@ -22,12 +22,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  beforeEach() {
-    mocked(updateProfile).mockResolvedValue({
-      ...sampleAccount,
-      firstName: "Samira",
-    });
-  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
@@ -38,9 +32,10 @@ export const Default: Story = {
       canvas.getByRole("button", { name: i18nInstance.t("saveProfile") }),
     );
     await waitFor(() =>
-      expect(updateProfile).toHaveBeenCalledWith(
+      expect(apiClient.patch).toHaveBeenCalledWith(
+        "/account/update-profile",
         { firstName: "Samira", lastName: "Admin" },
-        expect.any(AbortSignal),
+        { signal: expect.any(AbortSignal) },
       ),
     );
     await waitFor(() =>
@@ -76,4 +71,31 @@ export const DarkRtl: Story = {
       <AccountPage />
     </StoryShell>
   ),
+};
+
+export const RejectMismatchedPassword: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(
+      canvas.getByLabelText(i18nInstance.t("currentPassword")),
+      "Synthetic-current!",
+    );
+    await userEvent.type(
+      canvas.getByLabelText(i18nInstance.t("newPassword")),
+      "Synthetic-new!",
+    );
+    await userEvent.type(
+      canvas.getByLabelText(i18nInstance.t("confirmPassword")),
+      "Different-new!",
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: i18nInstance.t("changePassword") }),
+    );
+    await waitFor(() =>
+      expect(
+        canvas.getByText(i18nInstance.t("passwordMismatch")),
+      ).toBeVisible(),
+    );
+    await expect(apiClient.post).not.toHaveBeenCalled();
+  },
 };

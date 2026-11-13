@@ -1,20 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, mocked, userEvent, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { StoryShell } from "../../../.storybook/StoryShell";
 
-import {
-  createCalendarDate,
-  deleteCalendarDate,
-  fetchCalendarDates,
-} from "./api";
+import { apiClient } from "@/shared/api";
+import { sampleAccount } from "../../../.storybook/fixtures";
 import { CalendarPage } from "./Calendar";
 
 const meta = {
-  async beforeEach() {
-    mocked(fetchCalendarDates).mockResolvedValue(["2026-09-15", "2026-09-23"]);
-  },
   component: CalendarPage,
   render: () => (
     <StoryShell initialEntries={["/calendar"]}>
@@ -42,7 +36,27 @@ export const Default: Story = {
     await userEvent.click(
       canvas.getByRole("button", { name: i18nInstance.t("previousMonth") }),
     );
-    await expect(createCalendarDate).not.toHaveBeenCalled();
-    await expect(deleteCalendarDate).not.toHaveBeenCalled();
+    await expect(apiClient.post).not.toHaveBeenCalled();
+    await expect(apiClient.del).not.toHaveBeenCalled();
   },
+};
+
+export const ReadOnly: Story = {
+  render: () => (
+    <StoryShell
+      initialUser={{
+        ...sampleAccount,
+        isSystemAdmin: false,
+        permissions: ["calendar.read"],
+      }}
+    >
+      <CalendarPage />
+    </StoryShell>
+  ),
+  ...Default,
+};
+
+export const PersianCalendar: Story = {
+  globals: { language: "fa", theme: "dark" },
+  ...Default,
 };

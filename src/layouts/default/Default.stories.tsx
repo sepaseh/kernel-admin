@@ -1,3 +1,4 @@
+import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ComponentProps } from "react";
 import { useEffect } from "react";
@@ -6,12 +7,10 @@ import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
 
 import type { RouteKey } from "@/app/config";
 import { useCore } from "@/app/hooks";
-import { fetchCurrentUser } from "@/features/account/api.ts";
 import type { CurrentUser } from "@/features/account/types.ts";
-import { logout } from "@/features/auth/api.ts";
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
-import { sampleLanguages } from "@/test/storybook/fixtures";
+import { StoryShell } from "../../../.storybook/StoryShell";
+import { sampleLanguages } from "../../../.storybook/fixtures";
 
 import { DefaultLayout } from "./Default";
 
@@ -56,11 +55,8 @@ const DefaultLayoutStory = (props: DefaultLayoutStoryProps) => (
 );
 
 const meta = {
-  beforeEach() {
-    mocked(fetchCurrentUser).mockReset().mockResolvedValue(account);
-    mocked(logout).mockReset().mockResolvedValue(undefined);
-  },
   component: DefaultLayout,
+  parameters: { ownsMain: true },
   render: () => <DefaultLayoutStory />,
   title: "Layouts/Default",
 } satisfies Meta<typeof DefaultLayout>;
@@ -109,17 +105,15 @@ export const Mobile: Story = {
     await waitFor(() =>
       expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
     );
-    await expect(mocked(fetchCurrentUser)).toHaveBeenCalledOnce();
+    await expect(mocked(apiClient.get)).toHaveBeenCalledOnce();
   },
 };
 
 export const LoadingAccount: Story = {
-  beforeEach() {
-    mocked(fetchCurrentUser).mockReturnValue(new Promise(() => undefined));
-  },
+  parameters: { fixtureState: "account-loading" },
   render: () => <DefaultLayoutStory withUser={false} />,
   play: async ({ canvasElement }) => {
-    await expect(mocked(fetchCurrentUser)).toHaveBeenCalledOnce();
+    await expect(mocked(apiClient.get)).toHaveBeenCalledOnce();
     await expect(canvasElement.querySelector(".ant-spin")).toBeVisible();
     await expect(
       within(canvasElement).queryByRole("heading", {
@@ -151,5 +145,39 @@ export const DarkRtl: Story = {
       "lang",
       "fa",
     );
+  },
+};
+
+export const AccountFailure: Story = {
+  parameters: { fixtureState: "account-error" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(i18nInstance.t("currentUserLoadFailed")),
+    ).toBeVisible();
+    await expect(
+      within(canvasElement.ownerDocument.body).queryByLabelText(
+        i18nInstance.t("loading"),
+      ),
+    ).not.toBeInTheDocument();
+  },
+};
+
+export const Logout: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("heading", { name: "Dashboard content" });
+    await userEvent.click(
+      canvas.getByRole("button", { name: i18nInstance.t("account") }),
+    );
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByText(
+        i18nInstance.t("logout"),
+      ),
+    );
+    await expect(
+      await canvas.findByText("Signed out destination"),
+    ).toBeVisible();
+    await expect(apiClient.post).toHaveBeenCalledWith("/auth/logout");
   },
 };

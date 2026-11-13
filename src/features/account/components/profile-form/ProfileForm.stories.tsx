@@ -1,12 +1,12 @@
+import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
 
 import { i18nInstance } from "@/shared/i18n";
 import { deferred } from "@/test/deferred";
-import { sampleAccount } from "@/test/storybook/fixtures";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { sampleAccount } from "../../../../../.storybook/fixtures";
+import { StoryShell } from "../../../../../.storybook/StoryShell";
 
-import { updateProfile } from "../../api";
 import { ProfileForm } from "./ProfileForm";
 
 const meta = {
@@ -33,9 +33,10 @@ export const Default: Story = {
       canvas.getByRole("button", { name: i18nInstance.t("saveProfile") }),
     );
     await waitFor(() =>
-      expect(updateProfile).toHaveBeenCalledWith(
+      expect(apiClient.patch).toHaveBeenCalledWith(
+        "/account/update-profile",
         { firstName: "Samira", lastName: sampleAccount.lastName },
-        expect.any(AbortSignal),
+        { signal: expect.any(AbortSignal) },
       ),
     );
     await waitFor(() =>
@@ -59,13 +60,13 @@ export const Validation: Story = {
     await waitFor(() =>
       expect(firstName).toHaveAttribute("aria-invalid", "true"),
     );
-    await expect(updateProfile).not.toHaveBeenCalled();
+    await expect(apiClient.patch).not.toHaveBeenCalled();
   },
 };
 
 export const RequestFailure: Story = {
   beforeEach() {
-    mocked(updateProfile).mockRejectedValueOnce(
+    mocked(apiClient.patch).mockRejectedValueOnce(
       new Error("Profile update unavailable"),
     );
   },
@@ -91,15 +92,15 @@ export const RequestFailure: Story = {
 
 export const Submitting: Story = {
   beforeEach() {
-    const pending = deferred<Awaited<ReturnType<typeof updateProfile>>>();
-    mocked(updateProfile).mockReturnValue(pending.promise);
+    const pending = deferred<typeof sampleAccount>();
+    mocked(apiClient.patch).mockReturnValue(pending.promise);
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(
       canvas.getByRole("button", { name: i18nInstance.t("saveProfile") }),
     );
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledOnce());
+    await waitFor(() => expect(apiClient.patch).toHaveBeenCalledOnce());
     await expect(
       canvas.getByLabelText(i18nInstance.t("firstName")),
     ).toBeDisabled();
