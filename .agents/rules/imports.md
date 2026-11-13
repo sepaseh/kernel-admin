@@ -21,14 +21,17 @@ in `scripts/check-boundaries.mjs`; they are not blanket access to either feature
 Import each capability through its declared module. Cross-feature `index.ts`
 targets require explicit named capabilities: Login, Register and Forgot Password
 may use their declared authentication services, OTP hook and erased request models.
+The account password form may use only `changePassword` and the erased
+`ChangePasswordParams` through the authentication public index. Account models may
+use only erased `PermissionKey` and `User` from their owning public indexes.
 Settings may use the files upload service and its erased `FileContext`/`StoredFile`
 models. Users may use its declared roles list service and erased `Role` model.
 Other feature barrels remain rejected. Import and re-export edges follow the same exact module rules.
 Type-only imports must use their declared erased contract edges.
 
 Feature screens may use only the app hook, route configuration and access-policy
-modules declared by the checker. Settings, Files, Calendar, Roles and Users screens
-and the declared role/user forms may also import the erased `DefaultLayoutContext`
+modules declared by the checker. Account, Settings, Files, Calendar, Roles and Users screens
+and the declared account/role/user forms may also import the erased `DefaultLayoutContext`
 through the default layout's public index. Other app internals, providers, route shells
 and entry points are outside the feature dependency interface. Keep application
 composition in `app` and route shells in `layouts`.

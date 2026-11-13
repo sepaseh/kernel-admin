@@ -1,4 +1,4 @@
-import type { Account } from "@/features/account";
+import type { CurrentUser } from "@/features/account";
 import type { StoredFile } from "@/features/files";
 import type { PermissionGroup, Role } from "@/features/roles";
 import type { ApplicationLanguage, Settings } from "@/features/settings/types";
@@ -58,8 +58,7 @@ export const sampleFiles: StoredFile[] = [
   { id: "file-unused", url: syntheticImage, size: 1200, isUsed: false },
 ];
 
-export const sampleAccount: Account = {
-  email: "admin@example.com",
+export const sampleAccount: CurrentUser = {
   firstName: "Sample",
   id: "storybook-user",
   isSystemAdmin: true,
@@ -74,7 +73,6 @@ export const sampleAccount: Account = {
     "roles.update",
   ],
   status: "active",
-  username: "admin",
 };
 
 export const roles: Role[] = [

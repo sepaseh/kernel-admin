@@ -15,7 +15,6 @@ for (const language of ["en", "fa"] as const) {
     const listQueries: string[] = [];
     let statusUpdates = 0;
     const userRecord = {
-      email: "ada@example.com",
       first_name: "Ada",
       id: "user-1",
       is_system_admin: false,
@@ -23,7 +22,6 @@ for (const language of ["en", "fa"] as const) {
       mobile: "09121111111",
       roles: [],
       status: "active",
-      username: "ada",
     };
     await page.addInitScript(() => {
       localStorage.setItem("theme", JSON.stringify("light"));

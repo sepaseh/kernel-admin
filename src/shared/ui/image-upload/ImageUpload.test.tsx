@@ -129,7 +129,7 @@ describe("image upload request lifecycle", () => {
     expect(upload).toHaveBeenCalledTimes(2);
     expect(onError).toHaveBeenCalledTimes(1);
     expect(onBusyChange).toHaveBeenLastCalledWith(false);
-    expect(getFileInput(container).disabled).toBe(false);
+    await waitFor(() => expect(getFileInput(container).disabled).toBe(false));
   });
 
   it.each(["success", "failure"] as const)(

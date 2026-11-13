@@ -1,37 +1,37 @@
-import { useAntdToken } from "antd-style";
 import { useEffect } from "react";
 import { Outlet } from "react-router";
 
-import { useCore } from "@/app/hooks";
+import { useAntd } from "@/app/hooks";
 import { clearAccessToken } from "@/shared/api";
 
 export const AuthLayout = () => {
-  const { setUser } = useCore();
-  const token = useAntdToken();
+  const { token } = useAntd();
 
   useEffect(() => {
     clearAccessToken();
-    setUser();
-  }, [setUser]);
+  }, []);
 
   return (
     <main
       style={{
         alignItems: "center",
         backgroundColor: token.colorBgLayout,
+        boxSizing: "border-box",
         display: "flex",
         flexGrow: 1,
         justifyContent: "center",
+        minHeight: "100dvh",
         padding: token.paddingSM,
       }}
     >
       <div
         style={{
           backgroundColor: token.colorBgContainer,
-          borderRadius: 8,
+          borderRadius: token.borderRadiusLG,
+          boxSizing: "border-box",
           color: token.colorTextBase,
           maxWidth: token.screenXS,
-          padding: 32,
+          padding: token.paddingLG,
           width: "100%",
         }}
       >

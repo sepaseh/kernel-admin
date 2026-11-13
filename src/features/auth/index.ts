@@ -7,6 +7,7 @@ export {
   requestOtp,
 } from "./api";
 export type {
+  ChangePasswordParams,
   ForgotPasswordParams,
   LoginParams,
   RegisterParams,

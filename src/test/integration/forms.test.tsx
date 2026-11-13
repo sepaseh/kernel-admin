@@ -6,7 +6,7 @@ import type * as ReactI18next from "react-i18next";
 import { MemoryRouter, Outlet, Route, Routes, useNavigate } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Account } from "@/features/account";
+import type { CurrentUser } from "@/features/account";
 import * as rolesApi from "@/features/roles/api";
 import { RoleForm } from "@/features/roles/components/role-form/RoleForm";
 import * as usersApi from "@/features/users/api";
@@ -23,7 +23,7 @@ import { render, screen } from "@/test/render";
 const mocks = vi.hoisted(() => {
   const messageAPI = { error: vi.fn(), success: vi.fn() };
   const notificationAPI = { success: vi.fn() };
-  const currentUser: Account = {
+  const currentUser: CurrentUser = {
     firstName: "Synthetic",
     id: "admin-1",
     isSystemAdmin: true,

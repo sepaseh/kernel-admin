@@ -7,16 +7,20 @@ import { render, screen } from "@/test/render";
 
 import { AuthLayout } from "./Auth";
 
-const mocks = vi.hoisted(() => ({
-  setUser: vi.fn(),
-}));
-
 vi.mock("@/shared/api", () => ({
   clearAccessToken: vi.fn(),
 }));
 
 vi.mock("@/app/hooks", () => ({
-  useCore: () => ({ setUser: mocks.setUser }),
+  useAntd: () => ({
+    token: {
+      colorBgLayout: "#f5f5f5",
+      colorBgContainer: "#fafafa",
+      paddingSM: 8,
+      paddingLG: 24,
+      screenXS: 480,
+    },
+  }),
 }));
 
 vi.mock("antd-style", () => ({
@@ -49,6 +53,5 @@ describe("AuthLayout", () => {
       backgroundColor: "#fafafa",
     });
     expect(clearAccessToken).toHaveBeenCalledOnce();
-    expect(mocks.setUser).toHaveBeenCalledWith();
   });
 });

@@ -30,7 +30,6 @@ const mockAccount = async (
     await route.fulfill({
       contentType: "application/json",
       json: {
-        email: "manager@example.com",
         first_name: "Test",
         id: "manager-1",
         is_system_admin: isSystemAdmin,
@@ -38,7 +37,6 @@ const mockAccount = async (
         mobile: "09120000000",
         permissions,
         status: "active",
-        username: "manager",
       },
     });
   });
@@ -305,7 +303,6 @@ test.describe("role and user management", () => {
           json: {
             items: [
               {
-                email: "ada@example.com",
                 first_name: "Ada",
                 id: "user-1",
                 is_system_admin: false,
@@ -313,7 +310,6 @@ test.describe("role and user management", () => {
                 mobile: "09121111111",
                 roles: [],
                 status: "active",
-                username: "ada",
               },
             ],
             total: 1,

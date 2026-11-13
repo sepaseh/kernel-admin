@@ -1,7 +1,7 @@
-import type { Account } from "@/features/account";
+import type { CurrentUser } from "@/features/account";
 
 export type DefaultLayoutContext = {
   clearSession: () => void;
-  currentUser: Account;
+  currentUser: CurrentUser;
   fetchCurrentUser: () => Promise<void>;
 };
