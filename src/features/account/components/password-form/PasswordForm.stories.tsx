@@ -75,9 +75,9 @@ export const RejectMismatch: Story = {
     await userEvent.click(
       canvas.getByRole("button", { name: i18n.t("changePassword") }),
     );
-    await expect(
-      await canvas.findByText(i18n.t("passwordMismatch")),
-    ).toBeVisible();
+    await waitFor(() =>
+      expect(canvas.getByText(i18n.t("passwordMismatch"))).toBeVisible(),
+    );
     await expect(apiClient.post).not.toHaveBeenCalled();
   },
 };
