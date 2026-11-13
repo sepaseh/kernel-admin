@@ -96,7 +96,7 @@ Keep the first failed command, runtime conditions and diagnostics. Distinguish a
 
 Preserve assertions, stress inputs, measured reports and declared product-test deadlines. Numerical coverage/bundle/performance and analyzer scores are advisory under [code quality](../.agents/rules/code-quality.md); they do not justify source abstractions or shallow tests. Lighthouse remains a real owned-preview audit under [the current performance policy](validation.md#resolve-a-failed-check); injected orchestration tests do not establish an audit. Docker, deployed smoke/staging and DAST remain separate authorized operations described in [deployment](deployment.md).
 
-When production source must remain unchanged, record the exact file, trigger,
-test evidence and minimal proposal in [source-change requests](source-change-requests.md)
-and discuss an edit first. Correct a faulty fixture only with supporting evidence;
-do not weaken a genuine regression to make the check pass.
+When production source must remain unchanged, present the exact file, trigger,
+test evidence and minimal proposal in the current chat or PR and discuss an edit
+first. Correct a faulty fixture only with supporting evidence; do not weaken a
+genuine regression to make the check pass.

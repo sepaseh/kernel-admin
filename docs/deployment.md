@@ -26,11 +26,13 @@ Use only the reviewed synthetic examples as source references: [browser build va
 | `VITE_API_BASE_URL`      | Exact HTTPS API origin; HTTP is allowed only on explicit loopback. No credentials or URL path. |
 | `VITE_APP_BASE_URL`      | `/` or canonical slash-delimited segments ending in `/`.                                       |
 | `VITE_RELEASE_ID`        | New immutable safe release identifier, consistent across build, package and host.              |
-| `VITE_OBSERVABILITY_URL` | Optional public reporting URL; blank disables reporting.                                       |
+| `VITE_OBSERVABILITY_URL` | Optional public reporting receiver; blank disables default network delivery.                   |
 | `ADMIN_HOST`             | Bare public admin hostname used by the hosting configuration.                                  |
 | `PUBLIC_ASSET_ORIGIN`    | Optional explicit public media origin for hosting policy.                                      |
 
 Browser build values are public. The API must allow the actual frontend origin and independently authorize every request. Changing a build value requires a new build; serving an old bundle with different host settings does not rewrite it.
+
+The [optional reporter](../src/shared/lib/observability.ts) uses the configured receiver for sanitized error and performance events. The receiver is separate from this standalone frontend; building or packaging the panel does not provision one. The examples leave the receiver URL blank.
 
 ## Build an immutable package
 

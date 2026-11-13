@@ -8,7 +8,7 @@ Run the smallest check that covers the files you changed, then broaden before ha
 - Lint: `npm run lint`
 - Format: `npm run format:check`
 
-Storybook build and browser checks are planned for the Storybook phase and are not available in this snapshot.
+Select admitted Storybook build and browser checks from the manifest.
 
 Select current commands from [the manifest](../validation.json). Start with focused checks, then run its declared blocking `full` profile on the exact proposed snapshot before an authorized commit, push or PR handoff. The profile follows the admitted phase: module/workshop verification does not establish a runnable panel, while admitted application checks need their actual results. Hosted visual and complete compatibility responsibilities follow the manifest separately. Reuse genuine reports for the same checked source instead of repeating the suite for analysis.
 

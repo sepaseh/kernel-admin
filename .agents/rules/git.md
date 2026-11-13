@@ -25,6 +25,16 @@ and required checks from [the manifest](../validation.json). A false readiness f
 does not authorize application activation; a true flag still needs genuine
 current-revision evidence. Disclose capabilities and checks that remain unpublished.
 
+## Before publication
+
+Before opening a PR or pushing further changes, apply the mandatory
+[PR scope policy](pull-requests.md): plan for at most 80 changed-file entries and
+verify the complete live base-to-proposed-head diff stays within 100. Count the
+whole PR, including deletions, renames and binaries, and recount after base or
+scope changes. Ordinary commit/push authorization does not waive the maximum.
+Prepare the concrete split or scoped exception for user review before publishing
+an oversized PR; do not silently rewrite or recreate an existing one.
+
 ## Before committing
 
 1. Run `git status`.

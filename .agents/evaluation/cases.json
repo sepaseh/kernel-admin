@@ -38,24 +38,29 @@
     {
       "id": "publication-rules",
       "prompt": {
-        "en": "Without editing files, trace the current publication phase, exact full validation gate and required GitHub review checks. Explain what still needs real provider evidence."
+        "en": "Without editing or publishing, trace the current publication phase, exact full validation gate and required GitHub review checks. Explain what still needs real provider evidence. Explain how to handle an initial PR with 101 changed files and a later push that would expand a PR beyond 100, including counting against its actual base and handling an existing oversized PR."
       },
       "taskIds": ["publication-validation"],
       "evidence": [
         ".github/bootstrap-policy.json",
         ".agents/validation.json",
+        ".agents/rules/pull-requests.md",
+        ".agents/skills/create-pr/SKILL.md",
         "scripts/check-ci.mjs",
         ".coderabbit.yaml"
       ],
       "mustExplain": [
         "Changes reach protected main through a reviewed PR.",
+        "Aim for 80 changed-file entries; 100 is the mandatory assistant publication maximum before PR creation and subsequent pushes. Count the entire verified base-to-proposed-head diff, including additions, deletions, renames and binaries, rather than only the latest commit.",
+        "An oversized PR needs a concrete split or prior explicit user authorization for its specific scope. Cohesion or ordinary commit/push authorization does not waive the maximum; do not automatically close/recreate an existing PR or change CI protection.",
         "The complete full profile validates the exact admitted snapshot.",
         "Scanner execution, quality gate and actual review approval are separate evidence."
       ],
       "mustNot": [
         "Claim missing or skipped provider checks passed.",
         "Read secrets or owner data.",
-        "Treat a successful CodeRabbit status as proof of its approval."
+        "Treat a successful CodeRabbit status as proof of its approval.",
+        "Treat the 100-entry maximum as advisory or confuse the per-PR changed-file maximum with the total admitted source inventory."
       ],
       "checks": ["snapshot", "ci-policy", "guidance"]
     },
