@@ -8,7 +8,7 @@ Keep one root npm project with source in `src/`. Developers choose the backend t
 
 Describe the user-visible result and the failure it must handle. For example, a list refresh failure should keep accepted rows and offer retry. Read the closest implementation and tests before selecting an abstraction.
 
-Use [source navigation](source-navigation.md) to locate startup/routes, feature API/types, shared requests, reusable controls, appearance and catalogs. Feature-specific forms and helpers stay beside their feature. Cross-feature vocabulary such as the profile-name limit belongs in `src/shared/contracts`.
+Use [architecture](architecture.md) to locate startup, routes, providers and shared infrastructure. Read feature APIs, types, forms and nearby tests in the owning `src/features/<feature>` directory. Cross-feature vocabulary such as the profile-name limit belongs in `src/shared/contracts`.
 
 ## 2. Change the owning contract and interaction
 

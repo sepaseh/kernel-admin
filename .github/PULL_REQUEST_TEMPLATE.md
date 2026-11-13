@@ -5,7 +5,8 @@ Explain the concrete problem, change and any prerequisite PR.
 ## Published scope
 
 - Phase:
-- GitHub changed-file count and scope rationale (advisory initial target 80; explain larger cohesive changes, including deletions/renames/binaries):
+- Verified complete base-to-head GitHub changed-file count and scope rationale (target 80, mandatory maximum 100; include additions/deletions/renames/binaries):
+- Prior explicit user authorization for a specific oversized scope, if applicable:
 - Application readiness and limitations:
 
 ## Verification

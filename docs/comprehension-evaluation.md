@@ -30,4 +30,4 @@ Automatic discovery remains unknown unless the host supplies evidence. Static gu
 
 Keep ordinary results in the handoff. Any requested evaluation artifacts belong in ignored repository-local storage, following the [working-checkout rule](../.agents/rules/branches.md#working-checkout). Keep generated runs, oracle answers and historical reports out of maintained docs. Never fingerprint real environments, credentials, databases, uploads or generated dependencies.
 
-See [source navigation](source-navigation.md), [DESIGN](../DESIGN.md) and [validation](validation.md).
+Use the [development workflow](development.md), [DESIGN](../DESIGN.md) and [validation](validation.md) to check the answer against current source and procedures.

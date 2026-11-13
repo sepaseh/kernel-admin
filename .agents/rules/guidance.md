@@ -1,18 +1,26 @@
 # Guidance and documentation
 
 Use [AGENTS](../../AGENTS.md), the [settings index](../settings.json) and
-[source navigation](../../docs/source-navigation.md) for progressive reading.
+[task map](../navigation.json) for progressive reading.
 Read the owner source and tests; index entries and static links do not prove
 behavior or successful execution.
 
 Keep assistant instructions and maintained documentation English, current and
-organized by reader task. Use [source navigation](../../docs/source-navigation.md)
-to select the existing owner. Update that owner alongside behavior, configuration,
-test or workflow changes. Procedures state prerequisites, actions, expected
-results and relevant recovery; references define contracts; explanations describe
+organized by reader task. Use the existing [architecture](../../docs/architecture.md),
+[development guide](../../docs/development.md) and task map to select the owner.
+Update that owner alongside behavior, configuration, test or workflow changes.
+Procedures state prerequisites, actions, expected results and relevant recovery;
+references define contracts; explanations describe
 ownership and reasoning. Verify changed claims against source and nearby tests.
-Do not add routine dated QA reports, archives, ADRs, translated companion guides
-or bilingual navigation. Application localization remains a separate concern.
+Maintained guides describe current behavior only. Do not add PR numbers, commit
+hashes, CI-run results, past owner decisions, dated QA reports, decision logs,
+archives, ADRs, translated companion guides or bilingual navigation. Keep task
+investigations, proposals and execution evidence in the current chat or authorized
+PR materials. Application localization remains a separate concern.
+
+Organize user-facing navigation around installation, capabilities, source work
+and deployment using existing guides; do not force a new taxonomy, folder
+structure or replacement index.
 
 Use repository-relative machine paths and document-relative Markdown links.
 Link maintained current files, not future or deleted paths. Register only
@@ -40,9 +48,10 @@ fixtures; never inspect secrets or owner data to answer evaluation questions.
 Do not claim portability or improved performance without measured evidence.
 
 Preserve all ten UI catalogs, Persian calendar data, server-owned language,
-direction and calendar metadata, and dated UI evidence when those files are
-admitted. Clearly identified localized product strings, date examples and
-synthetic UI fixtures may retain their language; surrounding prose stays English.
+direction and calendar metadata, and required visual-baseline runtime, source,
+hash and human-review provenance as technical metadata. Clearly identified
+localized product strings, date examples and synthetic UI fixtures may retain
+their language; surrounding prose stays English.
 The guidance check rejects Persian Markdown companion filenames recursively and
 non-Latin prose in admitted Markdown. Put localized product examples in inline
 code or fenced/indented code blocks. Review Latin-script prose for English;

@@ -59,9 +59,15 @@ Stop the server with `Ctrl+C`. Restart it after changing configuration.
 | `VITE_API_BASE_URL`      | Public API origin. Set it explicitly; it contains no credentials.               |
 | `VITE_APP_BASE_URL`      | `/` or a canonical slash-terminated application base path, such as `/console/`. |
 | `VITE_RELEASE_ID`        | Public build identifier. Production releases use a new immutable identifier.    |
-| `VITE_OBSERVABILITY_URL` | Optional public reporting endpoint; blank disables reporting.                   |
+| `VITE_OBSERVABILITY_URL` | Optional public reporting receiver; blank disables default network delivery.    |
 
 The example and [Vite configuration](../vite.config.ts) define public values. See [deployment](deployment.md) for the public input contract and release prerequisites.
+
+The [optional reporter](../src/shared/lib/observability.ts) sends sanitized error and performance events to the selected receiver. Leave the URL blank when no receiver is configured, or supply a custom transport through `setObservabilityTransport`. This frontend does not include or provision a receiving service.
+
+The default transport sends one event object per `POST`, serialized as JSON with `Content-Type: application/json` and `keepalive` enabled. Every event includes `name`, `release` and an ISO timestamp in `timestamp`. Error events have `name: "error"`, `message`, and optional `stack` and `context`. Performance events have `name: "performance"`, `metric` and `value`: long tasks use `metric: "long-task"`; Web Vitals use `CLS`, `FCP`, `INP`, `LCP` or `TTFB` and also include `delta`, `rating` and `unit` (`score` for CLS, otherwise `milliseconds`).
+
+A cross-origin receiver must allow the actual frontend origin, `POST` and the `Content-Type` header through CORS, including the browser's `OPTIONS` preflight and the POST response. Otherwise the browser blocks delivery; the reporter suppresses delivery errors so reporting does not interrupt the application.
 
 Values already set in the process environment override values loaded from local files. Synthetic validation also disables local environment-file discovery. Use a separate terminal for an API-backed local run after working with the synthetic setup in [validation](validation.md).
 

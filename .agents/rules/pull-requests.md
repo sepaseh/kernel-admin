@@ -7,11 +7,23 @@ it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
 
 - Verify the intended base from the request or repository metadata and review the
   complete base-to-head diff for unrelated work; do not assume a base branch.
-- Before opening a PR, aim for 80 or fewer GitHub changed-file entries initially.
-  Split independent changes when useful and explain why a larger cohesive change
-  belongs together. Count additions, deletions, renames and binaries; a rename
-  counts as one GitHub entry. File count is advisory: exceeding 100 files alone
-  must not fail CI or require deleting and recreating a PR.
+- Plan for at most 80 GitHub changed-file entries per PR; 100 is the mandatory
+  publication maximum. Before opening a PR or pushing further changes, verify
+  its live intended base and count the complete base-to-proposed-head diff,
+  including additions, deletions, renames and binaries; one rename is one entry.
+  Count the whole PR, not only the latest commit, and recount after scope or base
+  changes. Record the verified count and scope rationale in the PR description.
+- Split work exceeding 100 entries into reviewable PRs. If a dependency prevents
+  a practical split, prepare a concrete scope/split proposal and obtain prior
+  explicit user authorization for that specific oversized scope before publishing.
+  Cohesion, an explanatory PR body, or permission to commit/push does not by
+  itself waive the maximum. Do not exclude required tests or source to lower the
+  count or change the base solely to hide unrelated changes.
+- For an existing oversized PR, report its current count and discuss a split or
+  a scoped exception before further publication. Do not automatically close or
+  recreate it, rewrite published history, or delete source. This assistant
+  publication rule does not cap the repository's total admitted source inventory
+  and does not itself add a CI file-count failure or change branch protection.
 - Run the declared phase's required gate on an isolated checkout/export of the
   exact proposed commit snapshot. Record the phase, commit/tree and actual checks.
   A full pass over local untracked source does not validate a partial published PR.

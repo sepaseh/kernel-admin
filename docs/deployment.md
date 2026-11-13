@@ -26,11 +26,17 @@ Use only the reviewed synthetic examples as source references: [browser build va
 | `VITE_API_BASE_URL`      | Exact HTTPS API origin; HTTP is allowed only on explicit loopback. No credentials or URL path. |
 | `VITE_APP_BASE_URL`      | `/` or canonical slash-delimited segments ending in `/`.                                       |
 | `VITE_RELEASE_ID`        | New immutable safe release identifier, consistent across build, package and host.              |
-| `VITE_OBSERVABILITY_URL` | Optional public reporting URL; blank disables reporting.                                       |
+| `VITE_OBSERVABILITY_URL` | Optional public reporting receiver; blank disables default network delivery.                   |
 | `ADMIN_HOST`             | Bare public admin hostname used by the hosting configuration.                                  |
 | `PUBLIC_ASSET_ORIGIN`    | Optional explicit public media origin for hosting policy.                                      |
 
 Browser build values are public. The API must allow the actual frontend origin and independently authorize every request. Changing a build value requires a new build; serving an old bundle with different host settings does not rewrite it.
+
+The [optional reporter](../src/shared/lib/observability.ts) uses the configured receiver for sanitized error and performance events. The receiver is separate from this standalone frontend; building or packaging the panel does not provision one. The examples leave the receiver URL blank.
+
+For native hosting, set `VITE_OBSERVABILITY_URL` to the same receiver URL in both the browser build values and the separate [native Nginx input](../deploy/native/nginx.env.example). The [renderer](../scripts/render-deployment.mjs) reads that input through `--config-file` and adds the receiver's origin to CSP `connect-src`. Rebuild the frontend, then render and install the updated configuration so the browser can reach the receiver.
+
+For Docker hosting, set `VITE_OBSERVABILITY_URL` to the receiver URL in the [Compose input](../deploy/docker/compose.env.example), then rebuild the image with a new immutable release ID using the [Docker procedure](../deploy/docker/README.md#build-and-start-the-service). Shell environment values take precedence over the Compose input, including an explicitly empty receiver; use a fresh terminal or clear or correct overrides, then check the resolved build arguments. Compose passes the resolved receiver to the image build for both the browser bundle and rendered Nginx CSP. Restarting an existing image does not update either value.
 
 ## Build an immutable package
 
@@ -54,6 +60,8 @@ After complete source verification, this PowerShell example builds and packages 
    ```
 
    Expect static assets and `dist/_kernel/build.json`. Port 3000 is the local API example from [usage](usage.md); no API needs to be running for this build. For a real release, use the selected target's public HTTPS API origin, canonical base path and new immutable ID.
+
+   This demonstration intentionally disables reporting. Before a native build with reporting enabled, replace the empty value assigned to `$env:VITE_OBSERVABILITY_URL` with the receiver URL in this build's PowerShell session, matching the separate native Nginx input, then run `npm run build`. Keep `KERNEL_SYNTHETIC_ENV` set to `1` when supplying the build values explicitly: it disables environment-file discovery, not the receiver supplied in the process environment. The unchanged demonstration is not a reporting-enabled native release.
 
 3. Package that completed build:
 
