@@ -5,9 +5,10 @@ import { i18nInstance } from "../../shared/i18n/index.ts";
 import { server } from "../../test/mocks/server.ts";
 import { fetchUser, fetchUsers } from "./api.ts";
 
-vi.mock("../../shared/i18n/index.ts", () => ({
-  i18nInstance: { t: (key: string) => key },
-}));
+vi.mock("../../shared/i18n/index.ts", () => {
+  const i18n = { t: (key: string) => key };
+  return { i18n, i18nInstance: i18n };
+});
 
 describe("users API", () => {
   it.each([".", ".."])(

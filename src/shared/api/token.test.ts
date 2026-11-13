@@ -1,59 +1,86 @@
-import { beforeEach, describe, expect, it } from "vitest";
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   clearAccessToken,
   getAccessToken,
   getAccessTokenVersion,
+  getSessionSignal,
+  parseAccessToken,
   setAccessToken,
   setRefreshedAccessToken,
 } from "./token";
 
-beforeEach(() => {
+beforeEach(clearAccessToken);
+afterEach(() => {
   clearAccessToken();
+  vi.restoreAllMocks();
 });
 
-describe("access token", () => {
-  it("is absent before a token is set", () => {
-    expect(getAccessToken()).toBeNull();
-  });
+describe("session tokens", () => {
+  it("keeps tokens in memory and invalidates the preceding login generation", () => {
+    const localWrite = vi.spyOn(Storage.prototype, "setItem");
+    const anonymousGeneration = getAccessTokenVersion();
+    const anonymousSession = getSessionSignal();
 
-  it("stores and retrieves a token", () => {
-    setAccessToken("access-token");
-
-    expect(getAccessToken()).toBe("access-token");
-  });
-
-  it("clears a stored token", () => {
-    setAccessToken("access-token");
-
-    clearAccessToken();
-
-    expect(getAccessToken()).toBeNull();
-  });
-
-  it("rotates refreshed credentials within the current login generation", () => {
-    const beforeLogin = getAccessTokenVersion();
-    setAccessToken("initial-login-token");
-    const loginGeneration = getAccessTokenVersion();
-
-    setRefreshedAccessToken("rotated-token");
-
-    expect(loginGeneration).toBeGreaterThan(beforeLogin);
-    expect(getAccessToken()).toBe("rotated-token");
-    expect(getAccessTokenVersion()).toBe(loginGeneration);
-  });
-
-  it("invalidates the previous generation across logout and a subsequent login", () => {
-    setAccessToken("first-login-token");
+    setAccessToken("synthetic-first-token");
     const firstGeneration = getAccessTokenVersion();
+    const firstSession = getSessionSignal();
+    setAccessToken("synthetic-second-token");
+
+    expect(firstGeneration).toBeGreaterThan(anonymousGeneration);
+    expect(getAccessTokenVersion()).toBeGreaterThan(firstGeneration);
+    expect(anonymousSession.aborted).toBe(true);
+    expect(firstSession.aborted).toBe(true);
+    expect(getSessionSignal().aborted).toBe(false);
+    expect(getAccessToken()).toBe("synthetic-second-token");
+    expect(localWrite).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the credential without invalidating requests in that session", () => {
+    setAccessToken("synthetic-original-token");
+    const generation = getAccessTokenVersion();
+    const session = getSessionSignal();
+
+    setRefreshedAccessToken("synthetic-refreshed-token");
+
+    expect(getAccessToken()).toBe("synthetic-refreshed-token");
+    expect(getAccessTokenVersion()).toBe(generation);
+    expect(getSessionSignal()).toBe(session);
+    expect(session.aborted).toBe(false);
+  });
+
+  it("aborts session work and clears the credential on logout", () => {
+    setAccessToken("synthetic-token");
+    const generation = getAccessTokenVersion();
+    const session = getSessionSignal();
 
     clearAccessToken();
-    const logoutGeneration = getAccessTokenVersion();
 
+    expect(session.aborted).toBe(true);
     expect(getAccessToken()).toBeNull();
-    expect(logoutGeneration).toBeGreaterThan(firstGeneration);
-    setAccessToken("second-login-token");
-    expect(getAccessTokenVersion()).toBeGreaterThan(logoutGeneration);
-    expect(getAccessToken()).toBe("second-login-token");
+    expect(getAccessTokenVersion()).toBeGreaterThan(generation);
+    expect(getSessionSignal()).not.toBe(session);
   });
+});
+
+describe("token response validation", () => {
+  it("accepts a nonempty token and exposes only the credential", () => {
+    expect(
+      parseAccessToken({ accessToken: "synthetic-token", ignored: true }),
+    ).toEqual({ accessToken: "synthetic-token" });
+  });
+
+  it.each([
+    undefined,
+    null,
+    [],
+    "token",
+    {},
+    { accessToken: 1 },
+    { accessToken: "" },
+    { accessToken: "  " },
+  ])("rejects a malformed token response (%j)", (value) =>
+    expect(() => parseAccessToken(value)).toThrow(),
+  );
 });

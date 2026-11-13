@@ -35,3 +35,6 @@ await i18nInstance.init({
 });
 
 export { i18nInstance as i18n, i18nInstance };
+
+export { dayjsLocaleName } from "./date";
+export type { LocaleCode } from "./locales";
