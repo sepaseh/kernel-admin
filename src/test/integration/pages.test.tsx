@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { waitFor, within } from "@testing-library/react";
 import type * as ReactI18next from "react-i18next";
-import { MemoryRouter, useLocation } from "react-router";
+import { MemoryRouter, Outlet, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AccountPage } from "@/features/account";
@@ -58,6 +58,19 @@ const mocks = vi.hoisted(() => {
       },
       modalAPI: { confirm: modalConfirm },
       notificationAPI: { success: notificationSuccess },
+      token: {
+        colorBgContainer: "#ffffff",
+        colorBgLayout: "#f5f5f5",
+        colorError: "#b42318",
+        colorSuccess: "#00aa00",
+        marginLG: 24,
+        marginMD: 16,
+        marginXS: 8,
+        paddingMD: 16,
+        paddingSM: 8,
+        screenMD: 768,
+        screenXL: 1200,
+      },
     },
     core: {
       logos: { dark: "/dark-logo.svg", light: "/light-logo.svg" },
@@ -156,14 +169,31 @@ vi.mock("react-i18next", async (importOriginal) => ({
 
 const Location = () => {
   const location = useLocation();
-  return <output aria-label="location">{location.pathname}</output>;
+  return (
+    <output aria-label="location">
+      {location.pathname}
+      {location.search}
+      {location.hash}
+    </output>
+  );
 };
 
 const renderPage = (page: React.ReactNode, initialEntry = "/") =>
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
-      {page}
-      <Location />
+      <Routes>
+        <Route element={<Outlet context={{ currentUser: mocks.core.user }} />}>
+          <Route
+            path="*"
+            element={
+              <>
+                {page}
+                <Location />
+              </>
+            }
+          />
+        </Route>
+      </Routes>
     </MemoryRouter>,
   );
 
@@ -471,21 +501,25 @@ describe("account page", () => {
 });
 
 describe("roles page", () => {
-  it("keeps a roles load failure visible and retries it from the page", async () => {
+  it("reports a roles load failure and loads the list when revisiting the page", async () => {
     vi.mocked(api.fetchRoles).mockRejectedValueOnce(
       new Error("Roles unavailable"),
     );
 
-    const { user } = renderPage(<RolesPage />);
+    const { unmount } = renderPage(<RolesPage />);
 
-    const alert = await screen.findByRole("alert");
-    expect(within(alert).getByText("Roles unavailable")).toBeVisible();
-    expect(within(alert).getByText("requestLoadFailed")).toBeVisible();
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    expect(mocks.messageError).not.toHaveBeenCalled();
-    await user.click(within(alert).getByRole("button", { name: "retry" }));
-    expect(await screen.findByRole("table")).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(mocks.messageError).toHaveBeenCalledWith("Roles unavailable"),
+    );
+    expect(screen.getByRole("table")).toBeVisible();
+    unmount();
+
+    vi.mocked(api.fetchRoles).mockResolvedValueOnce([
+      { id: "role-1", name: "Operators", permissions: ["users.read"] },
+    ]);
+    renderPage(<RolesPage />);
+
+    expect(await screen.findByText("Operators")).toBeVisible();
     expect(api.fetchRoles).toHaveBeenCalledTimes(2);
   });
 
@@ -516,7 +550,6 @@ describe("roles page", () => {
       permissions: ["users.read"],
     };
     vi.mocked(api.fetchRoles).mockResolvedValue([role]);
-    vi.mocked(api.fetchRole).mockResolvedValue(role);
     vi.mocked(api.fetchPermissions).mockResolvedValue([]);
     vi.mocked(api.deleteRole).mockResolvedValue(undefined);
     const { user } = renderPage(<RolesPage />);
@@ -524,51 +557,39 @@ describe("roles page", () => {
     await screen.findByText("Operators");
     await user.click(screen.getByRole("button", { name: "update" }));
 
-    expect(api.fetchRole).toHaveBeenCalledWith(
-      "role-1",
-      expect.any(AbortSignal),
-    );
-    expect(screen.getByLabelText("location")).toHaveTextContent("/");
+    expect(api.fetchRole).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("location")).toHaveTextContent(/^\/#update$/);
 
     await user.click(screen.getByRole("button", { name: "delete" }));
+    expect(api.deleteRole).not.toHaveBeenCalled();
     const confirmation = mocks.modalConfirm.mock.calls.at(-1)?.[0] as {
       onOk: () => Promise<void>;
     };
     await confirmation.onOk();
 
-    expect(api.deleteRole).toHaveBeenCalledWith(
-      "role-1",
-      expect.any(AbortSignal),
-    );
+    expect(api.deleteRole).toHaveBeenCalledWith("role-1");
     expect(mocks.messageSuccess).toHaveBeenCalledWith("roleDeleted");
     expect(api.fetchRoles).toHaveBeenCalledTimes(2);
   });
 });
 
 describe("users page", () => {
-  it("keeps a users load failure visible and retries it from the page", async () => {
+  it("reports a users load failure and loads the list when revisiting the page", async () => {
     vi.mocked(api.fetchUsers).mockRejectedValueOnce(
       new Error("Users unavailable"),
     );
 
-    const { user } = renderPage(<UsersPage />);
+    const { unmount } = renderPage(<UsersPage />);
 
-    const alert = await screen.findByRole("alert");
-    expect(within(alert).getByText("Users unavailable")).toBeVisible();
-    expect(within(alert).getByText("requestLoadFailed")).toBeVisible();
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    expect(mocks.messageError).not.toHaveBeenCalled();
-    await user.click(within(alert).getByRole("button", { name: "retry" }));
-    expect(await screen.findByRole("table")).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(api.fetchUsers).toHaveBeenCalledTimes(2);
-  });
+    await waitFor(() =>
+      expect(mocks.messageError).toHaveBeenCalledWith("Users unavailable"),
+    );
+    expect(screen.getByRole("table")).toBeVisible();
+    unmount();
 
-  it("loads and displays users", async () => {
-    vi.mocked(api.fetchUsers).mockResolvedValue({
+    vi.mocked(api.fetchUsers).mockResolvedValueOnce({
       items: [
         {
-          email: "ada@example.com",
           firstName: "Ada",
           id: "user-1",
           isSystemAdmin: false,
@@ -576,19 +597,44 @@ describe("users page", () => {
           mobile: "09120000000",
           roles: [],
           status: "active",
-          username: "ada",
+        },
+      ],
+      total: 1,
+    });
+    renderPage(<UsersPage />);
+
+    expect(await screen.findByText("Ada Lovelace")).toBeVisible();
+    expect(api.fetchUsers).toHaveBeenCalledTimes(2);
+  });
+
+  it("loads and displays users", async () => {
+    vi.mocked(api.fetchUsers).mockResolvedValue({
+      items: [
+        {
+          firstName: "Ada",
+          id: "user-1",
+          isSystemAdmin: false,
+          lastName: "Lovelace",
+          mobile: "09120000000",
+          roles: [],
+          status: "active",
         },
       ],
       total: 1,
     });
 
-    renderPage(<UsersPage />);
+    renderPage(<UsersPage />, "/users?page=2");
 
     expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
     expect(api.fetchUsers).toHaveBeenCalledWith(
-      { offset: "0", size: "12" },
+      { page: "2", status: undefined },
       expect.any(AbortSignal),
     );
+    expect(
+      within(screen.getByRole("row", { name: /Ada Lovelace/ })).getAllByRole(
+        "cell",
+      )[0],
+    ).toHaveTextContent("25");
   });
 
   it("manages users when permitted", async () => {
@@ -599,7 +645,6 @@ describe("users page", () => {
     });
     mocks.core.user = { ...mocks.account, isSystemAdmin: true };
     const userRecord = {
-      email: "ada@example.com",
       firstName: "Ada",
       id: "user-1",
       isSystemAdmin: false,
@@ -607,13 +652,11 @@ describe("users page", () => {
       mobile: "09120000000",
       roles: [],
       status: "active" as const,
-      username: "ada",
     };
     vi.mocked(api.fetchUsers).mockResolvedValue({
       items: [userRecord],
       total: 1,
     });
-    vi.mocked(api.fetchUser).mockResolvedValue(userRecord);
     const { user } = renderPage(<UsersPage />);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -622,23 +665,11 @@ describe("users page", () => {
 
     await screen.findByText("Ada Lovelace");
     await user.click(screen.getByRole("button", { name: "update" }));
-    expect(api.fetchUser).toHaveBeenCalledWith(
-      "user-1",
-      expect.any(AbortSignal),
-    );
-
-    await user.click(screen.getByRole("button", { name: "active" }));
-    let confirmation = mocks.modalConfirm.mock.calls.at(-1)?.[0] as {
-      onOk: () => Promise<void>;
-    };
-    await confirmation.onOk();
-    expect(api.updateUserStatus).toHaveBeenCalledWith(
-      "user-1",
-      {
-        status: "inactive",
-      },
-      expect.any(AbortSignal),
-    );
+    expect(api.fetchUser).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("location")).toHaveTextContent(/^\/#update$/);
+    expect(screen.getByRole("img", { name: "active" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "active" })).toBeNull();
+    expect(api.updateUserStatus).not.toHaveBeenCalled();
 
     await user.click(
       within(screen.getByRole("row", { name: /Ada Lovelace/ })).getByRole(
@@ -646,17 +677,14 @@ describe("users page", () => {
         { name: "no" },
       ),
     );
-    confirmation = mocks.modalConfirm.mock.calls.at(-1)?.[0] as {
+    expect(api.updateUserSystemAdmin).not.toHaveBeenCalled();
+    let confirmation = mocks.modalConfirm.mock.calls.at(-1)?.[0] as {
       onOk: () => Promise<void>;
     };
     await confirmation.onOk();
-    expect(api.updateUserSystemAdmin).toHaveBeenCalledWith(
-      "user-1",
-      {
-        isSystemAdmin: true,
-      },
-      expect.any(AbortSignal),
-    );
+    expect(api.updateUserSystemAdmin).toHaveBeenCalledWith("user-1", {
+      isSystemAdmin: true,
+    });
 
     const randomValues = vi
       .spyOn(crypto, "getRandomValues")
@@ -669,41 +697,35 @@ describe("users page", () => {
     confirmation = mocks.modalConfirm.mock.calls.at(-1)?.[0] as {
       cancelText: string;
       okText: string;
-      okType: string;
       onOk: () => Promise<void>;
       title: string;
     };
     expect(confirmation).toMatchObject({
       cancelText: "no",
       okText: "yes",
-      okType: "default",
       title: "passwordConfirm",
     });
+    expect(api.updateUserPassword).not.toHaveBeenCalled();
+    expect(mocks.writeClipboard).not.toHaveBeenCalled();
     await confirmation.onOk();
-    expect(api.updateUserPassword).toHaveBeenCalledWith(
-      "user-1",
-      {
-        password: "i000000000000000",
-      },
-      expect.any(AbortSignal),
-    );
+    expect(api.updateUserPassword).toHaveBeenCalledWith("user-1", {
+      password: "i000000000000000",
+    });
     expect(mocks.writeClipboard).toHaveBeenCalledWith("i000000000000000");
     expect(mocks.notificationSuccess).toHaveBeenCalledWith({
       description: "i000000000000000",
-      message: "password",
+      title: "password",
     });
     randomValues.mockRestore();
 
     await user.click(screen.getByRole("button", { name: "delete" }));
+    expect(api.deleteUser).not.toHaveBeenCalled();
     confirmation = mocks.modalConfirm.mock.calls.at(-1)?.[0] as {
       onOk: () => Promise<void>;
     };
     vi.mocked(api.fetchUsers).mockResolvedValue({ items: [], total: 0 });
     await confirmation.onOk();
-    expect(api.deleteUser).toHaveBeenCalledWith(
-      "user-1",
-      expect.any(AbortSignal),
-    );
+    expect(api.deleteUser).toHaveBeenCalledWith("user-1");
     await waitFor(() =>
       expect(screen.queryByText("Ada Lovelace")).not.toBeInTheDocument(),
     );

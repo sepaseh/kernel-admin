@@ -383,7 +383,6 @@
         "src/shared/storage/hooks/useLocalStorageWatcher.ts",
         "src/shared/hooks/useMutationRequest.ts",
         "src/shared/hooks/useGoBack.ts",
-        "src/shared/lib/dialog-focus.ts",
         "src/shared/lib/observability.ts",
         "src/shared/ui/digits-input/DigitsInput.tsx",
         "src/shared/ui/otp-input/OtpInput.tsx",
@@ -399,7 +398,12 @@
         "src/shared/hooks/useAbortController.ts",
         "src/shared/hooks/useLock.ts",
         "src/shared/ui/image-upload/ImageUpload.tsx",
-        "src/shared/ui/image-upload/image.ts"
+        "src/shared/ui/image-upload/image.ts",
+        "src/shared/hooks/useDebouncedFilters.ts",
+        "src/shared/hooks/useFilterParams.ts",
+        "src/shared/lib/allowed-value.ts",
+        "src/shared/lib/pagination.ts",
+        "src/shared/lib/password.ts"
       ],
       "contracts": [
         "src/shared/contracts/appearance.ts",
@@ -415,7 +419,6 @@
         "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
         "src/shared/hooks/useMutationRequest.test.tsx",
         "src/shared/hooks/useGoBack.test.tsx",
-        "src/shared/lib/dialog-focus.test.tsx",
         "src/shared/lib/observability.test.ts",
         "src/shared/lib/observability.vitals.test.ts",
         "src/shared/ui/digits-input/DigitsInput.test.tsx",
@@ -429,7 +432,11 @@
         "src/shared/hooks/useAbortController.test.tsx",
         "src/shared/hooks/useLock.test.tsx",
         "src/shared/ui/image-upload/ImageUpload.test.tsx",
-        "src/shared/ui/image-upload/image.test.ts"
+        "src/shared/ui/image-upload/image.test.ts",
+        "src/shared/hooks/useDebouncedFilters.test.tsx",
+        "src/shared/hooks/useFilterParams.test.tsx",
+        "src/shared/lib/password.test.ts",
+        "src/features/users/api.helpers.test.ts"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [
@@ -449,7 +456,8 @@
         "src/features/users",
         "src/app/config/routes.ts",
         "src/app/providers/core/Core.tsx",
-        "src/features/files"
+        "src/features/files",
+        "src/features/calendar"
       ],
       "contracts": [
         "src/features/roles/types.ts",
@@ -457,7 +465,8 @@
         ".agents/rules/react.md",
         ".agents/rules/styling.md",
         "src/layouts/default/types.ts",
-        "src/features/files/types.ts"
+        "src/features/files/types.ts",
+        "src/features/users/types.ts"
       ],
       "tests": [
         "src/features/roles/Roles.test.tsx",
@@ -465,7 +474,11 @@
         "src/features/users/Users.test.tsx",
         "src/test/integration/forms.test.tsx",
         "src/features/users/Users.stories.tsx",
-        "src/features/files/api.test.ts"
+        "src/features/files/api.test.ts",
+        "src/features/calendar/Calendar.test.tsx",
+        "src/features/roles/components/role-form/RoleForm.test.tsx",
+        "src/features/users/components/user-form/UserForm.test.tsx",
+        "src/features/users/components/user-role-form/UserRoleForm.test.tsx"
       ],
       "checks": [
         "boundaries",
@@ -526,7 +539,8 @@
       "tests": [
         "src/test/storybook/StoryShell.test.tsx",
         "src/features/users/Users.stories.tsx",
-        "src/features/users/components/user-form/UserForm.stories.tsx"
+        "src/features/users/components/user-form/UserForm.stories.tsx",
+        "src/features/users/components/user-form/UserForm.test.tsx"
       ],
       "checks": [
         "guidance",

@@ -289,7 +289,6 @@ const completeApplicationFiles = [
   "src/features/roles/api.ts",
   "src/features/roles/components/role-form/RoleForm.stories.tsx",
   "src/features/roles/components/role-form/RoleForm.tsx",
-  "src/features/roles/constants.ts",
   "src/features/roles/index.ts",
   "src/features/roles/types.ts",
   "src/features/settings/Settings.stories.tsx",
@@ -310,13 +309,7 @@ const completeApplicationFiles = [
   "src/features/users/components/user-role-form/UserRoleForm.stories.tsx",
   "src/features/users/components/user-role-form/UserRoleForm.tsx",
   "src/features/users/constants.ts",
-  "src/features/users/hooks/useDebouncedFilters.test.tsx",
-  "src/features/users/hooks/useDebouncedFilters.ts",
-  "src/features/users/hooks/useFilterParams.test.tsx",
-  "src/features/users/hooks/useFilterParams.ts",
   "src/features/users/index.ts",
-  "src/features/users/tools/password.test.ts",
-  "src/features/users/tools/password.ts",
   "src/features/users/types.ts",
   "src/layouts/auth/Auth.stories.tsx",
   "src/layouts/auth/Auth.test.tsx",
@@ -378,8 +371,6 @@ const completeApplicationFiles = [
   "src/shared/i18n/locales/tr.ts",
   "src/shared/lib/color-contrast.test.ts",
   "src/shared/lib/color-contrast.ts",
-  "src/shared/lib/dialog-focus.test.tsx",
-  "src/shared/lib/dialog-focus.ts",
   "src/shared/lib/error.test.ts",
   "src/shared/lib/error.ts",
   "src/shared/lib/index.ts",
@@ -472,6 +463,19 @@ const completeApplicationFiles = [
   "src/shared/ui/image-upload/image.ts",
   "src/shared/ui/image-upload/index.ts",
   "src/test/deferred.ts",
+  "src/features/roles/components/role-form/RoleForm.test.tsx",
+  "src/features/users/components/user-form/UserForm.test.tsx",
+  "src/features/users/components/user-form/index.ts",
+  "src/features/users/components/user-role-form/UserRoleForm.test.tsx",
+  "src/features/users/components/user-role-form/index.ts",
+  "src/shared/hooks/useDebouncedFilters.test.tsx",
+  "src/shared/hooks/useDebouncedFilters.ts",
+  "src/shared/hooks/useFilterParams.test.tsx",
+  "src/shared/hooks/useFilterParams.ts",
+  "src/shared/lib/allowed-value.ts",
+  "src/shared/lib/pagination.ts",
+  "src/shared/lib/password.test.ts",
+  "src/shared/lib/password.ts",
 ];
 const applicationPolicy = () =>
   policy({
@@ -496,8 +500,6 @@ const applicationFiles = [
   "CHANGELOG.md",
   "scripts/stop-visual-process-tree.ps1",
   "scripts/stop-visual-process-tree.test.ps1",
-  "src/shared/lib/dialog-focus.ts",
-  "src/shared/lib/dialog-focus.test.tsx",
   "contract/api.contract.test.ts",
   "e2e/accessibility.spec.ts",
   "e2e/auth.spec.ts",
@@ -552,6 +554,19 @@ const applicationFiles = [
   "src/shared/ui/image-upload/image.ts",
   "src/shared/ui/image-upload/index.ts",
   "src/test/deferred.ts",
+  "src/features/roles/components/role-form/RoleForm.test.tsx",
+  "src/features/users/components/user-form/UserForm.test.tsx",
+  "src/features/users/components/user-form/index.ts",
+  "src/features/users/components/user-role-form/UserRoleForm.test.tsx",
+  "src/features/users/components/user-role-form/index.ts",
+  "src/shared/hooks/useDebouncedFilters.test.tsx",
+  "src/shared/hooks/useDebouncedFilters.ts",
+  "src/shared/hooks/useFilterParams.test.tsx",
+  "src/shared/hooks/useFilterParams.ts",
+  "src/shared/lib/allowed-value.ts",
+  "src/shared/lib/pagination.ts",
+  "src/shared/lib/password.test.ts",
+  "src/shared/lib/password.ts",
 ];
 const isCoreAuthPhaseFile = (file) =>
   /^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|register))\/|docs\/architecture\.md$)/.test(
@@ -716,10 +731,6 @@ const earlierPhaseDocuments = new Set([
   "docs/testing.md",
   "SECURITY.md",
 ]);
-const earlyApplicationSources = new Set([
-  "src/shared/lib/dialog-focus.ts",
-  "src/shared/lib/dialog-focus.test.tsx",
-]);
 const earlierOperationsSources = new Set([
   "scripts/deployment.test-support.mjs",
   "tooling/paths.ts",
@@ -738,8 +749,7 @@ const historicalStorybookPolicy = async () => {
     allowedFiles: historicalPublicationFiles(latest).filter(
       (file) =>
         !isGuidancePhaseFile(file) &&
-        (!applicationFiles.includes(file) ||
-          earlyApplicationSources.has(file)) &&
+        !applicationFiles.includes(file) &&
         (!operationsPrerequisiteFiles.includes(file) ||
           earlierPhaseDocuments.has(file) ||
           earlierOperationsSources.has(file)),
@@ -755,8 +765,7 @@ const historicalGuidancePolicy = async () => {
     applicationReady: false,
     allowedFiles: historicalPublicationFiles(latest).filter(
       (file) =>
-        (!applicationFiles.includes(file) ||
-          earlyApplicationSources.has(file)) &&
+        !applicationFiles.includes(file) &&
         (!operationsPrerequisiteFiles.includes(file) ||
           earlierPhaseDocuments.has(file) ||
           earlierOperationsSources.has(file) ||
@@ -774,8 +783,7 @@ const historicalReleasePolicy = async () => {
     applicationReady: false,
     allowedFiles: historicalPublicationFiles(latest).filter(
       (file) =>
-        (!applicationFiles.includes(file) ||
-          earlyApplicationSources.has(file)) &&
+        !applicationFiles.includes(file) &&
         !deferredApplicationPrerequisites.includes(file),
     ),
   };
@@ -1335,7 +1343,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 95);
+  assert.equal(required.length, 93);
   for (const missing of required)
     assert.throws(
       () =>
@@ -1815,9 +1823,7 @@ test("application admission requires the exact runnable closure and matching rea
   );
   const historical = await historicalGuidancePolicy();
   for (const file of applicationFiles.filter(
-    (entry) =>
-      !earlyApplicationSources.has(entry) &&
-      entry !== ".github/workflows/codeql.yml",
+    (entry) => entry !== ".github/workflows/codeql.yml",
   ))
     assert.throws(
       () =>

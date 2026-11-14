@@ -1,21 +1,15 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import type { UserListQuery } from "@/features/users/types";
+export const useDebouncedFilters = <T>(setFilters: (filters: T) => void) => {
+  const timeout = useRef<number | undefined>(undefined);
 
-import type { useFilterParams } from "./useFilterParams";
-
-type SetFilters = ReturnType<
-  typeof useFilterParams<UserListQuery>
->["setFilters"];
-
-export const useDebouncedFilters = (setFilters: SetFilters) => {
-  const timeout = useRef<Parameters<typeof window.clearTimeout>[0]>(undefined);
   const cancel = useCallback(() => {
     window.clearTimeout(timeout.current);
     timeout.current = undefined;
   }, []);
+
   const schedule = useCallback(
-    (filters: Partial<UserListQuery>) => {
+    (filters: T) => {
       cancel();
       timeout.current = window.setTimeout(() => {
         timeout.current = undefined;

@@ -1,91 +1,102 @@
-import type { TableProps } from "antd";
-import { Button, Flex, FloatButton, Table, Tooltip } from "antd";
-import { useAntdToken } from "antd-style";
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router";
-
-import { useAntd, useCore } from "@/app/hooks";
-import { getRoutePermissions } from "@/app/lib";
-import { RoleForm } from "@/features/roles/components/role-form/RoleForm";
 import {
-  isCurrentMutationError,
-  useMutationRequest,
-  useReadRequest,
-  useReadResource,
-} from "@/shared/hooks";
-import { getErrorMessage } from "@/shared/lib";
-import { RequestFeedback } from "@/shared/ui/request-feedback";
+  Button,
+  Flex,
+  FloatButton,
+  Table,
+  type TableProps,
+  Tooltip,
+} from "antd";
+import { isCancel } from "axios";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate, useOutletContext } from "react-router";
 
-import { deleteRole, fetchPermissions, fetchRole, fetchRoles } from "./api";
-import { roleDrawerKeys } from "./constants";
+import { useAntd } from "@/app/hooks";
+import { getRoutePermissions } from "@/app/lib";
+import type { DefaultLayoutContext } from "@/layouts/default";
+import { modalKeys } from "@/shared/config";
+import { useAbortController, useLock } from "@/shared/hooks";
+
+import { deleteRole, fetchPermissions, fetchRoles } from "./api";
+import { RoleForm } from "./components/role-form/RoleForm";
 import type { PermissionGroup, Role } from "./types";
 
 export const RolesPage = () => {
   const { t } = useTranslation();
+  const [loading, setLoading] = useState(false);
+  const [permissions, setPermissions] = useState<PermissionGroup[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [selectedId, setSelectedId] = useState<Role["id"]>();
+  const [submitting, setSubmitting] = useState(false);
+  const { cancel, start } = useAbortController();
   const { messageAPI, modalAPI } = useAntd();
-  const { user } = useCore();
+  const { pathname, search } = useLocation();
+  const { lock, unlock } = useLock();
+  const navigate = useNavigate();
+  const { currentUser } = useOutletContext<DefaultLayoutContext>();
   const { canCreate, canDelete, canUpdate } = getRoutePermissions(
     "roles",
-    user,
-  );
-  const { hash, pathname, search } = useLocation();
-  const token = useAntdToken();
-  const navigate = useNavigate();
-
-  const list = useReadResource(fetchRoles);
-  const permissionOptions = useReadResource<PermissionGroup[]>(
-    fetchPermissions,
-    canCreate || canUpdate,
-  );
-  const details = useReadRequest<Role>();
-  const [detailTarget, setDetailTarget] = useState<string>();
-  const data = list.data ?? [];
-  const permissions = permissionOptions.data ?? [];
-  const selectedData = details.data;
-  const loading = list.loading || details.loading;
-  const fetchData = list.reload;
-  const mutation = useMutationRequest(
-    JSON.stringify([pathname, search, hash, user?.id, canDelete]),
-    canDelete,
+    currentUser,
   );
 
-  const handleUpdate = async (id: Role["id"]) => {
-    if (!canUpdate) return;
-    setDetailTarget(id);
-    const value = await details.run((signal) => fetchRole(id, signal));
-    if (value) {
-      void navigate(
-        { hash: roleDrawerKeys.update, pathname, search },
-        { state: true },
-      );
+  const fetchData = useCallback(async () => {
+    const signal = start();
+    setLoading(true);
+
+    try {
+      const data = await fetchRoles(signal);
+      if (signal.aborted) return;
+
+      setRoles(data);
+    } catch (error) {
+      if (signal.aborted || isCancel(error)) return;
+
+      if (error instanceof Error) void messageAPI.error(error.message);
+    } finally {
+      if (!signal.aborted) setLoading(false);
     }
-  };
+  }, [messageAPI, start]);
 
   const handleDelete = (id: Role["id"]) => {
-    if (!canDelete) return;
+    if (!canDelete || submitting) return;
+
     modalAPI.confirm({
-      onCancel: mutation.cancel,
       cancelText: t("no"),
-      okButtonProps: { danger: true },
       okText: t("yes"),
+      okButtonProps: { danger: true },
+      title: t("deleteRoleConfirm"),
       onOk: async () => {
+        if (!lock()) return;
+
+        setSubmitting(true);
+
         try {
-          const result = await mutation.run((signal) => deleteRole(id, signal));
-          if (!result?.isCurrent()) return;
-          messageAPI.success(t("roleDeleted"));
+          await deleteRole(id);
+          void messageAPI.success(t("roleDeleted"));
           await fetchData();
         } catch (error) {
-          if (isCurrentMutationError(error))
-            messageAPI.error(getErrorMessage(error.cause));
+          if (error instanceof Error) void messageAPI.error(error.message);
+          throw error;
+        } finally {
+          setSubmitting(false);
+          unlock();
         }
       },
-      title: t("deleteRoleConfirm"),
     });
   };
 
-  const tableColumns: TableProps<Role>["columns"] = [
+  const handleUpdate = (id: Role["id"]) => {
+    if (!canUpdate || submitting) return;
+
+    setSelectedId(id);
+    void navigate(
+      { hash: modalKeys.update, pathname, search },
+      { state: true },
+    );
+  };
+
+  const columns: TableProps<Role>["columns"] = [
     {
       align: "center",
       key: "index",
@@ -100,104 +111,92 @@ export const RolesPage = () => {
     {
       align: "center",
       dataIndex: "permissions",
-      render: (_, { permissions }) => permissions.length,
+      render: (_, role) => role.permissions.length,
       title: t("permissions"),
       width: 120,
     },
-    {
-      align: "center",
-      key: "actions",
-      render: (_, record) => (
-        <Flex justify="center">
-          {canUpdate && (
-            <Tooltip title={t("update")}>
-              <Button
-                aria-label={t("update")}
-                disabled={
-                  permissionOptions.loading ||
-                  !!permissionOptions.error ||
-                  !permissionOptions.data
-                }
-                icon={<Pencil aria-hidden color="currentColor" size="1em" />}
-                onClick={() => handleUpdate(record.id)}
-                type="text"
-              />
-            </Tooltip>
-          )}
-          {canDelete && (
-            <Tooltip title={t("delete")}>
-              <Button
-                aria-label={t("delete")}
-                icon={<Trash2 aria-hidden color="currentColor" size={14} />}
-                onClick={() => handleDelete(record.id)}
-                type="text"
-              />
-            </Tooltip>
-          )}
-        </Flex>
-      ),
-      title: t("action"),
-      width: 80,
-    },
+    ...(canUpdate || canDelete
+      ? ([
+          {
+            align: "center",
+            key: "actions",
+            title: t("action"),
+            width: 80,
+            render: (_, { id }) => (
+              <Flex justify="center">
+                {canUpdate && (
+                  <Tooltip title={t("update")}>
+                    <Button
+                      aria-label={t("update")}
+                      disabled={submitting}
+                      icon={<Pencil aria-hidden size="1em" />}
+                      onClick={() => handleUpdate(id)}
+                      type="text"
+                    />
+                  </Tooltip>
+                )}
+                {canDelete && (
+                  <Tooltip title={t("delete")}>
+                    <Button
+                      aria-label={t("delete")}
+                      disabled={submitting}
+                      icon={<Trash2 aria-hidden size="1em" />}
+                      onClick={() => handleDelete(id)}
+                      type="text"
+                    />
+                  </Tooltip>
+                )}
+              </Flex>
+            ),
+          },
+        ] satisfies TableProps<Role>["columns"])
+      : []),
   ];
 
-  useEffect(() => details.cancel, [details.cancel, hash, pathname, search]);
+  useEffect(() => {
+    void (async () => {
+      await fetchData();
+    })();
+    return cancel;
+  }, [cancel, fetchData]);
+
+  useEffect(() => {
+    if (!canCreate && !canUpdate) return;
+
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const data = await fetchPermissions(controller.signal);
+        if (controller.signal.aborted) return;
+
+        setPermissions(data);
+      } catch (error) {
+        if (controller.signal.aborted || isCancel(error)) return;
+
+        if (error instanceof Error) void messageAPI.error(error.message);
+      }
+    })();
+    return () => controller.abort();
+  }, [canCreate, canUpdate, messageAPI]);
 
   return (
     <>
-      <div
-        style={{
-          flexGrow: 1,
-          minWidth: 0,
-        }}
-      >
-        <RequestFeedback
-          error={list.error}
-          hasData={!!list.data}
-          loading={list.loading}
-          retry={list.reload}
-        />
-        <RequestFeedback
-          error={permissionOptions.error}
-          hasData={!!permissionOptions.data}
-          loading={permissionOptions.loading}
-          retry={permissionOptions.reload}
-        />
-        <RequestFeedback
-          error={details.error}
-          loading={details.loading}
-          retry={() => detailTarget && handleUpdate(detailTarget)}
-        />
-        {(!list.error || list.data) && (
-          <section
-            aria-label={t("roles")}
-            style={{ overflowX: "auto" }}
-            tabIndex={0}
-          >
-            <Table<Role>
-              columns={tableColumns}
-              dataSource={data}
-              loading={loading}
-              pagination={false}
-              rowKey="id"
-              size="small"
-              styles={{ content: { minWidth: token.screenMD } }}
-            />
-          </section>
-        )}
-      </div>
+      <Table<Role>
+        columns={columns}
+        dataSource={roles}
+        loading={loading}
+        pagination={false}
+        rowKey="id"
+        size="small"
+      />
       {canCreate && (
         <FloatButton
           aria-label={t("create")}
-          disabled={
-            permissionOptions.loading ||
-            !!permissionOptions.error ||
-            !permissionOptions.data
-          }
-          icon={<Plus aria-hidden color="currentColor" size="1em" />}
+          disabled={submitting}
+          icon={<Plus aria-hidden size="1em" />}
           onClick={() =>
-            navigate(
-              { hash: roleDrawerKeys.create, pathname, search },
+            void navigate(
+              { hash: modalKeys.create, pathname, search },
               { state: true },
             )
           }
@@ -205,13 +204,11 @@ export const RolesPage = () => {
           type="primary"
         />
       )}
-      {permissionOptions.data && !permissionOptions.error && (
-        <RoleForm
-          data={selectedData}
-          onFinish={fetchData}
-          options={{ permissions }}
-        />
-      )}
+      <RoleForm
+        id={selectedId}
+        onFinish={fetchData}
+        options={{ permissions }}
+      />
     </>
   );
 };

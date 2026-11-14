@@ -147,12 +147,16 @@
         "e2e/visual/admin.spec.ts",
         "src/shared/ui/image-upload/ImageUpload.tsx",
         "src/features/files/api.ts",
-        "src/layouts/default/types.ts"
+        "src/layouts/default/types.ts",
+        "src/features/users/components/user-form/UserForm.test.tsx",
+        "src/shared/hooks/useFilterParams.ts",
+        "src/shared/hooks/useDebouncedFilters.ts",
+        "src/shared/lib/password.ts"
       ],
       "mustExplain": [
         "Repository implementation keeps React/Vite, Ant Design/antd-style, React Router, Axios and direct Lucide icons. Read actual theme/components/assets rather than adopting a generic tool starter or duplicating a token registry.",
         "Reuse the Users and UserForm/FormDrawer recipes, token-based responsive shell, licensed self-hosted font and ImageUpload with the Files HTTP adapter; preserve automatic image upload, output preview, feature ownership and request/session guards.",
-        "Cover relevant populated/empty/loading/error/retry/stale/submitting/validation and permission-limited states, keyboard/focus, narrow/desktop layouts, themes and long translated copy.",
+        "Cover relevant populated/empty/loading/error/retry/stale/submitting/validation and permission-limited states, native keyboard interaction, narrow/desktop layouts, themes and long translated copy.",
         "Ten complete flat catalogs provide messages; validated API metadata owns language/direction/calendar. Preview direction is a fixture, only super-admin changes global language, and ordinary settings editors retain appearance rights.",
         "Concept/assets/Figma, runnable repository code and hosted prototypes are distinct deliverables. Choose only available tools and preserve task authorization; native design-system setup/font upload and Sites access/compatibility are separate host work.",
         "Choose relevant checks from the existing manifest; recorded visual approval is not a fresh review, and link/inventory checks or a correct answer do not prove automatic host loading. Report actual loaded-file evidence and manual reads separately.",

@@ -1,22 +1,36 @@
-import "@/shared/i18n/date";
-
-import type { CalendarProps } from "antd";
-import { Button, Calendar, Card, Col, Flex, Row, Select, Spin } from "antd";
+import { isCancel } from "axios";
 import dayjs, { type Dayjs } from "dayjs";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { PropsWithChildren, ReactElement } from "react";
-import { cloneElement, useMemo, useState } from "react";
+import {
+  cloneElement,
+  type PropsWithChildren,
+  type ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
+import { useOutletContext } from "react-router";
 
 import { useAntd, useCore } from "@/app/hooks";
 import { getRoutePermissions } from "@/app/lib";
+import type { DefaultLayoutContext } from "@/layouts/default";
+import { useAbortController, useLock } from "@/shared/hooks";
+import "@/shared/i18n";
+import { ErrorFallback } from "@/shared/ui/error-boundary";
+
 import {
-  isCurrentMutationError,
-  useMutationRequest,
-  useReadResource,
-} from "@/shared/hooks";
-import { getErrorMessage } from "@/shared/lib";
-import { RequestFeedback } from "@/shared/ui/request-feedback";
+  Button,
+  Calendar,
+  type CalendarProps,
+  Card,
+  Col,
+  Flex,
+  Row,
+  Select,
+  Spin,
+} from "antd";
 
 import {
   createCalendarDate,
@@ -25,41 +39,37 @@ import {
 } from "./api";
 import { useCalendarStyles } from "./styles";
 
-type CalendarCell = ReactElement<PropsWithChildren<{ className?: string }>>;
-type CalendarSelectInfo = Parameters<
-  NonNullable<CalendarProps<Dayjs>["onSelect"]>
->[1];
+type Cell = ReactElement<PropsWithChildren<{ className?: string }>>;
+type SelectInfo = Parameters<NonNullable<CalendarProps<Dayjs>["onSelect"]>>[1];
 
-const formatCalendarDate = (date: Dayjs) =>
+const formatDate = (date: Dayjs) =>
   (date.calendar("gregory") as unknown as Dayjs).format("YYYY-MM-DD");
 
 export const CalendarPage = () => {
   const { t } = useTranslation();
+  const [dates, setDates] = useState<string[]>();
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [submittingDate, setSubmittingDate] = useState<string>();
+  const { cancel: cancelDates, start: startDates } = useAbortController();
   const { messageAPI, token } = useAntd();
-  const { language, user } = useCore();
-  const rtl = language.direction === "rtl";
-  const calendar =
-    language.calendar === "gregorian" ? "gregory" : language.calendar;
-  const dateLocale = language.code === "en" ? "en-gb" : language.code;
-  const { canUpdate } = getRoutePermissions("calendar", user);
-  const mutation = useMutationRequest(
-    `${user?.id}:${calendar}:${dateLocale}`,
-    canUpdate,
-  );
   const { styles } = useCalendarStyles();
-  const resource = useReadResource(fetchCalendarDates);
-  const dates = resource.data ?? [];
-  const loading = resource.loading;
-  const fetchData = resource.reload;
+  const { settings } = useCore();
+  const { lock, unlock } = useLock();
+  const { currentUser } = useOutletContext<DefaultLayoutContext>();
+  const { canUpdate } = getRoutePermissions("calendar", currentUser);
+  const { language } = settings;
+  const rtl = language.direction === "rtl";
 
   const { months, years } = useMemo(() => {
-    const currentYear = (dayjs().calendar(calendar) as unknown as Dayjs).year();
+    const currentYear = (
+      dayjs().calendar(language.calendar) as unknown as Dayjs
+    ).year();
 
     return {
       months: Array.from({ length: 12 }, (_, index) => ({
-        label: (dayjs().calendar(calendar) as unknown as Dayjs)
-          .locale(dateLocale)
+        label: (dayjs().calendar(language.calendar) as unknown as Dayjs)
+          .locale(language.code)
           .month(index)
           .format("MMMM"),
         value: index,
@@ -69,37 +79,65 @@ export const CalendarPage = () => {
         value: currentYear + index,
       })),
     };
-  }, [calendar, dateLocale]);
+  }, [language.calendar, language.code]);
+
+  const fetchData = useCallback(async () => {
+    const signal = startDates();
+    setLoading(true);
+
+    try {
+      const data = await fetchCalendarDates(signal);
+      if (signal.aborted) return;
+
+      setDates(data);
+    } catch (error) {
+      if (signal.aborted || isCancel(error)) return;
+
+      if (error instanceof Error) void messageAPI.error(error.message);
+    } finally {
+      if (!signal.aborted) setLoading(false);
+    }
+  }, [messageAPI, startDates]);
 
   const handleSelect = async (
     date: Dayjs,
-    selectInfo: CalendarSelectInfo,
+    selectInfo: SelectInfo,
   ): Promise<void> => {
     if (
       !canUpdate ||
+      !dates ||
       loading ||
-      resource.error ||
       selectInfo.source !== "date" ||
-      mutation.submitting
+      submitting ||
+      !lock()
     )
       return;
 
-    const formattedDate = formatCalendarDate(date);
+    const formattedDate = formatDate(date);
+    const remove = dates.includes(formattedDate);
+    setSubmittingDate(formattedDate);
+    setSubmitting(true);
 
     try {
-      const result = await mutation.run((signal) => {
-        setSubmittingDate(formattedDate);
-        return dates.includes(formattedDate)
-          ? deleteCalendarDate(formattedDate, signal)
-          : createCalendarDate(formattedDate, signal);
-      });
-      if (!result?.isCurrent()) return;
+      cancelDates();
 
+      if (remove) await deleteCalendarDate(formattedDate);
+      else await createCalendarDate(formattedDate);
+
+      setDates((current) => {
+        if (!current) return current;
+
+        return remove
+          ? current.filter((value) => value !== formattedDate)
+          : [...current, formattedDate];
+      });
       void messageAPI.success(t("calendarUpdated"));
       await fetchData();
     } catch (error) {
-      if (isCurrentMutationError(error))
-        void messageAPI.error(getErrorMessage(error.cause));
+      if (error instanceof Error) void messageAPI.error(error.message);
+    } finally {
+      unlock();
+      setSubmitting(false);
     }
   };
 
@@ -109,22 +147,22 @@ export const CalendarPage = () => {
   ) => {
     if (info.type !== "date") return info.originNode;
 
-    const formattedDate = formatCalendarDate(date);
-    const originNode = info.originNode as CalendarCell;
+    const formattedDate = formatDate(date);
+    const originNode = info.originNode as Cell;
 
     return cloneElement(originNode, {
-      className: [
-        styles.cell,
-        dates.includes(formattedDate) ? styles.holiday : undefined,
-      ]
-        .filter(Boolean)
-        .join(" "),
       children:
-        mutation.submitting && submittingDate === formattedDate ? (
+        submitting && submittingDate === formattedDate ? (
           <Spin size="small" />
         ) : (
           date.date()
         ),
+      className: [
+        styles.cell,
+        dates?.includes(formattedDate) ? styles.holiday : undefined,
+      ]
+        .filter(Boolean)
+        .join(" "),
     });
   };
 
@@ -133,7 +171,7 @@ export const CalendarPage = () => {
     value,
   }) => {
     const hasPreviousMonth = value.isAfter(
-      (dayjs().calendar(calendar) as unknown as Dayjs).startOf("year"),
+      (dayjs().calendar(language.calendar) as unknown as Dayjs).startOf("year"),
       "month",
     );
 
@@ -188,31 +226,33 @@ export const CalendarPage = () => {
     );
   };
 
+  useEffect(() => {
+    void (async () => {
+      await fetchData();
+    })();
+
+    return cancelDates;
+  }, [cancelDates, fetchData]);
+
+  if (!dates) return loading ? <Spin fullscreen /> : <ErrorFallback />;
+
   return (
     <Row>
       <Col lg={16} md={20} xs={24} xxl={12}>
-        <RequestFeedback
-          error={resource.error}
-          hasData={!!resource.data}
-          loading={loading}
-          retry={resource.reload}
-        />
-        {(!resource.error || resource.data) && (
-          <Card size="small" variant="borderless">
-            <Calendar
-              className={canUpdate ? styles.calendar : undefined}
-              defaultValue={(
-                dayjs().calendar(calendar) as unknown as Dayjs
-              ).locale(dateLocale)}
-              disabledDate={(date) => date.isBefore(dayjs().startOf("day"))}
-              fullCellRender={fullCellRender}
-              fullscreen={false}
-              headerRender={renderHeader}
-              key={`${calendar}:${dateLocale}`}
-              onSelect={(date, info) => void handleSelect(date, info)}
-            />
-          </Card>
-        )}
+        <Card size="small" variant="borderless">
+          <Calendar
+            className={canUpdate ? styles.calendar : undefined}
+            defaultValue={(
+              dayjs().calendar(language.calendar) as unknown as Dayjs
+            ).locale(language.code)}
+            disabledDate={(date) => date.isBefore(dayjs().startOf("day"))}
+            fullCellRender={fullCellRender}
+            fullscreen={false}
+            headerRender={renderHeader}
+            key={`${language.calendar}:${language.code}`}
+            onSelect={(date, info) => void handleSelect(date, info)}
+          />
+        </Card>
       </Col>
       {loading && <Spin fullscreen />}
     </Row>

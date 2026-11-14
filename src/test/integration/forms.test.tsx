@@ -1,38 +1,62 @@
 // @vitest-environment jsdom
 import { act, fireEvent, waitFor } from "@testing-library/react";
+import { CanceledError } from "axios";
 import type { ComponentProps, ReactNode } from "react";
 import type * as ReactI18next from "react-i18next";
-import { MemoryRouter, useNavigate } from "react-router";
+import { MemoryRouter, Outlet, Route, Routes, useNavigate } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { Account } from "@/features/account";
 import * as rolesApi from "@/features/roles/api";
 import { RoleForm } from "@/features/roles/components/role-form/RoleForm";
 import * as usersApi from "@/features/users/api";
 import { UserForm } from "@/features/users/components/user-form/UserForm";
 import { UserRoleForm } from "@/features/users/components/user-role-form/UserRoleForm";
 import type { User } from "@/features/users/types";
-import { clearAccessToken, setAccessToken } from "@/shared/api/token";
+import {
+  clearAccessToken,
+  getSessionSignal,
+  setAccessToken,
+} from "@/shared/api/token";
 import { render, screen } from "@/test/render";
 
-const mocks = vi.hoisted(() => ({
-  goBack: vi.fn(),
-  messageError: vi.fn(),
-  messageSuccess: vi.fn(),
-  notificationSuccess: vi.fn(),
-  currentUser: { id: "admin-1", isSystemAdmin: true, permissions: [] },
-  deferDrawerOpening: false,
-  drawerOpening: null as (() => void) | null,
-  deferDrawerClosing: false,
-  drawerClosing: null as (() => void) | null,
-}));
+const mocks = vi.hoisted(() => {
+  const messageAPI = { error: vi.fn(), success: vi.fn() };
+  const notificationAPI = { success: vi.fn() };
+  const currentUser: Account = {
+    firstName: "Synthetic",
+    id: "admin-1",
+    isSystemAdmin: true,
+    lastName: "Admin",
+    mobile: "09120000000",
+    permissions: [],
+    status: "active",
+  };
+  return {
+    goBack: vi.fn(),
+    realGoBack: false,
+    messageAPI,
+    notificationAPI,
+    messageError: messageAPI.error,
+    messageSuccess: messageAPI.success,
+    notificationSuccess: notificationAPI.success,
+    currentUser,
+    deferDrawerOpening: false,
+    drawerOpening: null as (() => void) | null,
+    deferDrawerClosing: false,
+    drawerClosing: null as (() => void) | null,
+  };
+});
 
 vi.mock("@/features/roles/api", () => ({
   createRole: vi.fn(),
+  fetchRole: vi.fn(),
   updateRole: vi.fn(),
 }));
 
 vi.mock("@/features/users/api", () => ({
   createUser: vi.fn(),
+  fetchUser: vi.fn(),
   updateUser: vi.fn(),
   updateUserRoles: vi.fn(),
 }));
@@ -40,20 +64,22 @@ vi.mock("@/features/users/api", () => ({
 const api = { ...rolesApi, ...usersApi };
 
 vi.mock("@/app/hooks", () => ({
-  useCore: () => ({ user: mocks.currentUser }),
   useAntd: () => ({
-    messageAPI: {
-      error: mocks.messageError,
-      success: mocks.messageSuccess,
-    },
-    notificationAPI: { success: mocks.notificationSuccess },
+    messageAPI: mocks.messageAPI,
+    notificationAPI: mocks.notificationAPI,
   }),
 }));
 
-vi.mock("@/shared/hooks", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/shared/hooks")>()),
-  useGoBack: () => mocks.goBack,
-}));
+vi.mock("@/shared/hooks", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/shared/hooks")>();
+  return {
+    ...actual,
+    useGoBack: () => {
+      const goBack = actual.useGoBack();
+      return mocks.realGoBack ? goBack : mocks.goBack;
+    },
+  };
+});
 
 vi.mock("react-i18next", async (importOriginal) => ({
   ...(await importOriginal<typeof ReactI18next>()),
@@ -81,7 +107,6 @@ vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
 });
 
 const userData: User = {
-  email: "ada@example.com",
   firstName: "Ada",
   id: "user-1",
   isSystemAdmin: false,
@@ -89,15 +114,23 @@ const userData: User = {
   mobile: "09120000000",
   roles: [{ id: "role-1", name: "Operators" }],
   status: "active",
-  username: "ada",
 };
+const formAtHash = (ui: ReactNode, hash: string) => (
+  <MemoryRouter initialEntries={[`/${hash}`]}>
+    <Routes>
+      <Route element={<Outlet context={{ currentUser: mocks.currentUser }} />}>
+        <Route path="*" element={ui} />
+      </Route>
+    </Routes>
+  </MemoryRouter>
+);
 const renderAtHash = (ui: ReactNode, hash: string) =>
-  render(<MemoryRouter initialEntries={[`/${hash}`]}>{ui}</MemoryRouter>);
+  render(formAtHash(ui, hash));
 
-const findFocusedField = async (name: string) => {
-  const field = await screen.findByLabelText(name);
-  await waitFor(() => expect(field).toHaveFocus());
-  return field;
+const submitLoadedForm = async (user: ReturnType<typeof render>["user"]) => {
+  const submit = await screen.findByRole("button", { name: "submit" });
+  await waitFor(() => expect(submit).toBeEnabled());
+  await user.click(submit);
 };
 
 const LeaveCreateForm = () => {
@@ -123,7 +156,7 @@ const beginUserCreation = async (onFinish: () => void) => {
   const clipboard = vi
     .spyOn(navigator.clipboard, "writeText")
     .mockResolvedValue(undefined);
-  await view.user.type(await findFocusedField("firstName"), "Ada");
+  await view.user.type(await screen.findByLabelText("firstName"), "Ada");
   await view.user.type(screen.getByLabelText("lastName"), "Lovelace");
   await view.user.type(screen.getByLabelText("mobile"), "09120000000");
   await view.user.click(screen.getByRole("button", { name: "submit" }));
@@ -137,6 +170,7 @@ beforeEach(() => {
   mocks.deferDrawerClosing = false;
   mocks.drawerClosing = null;
   mocks.currentUser.isSystemAdmin = true;
+  mocks.realGoBack = false;
   clearAccessToken();
   vi.mocked(api.createRole)
     .mockReset()
@@ -146,6 +180,16 @@ beforeEach(() => {
       permissions: ["users.read"],
     });
   vi.mocked(api.createUser).mockReset().mockResolvedValue(userData);
+  vi.mocked(api.fetchUser)
+    .mockReset()
+    .mockImplementation(async (id) => ({ ...userData, id }));
+  vi.mocked(api.fetchRole)
+    .mockReset()
+    .mockImplementation(async (id) => ({
+      id,
+      name: "Operators",
+      permissions: ["users.read"],
+    }));
   vi.mocked(api.updateRole)
     .mockReset()
     .mockResolvedValue({
@@ -158,7 +202,7 @@ beforeEach(() => {
 });
 
 describe("user identity form", () => {
-  it("resets creation values and initial focus when reopening", async () => {
+  it("resets creation values when reopening", async () => {
     mocks.deferDrawerOpening = true;
     mocks.deferDrawerClosing = true;
     const { user } = renderAtHash(
@@ -174,16 +218,16 @@ describe("user identity form", () => {
     await user.type(screen.getByLabelText("firstName"), "Ada");
     await user.click(screen.getByRole("button", { name: "Leave creation" }));
     await waitFor(() => expect(mocks.drawerClosing).not.toBeNull());
+    act(() => mocks.drawerClosing?.());
     mocks.drawerOpening = null;
     await user.click(screen.getByRole("button", { name: "Reopen creation" }));
     await waitFor(() => expect(mocks.drawerOpening).not.toBeNull());
     act(() => mocks.drawerOpening?.());
 
     expect(screen.getByLabelText("firstName")).toHaveValue("");
-    expect(screen.getByLabelText("firstName")).toHaveFocus();
   });
 
-  it("preserves the user's focused field when the creation drawer finishes opening", async () => {
+  it("preserves values entered before the drawer finishes opening", async () => {
     mocks.deferDrawerOpening = true;
     const onFinish = vi.fn();
     const { user } = renderAtHash(<UserForm onFinish={onFinish} />, "#create");
@@ -194,8 +238,7 @@ describe("user identity form", () => {
     await user.click(lastName);
     await waitFor(() => expect(mocks.drawerOpening).not.toBeNull());
     act(() => mocks.drawerOpening?.());
-    expect(lastName).toHaveFocus();
-    await user.keyboard("Lovelace");
+    await user.type(lastName, "Lovelace");
     expect(firstName).toHaveValue("Ada");
     expect(lastName).toHaveValue("Lovelace");
     await user.type(screen.getByLabelText("mobile"), "09120000000");
@@ -208,17 +251,21 @@ describe("user identity form", () => {
         lastName: "Lovelace",
         mobile: "09120000000",
         password: expect.any(String),
+        status: "active",
       },
       expect.any(AbortSignal),
     );
-    expect(mocks.messageSuccess).toHaveBeenCalledWith("userCreated");
+    expect(mocks.notificationSuccess).toHaveBeenCalledWith({
+      description: expect.any(String),
+      title: "userCreated",
+    });
     expect(onFinish).toHaveBeenCalledOnce();
   });
 
   it("keeps an early edit when the update drawer finishes opening", async () => {
     mocks.deferDrawerOpening = true;
     const { user } = renderAtHash(
-      <UserForm data={userData} onFinish={vi.fn()} />,
+      <UserForm id={userData.id} onFinish={vi.fn()} />,
       "#update",
     );
     const firstName = await screen.findByLabelText("firstName");
@@ -241,7 +288,7 @@ describe("user identity form", () => {
     const onFinish = vi.fn();
     const { user } = renderAtHash(<UserForm onFinish={onFinish} />, "#create");
 
-    await user.type(await findFocusedField("firstName"), "Ada");
+    await user.type(await screen.findByLabelText("firstName"), "Ada");
     await user.type(screen.getByLabelText("lastName"), "Lovelace");
     await user.type(screen.getByLabelText("mobile"), "09120000000");
     await user.click(screen.getByRole("button", { name: "submit" }));
@@ -255,14 +302,15 @@ describe("user identity form", () => {
         lastName: "Lovelace",
         mobile: "09120000000",
         password,
+        status: "active",
       },
       expect.any(AbortSignal),
     );
     expect(mocks.notificationSuccess).toHaveBeenCalledWith({
       description: password,
-      message: "password",
+      title: "userCreated",
     });
-    expect(mocks.messageSuccess).toHaveBeenCalledWith("userCreated");
+    expect(mocks.messageSuccess).not.toHaveBeenCalled();
     expect(mocks.goBack).toHaveBeenCalledOnce();
     expect(onFinish).toHaveBeenCalledOnce();
   }, 10_000);
@@ -270,7 +318,7 @@ describe("user identity form", () => {
   it("requires the user identity fields before generating a password", async () => {
     const { user } = renderAtHash(<UserForm onFinish={vi.fn()} />, "#create");
 
-    await findFocusedField("firstName");
+    await screen.findByLabelText("firstName");
     await user.click(screen.getByRole("button", { name: "submit" }));
 
     await waitFor(() =>
@@ -283,11 +331,11 @@ describe("user identity form", () => {
   it("updates a user without generating a new password", async () => {
     const onFinish = vi.fn();
     const { user } = renderAtHash(
-      <UserForm data={userData} onFinish={onFinish} />,
+      <UserForm id={userData.id} onFinish={onFinish} />,
       "#update",
     );
 
-    const firstName = await findFocusedField("firstName");
+    const firstName = await screen.findByDisplayValue("Ada");
     await user.clear(firstName);
     await user.type(firstName, "Augusta");
     await user.click(screen.getByRole("button", { name: "submit" }));
@@ -299,6 +347,7 @@ describe("user identity form", () => {
           firstName: "Augusta",
           lastName: "Lovelace",
           mobile: "09120000000",
+          status: "active",
         },
         expect.any(AbortSignal),
       ),
@@ -315,7 +364,7 @@ describe("user identity form", () => {
     const onFinish = vi.fn();
     const { user } = renderAtHash(<UserForm onFinish={onFinish} />, "#create");
 
-    await user.type(await findFocusedField("firstName"), "Ada");
+    await user.type(await screen.findByLabelText("firstName"), "Ada");
     await user.type(screen.getByLabelText("lastName"), "Lovelace");
     await user.type(screen.getByLabelText("mobile"), "09120000000");
     await user.click(screen.getByRole("button", { name: "submit" }));
@@ -357,7 +406,7 @@ describe("generated creation credentials", () => {
       await act(async () => release());
       expect(mocks.notificationSuccess).toHaveBeenCalledExactlyOnceWith({
         description: password,
-        message: "password",
+        title: "userCreated",
       });
       expect(view.clipboard).toHaveBeenCalledExactlyOnceWith(password);
       expect(mocks.messageSuccess).not.toHaveBeenCalled();
@@ -437,7 +486,7 @@ describe("role form", () => {
       "#create",
     );
 
-    await user.type(await findFocusedField("name"), "Operators");
+    await user.type(await screen.findByLabelText("name"), "Operators");
     await user.click(screen.getByLabelText("Read users"));
     await user.click(screen.getByRole("button", { name: "submit" }));
 
@@ -457,11 +506,7 @@ describe("role form", () => {
     const onFinish = vi.fn();
     const { user } = renderAtHash(
       <RoleForm
-        data={{
-          id: "role-1",
-          name: "Operators",
-          permissions: ["users.read"],
-        }}
+        id="role-1"
         onFinish={onFinish}
         options={{
           permissions: [
@@ -476,7 +521,7 @@ describe("role form", () => {
       "#update",
     );
 
-    const name = await findFocusedField("name");
+    const name = await screen.findByDisplayValue("Operators");
     expect(name).toHaveValue("Operators");
     expect(screen.getByLabelText("Read users")).toBeChecked();
     await user.clear(name);
@@ -504,7 +549,7 @@ describe("user access forms", () => {
     const onFinish = vi.fn();
     const { user } = renderAtHash(
       <UserRoleForm
-        data={userData}
+        id={userData.id}
         onFinish={onFinish}
         options={{
           roles: [{ id: "role-1", name: "Operators", permissions: [] }],
@@ -548,12 +593,19 @@ describe("form data guards", () => {
       ui: <UserRoleForm onFinish={vi.fn()} options={{ roles: [] }} />,
     },
   ])(
-    "closes the $name form when its record is missing",
+    "closes without reading or writing when the $name ID is missing",
     async ({ hash, ui }) => {
+      mocks.realGoBack = true;
       renderAtHash(ui, hash);
 
-      await waitFor(() => expect(mocks.goBack).toHaveBeenCalledOnce());
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      expect(api.fetchUser).not.toHaveBeenCalled();
+      expect(api.fetchRole).not.toHaveBeenCalled();
+      expect(api.updateUser).not.toHaveBeenCalled();
+      expect(api.updateRole).not.toHaveBeenCalled();
+      expect(api.updateUserRoles).not.toHaveBeenCalled();
     },
   );
 });
@@ -575,7 +627,7 @@ describe("form cancellation", () => {
       name: "roles",
       ui: (
         <UserRoleForm
-          data={userData}
+          id={userData.id}
           onFinish={vi.fn()}
           options={{ roles: [] }}
         />
@@ -601,19 +653,14 @@ describe("permission and mutation ownership", () => {
     id: User["id"],
     onFinish: () => void,
   ) => {
-    if (kind === "user")
-      return <UserForm data={{ ...userData, id }} onFinish={onFinish} />;
+    if (kind === "user") return <UserForm id={id} onFinish={onFinish} />;
     if (kind === "role")
       return (
-        <RoleForm
-          data={{ id, name: "Operators", permissions: ["users.read"] }}
-          onFinish={onFinish}
-          options={{ permissions: [] }}
-        />
+        <RoleForm id={id} onFinish={onFinish} options={{ permissions: [] }} />
       );
     return (
       <UserRoleForm
-        data={{ ...userData, id }}
+        id={id}
         onFinish={onFinish}
         options={{
           roles: [{ id: "role-1", name: "Operators", permissions: [] }],
@@ -628,24 +675,33 @@ describe("permission and mutation ownership", () => {
     return <button onClick={() => void navigate("/")}>Leave form</button>;
   };
   const holdMutation = (kind: MutationForm) => {
+    const sessionSignal = getSessionSignal();
     let release!: () => void;
     if (kind === "user")
       vi.mocked(api.updateUser).mockReturnValueOnce(
-        new Promise((resolve) => {
-          release = () => resolve(userData);
+        new Promise((resolve, reject) => {
+          release = () =>
+            sessionSignal.aborted
+              ? reject(new CanceledError())
+              : resolve(userData);
         }),
       );
     else if (kind === "role")
       vi.mocked(api.updateRole).mockReturnValueOnce(
-        new Promise((resolve) => {
+        new Promise((resolve, reject) => {
           release = () =>
-            resolve({ id: "record-1", name: "Operators", permissions: [] });
+            sessionSignal.aborted
+              ? reject(new CanceledError())
+              : resolve({ id: "record-1", name: "Operators", permissions: [] });
         }),
       );
     else
       vi.mocked(api.updateUserRoles).mockReturnValueOnce(
-        new Promise((resolve) => {
-          release = () => resolve(undefined);
+        new Promise((resolve, reject) => {
+          release = () =>
+            sessionSignal.aborted
+              ? reject(new CanceledError())
+              : resolve(undefined);
         }),
       );
     return {
@@ -699,7 +755,7 @@ describe("permission and mutation ownership", () => {
         formFor(kind, "record-1", onFinish),
         hashFor(kind),
       );
-      await user.click(await screen.findByRole("button", { name: "submit" }));
+      await submitLoadedForm(user);
       await waitFor(() => expect(pending.operation).toHaveBeenCalledOnce());
       const signal = vi.mocked(pending.operation).mock.calls[0][2];
       unmount();
@@ -721,7 +777,7 @@ describe("permission and mutation ownership", () => {
         formFor(kind, "record-1", onFinish),
         hashFor(kind),
       );
-      await user.click(await screen.findByRole("button", { name: "submit" }));
+      await submitLoadedForm(user);
       await waitFor(() => expect(pending.operation).toHaveBeenCalledOnce());
       await user.keyboard("{Escape}");
       expect(vi.mocked(pending.operation).mock.calls[0][2]?.aborted).toBe(true);
@@ -745,7 +801,7 @@ describe("permission and mutation ownership", () => {
         </>,
         hashFor(kind),
       );
-      await user.click(await screen.findByRole("button", { name: "submit" }));
+      await submitLoadedForm(user);
       await waitFor(() => expect(pending.operation).toHaveBeenCalledOnce());
       await act(async () => {
         fireEvent.click(
@@ -768,14 +824,10 @@ describe("permission and mutation ownership", () => {
       const hash = hashFor(kind);
       const ui = formFor(kind, "record-1", onFinish);
       const { user, rerender } = renderAtHash(ui, hash);
-      await user.click(await screen.findByRole("button", { name: "submit" }));
+      await submitLoadedForm(user);
       await waitFor(() => expect(pending.operation).toHaveBeenCalledOnce());
       mocks.currentUser.isSystemAdmin = false;
-      rerender(
-        <MemoryRouter initialEntries={[`/${hash}`]}>
-          {formFor(kind, "record-1", onFinish)}
-        </MemoryRouter>,
-      );
+      rerender(formAtHash(formFor(kind, "record-1", onFinish), hash));
       expect(vi.mocked(pending.operation).mock.calls[0][2]?.aborted).toBe(true);
       await waitFor(() => expect(mocks.goBack).toHaveBeenCalledOnce());
       await act(async () => pending.release());
@@ -795,13 +847,9 @@ describe("permission and mutation ownership", () => {
         formFor(kind, "record-1", onFinish),
         hash,
       );
-      await user.click(await screen.findByRole("button", { name: "submit" }));
+      await submitLoadedForm(user);
       await waitFor(() => expect(pending.operation).toHaveBeenCalledOnce());
-      rerender(
-        <MemoryRouter initialEntries={[`/${hash}`]}>
-          {formFor(kind, "record-2", onFinish)}
-        </MemoryRouter>,
-      );
+      rerender(formAtHash(formFor(kind, "record-2", onFinish), hash));
       expect(vi.mocked(pending.operation).mock.calls[0][2]?.aborted).toBe(true);
       await act(async () => pending.release());
       expect(screen.getByRole("dialog")).toBeVisible();
@@ -820,7 +868,7 @@ describe("permission and mutation ownership", () => {
         formFor(kind, "record-1", onFinish),
         hashFor(kind),
       );
-      await user.click(await screen.findByRole("button", { name: "submit" }));
+      await submitLoadedForm(user);
       await waitFor(() => expect(pending.operation).toHaveBeenCalledOnce());
       setAccessToken("synthetic-new-login");
       await act(async () => pending.release());
@@ -838,7 +886,7 @@ describe("permission and mutation ownership", () => {
         formFor(kind, "record-1", vi.fn()),
         hashFor(kind),
       );
-      await user.click(await screen.findByRole("button", { name: "submit" }));
+      await submitLoadedForm(user);
       await waitFor(() => expect(pending.operation).toHaveBeenCalledOnce());
       const form = screen.getByRole("dialog").querySelector("form");
       expect(form).not.toBeNull();

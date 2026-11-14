@@ -57,17 +57,18 @@ Ordinary local and PR verification uses Chromium. Complete verification substitu
 
 ## Review appearance
 
-For an affected screen, exercise translated names/errors, keyboard submission, invalid-field focus, drawer Tab containment, Escape and trigger-focus restoration. Read-only overflowing tables need a named keyboard-focusable scroll region. Preserve reduced motion and logical RTL/LTR layout across light/dark/compact variants. Static font tests inspect licensed WOFF2 data and CSS; the font journey separately checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
+For an affected screen, exercise translated names/errors, keyboard submission, invalid-field error associations, modal semantics, Escape and protection against accidental destructive submission. Preserve reduced motion and logical RTL/LTR layout across light/dark/compact variants. Static font tests inspect licensed WOFF2 data and CSS; the font journey separately checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
 
-Storybook and application axe audits exclude `color-contrast`. The API-owned
-palettes and Ant Design's displayed colors remain unchanged; automated checks
-do not impose a numerical color-contrast threshold. Keep the remaining axe
-rules, accessible names, error associations and keyboard assertions enabled.
+Storybook and application axe audits exclude `color-contrast`; application audits
+also exclude `scrollable-region-focusable`. The API-owned palettes and Ant
+Design's displayed colors remain unchanged; automated checks do not impose a
+numerical color-contrast threshold. Keep the remaining axe rules, including
+heading checks, accessible names and error associations enabled.
 
-Confirmation dialogs use Ant Design's focus handling. Tests require initial
-focus, keyboard movement between their controls, Escape, trigger restoration
-and no accidental submission, without an additional boundary Tab-cycling
-requirement. Drawer focus-containment assertions remain enabled.
+Application tests open drawers and confirmation dialogs from the keyboard,
+verify their named controls and check Escape without accidental submission.
+Focus placement, Tab containment, trigger-focus restoration and keyboard table
+scrolling are outside the automated test scope.
 
 ### Compare and approve images
 

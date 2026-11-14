@@ -2245,7 +2245,7 @@ test("historical minimal workflow fixtures retain blocking canonical execution w
   }
 });
 
-test("Sonar analyzes the declared phase and classifies its fixtures without weakening coverage or duplication", () => {
+test("Sonar preserves source, fixture and coverage scope with duplication measurement disabled", () => {
   const properties = Object.fromEntries(
     read("sonar-project.properties")
       .split(/\r?\n/)
@@ -2306,17 +2306,9 @@ test("Sonar analyzes the declared phase and classifies its fixtures without weak
     Object.keys(properties)
       .filter((key) => key.endsWith("exclusions"))
       .sort(),
-    [
-      ...(admitted("src/shared/i18n/locales") ? ["sonar.cpd.exclusions"] : []),
-      "sonar.exclusions",
-    ],
+    ["sonar.cpd.exclusions", "sonar.exclusions"],
   );
-  assert.equal(
-    properties["sonar.cpd.exclusions"],
-    admitted("src/shared/i18n/locales")
-      ? "src/shared/i18n/locales/*.ts"
-      : undefined,
-  );
+  assert.equal(properties["sonar.cpd.exclusions"], "**/*");
   assert.equal(
     properties["sonar.javascript.lcov.reportPaths"],
     "coverage/unit/lcov.info,coverage/governance/lcov.info",

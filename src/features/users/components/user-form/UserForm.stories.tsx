@@ -48,6 +48,7 @@ export const Create: Story = {
           lastName: "Rahimi",
           mobile: "09123334444",
           password: expect.stringMatching(/^[a-z0-9]{16}$/),
+          status: "active",
         },
         expect.any(AbortSignal),
       ),
@@ -57,7 +58,7 @@ export const Create: Story = {
 };
 
 export const Update: Story = {
-  args: { data: user, onFinish: fn() },
+  args: { id: user.id, onFinish: fn() },
   render: (args) => (
     <StoryShell initialEntries={["/#update"]}>
       <UserForm {...args} />
@@ -66,9 +67,11 @@ export const Update: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body);
     const dialog = within(await body.findByRole("dialog"));
-    await expect(
-      dialog.getByLabelText(i18nInstance.t("firstName")),
-    ).toHaveValue("Sara");
+    await waitFor(() =>
+      expect(dialog.getByLabelText(i18nInstance.t("firstName"))).toHaveValue(
+        "Sara",
+      ),
+    );
     await expect(dialog.getByLabelText(i18nInstance.t("lastName"))).toHaveValue(
       "Ahmadi",
     );
