@@ -12,7 +12,13 @@ import {
   Select,
 } from "antd";
 import { isCancel } from "axios";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useOutletContext } from "react-router";
 
@@ -34,12 +40,14 @@ export const SettingsPage = () => {
   const { t } = useTranslation();
   const [form] = Form.useForm<SettingsFormValues>();
   const [languages, setLanguages] = useState<Settings["language"][]>([]);
+  const [logoLoading, setLogoLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { cancel, start } = useAbortController();
   const { messageAPI, token } = useAntd();
   const { settings, setSettings } = useCore();
   const { lock, unlock } = useLock();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
+  const logoUploads = useRef({ dark: false, light: false });
   const { canUpdate } = getRoutePermissions("settings", currentUser);
   const isSystemAdmin = currentUser.isSystemAdmin;
 
@@ -64,13 +72,27 @@ export const SettingsPage = () => {
     setFormValues(settings);
   };
 
+  const handleLogoLoadingChange = (
+    theme: "dark" | "light",
+    loading: boolean,
+  ) => {
+    logoUploads.current[theme] = loading;
+    setLogoLoading(logoUploads.current.dark || logoUploads.current.light);
+  };
+
   const handleSubmit: FormProps<SettingsFormValues>["onFinish"] = async ({
     darkLogo,
     languageCode,
     lightLogo,
     ...values
   }) => {
-    if (!canUpdate || !lock()) return;
+    if (
+      !canUpdate ||
+      logoUploads.current.dark ||
+      logoUploads.current.light ||
+      !lock()
+    )
+      return;
 
     const signal = start();
     setSubmitting(true);
@@ -170,6 +192,9 @@ export const SettingsPage = () => {
                     <ImageUpload
                       disabled={submitting || !canUpdate}
                       label={t("logo")}
+                      onLoadingChange={(loading) =>
+                        handleLogoLoadingChange(theme, loading)
+                      }
                       onError={(error) => {
                         void messageAPI.error(error.message);
                       }}
@@ -242,13 +267,16 @@ export const SettingsPage = () => {
               </div>
             ))}
             <Flex gap={8} justify="flex-end">
-              <Button disabled={submitting} onClick={resetFormValues}>
+              <Button
+                disabled={submitting || logoLoading}
+                onClick={resetFormValues}
+              >
                 {t("reset")}
               </Button>
               <Button
-                disabled={!canUpdate || submitting}
+                disabled={!canUpdate || submitting || logoLoading}
                 htmlType="submit"
-                loading={submitting}
+                loading={submitting || logoLoading}
                 type="primary"
               >
                 {t("submit")}

@@ -59,7 +59,8 @@ const acceptedImage = {
   id: "accepted-image",
   url: "blob:synthetic-accepted-image",
 };
-const onBusyChange = vi.fn<NonNullable<UploadTestProps["onBusyChange"]>>();
+const onLoadingChange =
+  vi.fn<NonNullable<UploadTestProps["onLoadingChange"]>>();
 const onChange = vi.fn<NonNullable<UploadTestProps["onChange"]>>();
 const onError = vi.fn<UploadTestProps["onError"]>();
 const upload = vi.fn<UploadTestProps["upload"]>();
@@ -68,7 +69,7 @@ const renderUpload = () =>
   render(
     <ImageUpload
       label={label}
-      onBusyChange={onBusyChange}
+      onLoadingChange={onLoadingChange}
       onChange={onChange}
       onError={onError}
       settings={{ height: 256, size: 1_000_000, width: 256 }}
@@ -120,7 +121,7 @@ describe("image upload request lifecycle", () => {
     expect(vi.mocked(readImageSize).mock.calls[0][0]).toBe(selected);
     expect(upload).not.toHaveBeenCalled();
     expect(onChange).not.toHaveBeenCalled();
-    expect(onBusyChange).toHaveBeenLastCalledWith(false);
+    expect(onLoadingChange).toHaveBeenLastCalledWith(false);
     expect(getFileInput(container).disabled).toBe(false);
     expect(screen.getByRole("img", { name: label }).getAttribute("src")).toBe(
       previousImage.url,
@@ -136,7 +137,7 @@ describe("image upload request lifecycle", () => {
     expect(vi.mocked(readImageSize).mock.calls[2][0]).not.toBe(retry);
     expect(upload).toHaveBeenCalledTimes(1);
     expect(onError).toHaveBeenCalledTimes(1);
-    expect(onBusyChange).toHaveBeenLastCalledWith(false);
+    expect(onLoadingChange).toHaveBeenLastCalledWith(false);
     expect(getFileInput(container).disabled).toBe(false);
   });
 
@@ -149,11 +150,11 @@ describe("image upload request lifecycle", () => {
       const selected = chooseFile(container);
       await waitFor(() => expect(readImageSize).toHaveBeenCalledTimes(1));
       expect(vi.mocked(readImageSize).mock.calls[0][0]).toBe(selected);
-      expect(onBusyChange).toHaveBeenLastCalledWith(true);
+      expect(onLoadingChange).toHaveBeenLastCalledWith(true);
       expect(getFileInput(container).disabled).toBe(true);
 
       unmount();
-      const busyChanges = onBusyChange.mock.calls.length;
+      const busyChanges = onLoadingChange.mock.calls.length;
       await act(async () => {
         if (outcome === "success") pending.resolve({ height: 256, width: 256 });
         else pending.reject(new Error("Synthetic obsolete decode failure"));
@@ -163,7 +164,7 @@ describe("image upload request lifecycle", () => {
       expect(upload).not.toHaveBeenCalled();
       expect(onChange).not.toHaveBeenCalled();
       expect(onError).not.toHaveBeenCalled();
-      expect(onBusyChange).toHaveBeenCalledTimes(busyChanges);
+      expect(onLoadingChange).toHaveBeenCalledTimes(busyChanges);
     },
   );
 
@@ -181,7 +182,7 @@ describe("image upload request lifecycle", () => {
     expect(onError.mock.calls[0][0].message).toBe(i18n.t("imageTooSmall"));
     expect(upload).not.toHaveBeenCalled();
     expect(onChange).not.toHaveBeenCalled();
-    expect(onBusyChange).toHaveBeenLastCalledWith(false);
+    expect(onLoadingChange).toHaveBeenLastCalledWith(false);
     expect(getFileInput(container).disabled).toBe(false);
   });
 
@@ -197,7 +198,7 @@ describe("image upload request lifecycle", () => {
     expect(onError.mock.calls[0][0].message).toBe(i18n.t("imageTooLarge"));
     expect(upload).not.toHaveBeenCalled();
     expect(onChange).not.toHaveBeenCalled();
-    expect(onBusyChange).toHaveBeenLastCalledWith(false);
+    expect(onLoadingChange).toHaveBeenLastCalledWith(false);
     expect(getFileInput(container).disabled).toBe(false);
   });
 
@@ -211,7 +212,7 @@ describe("image upload request lifecycle", () => {
     await waitFor(() => expect(upload).toHaveBeenCalledTimes(1));
     expect(getFileInput(container).disabled).toBe(true);
     expect(screen.getByText(i18n.t("loading"))).toBeDefined();
-    expect(onBusyChange).toHaveBeenLastCalledWith(true);
+    expect(onLoadingChange).toHaveBeenLastCalledWith(true);
 
     await act(async () => {
       pending.reject(failure);
@@ -219,7 +220,7 @@ describe("image upload request lifecycle", () => {
 
     expect(onError).toHaveBeenCalledExactlyOnceWith(failure);
     expect(onChange).not.toHaveBeenCalled();
-    expect(onBusyChange).toHaveBeenLastCalledWith(false);
+    expect(onLoadingChange).toHaveBeenLastCalledWith(false);
     expect(getFileInput(container).disabled).toBe(false);
     expect(screen.queryByText(i18n.t("loading"))).toBeNull();
     expect(screen.getByRole("img", { name: label }).getAttribute("src")).toBe(
@@ -232,7 +233,7 @@ describe("image upload request lifecycle", () => {
     );
     expect(upload).toHaveBeenCalledTimes(2);
     expect(onError).toHaveBeenCalledTimes(1);
-    expect(onBusyChange).toHaveBeenLastCalledWith(false);
+    expect(onLoadingChange).toHaveBeenLastCalledWith(false);
     expect(getFileInput(container).disabled).toBe(false);
   });
 
@@ -244,10 +245,10 @@ describe("image upload request lifecycle", () => {
       const { container, unmount } = renderUpload();
       chooseFile(container);
       await waitFor(() => expect(upload).toHaveBeenCalledTimes(1));
-      expect(onBusyChange).toHaveBeenLastCalledWith(true);
+      expect(onLoadingChange).toHaveBeenLastCalledWith(true);
 
       unmount();
-      const busyChanges = onBusyChange.mock.calls.length;
+      const busyChanges = onLoadingChange.mock.calls.length;
       await act(async () => {
         if (outcome === "success") pending.resolve(acceptedImage);
         else pending.reject(new Error("Synthetic obsolete upload failure"));
@@ -255,7 +256,7 @@ describe("image upload request lifecycle", () => {
 
       expect(onChange).not.toHaveBeenCalled();
       expect(onError).not.toHaveBeenCalled();
-      expect(onBusyChange).toHaveBeenCalledTimes(busyChanges);
+      expect(onLoadingChange).toHaveBeenCalledTimes(busyChanges);
     },
   );
 });

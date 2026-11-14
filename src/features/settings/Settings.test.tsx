@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Account as CurrentUser } from "@/features/account";
 import { i18n } from "@/shared/i18n";
+import { ImageUpload } from "@/shared/ui/image-upload";
 import { deferred } from "@/test/deferred";
 
 import { fetchLanguages, updateSettings } from "./api";
@@ -23,6 +24,7 @@ const { messages, setSettings } = vi.hoisted(() => ({
   setSettings: vi.fn(),
 }));
 vi.mock("./api", () => ({ fetchLanguages: vi.fn(), updateSettings: vi.fn() }));
+vi.mock("@/shared/ui/image-upload", () => ({ ImageUpload: vi.fn(() => null) }));
 vi.mock("@/app/hooks", () => ({
   useAntd: () => ({ messageAPI: messages, token: { colorText: "#111" } }),
   useCore: () => ({ settings, setSettings }),
@@ -83,6 +85,15 @@ const renderPage = () =>
       </Routes>
     </MemoryRouter>,
   );
+
+const getLogoUpload = (id: string) => {
+  const call = vi
+    .mocked(ImageUpload)
+    .mock.calls.findLast(([props]) => props.value?.id === id);
+  if (!call) throw new Error("Logo upload control is missing");
+
+  return call[0];
+};
 
 beforeEach(async () => {
   vi.resetAllMocks();
@@ -159,6 +170,97 @@ describe("settings form", () => {
 
     expect(width.value).toBe("400");
     expect(updateSettings).not.toHaveBeenCalled();
+  });
+
+  it("blocks saving until both logo uploads finish and then sends their accepted IDs", async () => {
+    const { container } = renderPage();
+    await act(async () => undefined);
+    const light = getLogoUpload("synthetic-light");
+    const dark = getLogoUpload("synthetic-dark");
+    const submit = screen.getByRole<HTMLButtonElement>("button", {
+      name: i18n.t("submit"),
+    });
+    const reset = screen.getByRole<HTMLButtonElement>("button", {
+      name: i18n.t("reset"),
+    });
+
+    act(() => light.onLoadingChange?.(true));
+    expect(submit.disabled).toBe(true);
+    expect(reset.disabled).toBe(true);
+    act(() => dark.onLoadingChange?.(true));
+    fireEvent.submit(container.querySelector("form")!);
+    await act(async () => undefined);
+    expect(updateSettings).not.toHaveBeenCalled();
+
+    act(() => {
+      light.onChange?.({ id: "uploaded-light", url: "/uploaded-light.png" });
+      light.onLoadingChange?.(false);
+    });
+    expect(submit.disabled).toBe(true);
+    expect(reset.disabled).toBe(true);
+    fireEvent.submit(container.querySelector("form")!);
+    await act(async () => undefined);
+    expect(updateSettings).not.toHaveBeenCalled();
+
+    act(() => {
+      dark.onChange?.({ id: "uploaded-dark", url: "/uploaded-dark.png" });
+      dark.onLoadingChange?.(false);
+    });
+    expect(submit.disabled).toBe(false);
+    expect(reset.disabled).toBe(false);
+    fireEvent.click(submit);
+
+    await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1));
+    expect(updateSettings).toHaveBeenCalledWith(
+      {
+        darkTheme: palette,
+        lightTheme: palette,
+        imageSettings: settings.imageSettings,
+        languageCode: "en",
+        darkLogoId: "uploaded-dark",
+        lightLogoId: "uploaded-light",
+      },
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("allows saving the previous logo when an upload ends without replacement", async () => {
+    renderPage();
+    await act(async () => undefined);
+    const light = getLogoUpload("synthetic-light");
+    const submit = screen.getByRole<HTMLButtonElement>("button", {
+      name: i18n.t("submit"),
+    });
+
+    act(() => light.onLoadingChange?.(true));
+    expect(submit.disabled).toBe(true);
+    act(() => light.onLoadingChange?.(false));
+    expect(submit.disabled).toBe(false);
+    fireEvent.click(submit);
+
+    await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(updateSettings).mock.calls[0][0]).toMatchObject({
+      darkLogoId: "synthetic-dark",
+      lightLogoId: "synthetic-light",
+    });
+  });
+
+  it("blocks a pending form submission when a logo starts loading before validation finishes", async () => {
+    const { container } = renderPage();
+    await act(async () => undefined);
+    const light = getLogoUpload("synthetic-light");
+    const submit = screen.getByRole("button", { name: i18n.t("submit") });
+
+    await act(async () => {
+      fireEvent.submit(container.querySelector("form")!);
+      light.onLoadingChange?.(true);
+    });
+
+    expect(updateSettings).not.toHaveBeenCalled();
+    expect(messages.success).not.toHaveBeenCalled();
+    act(() => light.onLoadingChange?.(false));
+    fireEvent.click(submit);
+    await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1));
   });
 
   it("blocks writes without settings permission and keeps API language restricted to administrators", async () => {

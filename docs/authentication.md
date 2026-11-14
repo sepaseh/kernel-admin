@@ -84,6 +84,8 @@ The default layout checks the account before rendering protected children and ex
 
 The settings adapter returns typed API responses without runtime envelope validation. Core preserves accepted settings across refresh failures and replaces older reads when a save succeeds. [Settings adapter](../src/features/settings/api.ts) and [localization](localization.md).
 
+The settings form tracks light and dark logo operations independently through the image control's `onLoadingChange` callback. Decoding, cropping and uploading keep Submit and Reset unavailable, and the submit handler checks pending logo work before acquiring its save lock. Crop confirmation and cancellation remain available. Saving resumes after both controls finish and uses their accepted logo identifiers.
+
 | Symptom                                               | First check                                                                                                                            |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Settings metadata is rejected                         | Confirm the configured API URL, response metadata and exact allowed browser origin. `localhost` and `127.0.0.1` are different origins. |
