@@ -107,6 +107,40 @@ build only after their own required typecheck succeeds on unchanged source. The
 builder verifies that fingerprint before compiling, avoiding a second typecheck.
 Standalone production and verification builds still perform their own typecheck.
 
+## Configure SonarQube Cloud
+
+The repository standard allows at most **5.0% duplicated lines on new code**
+(`new_duplicated_lines_density > 5` is the failing condition). Preserve the
+remaining quality-gate conditions and the required correctness, security and
+scanner checks.
+
+Configure this remote setting after importing a project. Verify it again after
+moving or recreating the repository, organization or Sonar project:
+
+1. Confirm that the organization's plan supports assigning custom quality gates
+   and that the configuring account has the required administrative permission.
+   If assignment is unavailable, report the remote setup as incomplete and
+   preserve the actual provider result; a documented target is not an applied
+   setting.
+2. In the organization's **Quality Gates**, copy **Sonar way** into a custom gate,
+   or reuse the verified gate intended for this project. Set only the new-code
+   duplication condition to **greater than 5.0%**. Keep the copied reliability,
+   security, hotspot-review and other conditions unchanged.
+3. In the target project's **Quality Gate**, choose **Use a specific quality gate**,
+   select the custom gate and save. Verify its assignment. The assigned gate also
+   applies to the project's branches and pull requests.
+4. Run an authorized analysis of the current revision. Verify the analyzed
+   project and revision, the assigned gate and its threshold. Check scanner
+   execution and the resulting provider quality gate separately.
+
+`sonar-project.properties` configures analysis inputs; it does not provision or
+assign a remote quality gate. Restoring that file or changing project identifiers
+alone does not restore this setup. Keep existing duplication exclusions narrow;
+do not exclude entire feature owners merely to satisfy the threshold.
+
+See [custom quality gates](https://docs.sonarsource.com/sonarqube-cloud/standards/managing-quality-gates/managing-custom-quality-gates)
+and [project assignment](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/project-analysis/changing-quality-gate).
+
 ## Hosted checks and review
 
 Local success does not establish hosted CI, scanner execution, the asynchronous Sonar quality gate or review approval. Before an authorized review request or merge:

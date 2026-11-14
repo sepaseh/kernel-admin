@@ -58,6 +58,16 @@ formatting/import-order findings are advisory. They do not justify source
 rewrites, shallow tests or extra abstractions. Behavioral assertions, type/lint
 correctness, build and security controls remain required.
 
+Keep feature forms independently readable and customizable. Similar lifecycle
+code may remain at separate feature owners when sharing it would add generic
+callbacks or configuration that obscure their behavior. Extract a shared
+responsibility when it improves the design, not solely to reduce duplication.
+
+Follow the documented [SonarQube Cloud setup](../../docs/validation.md#configure-sonarqube-cloud)
+when configuring or restoring the **5.0% new-code duplication limit**. This limit
+does not authorize metric-only abstractions, broad analysis exclusions or weaker
+behavioral and security checks.
+
 - Treat SonarQube findings as prompts to improve the design, not targets to
   silence mechanically. Understand the reported risk and its runtime context
   before changing code.
