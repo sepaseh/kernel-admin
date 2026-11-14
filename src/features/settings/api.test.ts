@@ -12,13 +12,14 @@ beforeEach(() => {
 });
 
 describe("settings HTTP contract", () => {
-  it("forwards cancellation to settings and language metadata reads", async () => {
+  it("bounds settings reads while forwarding cancellation to both read owners", async () => {
     const controller = new AbortController();
     await fetchSettings(controller.signal);
     await fetchLanguages(controller.signal);
 
     expect(apiClient.get).toHaveBeenNthCalledWith(1, "/settings", {
       signal: controller.signal,
+      timeout: 15_000,
     });
     expect(apiClient.get).toHaveBeenNthCalledWith(2, "/languages", {
       signal: controller.signal,

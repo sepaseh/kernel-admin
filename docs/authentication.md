@@ -26,7 +26,7 @@ Login accepts `mobile` and `password`. Authentication screens import only their 
 
 ## Transport contract
 
-The shared client configures Axios with credentials and explicit cancellation, without a general request timeout. Refresh alone has a 15-second bound per attempt. [`config.ts`](../src/shared/api/config.ts) reads the public `VITE_API_BASE_URL`, falling back to the browser origin when that value is absent. See [usage](usage.md) for configuration.
+The shared client configures Axios with credentials and explicit cancellation, without a general request timeout. Refresh has a 15-second bound per attempt. The settings API owner also bounds `fetchSettings` reads to 15 seconds while preserving caller cancellation, so initial loading can reach the error and Retry state. Language reads, settings writes and uploads do not inherit that settings-read timeout. [`config.ts`](../src/shared/api/config.ts) reads the public `VITE_API_BASE_URL`, falling back to the browser origin when that value is absent. See [usage](usage.md) for configuration.
 
 Feature adapters pass IDs through the shared [path validator](../src/shared/api/path.ts) before constructing a request URL. It rejects empty IDs and the exact IDs `.` and `..`, which URL normalization would treat as dot segments, with a `TypeError` before transport. Other IDs remain opaque and are encoded as one path segment; ordinary dots and literal percent sequences are preserved as identifier data.
 
@@ -50,7 +50,7 @@ Bearer credentials stay in memory. Login/logout starts a new authentication gene
 
 A protected operation captures its generation synchronously when called. The queued interceptor checks it before dispatch, and the client checks again after fulfillment before returning data. A stale generation is cancelled before it can return data or expire a newer login.
 
-Concurrent attributed protected 401s share one refresh per generation. Each eligible request can replay once after successful same-generation refresh if it has not been cancelled. A cancelled waiter does not cancel another waiter's shared refresh. Refresh retries a network or server failure once after its existing one-second retry interval. An exhausted refresh or a current retried 401 expires the current session once.
+Concurrent attributed protected 401s share one refresh per generation. Each eligible request can replay once after successful same-generation refresh if it has not been cancelled. A cancelled waiter does not cancel another waiter's shared refresh. Refresh retries a network or server failure once after its existing one-second retry interval. Exhausted network, timeout and server failures preserve the current session and propagate an error for a later manual retry without replaying the failed operation. Other refresh failures, including definitive 401/403 rejection or an invalid access-token response, and a current retried 401 expire the current session once.
 
 Public or unattributed failures cannot refresh or clear a login. Network failures, timeouts, 429s and 5xx responses do not automatically replay mutations. The eligible 401 replay is separate from an ordinary network retry.
 
@@ -92,7 +92,9 @@ The default layout checks the account before rendering protected children and ex
 
 ## Settings and troubleshooting
 
-The settings adapter uses typed settings models without runtime envelope validation. Core preserves accepted settings across refresh failures and replaces older reads when a save succeeds. [Settings adapter](../src/features/settings/api.ts) and [localization](localization.md).
+The settings adapter returns typed API responses without runtime envelope validation. Core preserves accepted settings across refresh failures and replaces older reads when a save succeeds. [Settings adapter](../src/features/settings/api.ts) and [localization](localization.md).
+
+The settings form tracks light and dark logo operations independently through the image control's `onLoadingChange` callback. Decoding, cropping and uploading keep Submit and Reset unavailable, and the submit handler checks pending logo work before acquiring its save lock. Crop confirmation and cancellation remain available. Saving resumes after both controls finish and uses their accepted logo identifiers.
 
 | Symptom                                               | First check                                                                                                                            |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |

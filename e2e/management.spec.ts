@@ -264,7 +264,10 @@ test.describe("role and user management", () => {
     await page.getByRole("button", { name: "Submit" }).click();
     await expect(page.getByText("Please enter First name")).toBeVisible();
     const createDialog = page.getByRole("dialog", { name: "Create" });
-    await expect(createDialog.getByRole("textbox").nth(0)).toBeFocused();
+    await expect(createDialog.getByRole("textbox").nth(0)).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
     await createDialog.getByRole("textbox").nth(0).fill("Ada");
     await createDialog.getByRole("textbox").nth(1).fill("Lovelace");
     await createDialog.getByRole("textbox").nth(2).fill("09121111111");

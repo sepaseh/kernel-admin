@@ -258,7 +258,7 @@ test("unused ephemeral port passes availability preflight", async () => {
   await assert.doesNotReject(() => assertVisualPortsAvailable([0]));
 });
 
-test("strict CLI comparison pins OS architecture and runtime and requires source provenance", () => {
+test("strict CLI comparison pins the rendering environment and validates Node compatibility and source provenance", () => {
   const metadata = {
     platform: "win32",
     arch: "x64",
@@ -279,13 +279,27 @@ test("strict CLI comparison pins OS architecture and runtime and requires source
     platform: metadata.platform,
     arch: metadata.arch,
     node: metadata.node,
+    nodeRange: ">=24.15.0 <25",
     osRelease: metadata.osRelease,
     playwright: metadata.playwright,
     browserVersion: metadata.browserVersion,
     strictProvenance: true,
   };
-  assert.doesNotThrow(() => assertReviewedVisualBaseline(metadata, expected));
-  for (const key of ["arch", "node", "osRelease"])
+  assert.equal(assertReviewedVisualBaseline(metadata, expected), undefined);
+  assert.equal(
+    assertReviewedVisualBaseline(metadata, { ...expected, node: "24.18.0" }),
+    undefined,
+  );
+  for (const node of ["v24.18.1", "v24.22.2"]) {
+    const warning = assertReviewedVisualBaseline(metadata, {
+      ...expected,
+      node,
+    });
+    assert.match(warning, /24\.18\.0/);
+    assert.ok(warning.includes(node));
+    assert.ok(warning.includes(expected.nodeRange));
+  }
+  for (const key of ["arch", "osRelease"])
     assert.throws(
       () =>
         assertReviewedVisualBaseline(
@@ -294,6 +308,49 @@ test("strict CLI comparison pins OS architecture and runtime and requires source
         ),
       /current runtime/,
     );
+  for (const node of [
+    undefined,
+    null,
+    24,
+    "",
+    "different",
+    "24.18",
+    "v24.18.0-rc.1",
+  ])
+    for (const side of ["baseline", "current"])
+      assert.throws(
+        () =>
+          assertReviewedVisualBaseline(
+            side === "baseline" ? { ...metadata, node } : metadata,
+            side === "current" ? { ...expected, node } : expected,
+          ),
+        /Node provenance/,
+        `${side} Node ${JSON.stringify(node)}`,
+      );
+  for (const node of ["v24.14.9", "v24.0.0"])
+    for (const side of ["baseline", "current"])
+      assert.throws(
+        () =>
+          assertReviewedVisualBaseline(
+            side === "baseline" ? { ...metadata, node } : metadata,
+            side === "current" ? { ...expected, node } : expected,
+          ),
+        /supported range/,
+      );
+  for (const nodeRange of [undefined, null, 24, "invalid", ">=24.20.0 <25"])
+    assert.throws(
+      () => assertReviewedVisualBaseline(metadata, { ...expected, nodeRange }),
+      /supported range/,
+    );
+  assert.throws(
+    () =>
+      assertReviewedVisualBaseline(metadata, {
+        ...expected,
+        node: "v25.0.0",
+        nodeRange: ">=24.15.0 <26",
+      }),
+    /Node major.*current runtime/,
+  );
   for (const patch of [
     { sourceFingerprint: undefined },
     { sourceFingerprint: "invalid" },

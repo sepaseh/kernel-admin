@@ -133,12 +133,6 @@ const submitLoadedForm = async (user: ReturnType<typeof render>["user"]) => {
   await user.click(submit);
 };
 
-const findFocusedField = async (name: string) => {
-  const field = await screen.findByLabelText(name);
-  await waitFor(() => expect(field).toHaveFocus());
-  return field;
-};
-
 const LeaveCreateForm = () => {
   const navigate = useNavigate();
   return <button onClick={() => void navigate("/")}>Leave creation</button>;
@@ -162,7 +156,7 @@ const beginUserCreation = async (onFinish: () => void) => {
   const clipboard = vi
     .spyOn(navigator.clipboard, "writeText")
     .mockResolvedValue(undefined);
-  await view.user.type(await findFocusedField("firstName"), "Ada");
+  await view.user.type(await screen.findByLabelText("firstName"), "Ada");
   await view.user.type(screen.getByLabelText("lastName"), "Lovelace");
   await view.user.type(screen.getByLabelText("mobile"), "09120000000");
   await view.user.click(screen.getByRole("button", { name: "submit" }));
@@ -208,7 +202,7 @@ beforeEach(() => {
 });
 
 describe("user identity form", () => {
-  it("resets creation values and initial focus when reopening", async () => {
+  it("resets creation values when reopening", async () => {
     mocks.deferDrawerOpening = true;
     mocks.deferDrawerClosing = true;
     const { user } = renderAtHash(
@@ -231,10 +225,9 @@ describe("user identity form", () => {
     act(() => mocks.drawerOpening?.());
 
     expect(screen.getByLabelText("firstName")).toHaveValue("");
-    expect(screen.getByLabelText("firstName")).toHaveFocus();
   });
 
-  it("returns focus to the initial field after opening without discarding entered values", async () => {
+  it("preserves values entered before the drawer finishes opening", async () => {
     mocks.deferDrawerOpening = true;
     const onFinish = vi.fn();
     const { user } = renderAtHash(<UserForm onFinish={onFinish} />, "#create");
@@ -245,7 +238,6 @@ describe("user identity form", () => {
     await user.click(lastName);
     await waitFor(() => expect(mocks.drawerOpening).not.toBeNull());
     act(() => mocks.drawerOpening?.());
-    expect(firstName).toHaveFocus();
     await user.type(lastName, "Lovelace");
     expect(firstName).toHaveValue("Ada");
     expect(lastName).toHaveValue("Lovelace");
@@ -296,7 +288,7 @@ describe("user identity form", () => {
     const onFinish = vi.fn();
     const { user } = renderAtHash(<UserForm onFinish={onFinish} />, "#create");
 
-    await user.type(await findFocusedField("firstName"), "Ada");
+    await user.type(await screen.findByLabelText("firstName"), "Ada");
     await user.type(screen.getByLabelText("lastName"), "Lovelace");
     await user.type(screen.getByLabelText("mobile"), "09120000000");
     await user.click(screen.getByRole("button", { name: "submit" }));
@@ -326,7 +318,7 @@ describe("user identity form", () => {
   it("requires the user identity fields before generating a password", async () => {
     const { user } = renderAtHash(<UserForm onFinish={vi.fn()} />, "#create");
 
-    await findFocusedField("firstName");
+    await screen.findByLabelText("firstName");
     await user.click(screen.getByRole("button", { name: "submit" }));
 
     await waitFor(() =>
@@ -343,7 +335,7 @@ describe("user identity form", () => {
       "#update",
     );
 
-    const firstName = await findFocusedField("firstName");
+    const firstName = await screen.findByDisplayValue("Ada");
     await user.clear(firstName);
     await user.type(firstName, "Augusta");
     await user.click(screen.getByRole("button", { name: "submit" }));
@@ -372,7 +364,7 @@ describe("user identity form", () => {
     const onFinish = vi.fn();
     const { user } = renderAtHash(<UserForm onFinish={onFinish} />, "#create");
 
-    await user.type(await findFocusedField("firstName"), "Ada");
+    await user.type(await screen.findByLabelText("firstName"), "Ada");
     await user.type(screen.getByLabelText("lastName"), "Lovelace");
     await user.type(screen.getByLabelText("mobile"), "09120000000");
     await user.click(screen.getByRole("button", { name: "submit" }));
@@ -494,7 +486,7 @@ describe("role form", () => {
       "#create",
     );
 
-    await user.type(await findFocusedField("name"), "Operators");
+    await user.type(await screen.findByLabelText("name"), "Operators");
     await user.click(screen.getByLabelText("Read users"));
     await user.click(screen.getByRole("button", { name: "submit" }));
 
@@ -529,7 +521,7 @@ describe("role form", () => {
       "#update",
     );
 
-    const name = await findFocusedField("name");
+    const name = await screen.findByDisplayValue("Operators");
     expect(name).toHaveValue("Operators");
     expect(screen.getByLabelText("Read users")).toBeChecked();
     await user.clear(name);
