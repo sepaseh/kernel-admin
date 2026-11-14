@@ -76,6 +76,10 @@ export const ChangedMobileClearsCode: Story = {
     await userEvent.type(mobile, "09120000000");
     await userEvent.click(requestCode);
     await waitFor(() => expect(requestOtp).toHaveBeenCalledTimes(1));
+    await expect(requestOtp).toHaveBeenCalledWith(
+      { mobile: "09120000000", purpose: "register" },
+      expect.any(AbortSignal),
+    );
     await waitFor(() => expect(requestCode).toHaveTextContent(/^\d+$/));
     await expect(requestCode).toBeDisabled();
     const digits = within(
@@ -92,7 +96,7 @@ export const ChangedMobileClearsCode: Story = {
     await expect(requestCode).toBeEnabled();
     await waitFor(() =>
       expect(
-        canvasElement.querySelector("#mobile_help"),
+        canvasElement.querySelector("#register-form_mobile_help"),
       ).not.toBeInTheDocument(),
     );
     await expect(register).not.toHaveBeenCalled();

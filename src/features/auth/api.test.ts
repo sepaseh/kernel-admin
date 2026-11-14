@@ -5,8 +5,10 @@ import {
   apiClient,
   clearAccessToken,
   getAccessTokenVersion,
+  getSessionSignal,
   setAccessToken,
-} from "../../shared/api/index.ts";
+} from "@/shared/api";
+
 import {
   changePassword,
   forgotPassword,
@@ -16,21 +18,31 @@ import {
   requestOtp,
 } from "./api.ts";
 
-vi.mock("../../shared/api/index.ts", () => ({
+vi.mock("@/shared/api", async () => ({
   apiClient: {
+    del: vi.fn(),
+    get: vi.fn(),
+    patch: vi.fn(),
     post: vi.fn(),
+    put: vi.fn(),
+    upload: vi.fn(),
   },
   clearAccessToken: vi.fn(),
   getAccessTokenVersion: vi.fn(() => 0),
+  getSessionSignal: vi.fn(),
+  parseAccessToken: (await import("@/shared/api/token")).parseAccessToken,
   setAccessToken: vi.fn(),
 }));
 
 const currentCredential = "current-test-credential";
 const replacementCredential = "replacement-test-credential";
 const syntheticCredential = "synthetic-test-credential";
+let session: AbortController;
 
 beforeEach(() => {
   vi.mocked(getAccessTokenVersion).mockReturnValue(0);
+  session = new AbortController();
+  vi.mocked(getSessionSignal).mockReturnValue(session.signal);
   vi.mocked(apiClient.post).mockResolvedValue({});
 });
 
@@ -46,7 +58,7 @@ describe("authentication API", () => {
       const pending =
         operation === "login"
           ? login(
-              { identifier: "ada", password: syntheticCredential },
+              { mobile: "09120000000", password: syntheticCredential },
               controller.signal,
             )
           : register(
@@ -81,7 +93,7 @@ describe("authentication API", () => {
       );
       const pending =
         operation === "login"
-          ? login({ identifier: "ada", password: syntheticCredential })
+          ? login({ mobile: "09120000000", password: syntheticCredential })
           : register({
               firstName: "Ada",
               lastName: "Lovelace",
@@ -92,7 +104,7 @@ describe("authentication API", () => {
       release({ accessToken: "obsolete-reply" });
       // The fulfilled transport has queued the feature continuation. A newer login
       // or logout invalidates it before that continuation is allowed to commit.
-      vi.mocked(getAccessTokenVersion).mockReturnValue(1);
+      session.abort();
       expect(isCancel(await pending.catch((error: unknown) => error))).toBe(
         true,
       );
@@ -106,7 +118,7 @@ describe("authentication API", () => {
       .mockResolvedValueOnce({ accessToken: "register-token" });
 
     await expect(
-      login({ identifier: "ada", password: syntheticCredential }),
+      login({ mobile: "09120000000", password: syntheticCredential }),
     ).resolves.toEqual({ accessToken: "login-token" });
     await expect(
       register({
@@ -120,7 +132,35 @@ describe("authentication API", () => {
 
     expect(setAccessToken).toHaveBeenNthCalledWith(1, "login-token");
     expect(setAccessToken).toHaveBeenNthCalledWith(2, "register-token");
+    expect(apiClient.post).toHaveBeenNthCalledWith(
+      1,
+      "/auth/login",
+      {
+        mobile: "09120000000",
+        password: syntheticCredential,
+      },
+      { signal: undefined },
+    );
   });
+
+  it.each(["login", "register"] as const)(
+    "does not commit a malformed %s credential",
+    async (operation) => {
+      vi.mocked(apiClient.post).mockResolvedValueOnce({ accessToken: " " });
+      const params = {
+        mobile: "09120000000",
+        password: syntheticCredential,
+        firstName: "Ada",
+        lastName: "Lovelace",
+        otp: "123456",
+      };
+
+      await expect(
+        operation === "login" ? login(params) : register(params),
+      ).rejects.toThrow();
+      expect(setAccessToken).not.toHaveBeenCalled();
+    },
+  );
 
   it("clears the access token when logout succeeds or fails", async () => {
     await logout();

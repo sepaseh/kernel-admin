@@ -63,6 +63,46 @@ const fillRegistration = async (user: ReturnType<typeof render>["user"]) => {
 };
 
 describe("RegisterPage", () => {
+  it("validates password confirmation before registering", async () => {
+    const { user } = renderPage();
+    await fillRegistration(user);
+    const confirmation = screen.getByLabelText(
+      i18nInstance.t("confirmPassword"),
+    );
+    await user.clear(confirmation);
+    await user.type(confirmation, "different-password");
+    await user.click(
+      screen.getByRole("button", { name: i18nInstance.t("register") }),
+    );
+
+    await screen.findByText(i18nInstance.t("passwordMismatch"));
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it("retains the registration fields after a retryable service failure", async () => {
+    vi.mocked(register).mockRejectedValueOnce(
+      new Error("Mobile already registered"),
+    );
+    const { user } = renderPage();
+    await fillRegistration(user);
+    await user.click(
+      screen.getByRole("button", { name: i18nInstance.t("register") }),
+    );
+    await waitFor(() =>
+      expect(messages.error).toHaveBeenCalledWith("Mobile already registered"),
+    );
+    expect(screen.getByLabelText(i18nInstance.t("firstName"))).toHaveValue(
+      "Ada",
+    );
+    expect(screen.getByLabelText(i18nInstance.t("mobile"))).toBeEnabled();
+
+    await user.click(
+      screen.getByRole("button", { name: i18nInstance.t("register") }),
+    );
+    await screen.findByRole("heading", { name: "Dashboard" });
+    expect(register).toHaveBeenCalledTimes(2);
+  });
+
   it("deduplicates OTP clicks while mobile validation is pending", async () => {
     const { user } = renderPage();
     await user.type(

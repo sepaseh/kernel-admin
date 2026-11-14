@@ -2,15 +2,15 @@ import type { FormInstance } from "antd";
 import { isCancel } from "axios";
 import { useEffect, useRef, useState } from "react";
 
-import { requestOtp } from "./api.ts";
-import type { OtpRequestParams, RegisterParams } from "./types.ts";
+import { useAbortController, useLock } from "@/shared/hooks";
 
-type OtpFields = Pick<RegisterParams, "mobile" | "otp">;
+import { requestOtp } from "./api";
+import type { OtpRequestParams } from "./types";
 
-type OtpRequestOptions = {
+type OtpRequestProps = {
   form: Pick<
-    FormInstance<OtpFields>,
-    "getFieldValue" | "setFieldValue" | "validateFields"
+    FormInstance<{ mobile: string; otp: string }>,
+    "validateFields" | "getFieldValue" | "setFieldValue"
   >;
   onError: (error: unknown) => void;
   onSuccess: () => void;
@@ -19,69 +19,67 @@ type OtpRequestOptions = {
 
 export const useOtpRequest = ({
   form,
+  purpose,
   onError,
   onSuccess,
-  purpose,
-}: OtpRequestOptions) => {
+}: OtpRequestProps) => {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [requestingOtp, setRequestingOtp] = useState(false);
-  const pending = useRef<AbortController | undefined>(undefined);
+  const { cancel, start } = useAbortController();
+  const { lock, unlock } = useLock();
+  const intent = useRef(0);
 
-  const request = async () => {
-    if (pending.current || remainingSeconds) return;
+  const handleValuesChange = (changed: Partial<{ mobile: string }>) => {
+    if (!Object.hasOwn(changed, "mobile")) return;
 
-    const controller = new AbortController();
-    pending.current = controller;
+    intent.current += 1;
+    cancel();
+    unlock();
+    setRequestingOtp(false);
+    form.setFieldValue("otp", "");
+    setRemainingSeconds(0);
+  };
+
+  const handleOtpRequest = async () => {
+    if (remainingSeconds > 0 || !lock()) return;
+    const current = intent.current;
+    const signal = start();
     setRequestingOtp(true);
     try {
-      const values = await form
-        .validateFields(["mobile"])
-        .catch(() => undefined);
-      if (!values || controller.signal.aborted) return;
-      const { mobile } = values;
-      const response = await requestOtp({ mobile, purpose }, controller.signal);
-      if (controller.signal.aborted || form.getFieldValue("mobile") !== mobile)
+      let mobile: string;
+      try {
+        ({ mobile } = await form.validateFields(["mobile"]));
+      } catch {
         return;
-      setRemainingSeconds(response.remainingSeconds);
+      }
+      if (signal.aborted || current !== intent.current) return;
+      const result = await requestOtp({ mobile, purpose }, signal);
+      if (
+        signal.aborted ||
+        current !== intent.current ||
+        form.getFieldValue("mobile") !== mobile
+      )
+        return;
+      setRemainingSeconds(Math.ceil(result.remainingSeconds));
       onSuccess();
     } catch (error) {
-      if (!controller.signal.aborted && !isCancel(error)) onError(error);
+      if (!signal.aborted && current === intent.current && !isCancel(error))
+        onError(error);
     } finally {
-      if (pending.current === controller) {
-        pending.current = undefined;
-        if (!controller.signal.aborted) setRequestingOtp(false);
+      if (!signal.aborted && current === intent.current) {
+        setRequestingOtp(false);
+        unlock();
       }
     }
   };
 
-  const handleOtpRequest = () => {
-    void request();
-  };
-
-  const handleValuesChange = (changed: Partial<OtpFields>) => {
-    if (!Object.hasOwn(changed, "mobile")) return;
-    pending.current?.abort();
-    pending.current = undefined;
-    setRequestingOtp(false);
-    setRemainingSeconds(0);
-    form.setFieldValue("otp", "");
-  };
-
-  useEffect(
-    () => () => {
-      pending.current?.abort();
-      pending.current = undefined;
-    },
-    [],
-  );
-
   useEffect(() => {
-    if (!remainingSeconds) return;
-    const timeout = window.setTimeout(
+    if (remainingSeconds <= 0) return;
+    const timer = window.setTimeout(
       () => setRemainingSeconds((seconds) => Math.max(0, seconds - 1)),
       1000,
     );
-    return () => window.clearTimeout(timeout);
+    return () => window.clearTimeout(timer);
   }, [remainingSeconds]);
 
   return {

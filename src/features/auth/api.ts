@@ -1,14 +1,15 @@
 import { CanceledError } from "axios";
 
-import type { AccessTokenProps } from "../../shared/api/index.ts";
 import {
   apiClient,
   clearAccessToken,
   getAccessTokenVersion,
+  getSessionSignal,
+  parseAccessToken,
   setAccessToken,
-} from "../../shared/api/index.ts";
-import { parseAccessToken } from "../../shared/api/token-response.ts";
-import { i18nInstance } from "../../shared/i18n/index.ts";
+} from "@/shared/api";
+import { i18n } from "@/shared/i18n";
+
 import type {
   ChangePasswordParams,
   ForgotPasswordParams,
@@ -16,7 +17,7 @@ import type {
   OtpRequestParams,
   OtpRequestProps,
   RegisterParams,
-} from "./types.ts";
+} from "./types";
 
 const basePath = "/auth";
 let pendingLogout: { promise: Promise<void>; version: number } | undefined;
@@ -39,15 +40,12 @@ export const forgotPassword = async (
   });
 };
 
-export const login = async (
-  params: LoginParams,
-  signal?: AbortSignal,
-): Promise<AccessTokenProps> => {
-  const version = getAccessTokenVersion();
+export const login = async (params: LoginParams, signal?: AbortSignal) => {
+  const session = getSessionSignal();
   const response = await apiClient.post<unknown>(`${basePath}/login`, params, {
     signal,
   });
-  if (signal?.aborted || version !== getAccessTokenVersion()) {
+  if (signal?.aborted || session.aborted) {
     throw new CanceledError();
   }
   const result = parseAccessToken(response);
@@ -73,14 +71,14 @@ export const logout = (): Promise<void> => {
 export const register = async (
   params: RegisterParams,
   signal?: AbortSignal,
-): Promise<AccessTokenProps> => {
-  const version = getAccessTokenVersion();
+) => {
+  const session = getSessionSignal();
   const response = await apiClient.post<unknown>(
     `${basePath}/register`,
     params,
     { signal },
   );
-  if (signal?.aborted || version !== getAccessTokenVersion()) {
+  if (signal?.aborted || session.aborted) {
     throw new CanceledError();
   }
   const result = parseAccessToken(response);
@@ -111,7 +109,7 @@ export const requestOtp = async (
     !Number.isFinite(response.remainingSeconds) ||
     response.remainingSeconds < 0
   )
-    throw new Error(i18nInstance.t("unexpectedError"));
+    throw new Error(i18n.t("unexpectedError"));
 
   return {
     expiresIn: response.expiresIn,

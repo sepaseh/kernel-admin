@@ -1,16 +1,18 @@
-import { Button, Flex, Form, Typography } from "antd";
+import { Button, Flex, Form, type FormProps, Typography } from "antd";
 import { isCancel } from "axios";
 import { LockKeyhole } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
 
 import { routeTree } from "@/app/config";
 import { useAntd } from "@/app/hooks";
-import { forgotPassword } from "@/features/auth/api.ts";
-import type { ForgotPasswordParams } from "@/features/auth/types.ts";
-import { useOtpRequest } from "@/features/auth/useOtpRequest.ts";
-import { getErrorMessage } from "@/shared/lib";
+import {
+  forgotPassword,
+  type ForgotPasswordParams,
+  useOtpRequest,
+} from "@/features/auth";
+import { useAbortController, useLock } from "@/shared/hooks";
 import { DigitsInput } from "@/shared/ui/digits-input";
 import { OtpInput } from "@/shared/ui/otp-input";
 import { PasswordFields } from "@/shared/ui/password-fields";
@@ -21,11 +23,11 @@ type ForgotPasswordFormParams = ForgotPasswordParams & {
 
 export const ForgotPassPage = () => {
   const { t } = useTranslation();
-  const [submitting, setSubmitting] = useState(false);
-  const submission = useRef<AbortController | undefined>(undefined);
-  const { messageAPI } = useAntd();
   const [form] = Form.useForm<ForgotPasswordFormParams>();
-  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
+  const { cancel, start } = useAbortController();
+  const { messageAPI } = useAntd();
+  const { lock, unlock } = useLock();
   const {
     handleOtpRequest,
     handleValuesChange,
@@ -34,7 +36,9 @@ export const ForgotPassPage = () => {
   } = useOtpRequest({
     form,
     onError: (error) => {
-      void messageAPI.error(getErrorMessage(error));
+      void messageAPI.error(
+        error instanceof Error ? error.message : t("unexpectedError"),
+      );
     },
     onSuccess: () => {
       void messageAPI.success(t("codeRequested"));
@@ -42,39 +46,36 @@ export const ForgotPassPage = () => {
     purpose: "forgot_password",
   });
 
-  const handleSubmit = async ({
+  const navigate = useNavigate();
+
+  const handleSubmit: FormProps<ForgotPasswordFormParams>["onFinish"] = async ({
     mobile,
     otp,
     password,
-  }: ForgotPasswordFormParams): Promise<void> => {
-    if (submission.current) return;
+  }) => {
+    if (!lock()) return;
 
-    const controller = new AbortController();
-    submission.current = controller;
+    const signal = start();
     setSubmitting(true);
     try {
-      await forgotPassword({ mobile, otp, password }, controller.signal);
-      if (controller.signal.aborted) return;
+      await forgotPassword({ mobile, otp, password }, signal);
+      if (signal.aborted) return;
+
       void messageAPI.success(t("passwordReset"));
       void navigate(routeTree.auth.path, { replace: true });
     } catch (error) {
-      if (!controller.signal.aborted && !isCancel(error))
-        void messageAPI.error(getErrorMessage(error));
+      if (signal.aborted || isCancel(error)) return;
+
+      if (error instanceof Error) void messageAPI.error(error.message);
     } finally {
-      if (submission.current === controller) {
-        submission.current = undefined;
-        if (!controller.signal.aborted) setSubmitting(false);
+      if (!signal.aborted) {
+        unlock();
+        setSubmitting(false);
       }
     }
   };
 
-  useEffect(
-    () => () => {
-      submission.current?.abort();
-      submission.current = undefined;
-    },
-    [],
-  );
+  useLayoutEffect(() => cancel, [cancel]);
 
   return (
     <Flex gap={32} vertical>
@@ -84,10 +85,12 @@ export const ForgotPassPage = () => {
           {t("forgotPassword")}
         </Typography.Title>
       </Flex>
-      <Form
+      <Form<ForgotPasswordFormParams>
+        disabled={submitting}
         form={form}
         layout="vertical"
-        onFinish={(values) => void handleSubmit(values)}
+        name="forgot-password-form"
+        onFinish={handleSubmit}
         onValuesChange={handleValuesChange}
         requiredMark={false}
         scrollToFirstError={{ focus: true }}

@@ -215,33 +215,9 @@ test("features reject another feature's UI, private helpers and barrels in every
 test("authentication and role capabilities retain only their approved consumer and dependency kind", () => {
   for (const [source, target, typeOnly] of [
     ["src/features/account/Account.tsx", "src/features/auth/api.ts", false],
-    [
-      "src/features/forgot-pass/ForgotPass.tsx",
-      "src/features/auth/api.ts",
-      false,
-    ],
-    [
-      "src/features/forgot-pass/ForgotPass.tsx",
-      "src/features/auth/useOtpRequest.ts",
-      false,
-    ],
-    ["src/features/login/Login.tsx", "src/features/auth/api.ts", false],
-    ["src/features/register/Register.tsx", "src/features/auth/api.ts", false],
-    [
-      "src/features/register/Register.tsx",
-      "src/features/auth/useOtpRequest.ts",
-      false,
-    ],
     ["src/features/account/Account.tsx", "src/features/auth/types.ts", true],
     ["src/features/account/api.ts", "src/features/auth/types.ts", true],
     ["src/features/account/types.ts", "src/features/roles/types.ts", true],
-    [
-      "src/features/forgot-pass/ForgotPass.tsx",
-      "src/features/auth/types.ts",
-      true,
-    ],
-    ["src/features/login/Login.tsx", "src/features/auth/types.ts", true],
-    ["src/features/register/Register.tsx", "src/features/auth/types.ts", true],
   ]) {
     const specifier = "@/" + target.slice("src/".length).replace(/\.ts$/, "");
     const owner = path.join(root, source);
@@ -267,6 +243,94 @@ test("authentication and role capabilities retain only their approved consumer a
       source,
     );
   }
+});
+
+test("authentication screens receive only their named services, hook and erased request model", () => {
+  const capabilities = [
+    ["src/features/login/Login.tsx", ["login"], ["LoginParams"]],
+    [
+      "src/features/register/Register.tsx",
+      ["register", "useOtpRequest"],
+      ["RegisterParams"],
+    ],
+    [
+      "src/features/forgot-pass/ForgotPass.tsx",
+      ["forgotPassword", "useOtpRequest"],
+      ["ForgotPasswordParams"],
+    ],
+  ];
+  const inspect = (syntax, source, target = "src/features/auth/index.ts") => {
+    const [edge] = inspectImports(syntax);
+    return check(
+      edge.specifier,
+      path.join(root, target),
+      path.join(root, source),
+      edge.typeOnly,
+      undefined,
+      edge.bindings,
+    );
+  };
+  for (const [source, services, models] of capabilities) {
+    for (const service of services) {
+      for (const syntax of [
+        `import { ${service} } from "@/features/auth";`,
+        `import { ${service} as request } from "@/features/auth";`,
+        `export { ${service} } from "@/features/auth";`,
+      ])
+        assert.equal(inspect(syntax, source), undefined, syntax);
+      assert.match(
+        inspect(`import type { ${service} } from "@/features/auth";`, source),
+        /exact approved/,
+      );
+    }
+    for (const model of models) {
+      assert.equal(
+        inspect(`import type { ${model} } from "@/features/auth";`, source),
+        undefined,
+      );
+      assert.equal(
+        inspect(`import { type ${model} } from "@/features/auth";`, source),
+        undefined,
+      );
+      assert.match(
+        inspect(`import { ${model} } from "@/features/auth";`, source),
+        /exact approved/,
+      );
+    }
+    assert.equal(
+      inspect(
+        `import { ${services[0]}, type ${models[0]} } from "@/features/auth";`,
+        source,
+      ),
+      undefined,
+    );
+    for (const syntax of [
+      'import { logout } from "@/features/auth";',
+      'import * as auth from "@/features/auth";',
+      'export * from "@/features/auth";',
+      'const auth = import("@/features/auth");',
+      'const auth = require("@/features/auth");',
+      'import auth from "@/features/auth";',
+      'import { login, logout } from "@/features/auth";',
+    ])
+      assert.match(inspect(syntax, source), /exact approved/, syntax);
+    for (const target of ["api", "types", "useOtpRequest"])
+      assert.match(
+        inspect(
+          `import { ${services[0]} } from "@/features/auth/${target}";`,
+          source,
+          `src/features/auth/${target}.ts`,
+        ),
+        /exact approved/,
+      );
+  }
+  assert.match(
+    inspect(
+      'import { login } from "@/features/auth";',
+      "src/features/users/Users.tsx",
+    ),
+    /exact approved/,
+  );
 });
 
 test("user screens receive only the named role list service and erased role model", () => {
@@ -927,7 +991,7 @@ test("the published phase retains every admitted production module", async () =>
   );
   assert.equal(
     result.files,
-    publication.applicationReady ? 136 : production.length,
+    publication.applicationReady ? 135 : production.length,
   );
   assert.deepEqual(result.violations, []);
 });
@@ -1000,7 +1064,6 @@ test("runtime adapters may import only exact declared packages contained in this
     ["src/shared/ui/digits-input/DigitsInput.tsx", "react", "react"],
     ["src/app/providers/core/Core.tsx", "dayjs", "dayjs"],
     ["src/app/providers/antd/Antd.tsx", "antd/locale/fa_IR", "antd"],
-    ["src/features/login/styles.ts", "antd-style", "antd-style"],
     ["src/layouts/default/Default.tsx", "lucide-react", "lucide-react"],
   ]) {
     const adapter = path.join(root, source);

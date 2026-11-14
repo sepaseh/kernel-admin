@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, waitFor } from "@testing-library/react";
+import { act, fireEvent, waitFor } from "@testing-library/react";
 import { CanceledError } from "axios";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +14,10 @@ const messages = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }));
 vi.mock("@/features/auth/api.ts", () => ({ login: vi.fn() }));
 vi.mock("@/app/hooks", () => ({
   useAntd: () => ({ messageAPI: messages }),
-  useCore: () => ({ logos: { light: "/logo.svg" }, theme: "light" }),
+  useCore: () => ({
+    settings: { lightLogo: { url: "/logo.svg" } },
+    theme: "light",
+  }),
 }));
 
 const Location = () => (
@@ -38,7 +41,10 @@ beforeEach(async () => {
 });
 
 const fillCredentials = async (user: ReturnType<typeof render>["user"]) => {
-  await user.type(screen.getByLabelText(i18nInstance.t("identifier")), "ada");
+  await user.type(
+    screen.getByLabelText(i18nInstance.t("mobile")),
+    "09120000000",
+  );
   await user.type(
     screen.getByLabelText(i18nInstance.t("password"), { exact: true }),
     "secret",
@@ -48,15 +54,46 @@ const fillCredentials = async (user: ReturnType<typeof render>["user"]) => {
 describe("LoginPage", () => {
   it("submits only the credentials and navigates after successful authentication", async () => {
     const { user } = renderPage();
+    expect(
+      screen.getByRole("img", { name: i18nInstance.t("logo") }),
+    ).toHaveAttribute("src", "/logo.svg");
     await fillCredentials(user);
+    fireEvent.change(screen.getByLabelText(i18nInstance.t("mobile")), {
+      target: { value: "09abc120000000" },
+    });
     await user.click(
       screen.getByRole("button", { name: i18nInstance.t("login") }),
     );
     await screen.findByRole("heading", { name: "Dashboard" });
     expect(login).toHaveBeenCalledWith(
-      { identifier: "ada", password: "secret" },
+      { mobile: "09120000000", password: "secret" },
       expect.any(AbortSignal),
     );
+  });
+
+  it("prevents repeated form submissions while authentication is pending", async () => {
+    let resolve!: (value: Awaited<ReturnType<typeof login>>) => void;
+    vi.mocked(login).mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const { container, user } = renderPage();
+    await fillCredentials(user);
+    const form = container.querySelector("form")!;
+    fireEvent.submit(form);
+    await waitFor(() => expect(login).toHaveBeenCalledOnce());
+
+    await act(async () => {
+      fireEvent.submit(form);
+    });
+    expect(login).toHaveBeenCalledOnce();
+    expect(screen.getByLabelText(i18nInstance.t("mobile"))).toBeDisabled();
+    await act(async () => {
+      resolve({ accessToken: "synthetic" });
+    });
+    await screen.findByRole("heading", { name: "Dashboard" });
+    expect(login).toHaveBeenCalledOnce();
   });
 
   it("aborts an obsolete login and does not redirect after leaving the page", async () => {
@@ -97,8 +134,8 @@ describe("LoginPage", () => {
     await waitFor(() =>
       expect(messages.error).toHaveBeenCalledWith("Temporarily offline"),
     );
-    expect(screen.getByLabelText(i18nInstance.t("identifier"))).toHaveValue(
-      "ada",
+    expect(screen.getByLabelText(i18nInstance.t("mobile"))).toHaveValue(
+      "09120000000",
     );
     await user.click(submit);
     await screen.findByRole("heading", { name: "Dashboard" });

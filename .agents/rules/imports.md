@@ -18,11 +18,12 @@ another feature's page, form, component or private helper. The checker permits
 only the declared source-file-to-module edges for the existing authentication
 API/OTP capabilities and roles API/type vocabulary. These exceptions are defined
 in `scripts/check-boundaries.mjs`; they are not blanket access to either feature.
-Import the approved API, hook or type leaf directly. Cross-feature `index.ts`
-targets require an explicit named capability: Settings may use the files upload
-service and its erased `FileContext`/`StoredFile` models. Other feature barrels
-remain rejected except the declared Users consumers of the roles list service
-and erased `Role` model. Import and re-export edges follow the same exact module rules.
+Import each capability through its declared module. Cross-feature `index.ts`
+targets require explicit named capabilities: Login, Register and Forgot Password
+may use their declared authentication services, OTP hook and erased request models.
+Settings may use the files upload service and its erased `FileContext`/`StoredFile`
+models. Users may use its declared roles list service and erased `Role` model.
+Other feature barrels remain rejected. Import and re-export edges follow the same exact module rules.
 Type-only imports must use their declared erased contract edges.
 
 Feature screens may use only the app hook, route configuration and access-policy

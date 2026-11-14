@@ -80,7 +80,7 @@
         "src/shared/api/client.ts",
         "src/shared/api/config.ts",
         "src/shared/api/path.ts",
-        "src/shared/api/token-response.ts",
+        "src/shared/api/token.ts",
         "src/shared/hooks/useReadRequest.ts",
         "src/shared/hooks/useReadResource.ts",
         "src/features/account/api.ts",
@@ -110,7 +110,7 @@
         "src/shared/api/transport.test.ts",
         "src/shared/api/config.test.ts",
         "src/shared/api/path.test.ts",
-        "src/shared/api/token-response.test.ts",
+        "src/shared/api/token.test.ts",
         "src/shared/hooks/useReadResource.test.ts",
         "src/features/account/api.test.ts",
         "src/features/auth/api.test.ts",
@@ -180,18 +180,23 @@
         "src/features/login/Login.tsx",
         "src/features/register/Register.tsx",
         "src/features/forgot-pass/ForgotPass.tsx",
-        "src/features/auth/useOtpRequest.ts"
+        "src/features/auth/useOtpRequest.ts",
+        "src/features/auth/index.ts",
+        "src/shared/hooks/useAbortController.ts",
+        "src/shared/hooks/useLock.ts"
       ],
       "contracts": ["src/features/auth/types.ts", "docs/authentication.md"],
       "tests": [
         "src/features/login/Login.test.tsx",
         "src/features/register/Register.test.tsx",
         "src/features/forgot-pass/ForgotPass.test.tsx",
-        "src/features/auth/useOtpRequest.test.tsx"
+        "src/features/auth/useOtpRequest.test.tsx",
+        "src/shared/hooks/useAbortController.test.tsx",
+        "src/shared/hooks/useLock.test.tsx"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [".agents/rules/react.md", ".agents/rules/testing.md"],
-      "limitations": "Component tests exercise form and request behavior with synthetic responses. Server authentication remains behind HTTP."
+      "limitations": "Authentication screens use named services, OTP and erased request models from the auth public index. Login accepts mobile and password. Component tests use synthetic responses; server authentication remains behind HTTP."
     },
     {
       "id": "providers-and-access",

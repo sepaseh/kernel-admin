@@ -67,7 +67,7 @@ for (const language of ["en", "fa"] as const) {
           theme,
         });
         await page.goto("/auth");
-        const identifier = page.getByLabel(messages.identifier, {
+        const identifier = page.getByLabel(messages.mobile, {
           exact: true,
         });
         await page
