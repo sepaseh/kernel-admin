@@ -6,7 +6,7 @@ import { expect, within } from "storybook/test";
 
 import { useCore } from "@/app/hooks";
 
-import { StoryShell } from "./StoryShell";
+import { StoryShell } from "../../../.storybook/StoryShell";
 
 const AppearanceReadout = () => {
   const { language, theme } = useCore();

@@ -1,10 +1,10 @@
+import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
 
-import { changePassword } from "@/features/auth";
 import { i18nInstance } from "@/shared/i18n";
 import { deferred } from "@/test/deferred";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { StoryShell } from "../../../../../.storybook/StoryShell";
 
 import { PasswordForm } from "./PasswordForm";
 
@@ -58,9 +58,10 @@ export const Success: Story = {
       canvas.getByRole("button", { name: i18nInstance.t("changePassword") }),
     );
     await waitFor(() =>
-      expect(changePassword).toHaveBeenCalledWith(
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/auth/change-password",
         { currentPassword: "old-secret", newPassword: "new-secret" },
-        expect.any(AbortSignal),
+        { signal: expect.any(AbortSignal) },
       ),
     );
     await waitFor(() =>
@@ -90,13 +91,13 @@ export const Validation: Story = {
         canvas.getByText(i18nInstance.t("passwordMismatch")),
       ).toBeVisible(),
     );
-    await expect(changePassword).not.toHaveBeenCalled();
+    await expect(apiClient.post).not.toHaveBeenCalled();
   },
 };
 
 export const RequestFailure: Story = {
   beforeEach() {
-    mocked(changePassword).mockRejectedValueOnce(
+    mocked(apiClient.post).mockRejectedValueOnce(
       new Error("Password update unavailable"),
     );
   },
@@ -124,7 +125,7 @@ export const RequestFailure: Story = {
 
 export const Submitting: Story = {
   beforeEach() {
-    mocked(changePassword).mockReturnValue(deferred<void>().promise);
+    mocked(apiClient.post).mockReturnValue(deferred<void>().promise);
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -133,9 +134,10 @@ export const Submitting: Story = {
       canvas.getByRole("button", { name: i18nInstance.t("changePassword") }),
     );
     await waitFor(() =>
-      expect(changePassword).toHaveBeenCalledWith(
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/auth/change-password",
         { currentPassword: "old-secret", newPassword: "new-secret" },
-        expect.any(AbortSignal),
+        { signal: expect.any(AbortSignal) },
       ),
     );
     await expect(

@@ -8,19 +8,24 @@
       },
       "taskIds": ["admin-request-reliability"],
       "evidence": [
-        "src/shared/hooks/useReadRequest.ts",
-        "src/shared/hooks/useReadResource.ts",
         "src/shared/api/client.ts",
         "src/shared/api/token.ts",
         "src/features/auth/api.ts",
         "src/layouts/default/Default.tsx",
-        "src/shared/hooks/useReadResource.test.ts",
         "src/shared/api/client.test.ts",
         "src/layouts/default/Default.test.tsx",
-        "src/features/auth/logout.test.ts"
+        "src/features/auth/logout.test.ts",
+        "src/shared/hooks/useAbortController.ts",
+        "src/shared/hooks/useAbortController.test.tsx",
+        "src/app/providers/core/Core.tsx",
+        "src/app/providers/core/Core.test.tsx",
+        "src/features/users/Users.tsx",
+        "src/features/users/Users.test.tsx",
+        "src/features/users/components/user-form/UserForm.tsx",
+        "src/features/users/components/user-form/UserForm.test.tsx"
       ],
       "mustExplain": [
-        "Read sequence/key/mount checks prevent stale commits even when an adapter ignores AbortSignal; cancellation settles busy state and StrictMode cleanup invalidates obsolete work.",
+        "Inspect each active read owner for signal, mount, identity and session checks before committing data or settling busy state, including adapters that ignore cancellation and StrictMode cleanup; identify absent guards rather than assuming a shared resource wrapper still exists.",
         "A shared refresh must survive one reader cancelling, while original request/session generation remains bound across awaits, retry dispatch and terminal 401 handling.",
         "Old operations must not replay a mutation as a newly logged-in account or clear that account after a delayed refresh failure/retried 401; identify source guards or report an actual missing branch. Public settings reads may survive a session change, but a public-read exemption must not exempt protected writes to the same path.",
         "Logout completion and duplicate requests need generation/mounted-owner protection beyond the shared client's generation checks; examine the helper finally and layout continuation separately.",
@@ -140,7 +145,6 @@
         "src/features/users/Users.tsx",
         "src/features/users/components/user-form/UserForm.tsx",
         "src/shared/ui/form-drawer/FormDrawer.tsx",
-        "src/shared/ui/request-feedback/RequestFeedback.tsx",
         "src/app/providers/core/Core.tsx",
         "src/app/providers/antd/Antd.tsx",
         "src/features/settings/Settings.tsx",
@@ -157,7 +161,11 @@
         "src/features/users/components/user-form/UserForm.test.tsx",
         "src/shared/hooks/useFilterParams.ts",
         "src/shared/hooks/useDebouncedFilters.ts",
-        "src/shared/lib/password.ts"
+        "src/shared/lib/password.ts",
+        "src/shared/ui/request-error/RequestError.tsx",
+        ".storybook/StoryShell.tsx",
+        ".storybook/fixtures.ts",
+        ".storybook/mocks.ts"
       ],
       "mustExplain": [
         "Repository implementation keeps React/Vite, Ant Design/antd-style, React Router, Axios and direct Lucide icons. Read actual theme/components/assets rather than adopting a generic tool starter or duplicating a token registry.",

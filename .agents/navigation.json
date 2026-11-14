@@ -75,14 +75,12 @@
     },
     {
       "id": "http-lifecycle",
-      "when": "Change admitted HTTP adapters, session generations, settings validation or cancellable read resources.",
+      "when": "Change admitted HTTP adapters, session generations, settings validation or cancellable feature reads.",
       "owners": [
         "src/shared/api/client.ts",
         "src/shared/api/config.ts",
         "src/shared/api/path.ts",
         "src/shared/api/token.ts",
-        "src/shared/hooks/useReadRequest.ts",
-        "src/shared/hooks/useReadResource.ts",
         "src/features/account/api.ts",
         "src/features/auth/api.ts",
         "src/features/calendar/api.ts",
@@ -111,7 +109,6 @@
         "src/shared/api/config.test.ts",
         "src/shared/api/path.test.ts",
         "src/shared/api/token.test.ts",
-        "src/shared/hooks/useReadResource.test.ts",
         "src/features/account/api.test.ts",
         "src/features/auth/api.test.ts",
         "src/features/auth/logout.test.ts",
@@ -353,21 +350,27 @@
       "id": "admin-request-reliability",
       "when": "Change cancellation, obsolete-read handling, manual retry/error states, timeouts, shared refresh, generation guards or logout completion.",
       "owners": [
-        "src/shared/hooks/useReadRequest.ts",
-        "src/shared/hooks/useReadResource.ts",
         "src/shared/api/client.ts",
         "src/shared/api/token.ts",
         "src/features/auth/api.ts",
         "src/app/providers/core/Core.tsx",
         "src/layouts/default/Default.tsx",
-        "src/shared/ui/request-feedback/RequestFeedback.tsx"
+        "src/shared/hooks/useAbortController.ts",
+        "src/shared/hooks/useLock.ts",
+        "src/features/users/Users.tsx",
+        "src/features/users/components/user-form/UserForm.tsx",
+        "src/shared/ui/request-error/RequestError.tsx"
       ],
       "contracts": ["docs/authentication.md"],
       "tests": [
-        "src/shared/hooks/useReadResource.test.ts",
         "src/shared/api/client.test.ts",
         "src/layouts/default/Default.test.tsx",
-        "src/features/auth/logout.test.ts"
+        "src/features/auth/logout.test.ts",
+        "src/shared/hooks/useAbortController.test.tsx",
+        "src/shared/hooks/useLock.test.tsx",
+        "src/app/providers/core/Core.test.tsx",
+        "src/features/users/Users.test.tsx",
+        "src/features/users/components/user-form/UserForm.test.tsx"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
@@ -406,14 +409,13 @@
     },
     {
       "id": "ui-foundation",
-      "when": "Change admitted shared UI controls, themes, browser preferences, mutation hooks, observability or local assets.",
+      "when": "Change admitted shared UI controls, themes, browser preferences, cancellation and lock hooks, observability or local assets.",
       "owners": [
         "src/shared/config/theme.ts",
         "src/shared/storage/state.ts",
         "src/shared/storage/theme.ts",
         "src/shared/storage/compact.ts",
         "src/shared/storage/hooks/useLocalStorageWatcher.ts",
-        "src/shared/hooks/useMutationRequest.ts",
         "src/shared/hooks/useGoBack.ts",
         "src/shared/lib/observability.ts",
         "src/shared/ui/digits-input/DigitsInput.tsx",
@@ -421,7 +423,6 @@
         "src/shared/ui/password-fields/PasswordFields.tsx",
         "src/shared/ui/form-drawer/FormDrawer.tsx",
         "src/shared/ui/error-boundary/ErrorBoundary.tsx",
-        "src/shared/ui/request-feedback/RequestFeedback.tsx",
         "src/shared/ui/route-loading/RouteLoading.tsx",
         "src/assets/styles/index.css",
         "src/assets/styles/vazirmatn.css",
@@ -435,7 +436,11 @@
         "src/shared/hooks/useFilterParams.ts",
         "src/shared/lib/allowed-value.ts",
         "src/shared/lib/pagination.ts",
-        "src/shared/lib/password.ts"
+        "src/shared/lib/password.ts",
+        "src/shared/ui/request-error/RequestError.tsx",
+        "src/test/setup.ts",
+        "src/test/browser.ts",
+        "vitest.config.ts"
       ],
       "contracts": [
         "src/shared/contracts/appearance.ts",
@@ -449,7 +454,6 @@
         "src/shared/storage/state.test.ts",
         "src/shared/storage/preferences.test.ts",
         "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
-        "src/shared/hooks/useMutationRequest.test.tsx",
         "src/shared/hooks/useGoBack.test.tsx",
         "src/shared/lib/observability.test.ts",
         "src/shared/lib/observability.vitals.test.ts",
@@ -458,7 +462,6 @@
         "src/shared/ui/password-fields/PasswordFields.test.tsx",
         "src/shared/ui/form-drawer/FormDrawer.test.tsx",
         "src/shared/ui/error-boundary/ErrorBoundary.test.tsx",
-        "src/shared/ui/request-feedback/RequestFeedback.test.tsx",
         "src/shared/ui/route-loading/RouteLoading.test.tsx",
         "src/assets/assets.test.ts",
         "src/shared/hooks/useAbortController.test.tsx",
@@ -468,7 +471,8 @@
         "src/shared/hooks/useDebouncedFilters.test.tsx",
         "src/shared/hooks/useFilterParams.test.tsx",
         "src/shared/lib/password.test.ts",
-        "src/features/users/api.helpers.test.ts"
+        "src/features/users/api.helpers.test.ts",
+        "src/shared/ui/request-error/RequestError.test.tsx"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [
@@ -529,7 +533,11 @@
       "owners": [
         "src/shared/ui",
         "src/shared/config/theme.ts",
-        ".storybook/preview.tsx"
+        ".storybook/preview.tsx",
+        ".storybook/StoryShell.tsx",
+        ".storybook/PreviewFrame.tsx",
+        ".storybook/fixtures.ts",
+        ".storybook/mocks.ts"
       ],
       "contracts": [
         "src/shared/contracts/appearance.ts",

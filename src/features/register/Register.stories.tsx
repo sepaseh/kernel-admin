@@ -1,9 +1,9 @@
+import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
-import { register, requestOtp } from "@/features/auth/api";
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { StoryShell } from "../../../.storybook/StoryShell";
 
 import { RegisterPage } from "./Register";
 
@@ -56,17 +56,11 @@ export const ValidationErrors: Story = {
     await expect(
       canvas.getByLabelText(i18nInstance.t("mobile")),
     ).toHaveAttribute("aria-invalid", "true");
-    await expect(register).not.toHaveBeenCalled();
+    await expect(apiClient.post).not.toHaveBeenCalled();
   },
 };
 
 export const ChangedMobileClearsCode: Story = {
-  beforeEach() {
-    mocked(requestOtp).mockResolvedValue({
-      expiresIn: 120,
-      remainingSeconds: 60,
-    });
-  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const mobile = canvas.getByLabelText(i18nInstance.t("mobile"));
@@ -75,10 +69,11 @@ export const ChangedMobileClearsCode: Story = {
     });
     await userEvent.type(mobile, "09120000000");
     await userEvent.click(requestCode);
-    await waitFor(() => expect(requestOtp).toHaveBeenCalledTimes(1));
-    await expect(requestOtp).toHaveBeenCalledWith(
+    await waitFor(() => expect(apiClient.post).toHaveBeenCalledTimes(1));
+    await expect(apiClient.post).toHaveBeenCalledWith(
+      "/auth/otp-request",
       { mobile: "09120000000", purpose: "register" },
-      expect.any(AbortSignal),
+      { signal: expect.any(AbortSignal) },
     );
     await waitFor(() => expect(requestCode).toHaveTextContent(/^\d+$/));
     await expect(requestCode).toBeDisabled();
@@ -99,6 +94,6 @@ export const ChangedMobileClearsCode: Story = {
         canvasElement.querySelector("#register-form_mobile_help"),
       ).not.toBeInTheDocument(),
     );
-    await expect(register).not.toHaveBeenCalled();
+    await expect(apiClient.post).toHaveBeenCalledTimes(1);
   },
 };

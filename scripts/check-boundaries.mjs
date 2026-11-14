@@ -94,9 +94,6 @@ const productionPaths = [
   "src/shared/contracts/index.ts",
   "src/shared/hooks/index.ts",
   "src/shared/hooks/useGoBack.ts",
-  "src/shared/hooks/useMutationRequest.ts",
-  "src/shared/hooks/useReadRequest.ts",
-  "src/shared/hooks/useReadResource.ts",
   "src/shared/i18n/catalogs.ts",
   "src/shared/i18n/date.ts",
   "src/shared/i18n/dayjs/fa.ts",
@@ -132,7 +129,6 @@ const productionPaths = [
   "src/shared/ui/otp-input/index.ts",
   "src/shared/ui/password-fields/PasswordFields.tsx",
   "src/shared/ui/password-fields/index.ts",
-  "src/shared/ui/request-feedback/RequestFeedback.tsx",
   "src/shared/ui/route-loading/RouteLoading.tsx",
   "src/shared/ui/route-loading/index.ts",
   "src/GlobalStyle.tsx",
@@ -274,15 +270,9 @@ const runtimeImports = {
   "src/shared/ui/form-drawer/FormDrawer.tsx": ["antd", "react-i18next"],
   "src/shared/ui/otp-input/OtpInput.tsx": ["antd", "react", "react-i18next"],
   "src/shared/ui/password-fields/PasswordFields.tsx": ["antd", "react-i18next"],
-  "src/shared/ui/request-feedback/RequestFeedback.tsx": [
-    "antd",
-    "react-i18next",
-  ],
   "src/shared/ui/route-loading/RouteLoading.tsx": ["antd", "react-i18next"],
   "src/features/auth/api.ts": ["axios"],
   "src/shared/api/client.ts": ["axios"],
-  "src/shared/hooks/useReadRequest.ts": ["axios", "react"],
-  "src/shared/hooks/useReadResource.ts": ["react"],
   "src/shared/i18n/index.ts": ["i18next", "react-i18next"],
   "src/shared/i18n/date.ts": [
     "dayjs",
@@ -363,7 +353,6 @@ const runtimeImports = {
   ],
   "src/features/users/constants.ts": [],
   "src/features/users/index.ts": [],
-  "src/shared/hooks/useMutationRequest.ts": ["axios", "react"],
 };
 const typeImports = {
   "src/features/account/components/password-form/PasswordForm.tsx": ["antd"],
@@ -408,7 +397,6 @@ const typeImports = {
   "src/features/users/components/user-role-form/UserRoleForm.tsx": [],
   "src/features/users/constants.ts": [],
   "src/features/users/index.ts": [],
-  "src/shared/hooks/useMutationRequest.ts": [],
 };
 const wireImports = {
   "src/features/auth/types.ts": [],

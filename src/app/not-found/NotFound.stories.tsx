@@ -3,7 +3,7 @@ import { Route, Routes } from "react-router";
 import { expect, userEvent, within } from "storybook/test";
 
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { StoryShell } from "../../../.storybook/StoryShell";
 
 import { NotFoundPage } from "./NotFound";
 

@@ -30,6 +30,14 @@ const policy = (overrides = {}) => ({
   ...overrides,
 });
 const completeApplicationFiles = [
+  "src/app/providers/antd/Antd.stories.tsx",
+  "src/app/providers/core/Core.stories.tsx",
+  "src/features/files/Files.stories.tsx",
+  "src/shared/ui/error-boundary/ErrorFallback.stories.tsx",
+  "src/shared/ui/image-upload/ImageUpload.stories.tsx",
+  ".storybook/StoryShell.tsx",
+  ".storybook/fixtures.ts",
+  "src/test/browser.ts",
   "src/features/account/components/password-form/PasswordForm.tsx",
   "src/features/account/components/password-form/PasswordForm.test.tsx",
   "src/features/account/components/password-form/PasswordForm.stories.tsx",
@@ -360,11 +368,6 @@ const completeApplicationFiles = [
   "src/shared/hooks/index.ts",
   "src/shared/hooks/useGoBack.test.tsx",
   "src/shared/hooks/useGoBack.ts",
-  "src/shared/hooks/useMutationRequest.test.tsx",
-  "src/shared/hooks/useMutationRequest.ts",
-  "src/shared/hooks/useReadRequest.ts",
-  "src/shared/hooks/useReadResource.test.ts",
-  "src/shared/hooks/useReadResource.ts",
   "src/shared/i18n/catalogs.test.ts",
   "src/shared/i18n/catalogs.ts",
   "src/shared/i18n/date.test.ts",
@@ -423,25 +426,17 @@ const completeApplicationFiles = [
   "src/shared/ui/password-fields/PasswordFields.test.tsx",
   "src/shared/ui/password-fields/PasswordFields.tsx",
   "src/shared/ui/password-fields/index.ts",
-  "src/shared/ui/request-feedback/RequestFeedback.test.tsx",
-  "src/shared/ui/request-feedback/RequestFeedback.tsx",
   "src/shared/ui/route-loading/RouteLoading.stories.tsx",
   "src/shared/ui/route-loading/RouteLoading.test.tsx",
   "src/shared/ui/route-loading/RouteLoading.tsx",
   "src/shared/ui/route-loading/index.ts",
-  "src/test/http-setup.ts",
   "src/test/integration/forms.test.tsx",
   "src/test/integration/pages.test.tsx",
-  "src/test/mocks/handlers.ts",
-  "src/test/mocks/server.ts",
   "src/test/render.tsx",
   "src/test/setup.ts",
   "src/test/storybook/StoryAppearance.stories.tsx",
-  "src/test/storybook/StoryAppearance.ts",
   "src/test/storybook/StoryShell.test.tsx",
-  "src/test/storybook/StoryShell.tsx",
   "src/test/storybook/Transport.stories.tsx",
-  "src/test/storybook/fixtures.ts",
   "src/vite-env.d.ts",
   "staging.config.ts",
   "staging/setup.ts",
@@ -1376,7 +1371,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 90);
+  assert.equal(required.length, 81);
   for (const missing of required)
     assert.throws(
       () =>
@@ -1446,7 +1441,7 @@ test("core-auth preserves its complete prior closure, owners and tests without a
     "src/app/Routes.tsx",
     "src/features/users/Users.tsx",
     "src/features/login/unpublished.tsx",
-    "src/test/storybook/fixtures.ts",
+    ".storybook/fixtures.ts",
   ])
     assert.throws(() =>
       validateBootstrapPolicy({
@@ -1523,7 +1518,7 @@ test("Storybook verification requires every explicit story, isolated configurati
   const current = await historicalStorybookPolicy();
   assert.equal(current.phase, "storybook-verification");
   const required = current.allowedFiles.filter(isStorybookPhaseFile);
-  assert.equal(required.length, 34);
+  assert.equal(required.length, 41);
   for (const missing of required) {
     assert.throws(
       () =>
@@ -1854,6 +1849,29 @@ test("application admission requires the exact runnable closure and matching rea
   assert.throws(() =>
     validateBootstrapPolicy({ ...current, applicationReady: false }),
   );
+  for (const file of [
+    "src/shared/hooks/useReadRequest.ts",
+    "src/shared/hooks/useReadResource.ts",
+    "src/shared/hooks/useReadResource.test.ts",
+    "src/shared/hooks/useMutationRequest.ts",
+    "src/shared/hooks/useMutationRequest.test.tsx",
+    "src/shared/ui/request-feedback/RequestFeedback.tsx",
+    "src/shared/ui/request-feedback/RequestFeedback.test.tsx",
+    "src/test/http-setup.ts",
+    "src/test/mocks/handlers.ts",
+    "src/test/mocks/server.ts",
+    "src/test/storybook/StoryShell.tsx",
+    "src/test/storybook/fixtures.ts",
+    "src/test/storybook/StoryAppearance.ts",
+  ])
+    assert.throws(
+      () =>
+        validateBootstrapPolicy({
+          ...current,
+          allowedFiles: [...current.allowedFiles, file],
+        }),
+      /unique, exact/,
+    );
   const historical = await historicalGuidancePolicy();
   for (const file of applicationFiles.filter(
     (entry) => entry !== ".github/workflows/codeql.yml",

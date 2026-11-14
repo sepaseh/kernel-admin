@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { SettingsPage } from "@/features/settings";
 import { i18n } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
-import { sampleAccount as sampleUser } from "@/test/storybook/fixtures";
+import { StoryShell } from "../../../.storybook/StoryShell";
+import { sampleAccount as sampleUser } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Features/Settings",

@@ -118,6 +118,52 @@ const dependencyForms = [
   (specifier) => `import type Value = require("${specifier}");`,
 ];
 
+test("retired request infrastructure cannot regain local imports or former package capabilities", () => {
+  const retired = [
+    ["src/shared/hooks/useReadRequest.ts", ["axios", "react"]],
+    ["src/shared/hooks/useReadResource.ts", ["react"]],
+    ["src/shared/hooks/useMutationRequest.ts", ["axios", "react"]],
+    [
+      "src/shared/ui/request-feedback/RequestFeedback.tsx",
+      ["antd", "react-i18next"],
+    ],
+    ["src/shared/ui/request-feedback/index.ts", []],
+  ];
+  for (const [target, dependencies] of retired) {
+    const resolved = path.join(root, target);
+    for (const source of [
+      "src/features/users/Users.tsx",
+      "src/shared/hooks/index.ts",
+    ]) {
+      const owner = path.join(root, source);
+      for (const specifier of [
+        "@/" + target.slice(4).replace(/\.tsx?$/, ""),
+        path.relative(path.dirname(owner), resolved).split(path.sep).join("/"),
+      ])
+        for (const syntax of dependencyForms) {
+          const [edge] = inspectImports(syntax(specifier));
+          assert.match(
+            check(edge.specifier, resolved, owner, edge.typeOnly),
+            /published (?:local )?production modules/,
+            syntax(specifier),
+          );
+        }
+    }
+    for (const dependency of dependencies)
+      for (const typeOnly of [false, true])
+        assert.match(
+          check(
+            dependency,
+            path.join(root, "node_modules", dependency, "index.js"),
+            resolved,
+            typeOnly,
+            dependency,
+          ),
+          /not allowed/,
+        );
+  }
+});
+
 test("HTTP path validation stays inside the shared production boundary", () => {
   const helper = path.join(root, "src/shared/api/path.ts");
   for (const source of ["users", "roles"])
@@ -589,7 +635,7 @@ test("local feature ownership, shared reuse and application composition remain v
     ],
     [
       "src/features/users/Users.tsx",
-      "src/shared/hooks/useReadResource.ts",
+      "src/shared/hooks/useAbortController.ts",
       false,
     ],
     ["src/features/users/Users.tsx", "src/app/hooks/useCore.ts", false],
@@ -1096,7 +1142,7 @@ test("runtime adapters may import only exact declared packages contained in this
     ["src/shared/i18n/date.ts", "dayjs/locale/en-gb", "dayjs"],
     ["src/shared/i18n/date.ts", "jalaliday", "jalaliday"],
     ["src/shared/api/client.ts", "axios", "axios"],
-    ["src/shared/hooks/useReadRequest.ts", "react", "react"],
+    ["src/shared/hooks/useAbortController.ts", "react", "react"],
     ["src/shared/ui/digits-input/DigitsInput.tsx", "react", "react"],
     ["src/app/providers/core/Core.tsx", "dayjs", "dayjs"],
     ["src/app/providers/antd/Antd.tsx", "antd/locale/fa_IR", "antd"],
@@ -1334,7 +1380,7 @@ test("HTTP package ownership, type erasure and package identity fail closed", ()
     ),
     /not allowed/,
   );
-  const hook = path.join(root, "src/shared/hooks/useReadRequest.ts");
+  const hook = path.join(root, "src/shared/hooks/useAbortController.ts");
   const reactTypes = path.join(root, "node_modules/@types/react/index.d.ts");
   assert.equal(
     check("react", reactTypes, hook, false, "@types/react"),
@@ -1381,40 +1427,47 @@ test("the OTP lifecycle owner admits only its exact contained runtime and erased
   );
 });
 
-test("the mutation lifecycle owner admits only its exact contained React and Axios dependencies", () => {
-  const owner = path.join(root, "src/shared/hooks/useMutationRequest.ts");
-  for (const dependency of ["react", "axios"])
-    assert.equal(
-      check(
-        dependency,
-        path.join(root, "node_modules", dependency, "index.js"),
-        owner,
-        false,
-        dependency,
-      ),
-      undefined,
-    );
-  for (const dependency of ["antd", "react-dom", "axios/internal", "node:fs"])
+test("cancellation and lock hooks admit only their exact contained React runtime", () => {
+  for (const source of [
+    "src/shared/hooks/useAbortController.ts",
+    "src/shared/hooks/useLock.ts",
+  ]) {
+    const owner = path.join(root, source);
+    const react = path.join(root, "node_modules/react/index.js");
+    assert.equal(check("react", react, owner, false, "react"), undefined);
+    assert.match(check("react", react, owner, true, "react"), /not allowed/);
+    for (const dependency of [
+      "axios",
+      "antd",
+      "react-dom",
+      "axios/internal",
+      "node:fs",
+    ])
+      assert.match(
+        check(
+          dependency,
+          path.join(root, "node_modules", dependency, "index.js"),
+          owner,
+          false,
+          dependency,
+        ),
+        /not allowed/,
+      );
     assert.match(
       check(
-        dependency,
-        path.join(root, "node_modules", dependency, "index.js"),
+        "react",
+        path.join(root, "node_modules", "alias", "index.js"),
         owner,
         false,
-        dependency,
+        "react",
       ),
       /not allowed/,
     );
-  assert.match(
-    check(
-      "react",
-      path.join(root, "node_modules", "alias", "index.js"),
-      owner,
-      false,
-      "react",
-    ),
-    /not allowed/,
-  );
+    assert.match(
+      check("react", react, owner, false, "synthetic-alias"),
+      /not allowed/,
+    );
+  }
 });
 
 test("feature wire vocabulary cannot acquire runtime imports or unrelated local types", () => {
@@ -1432,7 +1485,7 @@ test("feature wire vocabulary cannot acquire runtime imports or unrelated local 
     check("../../shared/api/token.ts", file, settings, true),
     /exact erased/,
   );
-  for (const target of ["src/test/http-setup.ts", "src/vite-env.d.ts"])
+  for (const target of ["src/test/setup.ts", "src/vite-env.d.ts"])
     assert.match(
       check("./target.ts", path.join(root, target), settings, true),
       /published production/,

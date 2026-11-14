@@ -1,10 +1,10 @@
+import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Route, Routes } from "react-router";
 import { expect, userEvent, within } from "storybook/test";
 
-import { login } from "@/features/auth/api";
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { StoryShell } from "../../../.storybook/StoryShell";
 
 import { LoginPage } from "./Login";
 
@@ -59,7 +59,7 @@ export const ValidationErrors: Story = {
     await expect(
       canvas.getByLabelText(i18nInstance.t("password")),
     ).toHaveAttribute("aria-invalid", "true");
-    await expect(login).not.toHaveBeenCalled();
+    await expect(apiClient.post).not.toHaveBeenCalled();
   },
 };
 
@@ -81,10 +81,11 @@ export const SuccessfulLogin: Story = {
     await expect(
       await canvas.findByText("Authenticated destination"),
     ).toBeVisible();
-    await expect(login).toHaveBeenCalledTimes(1);
-    await expect(login).toHaveBeenCalledWith(
+    await expect(apiClient.post).toHaveBeenCalledTimes(1);
+    await expect(apiClient.post).toHaveBeenCalledWith(
+      "/auth/login",
       { mobile: "09120000000", password: "Synthetic-password!" },
-      expect.any(AbortSignal),
+      { signal: expect.any(AbortSignal) },
     );
   },
 };

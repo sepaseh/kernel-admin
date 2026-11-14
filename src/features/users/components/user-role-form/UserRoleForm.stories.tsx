@@ -1,10 +1,10 @@
+import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
-import { updateUserRoles } from "@/features/users/api";
-import { roles, user } from "@/test/storybook/fixtures";
+import { roles, sampleAccount, user } from "../../../../../.storybook/fixtures";
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "@/test/storybook/StoryShell";
+import { StoryShell } from "../../../../../.storybook/StoryShell";
 
 import { UserRoleForm } from "./UserRoleForm";
 
@@ -39,10 +39,10 @@ export const Default: Story = {
       dialog.getByRole("button", { name: i18nInstance.t("submit") }),
     );
     await waitFor(() =>
-      expect(updateUserRoles).toHaveBeenCalledWith(
-        "user-1",
+      expect(apiClient.put).toHaveBeenCalledWith(
+        "/users/user-1/roles",
         { roleIds: ["role-admin", "role-editor"] },
-        expect.any(AbortSignal),
+        { signal: expect.any(AbortSignal) },
       ),
     );
     await waitFor(() => expect(args.onFinish).toHaveBeenCalledTimes(1));
@@ -50,5 +50,26 @@ export const Default: Story = {
       expect(body.queryByRole("dialog")).not.toBeInTheDocument();
       expect(body.queryByRole("listbox")).not.toBeInTheDocument();
     });
+  },
+};
+
+export const DeniedUpdate: Story = {
+  render: (args) => (
+    <StoryShell
+      initialEntries={["/users#roles"]}
+      initialUser={{
+        ...sampleAccount,
+        isSystemAdmin: false,
+        permissions: ["users.read"],
+      }}
+    >
+      <UserRoleForm {...args} />
+    </StoryShell>
+  ),
+  play: async ({ canvasElement }) => {
+    await expect(
+      within(canvasElement.ownerDocument.body).queryByRole("dialog"),
+    ).not.toBeInTheDocument();
+    await expect(apiClient.get).not.toHaveBeenCalled();
   },
 };
