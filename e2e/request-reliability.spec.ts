@@ -129,7 +129,7 @@ for (const language of ["en", "fa"] as const) {
     ).not.toHaveClass(/ant-drawer-panel-motion-/);
     await expect(
       drawer.getByLabel(messages.firstName, { exact: true }),
-    ).toBeFocused();
+    ).toHaveValue(userRecord.first_name);
     await drawer.getByLabel(messages.status, { exact: true }).click();
     await page
       .locator(".ant-select-dropdown:visible")

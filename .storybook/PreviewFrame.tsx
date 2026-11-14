@@ -1,6 +1,6 @@
 import "@/shared/i18n/date";
 
-import { theme as antdTheme } from "antd";
+import { ConfigProvider, theme as antdTheme } from "antd";
 import dayjs from "dayjs";
 import type { ReactNode } from "react";
 import { useLayoutEffect, useState } from "react";
@@ -117,12 +117,14 @@ export const PreviewFrame = ({
 
   return (
     <CoreContext.Provider value={value}>
-      <AntdProvider>
-        <GlobalStyle />
-        <StorySurface language={settings.language} ownsMain={ownsMain}>
-          {children}
-        </StorySurface>
-      </AntdProvider>
+      <ConfigProvider theme={{ inherit: false }}>
+        <AntdProvider>
+          <GlobalStyle />
+          <StorySurface language={settings.language} ownsMain={ownsMain}>
+            {children}
+          </StorySurface>
+        </AntdProvider>
+      </ConfigProvider>
     </CoreContext.Provider>
   );
 };

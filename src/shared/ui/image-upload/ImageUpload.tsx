@@ -30,7 +30,7 @@ const useStyles = createStyles(({ css }, aspect: number) => ({
 type ImageUploadProps<T> = {
   disabled?: boolean;
   label: string;
-  onBusyChange?: (busy: boolean) => void;
+  onLoadingChange?: (loading: boolean) => void;
   onChange?: (image: T) => void;
   onError: (error: Error) => void;
   settings: { height: number; size: number; width: number };
@@ -41,7 +41,7 @@ type ImageUploadProps<T> = {
 export const ImageUpload = <T extends { id: string; url: string }>({
   disabled = false,
   label,
-  onBusyChange,
+  onLoadingChange,
   onChange,
   onError,
   settings,
@@ -63,13 +63,15 @@ export const ImageUpload = <T extends { id: string; url: string }>({
     if (mounted.current) {
       setBusy(false);
       setPercent(undefined);
-      onBusyChange?.(false);
+      onLoadingChange?.(false);
     }
   };
 
-  const beforeCrop: NonNullable<UploadProps["beforeUpload"]> = (selected) => {
+  const beforeCrop: NonNullable<UploadProps["beforeUpload"]> = async (
+    selected,
+  ) => {
     sourceFiles.current.add(selected);
-    if (disabled || !lock()) return false;
+    if (disabled || !mounted.current || !lock()) return false;
 
     try {
       if (!["image/jpeg", "image/png"].includes(selected.type)) {
@@ -77,10 +79,16 @@ export const ImageUpload = <T extends { id: string; url: string }>({
       }
       if (selected.size > size) throw new Error(t("imageTooLarge"));
       setBusy(true);
-      onBusyChange?.(true);
+      onLoadingChange?.(true);
+      await readImageSize(selected);
+      if (!mounted.current) {
+        finish();
+        return false;
+      }
+
       return true;
     } catch (error) {
-      if (error instanceof Error) onError(error);
+      if (mounted.current && error instanceof Error) onError(error);
       finish();
       return false;
     }

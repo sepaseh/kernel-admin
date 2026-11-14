@@ -151,7 +151,12 @@ const retryUnauthorizedRequest = async (
     if (axios.isCancel(refreshError)) throw refreshError;
     if (sessionSignal.aborted) throw new axios.CanceledError();
     const failure = normalizeTransportError(refreshError);
-    handleUnauthorized();
+    const transientFailure =
+      axios.isAxiosError(refreshError) &&
+      (!refreshError.response ||
+        (refreshError.response.status >= 500 &&
+          refreshError.response.status < 600));
+    if (!transientFailure) handleUnauthorized();
     throw failure;
   }
 };
