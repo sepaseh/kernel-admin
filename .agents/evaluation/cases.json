@@ -122,8 +122,8 @@
         "Each locale has one code-named flat Record<string, string> catalog; messages use direct root keys without nested objects, common prefixes or duplicate aliases.",
         "All ten languages require genuine nonempty keys and matching i18next placeholders.",
         "All catalog source and integrity evidence are local; translation work requires no external project source or documentation.",
-        "Public API settings alone select the active language; fixed Persian bootstrap is not a remembered visitor preference, and only the system super-admin can change the global setting.",
-        "Core retains validated server direction/calendar/names alongside the normalized supported code. Ant Design/HTML and Day.js/Calendar consume that metadata; local maps only select vendor adapters. Invalid metadata is a settings error."
+        "Public API settings alone select the active language; fixed English bootstrap is not a remembered visitor preference, and only the system super-admin can change the global setting.",
+        "Core retains typed server direction/calendar/names without runtime code normalization or settings validation. Ant Design/HTML and Day.js/Calendar consume that metadata; local maps only select vendor adapters. Identify the validation limitation rather than claiming runtime enforcement."
       ],
       "mustNot": [
         "Reintroduce a shared translation package or external project source dependency.",
@@ -141,12 +141,11 @@
       "evidence": [
         "DESIGN.md",
         ".agents/skills/design-ui/SKILL.md",
-        "src/shared/config/theme.ts",
+        "src/app/providers/antd/Antd.tsx",
         "src/features/users/Users.tsx",
         "src/features/users/components/user-form/UserForm.tsx",
         "src/shared/ui/form-drawer/FormDrawer.tsx",
         "src/app/providers/core/Core.tsx",
-        "src/app/providers/antd/Antd.tsx",
         "src/features/settings/Settings.tsx",
         ".storybook/preview.tsx",
         "docs/testing.md",

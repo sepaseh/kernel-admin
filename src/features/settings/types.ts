@@ -31,11 +31,3 @@ export type SettingsRequest = Pick<
   languageCode?: Settings["language"]["code"];
   lightLogoId?: NonNullable<Settings["lightLogo"]>["id"];
 };
-
-export type ApplicationLanguage = {
-  calendar: "gregorian" | "gregory" | "jalali";
-  code: LocaleCode;
-  direction: "ltr" | "rtl";
-  name: string;
-  nativeName: string;
-};

@@ -5,7 +5,7 @@ import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import { CoreContext } from "@/app/contexts";
 import type { CurrentUser } from "@/features/account";
 import { fetchCurrentUser } from "@/features/account/api";
-import type { ApplicationLanguage } from "@/features/settings/types";
+import type { Settings } from "@/features/settings/types";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import type { Theme } from "@/shared/contracts";
 
@@ -15,7 +15,7 @@ import { PreviewFrame } from "./PreviewFrame";
 type StoryShellProps = {
   children: ReactNode;
   initialEntries?: string[];
-  initialLanguage?: ApplicationLanguage;
+  initialLanguage?: Settings["language"];
   initialTheme?: Theme;
   initialUser?: CurrentUser;
   withUser?: boolean;

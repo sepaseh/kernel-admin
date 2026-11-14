@@ -8,13 +8,13 @@ Keep one root npm project with source in `src/`. Developers choose the backend t
 
 Describe the user-visible result and the failure it must handle. For example, a list refresh failure should keep accepted rows and offer retry. Read the closest implementation and tests before selecting an abstraction.
 
-Use [architecture](architecture.md) to locate startup, routes, providers and shared infrastructure. Read feature APIs, types, forms and nearby tests in the owning `src/features/<feature>` directory. Cross-feature vocabulary such as the profile-name limit belongs in `src/shared/contracts`.
+Use [architecture](architecture.md) to locate startup, routes, providers and shared infrastructure. Read feature APIs, types, forms and nearby tests in the owning `src/features/<feature>` directory. Cross-feature appearance vocabulary and the profile-name limit belong in `src/shared/contracts`.
 
 ## 2. Change the owning contract and interaction
 
 Keep endpoint paths and HTTP request/response types in the feature's `api.ts` and `types.ts`. Normalize nullable data at that boundary. Keep transport/session behavior in `src/shared/api`; document incompatible HTTP or permission changes and the requirements for a compatible backend.
 
-Before importing from another feature or app module, check the [dependency boundaries](architecture.md#feature-dependency-boundaries) and the exact approved edges in [the checker](../scripts/check-boundaries.mjs). Use the declared authentication or roles API, hook or type leaf and the approved app hooks, route configuration or access policy. Keep another feature's UI/private helpers and app composition internals out of the dependency. A new dependency needs a reviewed ownership requirement and positive/negative boundary regressions. Keep a feature-specific abstraction local until a real shared contract is needed.
+Before importing from another feature or app module, check the [dependency boundaries](architecture.md#feature-dependency-boundaries) and the exact approved edges in [the checker](../scripts/check-boundaries.mjs). Use reviewed named authentication or roles API, hook or erased type exports through the owning public `index.ts`, and the approved app hooks, route configuration or access policy. Preserve the checker's exact named edges. Keep another feature's UI/private helpers and app composition internals out of the dependency. A new dependency needs a reviewed ownership requirement and positive/negative boundary regressions. Keep a feature-specific abstraction local until a real shared contract is needed.
 
 Follow the owning screen's direct request lifecycle. Authentication, account and business screens own cancellation in their effects and submit handlers, with synchronous submission locks where needed. Include every filter and identifier in request identity and forward the supplied cancellation signal to the feature API. Preserve session generations and stale-result guards described in [authentication and requests](authentication.md). Reuse shared filter hooks and library helpers instead of copying query parsing or password generation into a feature.
 

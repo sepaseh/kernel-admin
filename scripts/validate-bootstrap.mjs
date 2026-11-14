@@ -24,8 +24,6 @@ const foundationFiles = [
   "src/shared/contracts/index.ts",
   "src/shared/lib/transform.ts",
   "src/shared/lib/transform.test.ts",
-  "src/shared/lib/color-contrast.ts",
-  "src/shared/lib/color-contrast.test.ts",
   "tsconfig.json",
 ];
 const foundationSources = new Set([
@@ -35,8 +33,6 @@ const foundationSources = new Set([
   "src/shared/contracts/index.ts",
   "src/shared/lib/transform.ts",
   "src/shared/lib/transform.test.ts",
-  "src/shared/lib/color-contrast.ts",
-  "src/shared/lib/color-contrast.test.ts",
 ]);
 const isFoundationSource = (file) => foundationSources.has(file);
 const catalogFiles = [
@@ -50,8 +46,6 @@ const catalogFiles = [
 ];
 const runtimeFiles = [
   "tooling/paths.ts",
-  "src/shared/config/language.ts",
-  "src/shared/config/language.test.ts",
   "src/shared/i18n/index.ts",
   "src/shared/i18n/index.test.ts",
   "src/shared/i18n/date.ts",
@@ -107,8 +101,6 @@ const uiFiles = [
   "src/assets/styles/vazirmatn.css",
   "src/shared/config/constants.ts",
   "src/shared/config/index.ts",
-  "src/shared/config/theme.test.ts",
-  "src/shared/config/theme.ts",
   "src/shared/hooks/index.ts",
   "src/shared/hooks/useGoBack.test.tsx",
   "src/shared/hooks/useGoBack.ts",
@@ -161,8 +153,8 @@ const coreAuthFiles = [
   "src/app/lib/access.test.ts",
   "src/app/lib/access.ts",
   "src/app/lib/index.ts",
-  "src/app/not-found/NotFound.test.tsx",
-  "src/app/not-found/NotFound.tsx",
+  "src/features/not-found/NotFound.test.tsx",
+  "src/features/not-found/NotFound.tsx",
   "src/app/providers/antd/Antd.test.tsx",
   "src/app/providers/antd/Antd.tsx",
   "src/app/providers/core/Core.test.tsx",
@@ -235,7 +227,7 @@ const storybookFiles = [
   ".storybook/vite.config.ts",
   ".storybook/vitest.setup.ts",
   "docs/testing.md",
-  "src/app/not-found/NotFound.stories.tsx",
+  "src/features/not-found/NotFound.stories.tsx",
   "src/features/account/Account.stories.tsx",
   "src/features/calendar/Calendar.stories.tsx",
   "src/features/forgot-pass/ForgotPass.stories.tsx",
@@ -536,6 +528,12 @@ const applicationFiles = new Set([
   "src/shared/lib/pagination.ts",
   "src/shared/lib/password.test.ts",
   "src/shared/lib/password.ts",
+  "src/app/index.ts",
+  "src/features/not-found/index.ts",
+  "src/index.css",
+  "src/index.ts",
+  "src/test/resource-paths.test.ts",
+  "e2e/visual/baselines/application/win32/admin-settings-en-light.png",
 ]);
 const phaseOrder = [
   "governance",

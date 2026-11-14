@@ -1,12 +1,12 @@
 import type { CurrentUser } from "@/features/account";
 import type { StoredFile } from "@/features/files";
 import type { PermissionGroup, Role } from "@/features/roles";
-import type { ApplicationLanguage, Settings } from "@/features/settings/types";
+import type { Settings } from "@/features/settings/types";
 import type { User } from "@/features/users";
 
 export const sampleLanguages = {
   en: {
-    calendar: "gregorian",
+    calendar: "gregory",
     code: "en",
     direction: "ltr",
     name: "English",
@@ -19,10 +19,10 @@ export const sampleLanguages = {
     name: "Persian",
     nativeName: "فارسی",
   },
-} satisfies Record<"en" | "fa", ApplicationLanguage>;
+} satisfies Record<"en" | "fa", Settings["language"]>;
 
 export const sampleSettings: Settings = {
-  language: { ...sampleLanguages.en, calendar: "gregory" },
+  language: sampleLanguages.en,
   darkTheme: {
     colorBgBase: "#141414",
     colorBgContainer: "#1f1f1f",

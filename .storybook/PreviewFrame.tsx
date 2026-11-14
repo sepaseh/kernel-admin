@@ -8,9 +8,8 @@ import { useLayoutEffect, useState } from "react";
 import type { RouteKey } from "@/app/config/routes";
 import { CoreContext, type CoreContextValue } from "@/app/contexts";
 import { AntdProvider } from "@/app/providers";
-import type { ApplicationLanguage, Settings } from "@/features/settings/types";
+import type { Settings } from "@/features/settings/types";
 import { GlobalStyle } from "@/GlobalStyle";
-import { defaultLogos } from "@/shared/config";
 import type { Theme } from "@/shared/contracts";
 import { dayjsLocaleName, i18n } from "@/shared/i18n";
 
@@ -20,7 +19,7 @@ type PreviewFrameProps = {
   children: ReactNode;
   compact?: boolean;
   direction?: "ltr" | "rtl";
-  initialLanguage?: ApplicationLanguage;
+  initialLanguage?: Settings["language"];
   languageCode: "en" | "fa";
   ownsMain?: boolean;
   themeMode: Theme;
@@ -65,7 +64,6 @@ export const PreviewFrame = ({
   const language = initialLanguage ?? sampleLanguages[languageCode];
   const fixtureLanguage: Settings["language"] = {
     ...language,
-    calendar: language.calendar === "gregorian" ? "gregory" : language.calendar,
     direction: direction ?? language.direction,
   };
   const languageKey = JSON.stringify(fixtureLanguage);
@@ -96,11 +94,6 @@ export const PreviewFrame = ({
   const value: CoreContextValue = {
     compact,
     currentRoute,
-    language: settings.language,
-    logos: {
-      dark: settings.darkLogo?.url ?? defaultLogos.dark,
-      light: settings.lightLogo?.url ?? defaultLogos.light,
-    },
     setCompact,
     setCurrentRoute,
     setSettings,

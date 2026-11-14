@@ -4,7 +4,7 @@ This frontend owns feature API modules/types, transport normalization, synthetic
 Axios/MSW fixtures and local HTTP contracts. The consuming developer chooses a
 backend implementing those local HTTP contracts. Frontend work requires no
 external project source, documentation or services. Pact consumer and synthetic
-browser checks are planned for later phases and cannot verify a deployed backend.
+browser checks remain synthetic and cannot verify a deployed backend.
 
 Review HTTP behavior against the local contract, implementation and synthetic
 consumer evidence. Document incompatible request/response changes in the local
@@ -21,6 +21,6 @@ access behind HTTP.
 - Do not invent fields, envelopes, permissions, errors, status codes or timestamp
   units without current evidence.
 - Calendar date keys remain Gregorian `YYYY-MM-DD`; runtime language, direction
-  and calendar follow validated API metadata.
+  and calendar follow API metadata.
 - Keep all examples synthetic. Never read real credentials, signed URLs, private
   operator state or personal data for a contract test.

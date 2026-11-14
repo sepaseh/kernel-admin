@@ -25,8 +25,8 @@ guidance when admitted, rather than copying product rules into another design gu
    establish an application entry point, route composition or production deployment.
 4. Select actual checks from [the manifest](../../validation.json), following
    [validation](../../../docs/validation.md) and
-   [validate-change](../validate-change/SKILL.md). The `core-auth` phase uses unit
-   and jsdom component tests. Use isolated Storybook browser interaction/accessibility
+   [validate-change](../validate-change/SKILL.md). Use unit and jsdom component
+   tests, plus isolated Storybook browser interaction/accessibility
    evidence for registered cases when that suite is admitted. Application E2E
    and visual comparison require admitted owners, genuine current-revision runs
    and human-reviewed baselines; a component pass or historical image cannot supply

@@ -1,4 +1,4 @@
-import { readdir, readFile, realpath } from "node:fs/promises";
+import { lstat, readdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -31,7 +31,7 @@ const productionPaths = [
   "src/app/hooks/useCore.ts",
   "src/app/lib/access.ts",
   "src/app/lib/index.ts",
-  "src/app/not-found/NotFound.tsx",
+  "src/features/not-found/NotFound.tsx",
   "src/app/providers/antd/Antd.tsx",
   "src/app/providers/core/Core.tsx",
   "src/app/providers/index.ts",
@@ -88,8 +88,6 @@ const productionPaths = [
   "src/shared/api/types.ts",
   "src/shared/config/constants.ts",
   "src/shared/config/index.ts",
-  "src/shared/config/language.ts",
-  "src/shared/config/theme.ts",
   "src/shared/contracts/appearance.ts",
   "src/shared/contracts/index.ts",
   "src/shared/hooks/index.ts",
@@ -109,7 +107,6 @@ const productionPaths = [
   "src/shared/i18n/locales/pt.ts",
   "src/shared/i18n/locales/ru.ts",
   "src/shared/i18n/locales/tr.ts",
-  "src/shared/lib/color-contrast.ts",
   "src/shared/lib/error.ts",
   "src/shared/lib/index.ts",
   "src/shared/lib/observability.ts",
@@ -147,6 +144,9 @@ const productionPaths = [
   "src/shared/lib/allowed-value.ts",
   "src/shared/lib/pagination.ts",
   "src/shared/lib/password.ts",
+  "src/app/index.ts",
+  "src/features/not-found/index.ts",
+  "src/index.ts",
 ];
 const runtimeImports = {
   "src/features/account/components/password-form/PasswordForm.tsx": [
@@ -202,7 +202,11 @@ const runtimeImports = {
   "src/app/contexts/Core.ts": ["react"],
   "src/app/hooks/useAntd.ts": ["antd", "react"],
   "src/app/hooks/useCore.ts": ["react"],
-  "src/app/not-found/NotFound.tsx": ["antd", "react-i18next", "react-router"],
+  "src/features/not-found/NotFound.tsx": [
+    "antd",
+    "react-i18next",
+    "react-router",
+  ],
   "src/app/providers/antd/Antd.tsx": [
     "antd",
     "antd/locale/ar_EG",
@@ -257,7 +261,6 @@ const runtimeImports = {
     "react-i18next",
     "react-router",
   ],
-  "src/shared/config/theme.ts": ["antd"],
   "src/shared/hooks/useGoBack.ts": ["react", "react-router"],
   "src/shared/lib/observability.ts": ["web-vitals"],
   "src/shared/storage/hooks/useLocalStorageWatcher.ts": ["react"],
@@ -373,7 +376,6 @@ const typeImports = {
   "src/features/login/Login.tsx": ["antd"],
   "src/features/register/Register.tsx": ["antd"],
   "src/layouts/default/Default.tsx": ["antd"],
-  "src/shared/config/theme.ts": ["antd"],
   "src/shared/hooks/useGoBack.ts": ["react-router"],
   "src/shared/lib/observability.ts": ["web-vitals"],
   "src/shared/ui/digits-input/DigitsInput.tsx": ["antd"],
@@ -511,13 +513,15 @@ const runtimeDependencies = new Set([
   "react-i18next",
 ]);
 const runtimePaths = new Set([
-  "src/shared/config/language.ts",
   "src/shared/i18n/index.ts",
   "src/shared/i18n/date.ts",
   "src/shared/lib/error.ts",
 ]);
 const publishedModules = (root) =>
   new Set(productionPaths.map((file) => path.join(root, file)));
+const stylesheetImports = {
+  "src/main.tsx": { "./index.css": "src/index.css" },
+};
 const isErasedTypeReference = (node) => {
   if (ts.isImportTypeNode(node)) return true;
   if (ts.isImportDeclaration(node))
@@ -714,6 +718,13 @@ export const boundaryViolation = ({
   if (!specifier)
     return "Use literal module paths so source boundaries can be checked";
   const relativeFile = path.relative(root, file).split(path.sep).join("/");
+  const stylesheet = stylesheetImports[relativeFile]?.[specifier];
+  if (stylesheet)
+    return !typeOnly &&
+      !bindings.length &&
+      resolved === path.join(root, stylesheet)
+      ? undefined
+      : "Stylesheets must use their exact contained application or vendor asset";
   if (!specifier.startsWith(".") && !specifier.startsWith("@/"))
     return packageImportViolation({
       root,
@@ -889,7 +900,22 @@ export const checkBoundaries = async (requestedRoot = repository) => {
             edge.specifier &&
             ts.resolveModuleName(edge.specifier, file, options, ts.sys, cache)
               .resolvedModule;
-          const resolved = module && (await realpath(module.resolvedFileName));
+          const stylesheet =
+            stylesheetImports[
+              path.relative(root, file).split(path.sep).join("/")
+            ]?.[edge.specifier];
+          let resolved = module && (await realpath(module.resolvedFileName));
+          if (stylesheet) {
+            const filename = path.join(root, stylesheet);
+            const entry = await lstat(filename).catch((error) => {
+              if (error.code === "ENOENT") return undefined;
+              throw error;
+            });
+            resolved =
+              entry?.isFile() && !entry.isSymbolicLink()
+                ? await realpath(filename)
+                : undefined;
+          }
           const violation = boundaryViolation({
             root,
             file,

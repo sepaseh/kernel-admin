@@ -21,7 +21,7 @@ Feature HTTP owners consume the configured backend. Database operations, authori
 
 Developers choose a compatible backend through `VITE_API_BASE_URL`. The local feature `api.ts` and `types.ts` files define this frontend's requests and expected responses; no particular backend implementation, repository, request collection or tooling is required. Adapt this project's HTTP boundary when integrating a service with a different contract.
 
-Use the [HTTP transport tests](../src/shared/api/transport.test.ts), [settings fixture](../e2e/fixtures.ts), [application HTTP fixtures](../e2e/shared/admin-fixtures.ts) and [consumer contracts](../contract/api.contract.test.ts) for request and response examples. Startup requires a valid `/settings` response before routes render. Authenticated features require compatible login, refresh and permission behavior. Builds and synthetic tests need no running backend. Verify the chosen service separately when real integration testing is authorized.
+Use the [HTTP transport tests](../src/shared/api/transport.test.ts), [settings fixture](../e2e/fixtures.ts), [application HTTP fixtures](../e2e/shared/admin-fixtures.ts) and [consumer contracts](../contract/api.contract.test.ts) for request and response examples. Startup requires a compatible `/settings` response before routes render. Authenticated features require compatible login, refresh and permission behavior. Builds and synthetic tests need no running backend. Verify the chosen service separately when real integration testing is authorized.
 
 Login accepts `mobile` and `password`. Authentication screens import only their named services, OTP hook and erased request models from the [authentication public index](../src/features/auth/index.ts). Registration and password recovery request an OTP for the current mobile number. The response must contain finite numeric `expiresIn` and nonnegative `remainingSeconds` values. The account API exposes current-user loading and profile updates. Its separate profile and password forms consume the default layout Outlet context; password changes retain their authentication endpoint and request model.
 
@@ -66,6 +66,8 @@ Use [`useAbortController`](../src/shared/hooks/useAbortController.ts) where the 
 The [default layout](../src/layouts/default/Default.tsx) owns current-user loading. It waits for the initial accepted user before rendering protected children and exposes that user, an awaited reload and local session cleanup through [`DefaultLayoutContext`](../src/layouts/default/types.ts). During a refresh, it keeps the Outlet mounted so child form state survives. Refresh failures retain accepted identity and show retry feedback; initial failures also offer logout. The layout checks its mounted state, request cancellation and initiating authentication generation before accepting data or handling a failure. Core owns settings and appearance preferences.
 
 ## Mutation guards
+
+Feature `api.ts` operations accept an optional `AbortSignal` as the last argument and forward it to the HTTP client. Uploads keep the progress callback before the signal. Callers own cancellation.
 
 Put asynchronous submit work directly in the owning form's typed submit handler. Use [`useLock`](../src/shared/hooks/useLock.ts) for synchronous duplicate-submit protection alongside submitting state, and own cancellation with `useAbortController`. Enter and button submission must use the same validation and lock. Abort abandoned requests and ignore cancellation errors. A stale completion must not unlock or reset a replacement operation.
 

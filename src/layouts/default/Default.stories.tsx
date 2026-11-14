@@ -1,33 +1,16 @@
-import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { ComponentProps } from "react";
-import { useEffect } from "react";
-import { Route, Routes } from "react-router";
+import { useEffect, useState } from "react";
+import { createMemoryRouter } from "react-router";
+import { RouterProvider } from "react-router/dom";
 import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
 
 import type { RouteKey } from "@/app/config";
 import { useCore } from "@/app/hooks";
-import type { CurrentUser } from "@/features/account/types.ts";
+import { apiClient } from "@/shared/api";
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "../../../.storybook/StoryShell";
-import { sampleLanguages } from "../../../.storybook/fixtures";
 
 import { DefaultLayout } from "./Default";
 
-const account: CurrentUser = {
-  firstName: "Sample",
-  id: "storybook-user",
-  isSystemAdmin: true,
-  lastName: "Admin",
-  mobile: "09120000000",
-  permissions: [],
-  status: "active",
-};
-
-type DefaultLayoutStoryProps = Pick<
-  ComponentProps<typeof StoryShell>,
-  "initialLanguage" | "initialTheme" | "initialUser" | "withUser"
->;
 type LayoutContentProps = { route: RouteKey; title: string };
 
 const LayoutContent = ({ route, title }: LayoutContentProps) => {
@@ -36,23 +19,31 @@ const LayoutContent = ({ route, title }: LayoutContentProps) => {
   return <h2>{title}</h2>;
 };
 
-const DefaultLayoutStory = (props: DefaultLayoutStoryProps) => (
-  <StoryShell initialUser={account} {...props}>
-    <Routes>
-      <Route element={<DefaultLayout />} path="/">
-        <Route
-          index
-          element={<LayoutContent route="root" title="Dashboard content" />}
-        />
-        <Route
-          element={<LayoutContent route="users" title="Users destination" />}
-          path="users"
-        />
-      </Route>
-      <Route element={<h1>Signed out destination</h1>} path="/auth" />
-    </Routes>
-  </StoryShell>
-);
+const DefaultLayoutStory = () => {
+  const [router] = useState(() =>
+    createMemoryRouter([
+      {
+        children: [
+          {
+            element: <LayoutContent route="root" title="Dashboard content" />,
+            index: true,
+          },
+          {
+            element: <LayoutContent route="users" title="Users destination" />,
+            path: "users",
+          },
+        ],
+        element: <DefaultLayout />,
+        path: "/",
+      },
+      { element: <h1>Signed out destination</h1>, path: "/auth" },
+    ]),
+  );
+
+  useEffect(() => () => router.dispose(), [router]);
+
+  return <RouterProvider router={router} />;
+};
 
 const meta = {
   component: DefaultLayout,
@@ -111,7 +102,6 @@ export const Mobile: Story = {
 
 export const LoadingAccount: Story = {
   parameters: { fixtureState: "account-loading" },
-  render: () => <DefaultLayoutStory withUser={false} />,
   play: async ({ canvasElement }) => {
     await expect(mocked(apiClient.get)).toHaveBeenCalledOnce();
     await expect(canvasElement.querySelector(".ant-spin")).toBeVisible();
@@ -125,12 +115,6 @@ export const LoadingAccount: Story = {
 
 export const DarkRtl: Story = {
   globals: { direction: "rtl", language: "fa", theme: "dark" },
-  render: () => (
-    <DefaultLayoutStory
-      initialLanguage={sampleLanguages.fa}
-      initialTheme="dark"
-    />
-  ),
   play: async ({ canvasElement }) => {
     await expect(
       await within(canvasElement).findByRole("heading", {
@@ -153,8 +137,13 @@ export const AccountFailure: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
-      await canvas.findByText(i18nInstance.t("currentUserLoadFailed")),
+      await canvas.findByText("Synthetic account unavailable"),
     ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", {
+        name: i18nInstance.t("retry"),
+      }),
+    ).toBeEnabled();
     await expect(
       within(canvasElement.ownerDocument.body).queryByLabelText(
         i18nInstance.t("loading"),

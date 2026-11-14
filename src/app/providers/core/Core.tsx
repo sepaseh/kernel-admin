@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 import { CoreContext, type CoreContextValue } from "@/app/contexts";
 import { type Settings, fetchSettings } from "@/features/settings";
 import { useAbortController } from "@/shared/hooks";
-import { defaultLogos, storageKeys } from "@/shared/config";
+import { storageKeys } from "@/shared/config";
 import { dayjsLocaleName, i18n } from "@/shared/i18n";
 import {
   getCompact,
@@ -121,11 +121,6 @@ export const CoreProvider = ({ children }: PropsWithChildren) => {
       value={{
         compact,
         currentRoute,
-        language: settings.language,
-        logos: {
-          dark: settings.darkLogo?.url ?? defaultLogos.dark,
-          light: settings.lightLogo?.url ?? defaultLogos.light,
-        },
         settings,
         setCompact: changeCompact,
         setCurrentRoute,

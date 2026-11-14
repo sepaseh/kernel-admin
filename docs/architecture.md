@@ -6,7 +6,7 @@ Kernel Admin is one independent React/Vite TypeScript application. Developers se
 
 ## Follow startup
 
-1. [The entry point](../src/main.tsx) initializes observability and mounts [App](../src/app/App.tsx).
+1. [The entry point](../src/main.tsx) initializes observability and mounts [App](../src/app/App.tsx) through the root and application public exports. The application and Storybook share [root CSS](../src/index.css), which loads the existing reset, focus, reduced-motion and font styles.
 2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings with an owned cancellation signal. It displays loading or an inline retry before exposing accepted settings to its children. The settings API uses typed response models without runtime envelope validation.
 3. `App` composes the Ant Design provider, shared global styles and lazy routes after settings are available. Ant Design applies the API-owned palette, language and direction, together with browser theme and compact preferences.
 4. [Routes](../src/app/Routes.tsx) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.
@@ -15,14 +15,14 @@ The [default layout](../src/layouts/default/Default.tsx) loads the current user 
 
 ## Locate the owner
 
-| Responsibility                                          | Owner                                                        | Contract                                                                                  |
-| ------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Accepted settings and appearance preferences            | [Core](../src/app/providers/core/Core.tsx)                   | Server settings remain authoritative; the browser persists theme and compact mode.        |
-| Paths, wire types and response validation for a feature | `src/features/<feature>/api.ts` and `types.ts`               | Keep the contract with its feature.                                                       |
-| Credentials and HTTP behavior                           | [`src/shared/api`](../src/shared/api)                        | Memory-only tokens, generation checks, bounded refresh, conversion and normalized errors. |
-| Read and mutation state                                 | Owning feature and [`src/shared/hooks`](../src/shared/hooks) | Direct request cancellation, submission locks and session-generation guards.              |
-| Shared product vocabulary                               | [`src/shared/contracts`](../src/shared/contracts)            | Reuse limits and appearance contracts across features.                                    |
-| Catalog data and runtime adapters                       | [`src/shared/i18n`](../src/shared/i18n)                      | Keep pure catalog/calendar data separate from UI and vendor initialization.               |
+| Responsibility                                    | Owner                                                        | Contract                                                                                  |
+| ------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Accepted settings and appearance preferences      | [Core](../src/app/providers/core/Core.tsx)                   | Server settings remain authoritative; the browser persists theme and compact mode.        |
+| Paths, wire types and HTTP adapters for a feature | `src/features/<feature>/api.ts` and `types.ts`               | Keep the contract with its feature.                                                       |
+| Credentials and HTTP behavior                     | [`src/shared/api`](../src/shared/api)                        | Memory-only tokens, generation checks, bounded refresh, conversion and normalized errors. |
+| Read and mutation state                           | Owning feature and [`src/shared/hooks`](../src/shared/hooks) | Direct request cancellation, submission locks and session-generation guards.              |
+| Shared product vocabulary                         | [`src/shared/contracts`](../src/shared/contracts)            | Reuse the profile-name limit and appearance contracts across features.                    |
+| Catalog data and runtime adapters                 | [`src/shared/i18n`](../src/shared/i18n)                      | Keep pure catalog/calendar data separate from UI and vendor initialization.               |
 
 The API selects language, text direction, calendar, logos and palettes. A browser theme choice selects which accepted palette to display; it does not change the global settings contract. See [localization](localization.md) and [authentication and requests](authentication.md) for the detailed lifecycles.
 

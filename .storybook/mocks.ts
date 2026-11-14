@@ -38,13 +38,7 @@ export const resetStoryMocks = (state = "populated") => {
         return structuredClone(settings);
       }
       if (url === "/languages")
-        return structuredClone(
-          Object.values(sampleLanguages).map((language) => ({
-            ...language,
-            calendar:
-              language.calendar === "gregorian" ? "gregory" : language.calendar,
-          })),
-        );
+        return structuredClone(Object.values(sampleLanguages));
       if (url === "/account/me") {
         if (state === "account-loading") return new Promise(() => undefined);
         if (state === "account-error")
@@ -178,11 +172,7 @@ export const resetStoryMocks = (state = "populated") => {
         settings = {
           ...settings,
           ...values,
-          language: {
-            ...language,
-            calendar:
-              language.calendar === "gregorian" ? "gregory" : language.calendar,
-          },
+          language: { ...language },
           darkLogo: files.find(({ id }) => id === darkLogoId),
           lightLogo: files.find(({ id }) => id === lightLogoId),
         };

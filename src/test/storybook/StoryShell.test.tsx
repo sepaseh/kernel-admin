@@ -57,11 +57,12 @@ const AppearanceProbe = () => {
   const {
     setSettings,
     currentRoute,
-    language,
+    settings,
     setCurrentRoute,
     setTheme,
     theme,
   } = useCore();
+  const { language } = settings;
   const { direction, theme: themeConfig } = useContext(
     ConfigProvider.ConfigContext,
   );

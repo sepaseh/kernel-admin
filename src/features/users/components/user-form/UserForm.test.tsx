@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CurrentUser } from "@/features/account";
 import { clearAccessToken, setAccessToken } from "@/shared/api/token";
 import { i18n } from "@/shared/i18n";
+import type * as FormDrawerModule from "@/shared/ui/form-drawer";
 import { deferred } from "@/test/deferred";
 
 import { createUser, fetchUser, updateUser } from "../../api";
@@ -37,8 +38,7 @@ vi.mock("@/app/hooks", () => ({
   useAntd: () => ({ messageAPI: messages, notificationAPI: notification }),
 }));
 vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
-  const { FormDrawer } =
-    await importOriginal<typeof import("@/shared/ui/form-drawer")>();
+  const { FormDrawer } = await importOriginal<typeof FormDrawerModule>();
 
   return {
     FormDrawer: (props: ComponentProps<typeof FormDrawer>) => (
