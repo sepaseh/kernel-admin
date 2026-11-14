@@ -30,6 +30,7 @@ const productionPaths = [
   "src/features/account/index.ts",
   "src/features/account/types.ts",
   "src/features/auth/api.ts",
+  "src/features/auth/index.ts",
   "src/features/auth/types.ts",
   "src/features/auth/useOtpRequest.ts",
   "src/features/calendar/Calendar.tsx",
@@ -46,7 +47,6 @@ const productionPaths = [
   "src/features/forgot-pass/index.ts",
   "src/features/login/Login.tsx",
   "src/features/login/index.ts",
-  "src/features/login/styles.ts",
   "src/features/register/Register.tsx",
   "src/features/register/index.ts",
   "src/features/roles/Roles.tsx",
@@ -74,7 +74,6 @@ const productionPaths = [
   "src/shared/api/config.ts",
   "src/shared/api/index.ts",
   "src/shared/api/path.ts",
-  "src/shared/api/token-response.ts",
   "src/shared/api/token.ts",
   "src/shared/api/types.ts",
   "src/shared/config/constants.ts",
@@ -210,7 +209,6 @@ const runtimeImports = {
     "react-i18next",
     "react-router",
   ],
-  "src/features/login/styles.ts": ["antd-style"],
   "src/features/register/Register.tsx": [
     "antd",
     "axios",
@@ -389,23 +387,11 @@ const wireImports = {
 const crossFeatureImports = {
   runtime: {
     "src/features/account/Account.tsx": ["src/features/auth/api.ts"],
-    "src/features/forgot-pass/ForgotPass.tsx": [
-      "src/features/auth/api.ts",
-      "src/features/auth/useOtpRequest.ts",
-    ],
-    "src/features/login/Login.tsx": ["src/features/auth/api.ts"],
-    "src/features/register/Register.tsx": [
-      "src/features/auth/api.ts",
-      "src/features/auth/useOtpRequest.ts",
-    ],
   },
   type: {
     "src/features/account/Account.tsx": ["src/features/auth/types.ts"],
     "src/features/account/api.ts": ["src/features/auth/types.ts"],
     "src/features/account/types.ts": ["src/features/roles/types.ts"],
-    "src/features/forgot-pass/ForgotPass.tsx": ["src/features/auth/types.ts"],
-    "src/features/login/Login.tsx": ["src/features/auth/types.ts"],
-    "src/features/register/Register.tsx": ["src/features/auth/types.ts"],
   },
 };
 const featureAppImports = new Set([
@@ -419,6 +405,15 @@ const featureAppImports = new Set([
 ]);
 const namedCrossFeatureImports = {
   runtime: {
+    "src/features/forgot-pass/ForgotPass.tsx": {
+      "src/features/auth/index.ts": ["forgotPassword", "useOtpRequest"],
+    },
+    "src/features/login/Login.tsx": {
+      "src/features/auth/index.ts": ["login"],
+    },
+    "src/features/register/Register.tsx": {
+      "src/features/auth/index.ts": ["register", "useOtpRequest"],
+    },
     "src/features/settings/Settings.tsx": {
       "src/features/files/index.ts": ["uploadFile"],
     },
@@ -427,6 +422,15 @@ const namedCrossFeatureImports = {
     },
   },
   type: {
+    "src/features/forgot-pass/ForgotPass.tsx": {
+      "src/features/auth/index.ts": ["ForgotPasswordParams"],
+    },
+    "src/features/login/Login.tsx": {
+      "src/features/auth/index.ts": ["LoginParams"],
+    },
+    "src/features/register/Register.tsx": {
+      "src/features/auth/index.ts": ["RegisterParams"],
+    },
     "src/features/settings/types.ts": {
       "src/features/files/index.ts": ["FileContext", "StoredFile"],
     },

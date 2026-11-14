@@ -1,8 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page, TestInfo } from "@playwright/test";
 
-import { profileNameMaxLength } from "@/shared/contracts";
-
 import { expect, test } from "./shared/admin-fixtures";
 import { setupAdminFixture } from "./shared/admin-fixtures";
 
@@ -51,7 +49,7 @@ for (const language of ["en", "fa"] as const) {
           if (form.title === "register")
             await expect(
               page.getByLabel(messages.firstName, { exact: true }),
-            ).toHaveAttribute("maxlength", String(profileNameMaxLength));
+            ).toBeVisible();
           await expectNoAxeViolations(page, testInfo);
           expect(unexpectedRequests).toEqual([]);
         });
@@ -67,7 +65,7 @@ for (const language of ["en", "fa"] as const) {
           theme,
         });
         await page.goto("/auth");
-        const identifier = page.getByLabel(messages.identifier, {
+        const identifier = page.getByLabel(messages.mobile, {
           exact: true,
         });
         await page

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { CanceledError } from "axios";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { requestOtp } from "./api.ts";
@@ -45,6 +46,69 @@ afterEach(() => {
 });
 
 describe("useOtpRequest", () => {
+  it("keeps validation errors local and releases the request lock for correction", async () => {
+    const { options } = createOptions();
+    options.form.validateFields.mockRejectedValueOnce(
+      new Error("Invalid mobile"),
+    );
+    const { result } = renderHook(() => useOtpRequest(options));
+
+    await act(async () => {
+      await result.current.handleOtpRequest();
+    });
+    expect(requestOtp).not.toHaveBeenCalled();
+    expect(options.onError).not.toHaveBeenCalled();
+    expect(result.current.requestingOtp).toBe(false);
+
+    await act(async () => {
+      await result.current.handleOtpRequest();
+    });
+    expect(requestOtp).toHaveBeenCalledOnce();
+    expect(options.onSuccess).toHaveBeenCalledOnce();
+  });
+
+  it("rounds a fractional server cooldown up to complete seconds", async () => {
+    const { options } = createOptions();
+    vi.mocked(requestOtp).mockResolvedValueOnce({
+      expiresIn: 120,
+      remainingSeconds: 2.1,
+    });
+    const { result } = renderHook(() => useOtpRequest(options));
+
+    await act(async () => {
+      await result.current.handleOtpRequest();
+    });
+
+    expect(result.current.remainingSeconds).toBe(3);
+  });
+
+  it("discards a reply when a programmatic mobile change bypasses the change callback", async () => {
+    const { options, changeMobile } = createOptions();
+    let resolve!: (value: OtpResponse) => void;
+    vi.mocked(requestOtp).mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    const { result } = renderHook(() => useOtpRequest(options));
+    let pending!: Promise<void>;
+    await act(async () => {
+      pending = result.current.handleOtpRequest();
+    });
+    expect(requestOtp).toHaveBeenCalledOnce();
+    changeMobile("09121111111");
+
+    await act(async () => {
+      resolve({ expiresIn: 120, remainingSeconds: 30 });
+      await pending;
+    });
+
+    expect(options.onSuccess).not.toHaveBeenCalled();
+    expect(options.onError).not.toHaveBeenCalled();
+    expect(result.current.remainingSeconds).toBe(0);
+    expect(result.current.requestingOtp).toBe(false);
+  });
+
   it("reserves one request before validation and cancels validation work on unmount", async () => {
     const { options } = createOptions();
     let resolve!: (value: OtpValues) => void;
@@ -156,5 +220,54 @@ describe("useOtpRequest", () => {
       result.current.handleOtpRequest();
     });
     expect(requestOtp).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(["success", "failure"] as const)(
+    "suppresses late OTP %s callbacks after unmount",
+    async (outcome) => {
+      const { options } = createOptions();
+      let resolve!: (value: OtpResponse) => void;
+      let reject!: (error: Error) => void;
+      vi.mocked(requestOtp).mockReturnValueOnce(
+        new Promise((yes, no) => {
+          resolve = yes;
+          reject = no;
+        }),
+      );
+      const { result, unmount } = renderHook(() => useOtpRequest(options));
+      let pending!: Promise<void>;
+      await act(async () => {
+        pending = result.current.handleOtpRequest();
+      });
+      const signal = vi.mocked(requestOtp).mock.calls[0][1];
+
+      unmount();
+      expect(signal?.aborted).toBe(true);
+      await act(async () => {
+        if (outcome === "success")
+          resolve({ expiresIn: 120, remainingSeconds: 30 });
+        else reject(new Error("Obsolete OTP failure"));
+        await pending;
+      });
+
+      expect(options.onSuccess).not.toHaveBeenCalled();
+      expect(options.onError).not.toHaveBeenCalled();
+    },
+  );
+
+  it("suppresses a canceled OTP failure and releases the active lock", async () => {
+    const { options } = createOptions();
+    vi.mocked(requestOtp).mockRejectedValueOnce(new CanceledError());
+    const { result } = renderHook(() => useOtpRequest(options));
+
+    await act(async () => {
+      await result.current.handleOtpRequest();
+    });
+    expect(options.onError).not.toHaveBeenCalled();
+    expect(result.current.requestingOtp).toBe(false);
+    await act(async () => {
+      await result.current.handleOtpRequest();
+    });
+    expect(options.onSuccess).toHaveBeenCalledOnce();
   });
 });

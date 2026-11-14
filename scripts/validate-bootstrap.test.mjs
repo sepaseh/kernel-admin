@@ -255,6 +255,7 @@ const completeApplicationFiles = [
   "src/features/account/types.ts",
   "src/features/auth/api.test.ts",
   "src/features/auth/api.ts",
+  "src/features/auth/index.ts",
   "src/features/auth/logout.test.ts",
   "src/features/auth/types.ts",
   "src/features/auth/useOtpRequest.test.tsx",
@@ -276,8 +277,6 @@ const completeApplicationFiles = [
   "src/features/login/Login.test.tsx",
   "src/features/login/Login.tsx",
   "src/features/login/index.ts",
-  "src/features/login/styles.test.ts",
-  "src/features/login/styles.ts",
   "src/features/register/Register.stories.tsx",
   "src/features/register/Register.test.tsx",
   "src/features/register/Register.tsx",
@@ -327,8 +326,6 @@ const completeApplicationFiles = [
   "src/shared/api/index.ts",
   "src/shared/api/path.test.ts",
   "src/shared/api/path.ts",
-  "src/shared/api/token-response.test.ts",
-  "src/shared/api/token-response.ts",
   "src/shared/api/token.test.ts",
   "src/shared/api/token.ts",
   "src/shared/api/transport.test.ts",
@@ -574,6 +571,7 @@ const isCoreAuthPhaseFile = (file) =>
   ) ||
   [
     "SECURITY.md",
+    "src/features/auth/index.ts",
     "src/features/auth/useOtpRequest.ts",
     "src/features/auth/useOtpRequest.test.tsx",
   ].includes(file);
@@ -1343,7 +1341,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 93);
+  assert.equal(required.length, 91);
   for (const missing of required)
     assert.throws(
       () =>
@@ -1396,7 +1394,7 @@ test("core-auth preserves its complete prior closure, owners and tests without a
     current.allowedFiles.length,
   );
   const phaseFiles = current.allowedFiles.filter(isCoreAuthPhaseFile);
-  assert.equal(phaseFiles.length, 39);
+  assert.equal(phaseFiles.length, 38);
   for (const missing of phaseFiles)
     assert.throws(
       () =>

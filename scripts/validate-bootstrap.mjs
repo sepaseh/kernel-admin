@@ -87,8 +87,6 @@ const httpFiles = [
   "src/shared/api/index.ts",
   "src/shared/api/path.test.ts",
   "src/shared/api/path.ts",
-  "src/shared/api/token-response.test.ts",
-  "src/shared/api/token-response.ts",
   "src/shared/api/transport.test.ts",
   "src/shared/contracts/appearance.test.ts",
   "src/shared/contracts/appearance.ts",
@@ -158,6 +156,7 @@ const uiFiles = [
   "src/test/setup.ts",
 ];
 const coreAuthFiles = [
+  "src/features/auth/index.ts",
   "docs/authentication.md",
   "docs/architecture.md",
   "SECURITY.md",
@@ -187,8 +186,6 @@ const coreAuthFiles = [
   "src/features/login/Login.test.tsx",
   "src/features/login/Login.tsx",
   "src/features/login/index.ts",
-  "src/features/login/styles.test.ts",
-  "src/features/login/styles.ts",
   "src/features/register/Register.test.tsx",
   "src/features/register/Register.tsx",
   "src/features/register/index.ts",

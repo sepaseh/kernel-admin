@@ -18,6 +18,8 @@ export const fixtureDirections = {
 } as const satisfies Record<LocaleCode, "ltr" | "rtl">;
 
 export const applicationSettingsFixture = (language: LocaleCode = "en") => ({
+  dark_logo: { id: "dark-logo", is_used: true, size: 1000, url: "/logo.svg" },
+  light_logo: { id: "light-logo", is_used: true, size: 1000, url: "/logo.svg" },
   dark_theme: {
     color_bg_base: "#141414",
     color_bg_container: "#1f1f1f",

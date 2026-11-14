@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { i18n } from "@/shared/i18n";
+
 import {
   clearAccessToken,
   getAccessToken,
@@ -22,6 +24,7 @@ describe("session tokens", () => {
     const localWrite = vi.spyOn(Storage.prototype, "setItem");
     const anonymousGeneration = getAccessTokenVersion();
     const anonymousSession = getSessionSignal();
+    const anonymousVersion = getAccessTokenVersion();
 
     setAccessToken("synthetic-first-token");
     const firstGeneration = getAccessTokenVersion();
@@ -34,6 +37,7 @@ describe("session tokens", () => {
     expect(firstSession.aborted).toBe(true);
     expect(getSessionSignal().aborted).toBe(false);
     expect(getAccessToken()).toBe("synthetic-second-token");
+    expect(getAccessTokenVersion()).toBe(anonymousVersion + 2);
     expect(localWrite).not.toHaveBeenCalled();
   });
 
@@ -41,6 +45,7 @@ describe("session tokens", () => {
     setAccessToken("synthetic-original-token");
     const generation = getAccessTokenVersion();
     const session = getSessionSignal();
+    const version = getAccessTokenVersion();
 
     setRefreshedAccessToken("synthetic-refreshed-token");
 
@@ -48,6 +53,7 @@ describe("session tokens", () => {
     expect(getAccessTokenVersion()).toBe(generation);
     expect(getSessionSignal()).toBe(session);
     expect(session.aborted).toBe(false);
+    expect(getAccessTokenVersion()).toBe(version);
   });
 
   it("aborts session work and clears the credential on logout", () => {
@@ -76,11 +82,12 @@ describe("token response validation", () => {
     null,
     [],
     "token",
+    42,
     {},
     { accessToken: 1 },
     { accessToken: "" },
     { accessToken: "  " },
   ])("rejects a malformed token response (%j)", (value) =>
-    expect(() => parseAccessToken(value)).toThrow(),
+    expect(() => parseAccessToken(value)).toThrow(i18n.t("unexpectedError")),
   );
 });

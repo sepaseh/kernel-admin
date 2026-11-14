@@ -129,6 +129,9 @@ for (const language of ["en", "fa"] as const) {
     await expect(
       drawer.getByLabel(messages.firstName, { exact: true }),
     ).toHaveValue(userRecord.first_name);
+    const panel = drawer.locator("..");
+    await expect(panel).toHaveClass(/ant-drawer-content-wrapper/);
+    await expect(panel).not.toHaveClass(/ant-drawer-panel-motion-/);
     await drawer.getByLabel(messages.status, { exact: true }).click();
     await page
       .locator(".ant-select-dropdown:visible")
