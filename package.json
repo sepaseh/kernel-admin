@@ -88,11 +88,11 @@
   "dependencies": {
     "antd": "6.7.0",
     "antd-style": "4.1.0",
-    "axios": "1.20.0",
+    "axios": "1.21.1",
     "dayjs": "^1.11.23",
     "i18next": "26.6.0",
     "jalaliday": "^3.1.1",
-    "lucide-react": "1.68.0",
+    "lucide-react": "1.71.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-i18next": "^17.1.12",
