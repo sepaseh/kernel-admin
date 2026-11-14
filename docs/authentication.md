@@ -48,7 +48,7 @@ Bearer credentials stay in memory. Login/logout starts a new authentication gene
 
 A protected operation captures its generation synchronously when called. The queued interceptor checks it before dispatch, and the client checks again after fulfillment before returning data. A stale generation is cancelled before it can return data or expire a newer login.
 
-Concurrent attributed protected 401s share one refresh per generation. Each eligible request can replay once after successful same-generation refresh if it has not been cancelled. A cancelled waiter does not cancel another waiter's shared refresh. Refresh retries a network or server failure once after its existing one-second retry interval. An exhausted refresh or a current retried 401 expires the current session once.
+Concurrent attributed protected 401s share one refresh per generation. Each eligible request can replay once after successful same-generation refresh if it has not been cancelled. A cancelled waiter does not cancel another waiter's shared refresh. Refresh retries a network or server failure once after its existing one-second retry interval. Exhausted network, timeout and server failures preserve the current session and propagate an error for a later manual retry without replaying the failed operation. Other refresh failures, including definitive 401/403 rejection or an invalid access-token response, and a current retried 401 expire the current session once.
 
 Public or unattributed failures cannot refresh or clear a login. Network failures, timeouts, 429s and 5xx responses do not automatically replay mutations. The eligible 401 replay is separate from an ordinary network retry.
 
@@ -82,7 +82,7 @@ The default layout checks the account before rendering protected children and ex
 
 ## Settings and troubleshooting
 
-The settings adapter validates the complete envelope, the required palette fields, optional logos and complete language metadata. Core preserves accepted settings across refresh failures and replaces older reads when a save succeeds. [Settings adapter](../src/features/settings/api.ts) and [localization](localization.md).
+The settings adapter returns typed API responses without runtime envelope validation. Core preserves accepted settings across refresh failures and replaces older reads when a save succeeds. [Settings adapter](../src/features/settings/api.ts) and [localization](localization.md).
 
 | Symptom                                               | First check                                                                                                                            |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |

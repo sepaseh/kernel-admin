@@ -66,6 +66,7 @@ export const SettingsPage = () => {
 
   const handleSubmit: FormProps<SettingsFormValues>["onFinish"] = async ({
     darkLogo,
+    languageCode,
     lightLogo,
     ...values
   }) => {
@@ -77,6 +78,7 @@ export const SettingsPage = () => {
       const value = await updateSettings(
         {
           ...values,
+          ...(isSystemAdmin ? { languageCode } : {}),
           darkLogoId: darkLogo?.id,
           lightLogoId: lightLogo?.id,
         },

@@ -117,6 +117,36 @@ describe("settings form", () => {
     expect(messages.success).toHaveBeenCalledWith(i18n.t("settingsUpdated"));
   });
 
+  it("saves ordinary editors' settings without sending a language change", async () => {
+    currentUser.isSystemAdmin = false;
+    currentUser.permissions = ["settings.update"];
+    renderPage();
+    await act(async () => undefined);
+    fireEvent.change(
+      screen.getAllByRole("spinbutton", { name: i18n.t("imageWidth") })[0],
+      { target: { value: "512" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("submit") }));
+
+    await waitFor(() =>
+      expect(setSettings).toHaveBeenCalledExactlyOnceWith(settings),
+    );
+    expect(updateSettings).toHaveBeenCalledExactlyOnceWith(
+      {
+        darkTheme: palette,
+        lightTheme: palette,
+        imageSettings: {
+          ...settings.imageSettings,
+          contents: { ...settings.imageSettings.contents, width: 512 },
+        },
+        darkLogoId: "synthetic-dark",
+        lightLogoId: "synthetic-light",
+      },
+      expect.any(AbortSignal),
+    );
+    expect(messages.success).toHaveBeenCalledWith(i18n.t("settingsUpdated"));
+  });
+
   it("resets edited image limits to the accepted settings", async () => {
     renderPage();
     await act(async () => undefined);
