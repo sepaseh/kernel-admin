@@ -30,7 +30,7 @@ The API selects language, text direction, calendar, logos and palettes. A browse
 
 Keep screens, APIs, request/response types, forms, hooks and tools with their owning `src/features/<feature>`. Shared modules provide domain-independent infrastructure and controls; their local source dependencies stay within `src/shared`. Application composition belongs in `app`, and route shells belong in `layouts`.
 
-Features use only the exact authentication API/OTP, roles API/type and settings-to-files capabilities declared by [the boundary checker](../scripts/check-boundaries.mjs). Settings imports the reviewed file upload service and erased file models through the files public exports. Settings and Files may import the erased `DefaultLayoutContext` from the default layout; layout components and other internals remain private. The [import rules](../.agents/rules/imports.md) describe enforcement and how to review a new dependency.
+Features use only the exact authentication API/OTP, roles API/type and settings-to-files capabilities declared by [the boundary checker](../scripts/check-boundaries.mjs). Settings imports the reviewed file upload service and erased file models through the files public exports. Users imports only its declared roles list service and erased role model. Settings, Files, Calendar, Roles, Users and the declared role/user forms may import the erased `DefaultLayoutContext` from the default layout; layout components and other internals remain private. The [import rules](../.agents/rules/imports.md) describe enforcement and how to review a new dependency.
 
 ## Trace a change
 

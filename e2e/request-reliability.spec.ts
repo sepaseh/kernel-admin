@@ -5,7 +5,7 @@ import { expect, test } from "./shared/admin-fixtures";
 
 for (const language of ["en", "fa"] as const) {
   const messages = catalogs[language];
-  test(`Users reads recover without false empty states or discarded rows (${language})`, async ({
+  test(`Users report read failures and retain accepted rows (${language})`, async ({
     baseURL,
     page,
   }, testInfo) => {
@@ -26,7 +26,7 @@ for (const language of ["en", "fa"] as const) {
       username: "ada",
     };
     await page.addInitScript(() => {
-      localStorage.setItem("theme", "light");
+      localStorage.setItem("theme", JSON.stringify("light"));
     });
     // All API data is synthetic. Unexpected origins are blocked before network.
     await page.route("**/*", async (route) => {
@@ -64,14 +64,18 @@ for (const language of ["en", "fa"] as const) {
           });
         return route.fulfill({ json: { items: [userRecord], total: 1 } });
       }
-      if (
-        request.method() === "PATCH" &&
-        url.pathname === "/users/user-1/status"
-      ) {
-        expect(request.postDataJSON()).toEqual({ status: "inactive" });
+      if (request.method() === "GET" && url.pathname === "/users/user-1")
+        return route.fulfill({ json: userRecord });
+      if (request.method() === "PATCH" && url.pathname === "/users/user-1") {
+        expect(request.postDataJSON()).toEqual({
+          first_name: "Ada",
+          last_name: "Lovelace",
+          mobile: "09121111111",
+          status: "inactive",
+        });
         statusUpdates++;
         userRecord.status = "inactive";
-        return route.fulfill({ status: 204 });
+        return route.fulfill({ json: userRecord });
       }
       unexpectedRequests.push(`${request.method()} ${url.pathname}`);
       return route.fulfill({
@@ -86,16 +90,12 @@ for (const language of ["en", "fa"] as const) {
       "dir",
       fixtureDirections[language],
     );
-    const initialFailure = page
-      .getByRole("alert")
-      .filter({ hasText: messages.requestLoadFailed });
+    const initialFailure = page.getByText(messages.networkError, {
+      exact: true,
+    });
     await expect(initialFailure).toBeVisible();
-    await expect(initialFailure).toContainText(messages.networkError);
-    await expect(page.getByRole("table")).toHaveCount(0);
-    await expect(page.locator(".ant-empty")).toHaveCount(0);
     expect(listQueries).toHaveLength(1);
     await page.getByPlaceholder(messages.firstName, { exact: true }).focus();
-    await expect(initialFailure).toBeVisible();
     const initialScreenshot = testInfo.outputPath("users-initial-error.png");
     await page.screenshot({
       animations: "disabled",
@@ -107,38 +107,56 @@ for (const language of ["en", "fa"] as const) {
       path: initialScreenshot,
     });
 
-    await initialFailure
-      .getByRole("button", { name: messages.retry, exact: true })
-      .click();
+    await page
+      .getByPlaceholder(messages.firstName, { exact: true })
+      .fill("Ada");
     const row = page.getByRole("row", { name: /Ada Lovelace/ });
     await expect(row).toBeVisible();
-    await expect(initialFailure).toHaveCount(0);
     await expect(
-      row.getByRole("button", { name: messages.active, exact: true }),
+      row.getByRole("img", { name: messages.active, exact: true }),
     ).toBeVisible();
     expect(listQueries).toHaveLength(2);
+    expect(new URLSearchParams(listQueries[1]).get("first_name")).toBe("Ada");
 
-    // A successful status mutation uses the page's real same-query reload path.
+    // A successful update uses the page's real same-query reload path.
     await row
-      .getByRole("button", { name: messages.active, exact: true })
+      .getByRole("button", { name: messages.update, exact: true })
       .click();
+    const drawer = page.getByRole("dialog", { name: messages.update });
+    await expect(
+      drawer.getByLabel(messages.mobile, { exact: true }),
+    ).toHaveValue(userRecord.mobile);
+    await expect(
+      drawer.getByLabel(messages.firstName, { exact: true }),
+    ).toHaveValue(userRecord.first_name);
+    await drawer.getByLabel(messages.status, { exact: true }).click();
     await page
-      .getByRole("dialog", { name: messages.statusConfirm })
-      .getByRole("button", { name: messages.yes, exact: true })
+      .locator(".ant-select-dropdown:visible")
+      .getByText(messages.inactive, { exact: true })
       .click();
-    const refreshFailure = page
-      .getByRole("alert")
-      .filter({ hasText: messages.requestRefreshFailed });
+    await expect(initialFailure).toHaveCount(0);
+    const failedReload = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        new URL(response.url()).pathname === "/users" &&
+        response.status() === 500,
+    );
+    await drawer
+      .getByRole("button", { name: messages.submit, exact: true })
+      .click();
+    await failedReload;
+    const refreshFailure = page.getByText(messages.networkError, {
+      exact: true,
+    });
     await expect(refreshFailure).toBeVisible();
-    await expect(refreshFailure).toContainText(messages.networkError);
     await expect(row).toBeVisible();
     await expect(
-      row.getByRole("button", { name: messages.active, exact: true }),
+      row.getByRole("img", { name: messages.active, exact: true }),
     ).toBeVisible();
     await expect(page.locator(".ant-empty")).toHaveCount(0);
     expect(statusUpdates).toBe(1);
     expect(listQueries).toHaveLength(3);
-    expect(new Set(listQueries).size).toBe(1);
+    expect(listQueries[2]).toBe(listQueries[1]);
     const refreshScreenshot = testInfo.outputPath(
       "users-retained-rows-warning.png",
     );
@@ -152,15 +170,12 @@ for (const language of ["en", "fa"] as const) {
       path: refreshScreenshot,
     });
 
-    await refreshFailure
-      .getByRole("button", { name: messages.retry, exact: true })
-      .click();
-    await expect(refreshFailure).toHaveCount(0);
+    await page.getByPlaceholder(messages.firstName, { exact: true }).fill("");
     await expect(
-      row.getByRole("button", { name: messages.inactive, exact: true }),
+      row.getByRole("img", { name: messages.inactive, exact: true }),
     ).toBeVisible();
     expect(listQueries).toHaveLength(4);
-    expect(new Set(listQueries).size).toBe(1);
+    expect(listQueries[3]).toBe(listQueries[0]);
     expect(unexpectedRequests).toEqual([]);
   });
 }

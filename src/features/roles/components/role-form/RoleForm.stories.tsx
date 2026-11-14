@@ -46,7 +46,7 @@ export const Create: Story = {
 
 export const Update: Story = {
   args: {
-    data: roles[0],
+    id: roles[0].id,
     onFinish: fn(),
     options: { permissions },
   },
@@ -58,9 +58,8 @@ export const Update: Story = {
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body);
     const dialog = within(await body.findByRole("dialog"));
-    await expect(dialog.getByLabelText(i18nInstance.t("name"))).toHaveValue(
-      "Administrator",
-    );
+    const name = await dialog.findByLabelText(i18nInstance.t("name"));
+    await waitFor(() => expect(name).toHaveValue("Administrator"));
     await expect(
       dialog.getByRole("checkbox", { name: "View users" }),
     ).toBeChecked();

@@ -1,54 +1,37 @@
-import { apiClient } from "../../shared/api/index.ts";
-import { encodeIdPathSegment } from "../../shared/api/path.ts";
-import type { PermissionGroup, Role, RoleRequest } from "./types.ts";
+import { apiClient, encodeIdPathSegment } from "@/shared/api";
 
-const basePath = "/roles";
+import type { PermissionGroup, Role, RoleRequest } from "./types";
 
-export const createRole = async (
+export const fetchRoles = async (signal?: AbortSignal): Promise<Role[]> =>
+  apiClient.get<Role[]>("/roles", { signal });
+
+export const fetchRole = (
+  id: Role["id"],
+  signal?: AbortSignal,
+): Promise<Role> =>
+  apiClient.get<Role>(`/roles/${encodeIdPathSegment(id)}`, { signal });
+
+export const fetchPermissions = (
+  signal?: AbortSignal,
+): Promise<PermissionGroup[]> =>
+  apiClient.get<PermissionGroup[]>("/roles/permissions", { signal });
+
+export const createRole = (
   params: RoleRequest,
   signal?: AbortSignal,
-): Promise<Role> => {
-  return apiClient.post<Role>(basePath, params, { signal });
-};
+): Promise<Role> => apiClient.post<Role>("/roles", params, { signal });
 
-export const deleteRole = async (
-  id: Role["id"],
-  signal?: AbortSignal,
-): Promise<void> => {
-  return apiClient.del<void>(`${basePath}/${encodeIdPathSegment(id)}`, {
-    signal,
-  });
-};
-
-export const fetchPermissions = async (
-  signal?: AbortSignal,
-): Promise<PermissionGroup[]> => {
-  return apiClient.get<PermissionGroup[]>(`${basePath}/permissions`, {
-    signal,
-  });
-};
-
-export const fetchRole = async (
-  id: Role["id"],
-  signal?: AbortSignal,
-): Promise<Role> => {
-  return apiClient.get<Role>(`${basePath}/${encodeIdPathSegment(id)}`, {
-    signal,
-  });
-};
-
-export const fetchRoles = async (signal?: AbortSignal): Promise<Role[]> => {
-  return apiClient.get<Role[]>(basePath, { signal });
-};
-
-export const updateRole = async (
+export const updateRole = (
   id: Role["id"],
   params: RoleRequest,
   signal?: AbortSignal,
-): Promise<Role> => {
-  return apiClient.patch<Role>(
-    `${basePath}/${encodeIdPathSegment(id)}`,
-    params,
-    { signal },
-  );
-};
+): Promise<Role> =>
+  apiClient.patch<Role>(`/roles/${encodeIdPathSegment(id)}`, params, {
+    signal,
+  });
+
+export const deleteRole = (
+  id: Role["id"],
+  signal?: AbortSignal,
+): Promise<void> =>
+  apiClient.del<void>(`/roles/${encodeIdPathSegment(id)}`, { signal });

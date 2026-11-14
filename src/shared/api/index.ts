@@ -9,3 +9,6 @@ export type { AccessTokenProps } from "./types.ts";
 
 export { encodeIdPathSegment } from "./path";
 export type { UploadProgressHandler } from "./types";
+
+export { getSessionSignal } from "./token";
+export type { PaginationQuery } from "./types";

@@ -10,7 +10,7 @@ import { UserRoleForm } from "./UserRoleForm";
 
 const meta = {
   args: {
-    data: user,
+    id: user.id,
     onFinish: fn(),
     options: { roles },
   },
@@ -30,11 +30,11 @@ export const Default: Story = {
   play: async ({ args, canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body);
     const dialog = within(await body.findByRole("dialog"));
-    await expect(dialog.getByText("Administrator")).toBeVisible();
-    await userEvent.click(
-      dialog.getByRole("combobox", { name: i18nInstance.t("roles") }),
-    );
-    await userEvent.click(await body.findByText("Editor"));
+    const administrator = await dialog.findByRole("checkbox", {
+      name: "Administrator",
+    });
+    await waitFor(() => expect(administrator).toBeChecked());
+    await userEvent.click(dialog.getByRole("checkbox", { name: "Editor" }));
     await userEvent.click(
       dialog.getByRole("button", { name: i18nInstance.t("submit") }),
     );

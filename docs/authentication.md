@@ -22,11 +22,13 @@ Developers choose a compatible backend through `VITE_API_BASE_URL`. The local fe
 
 Use the [synthetic HTTP handlers](../src/test/mocks/handlers.ts), [settings fixture](../e2e/fixtures.ts), [application HTTP fixtures](../e2e/shared/admin-fixtures.ts) and [consumer contracts](../contract/api.contract.test.ts) for request and response examples. Startup requires a valid `/settings` response before routes render. Authenticated features require compatible login, refresh and permission behavior. Builds and synthetic tests need no running backend. Verify the chosen service separately when real integration testing is authorized.
 
+The [users list adapter](../src/features/users/api.ts) accepts a page number and user filters. It always sends the fixed `defaultPageSize` from [shared configuration](../src/shared/config/constants.ts), matching the table's pagination. Page size is not a caller-controlled input; an extra `size` URL parameter cannot override it.
+
 ## Transport contract
 
 The shared client configures Axios with credentials and explicit cancellation, without a general request timeout. Refresh has a 15-second bound per attempt. The settings API owner also bounds `fetchSettings` reads to 15 seconds while preserving caller cancellation, so initial loading can reach the error and Retry state. Language reads, settings writes and uploads do not inherit that settings-read timeout. [`config.ts`](../src/shared/api/config.ts) reads the public `VITE_API_BASE_URL`, falling back to the browser origin when that value is absent. See [usage](usage.md) for configuration.
 
-Feature adapters pass IDs through the shared [path validator](../src/shared/api/path.ts) before constructing a request URL. It rejects empty IDs and the exact IDs `.` and `..`, which URL normalization would treat as dot segments, with a translated validation error before transport. Other IDs remain opaque and are encoded as one path segment; ordinary dots and literal percent sequences are preserved as identifier data.
+Feature adapters pass IDs through the shared [path validator](../src/shared/api/path.ts) before constructing a request URL. It rejects empty IDs and the exact IDs `.` and `..`, which URL normalization would treat as dot segments, with a `TypeError` before transport. Other IDs remain opaque and are encoded as one path segment; ordinary dots and literal percent sequences are preserved as identifier data.
 
 JSON request keys become snake case and response keys become camel case. FormData and binary payloads keep their identity. Key conversion returns `unknown`; it does not validate a generic DTO. Authentication access tokens receive explicit runtime validation; settings use TypeScript models without runtime envelope validation.
 
@@ -55,6 +57,10 @@ Public or unattributed failures cannot refresh or clear a login. Network failure
 Login/registration validate a nonblank access token and check both cancellation and generation before installing it, even after transport fulfillment. Logout deduplicates within its initiating generation and cannot clear a newer login. Client cleanup does not prove server-session revocation.
 
 ## Read resources
+
+Business screens bind direct effects to their filters, route identifiers and owned AbortControllers. A replacement request or cleanup aborts the previous intent; handlers check cancellation before accepting data or presenting errors. Keep list and optional lookup state independent. Shared filter hooks parse query state and debounce text input without changing the transport contract.
+
+Account and authentication consumers also use the following request hooks:
 
 [`useReadRequest`](../src/shared/hooks/useReadRequest.ts) binds each read intent to a sequence and AbortController. A new read, accepted replacement, resource identity change or unmount invalidates older work, including loaders that ignore their signal. Cancellation settles loading without exposing a failure. A real refresh failure keeps previously accepted data.
 

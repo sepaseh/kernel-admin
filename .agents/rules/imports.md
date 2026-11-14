@@ -21,12 +21,14 @@ in `scripts/check-boundaries.mjs`; they are not blanket access to either feature
 Import the approved API, hook or type leaf directly. Cross-feature `index.ts`
 targets require an explicit named capability: Settings may use the files upload
 service and its erased `FileContext`/`StoredFile` models. Other feature barrels
-remain rejected. Import and re-export edges follow the same exact module rules.
+remain rejected except the declared Users consumers of the roles list service
+and erased `Role` model. Import and re-export edges follow the same exact module rules.
 Type-only imports must use their declared erased contract edges.
 
 Feature screens may use only the app hook, route configuration and access-policy
-modules declared by the checker. Settings and Files may also import the erased
-`DefaultLayoutContext` through the default layout's public index. Other app internals, providers, route shells
+modules declared by the checker. Settings, Files, Calendar, Roles and Users screens
+and the declared role/user forms may also import the erased `DefaultLayoutContext`
+through the default layout's public index. Other app internals, providers, route shells
 and entry points are outside the feature dependency interface. Keep application
 composition in `app` and route shells in `layouts`.
 

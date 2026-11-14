@@ -184,7 +184,7 @@ test("features reject another feature's UI, private helpers and barrels in every
   for (const target of [
     "src/features/settings/Settings.tsx",
     "src/features/settings/api.ts",
-    "src/features/roles/constants.ts",
+    "src/features/roles/api.ts",
     "src/features/roles/index.ts",
     "src/features/register/Register.tsx",
   ]) {
@@ -232,7 +232,6 @@ test("authentication and role capabilities retain only their approved consumer a
       "src/features/auth/useOtpRequest.ts",
       false,
     ],
-    ["src/features/users/Users.tsx", "src/features/roles/api.ts", false],
     ["src/features/account/Account.tsx", "src/features/auth/types.ts", true],
     ["src/features/account/api.ts", "src/features/auth/types.ts", true],
     ["src/features/account/types.ts", "src/features/roles/types.ts", true],
@@ -243,13 +242,6 @@ test("authentication and role capabilities retain only their approved consumer a
     ],
     ["src/features/login/Login.tsx", "src/features/auth/types.ts", true],
     ["src/features/register/Register.tsx", "src/features/auth/types.ts", true],
-    [
-      "src/features/users/components/user-role-form/UserRoleForm.tsx",
-      "src/features/roles/types.ts",
-      true,
-    ],
-    ["src/features/users/types.ts", "src/features/roles/types.ts", true],
-    ["src/features/users/Users.tsx", "src/features/roles/types.ts", true],
   ]) {
     const specifier = "@/" + target.slice("src/".length).replace(/\.ts$/, "");
     const owner = path.join(root, source);
@@ -275,6 +267,79 @@ test("authentication and role capabilities retain only their approved consumer a
       source,
     );
   }
+});
+
+test("user screens receive only the named role list service and erased role model", () => {
+  const owners = [
+    "src/features/users/Users.tsx",
+    "src/features/users/components/user-role-form/UserRoleForm.tsx",
+    "src/features/users/types.ts",
+  ];
+  const inspect = (syntax, owner, target = "src/features/roles/index.ts") => {
+    const [edge] = inspectImports(syntax);
+    return check(
+      edge.specifier,
+      path.join(root, target),
+      path.join(root, owner),
+      edge.typeOnly,
+      undefined,
+      edge.bindings,
+    );
+  };
+  for (const syntax of [
+    'import { fetchRoles, type Role } from "@/features/roles";',
+    'import { fetchRoles as loadRoles, type Role as Option } from "@/features/roles";',
+    'export { fetchRoles } from "@/features/roles";',
+  ])
+    assert.equal(inspect(syntax, owners[0]), undefined, syntax);
+  for (const owner of owners) {
+    assert.equal(
+      inspect('import type { Role } from "@/features/roles";', owner),
+      undefined,
+      owner,
+    );
+    for (const syntax of [
+      'import { Role } from "@/features/roles";',
+      'import type { PermissionGroup } from "@/features/roles";',
+      'import type * as Roles from "@/features/roles";',
+      'export type * from "@/features/roles";',
+      'const roles = import("@/features/roles");',
+      'const roles = require("@/features/roles");',
+    ])
+      assert.match(inspect(syntax, owner), /(?:exact erased|exact approved)/);
+    assert.match(
+      inspect(
+        'import type { Role } from "@/features/roles/types";',
+        owner,
+        "src/features/roles/types.ts",
+      ),
+      /(?:exact erased|exact approved)/,
+    );
+  }
+  for (const syntax of [
+    'import { fetchRoles, deleteRole } from "@/features/roles";',
+    'import type { fetchRoles } from "@/features/roles";',
+    'import * as roles from "@/features/roles";',
+    'import roles from "@/features/roles";',
+    'import "@/features/roles";',
+  ])
+    assert.match(inspect(syntax, owners[0]), /exact approved/);
+  for (const owner of [
+    ...owners.slice(1),
+    "src/features/settings/Settings.tsx",
+  ])
+    assert.match(
+      inspect('import { fetchRoles } from "@/features/roles";', owner),
+      /(?:exact erased|exact approved)/,
+    );
+  assert.match(
+    inspect(
+      'import { fetchRoles } from "@/features/roles/api";',
+      owners[0],
+      "src/features/roles/api.ts",
+    ),
+    /exact approved/,
+  );
 });
 
 test("settings receives only the named file upload and erased file vocabulary", () => {
@@ -364,8 +429,14 @@ test("migrated screens receive only the erased Default layout context contract",
     );
   };
   for (const source of [
+    "src/features/calendar/Calendar.tsx",
     "src/features/files/Files.tsx",
+    "src/features/roles/Roles.tsx",
+    "src/features/roles/components/role-form/RoleForm.tsx",
     "src/features/settings/Settings.tsx",
+    "src/features/users/Users.tsx",
+    "src/features/users/components/user-form/UserForm.tsx",
+    "src/features/users/components/user-role-form/UserRoleForm.tsx",
   ])
     for (const syntax of [
       'import type { DefaultLayoutContext } from "@/layouts/default";',
@@ -388,7 +459,7 @@ test("migrated screens receive only the erased Default layout context contract",
   assert.match(
     inspect(
       'import type { DefaultLayoutContext } from "@/layouts/default";',
-      "src/features/users/Users.tsx",
+      "src/features/account/Account.tsx",
     ),
     /only the approved app hooks/,
   );
@@ -802,6 +873,8 @@ test("actual aliases and relative resolution cannot bypass shared or feature own
   );
   assert.deepEqual(locations.sort(), [
     "src/features/roles/index.ts:2",
+    "src/features/users/Users.tsx:2",
+    "src/features/users/Users.tsx:3",
     "src/features/users/Users.tsx:4",
     "src/features/users/Users.tsx:5",
     "src/features/users/Users.tsx:6",
@@ -854,7 +927,7 @@ test("the published phase retains every admitted production module", async () =>
   );
   assert.equal(
     result.files,
-    publication.applicationReady ? 134 : production.length,
+    publication.applicationReady ? 136 : production.length,
   );
   assert.deepEqual(result.violations, []);
 });
@@ -954,14 +1027,17 @@ test("runtime adapters may import only exact declared packages contained in this
   }
 });
 
-test("dialog focus admits only its published helper and exact runtime or erased React owners", () => {
+test("retired dialog focus stays unpublished and React dependencies retain their exact owners", () => {
   const helper = path.join(root, "src/shared/lib/dialog-focus.ts");
   for (const source of [
     "src/app/hooks/useAntd.ts",
     "src/shared/ui/form-drawer/FormDrawer.tsx",
   ]) {
     const owner = path.join(root, source);
-    assert.equal(check("@/shared/lib/dialog-focus", helper, owner), undefined);
+    assert.match(
+      check("@/shared/lib/dialog-focus", helper, owner),
+      /published production modules/,
+    );
     assert.match(
       check(
         "@/shared/lib/dialog-focus-internal",
@@ -975,7 +1051,6 @@ test("dialog focus admits only its published helper and exact runtime or erased 
   for (const [source, typeOnly] of [
     ["src/app/hooks/useAntd.ts", false],
     ["src/shared/ui/form-drawer/FormDrawer.tsx", true],
-    ["src/shared/lib/dialog-focus.ts", true],
   ]) {
     const owner = path.join(root, source);
     assert.equal(
@@ -1024,6 +1099,10 @@ test("dialog focus admits only its published helper and exact runtime or erased 
       check("react", react, path.join(root, source), false, "@types/react"),
       /not allowed/,
     );
+  assert.match(
+    check("react", react, helper, true, "@types/react"),
+    /not allowed/,
+  );
 });
 
 test("OTP accessibility owns only its exact React and translation runtime dependencies", () => {

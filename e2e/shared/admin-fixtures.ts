@@ -74,7 +74,7 @@ export const setupAdminFixture = async (
   const requests: string[] = [];
   await page.addInitScript(
     ({ theme }) => {
-      localStorage.setItem("theme", theme);
+      localStorage.setItem("theme", JSON.stringify(theme));
     },
     { theme },
   );
@@ -130,7 +130,7 @@ export const setupAdminFixture = async (
           json: [
             {
               name: "users",
-              title: messages.users,
+              title: messages.userManagement,
               permissions: [
                 { name: "users.read", title: messages.users },
                 {
