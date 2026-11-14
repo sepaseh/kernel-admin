@@ -28,11 +28,15 @@ export const applicationSettingsFixture = (language: LocaleCode = "en") => ({
     color_text_description: "#bfbfbf",
   },
   language: {
-    calendar: language === "fa" ? "jalali" : "gregorian",
+    calendar: language === "fa" ? "jalali" : "gregory",
     code: language,
     direction: fixtureDirections[language],
     name: language,
     native_name: language,
+  },
+  image_settings: {
+    contents: { height: 630, size: 2_097_152, width: 1200 },
+    logo: { height: 256, size: 1_048_576, width: 256 },
   },
   light_theme: {
     color_bg_base: "#ffffff",

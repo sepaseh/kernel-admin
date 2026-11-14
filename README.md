@@ -18,7 +18,7 @@ Local setup requires the Node version in [`.nvmrc`](.nvmrc) and its bundled npm.
 - Sign-in, registration, password recovery and account/profile editing.
 - User management, role assignments and role permissions.
 - Global settings, appearance and logo uploads.
-- Calendar screen.
+- Calendar and file-management screens.
 - Ten UI languages, RTL/LTR layouts, API-selected calendars, light/dark themes
   and compact mode.
 

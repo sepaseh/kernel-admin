@@ -7,11 +7,11 @@ Kernel Admin is one independent React/Vite TypeScript application. Developers se
 ## Follow startup
 
 1. [The entry point](../src/main.tsx) initializes observability and mounts [App](../src/app/App.tsx).
-2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings through the shared read lifecycle. The settings adapter validates language, logos and both palettes before Core accepts them. Bootstrap loading remains outside Ant Design.
-3. `App` loads the Ant Design provider, settings feedback and routes together when settings are ready or a bootstrap error needs themed retry feedback. Routes mount only after validated palettes are available. Later settings refresh failures retain the accepted application.
+2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings with an owned cancellation signal. It displays loading or an inline retry before exposing accepted settings to its children. The settings API uses typed response models without runtime envelope validation.
+3. `App` composes the Ant Design provider, shared global styles and lazy routes after settings are available. Ant Design applies the API-owned palette, language and direction, together with browser theme and compact preferences.
 4. [Routes](../src/app/Routes.tsx) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.
 
-The [default layout](../src/layouts/default/Default.tsx) loads the current account before rendering protected children. Menu and route checks describe what the client presents; the API authorizes each request independently.
+The [default layout](../src/layouts/default/Default.tsx) loads the current account before rendering protected children. It exposes that account, account reload and session cleanup through its typed Outlet context. Menu and route checks describe what the client presents; the API authorizes each request independently.
 
 ## Locate the owner
 
@@ -30,7 +30,7 @@ The API selects language, text direction, calendar, logos and palettes. A browse
 
 Keep screens, APIs, request/response types, forms, hooks and tools with their owning `src/features/<feature>`. Shared modules provide domain-independent infrastructure and controls; their local source dependencies stay within `src/shared`. Application composition belongs in `app`, and route shells belong in `layouts`.
 
-Features may consume another feature only through the exact authentication API/OTP and roles API/type edges declared by [the boundary checker](../scripts/check-boundaries.mjs). Approved consumers import those leaves directly; cross-feature screens, forms, helpers and feature barrels are rejected. Feature screens use only the declared app hook, route configuration and access-policy interfaces; app internals, providers, layouts and entry points are outside that interface. The [import rules](../.agents/rules/imports.md) describe enforcement and how to review a new dependency.
+Features use only the exact authentication API/OTP, roles API/type and settings-to-files capabilities declared by [the boundary checker](../scripts/check-boundaries.mjs). Settings imports the reviewed file upload service and erased file models through the files public exports. Settings and Files may import the erased `DefaultLayoutContext` from the default layout; layout components and other internals remain private. The [import rules](../.agents/rules/imports.md) describe enforcement and how to review a new dependency.
 
 ## Trace a change
 

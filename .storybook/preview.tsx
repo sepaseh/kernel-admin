@@ -12,8 +12,6 @@ sb.mock(import("../src/features/account/api.ts"));
 sb.mock(import("../src/features/auth/api.ts"));
 sb.mock(import("../src/features/calendar/api.ts"));
 sb.mock(import("../src/features/roles/api.ts"));
-sb.mock(import("../src/features/settings/api.ts"));
-sb.mock(import("../src/features/settings/components/logo-upload/api.ts"));
 sb.mock(import("../src/features/users/api.ts"));
 sb.mock(import("../src/shared/api/client.ts"));
 

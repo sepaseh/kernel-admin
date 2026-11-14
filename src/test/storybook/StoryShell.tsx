@@ -1,21 +1,22 @@
 import "@/shared/i18n/date";
 
-import { theme as antdTheme } from "antd";
+import { ConfigProvider, theme as antdTheme } from "antd";
 import dayjs from "dayjs";
 import type { ReactNode } from "react";
-import { useContext, useEffect, useMemo, useState } from "react";
-import { MemoryRouter } from "react-router";
+import { useContext, useEffect, useState } from "react";
+import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 
 import type { RouteKey } from "@/app/config/routes";
-import type { CoreContextValue } from "@/app/contexts";
-import { CoreContext } from "@/app/contexts";
+import { CoreContext, type CoreContextValue } from "@/app/contexts";
 import { AntdProvider } from "@/app/providers";
 import type { Account } from "@/features/account";
-import type { ApplicationLanguage } from "@/features/settings/types";
-import type { Theme } from "@/shared/config";
-import { i18nInstance } from "@/shared/i18n";
+import type { ApplicationLanguage, Settings } from "@/features/settings/types";
+import type { DefaultLayoutContext } from "@/layouts/default";
+import { defaultLogos } from "@/shared/config";
+import type { Theme } from "@/shared/contracts";
+import { dayjsLocaleName, i18n } from "@/shared/i18n";
 
-import { sampleAccount, sampleLanguages } from "./fixtures";
+import { sampleAccount, sampleLanguages, sampleSettings } from "./fixtures";
 import { StoryAppearanceContext } from "./StoryAppearance";
 
 type StoryShellProps = {
@@ -27,13 +28,12 @@ type StoryShellProps = {
   withUser?: boolean;
 };
 
-const StorySurface = ({
-  children,
-  language,
-}: {
+type StorySurfaceProps = {
   children: ReactNode;
-  language: ApplicationLanguage;
-}) => {
+  language: Settings["language"];
+};
+
+const StorySurface = ({ children, language }: StorySurfaceProps) => {
   const { token } = antdTheme.useToken();
 
   return (
@@ -51,6 +51,13 @@ const StorySurface = ({
   );
 };
 
+const settingsLanguage = (
+  language: ApplicationLanguage,
+): Settings["language"] => ({
+  ...language,
+  calendar: language.calendar === "gregorian" ? "gregory" : language.calendar,
+});
+
 export const StoryShell = ({
   children,
   initialEntries = ["/"],
@@ -62,75 +69,82 @@ export const StoryShell = ({
   const appearance = useContext(StoryAppearanceContext);
   const [compact, setCompact] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<RouteKey>("root");
-  const [language, setLanguage] = useState(
-    appearance?.language ?? initialLanguage,
-  );
-  const [toolbarLanguage, setToolbarLanguage] = useState(appearance?.language);
-  const [logos, setLogos] = useState<CoreContextValue["logos"]>();
+  const [settings, setSettings] = useState<Settings>(() => ({
+    ...structuredClone(sampleSettings),
+    language: settingsLanguage(appearance?.language ?? initialLanguage),
+  }));
   const [theme, setTheme] = useState(appearance?.theme ?? initialTheme);
+  const [toolbarLanguage, setToolbarLanguage] = useState(appearance?.language);
   const [toolbarTheme, setToolbarTheme] = useState(appearance?.theme);
-  const [themePalettes, setThemePalettes] =
-    useState<CoreContextValue["themePalettes"]>();
   const [user, setUser] = useState<CoreContextValue["user"]>(
     withUser ? initialUser : undefined,
   );
   if (toolbarLanguage !== appearance?.language) {
     setToolbarLanguage(appearance?.language);
-    if (appearance) setLanguage(appearance.language);
+    if (appearance)
+      setSettings((current) => ({
+        ...current,
+        language: settingsLanguage(appearance.language),
+      }));
   }
   if (toolbarTheme !== appearance?.theme) {
     setToolbarTheme(appearance?.theme);
     if (appearance) setTheme(appearance.theme);
   }
-  const value = useMemo<CoreContextValue>(
-    () => ({
-      acceptSettings: (settings) => {
-        setLanguage(settings.language);
-        setLogos({
-          dark: settings.darkLogo?.url ?? "/logo.svg",
-          light: settings.lightLogo?.url ?? "/logo.svg",
-        });
-        setThemePalettes({
-          dark: settings.darkTheme,
-          light: settings.lightTheme,
-        });
-      },
-      retrySettings: () => undefined,
-      settingsLoading: false,
-      compact,
-      currentRoute,
-      language,
-      logos,
-      setCompact,
-      setCurrentRoute,
-      setLogos,
-      setTheme,
-      setThemePalettes,
-      setUser,
-      theme,
-      themePalettes,
-      user,
-    }),
-    [compact, currentRoute, language, logos, theme, themePalettes, user],
-  );
+  const { language } = settings;
+  const value: CoreContextValue = {
+    compact,
+    currentRoute,
+    language,
+    logos: {
+      dark: settings.darkLogo?.url ?? defaultLogos.dark,
+      light: settings.lightLogo?.url ?? defaultLogos.light,
+    },
+    setCompact,
+    setCurrentRoute,
+    setSettings,
+    setTheme,
+    setUser,
+    settings,
+    theme,
+    user,
+  };
 
   useEffect(() => {
-    void i18nInstance.changeLanguage(language.code);
-    dayjs.calendar(
-      language.calendar === "gregorian" ? "gregory" : language.calendar,
-    );
-    dayjs.locale(language.code === "en" ? "en-gb" : language.code);
+    void i18n.changeLanguage(language.code);
+    dayjs.calendar(language.calendar);
+    dayjs.locale(dayjsLocaleName(language.code));
   }, [language.calendar, language.code]);
 
   return (
     <CoreContext.Provider value={value}>
-      <AntdProvider>
-        <StorySurface language={language}>
-          <MemoryRouter initialEntries={initialEntries}>
-            {children}
-          </MemoryRouter>
-        </StorySurface>
-      </AntdProvider>
+      <ConfigProvider theme={{ inherit: false }}>
+        <AntdProvider>
+          <StorySurface language={language}>
+            <MemoryRouter initialEntries={initialEntries}>
+              <Routes>
+                <Route
+                  element={
+                    <Outlet
+                      context={
+                        user
+                          ? ({
+                              currentUser: user,
+                              fetchCurrentUser: async () => undefined,
+                              clearSession: () => setUser(undefined),
+                            } satisfies DefaultLayoutContext)
+                          : undefined
+                      }
+                    />
+                  }
+                >
+                  <Route path="*" element={children} />
+                </Route>
+              </Routes>
+            </MemoryRouter>
+          </StorySurface>
+        </AntdProvider>
+      </ConfigProvider>
     </CoreContext.Provider>
   );
 };

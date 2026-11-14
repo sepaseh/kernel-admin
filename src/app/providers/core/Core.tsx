@@ -1,150 +1,143 @@
+import { Button, Flex, Result, Spin } from "antd";
 import dayjs from "dayjs";
-import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type PropsWithChildren,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
 
-import type { RouteKey } from "@/app/config";
-import type { CoreContextValue } from "@/app/contexts";
-import { CoreContext } from "@/app/contexts";
-import { fetchApplicationSettings } from "@/features/settings/api";
-import type { ApplicationSettings } from "@/features/settings/types";
-import type { Theme } from "@/shared/contracts/appearance";
-import { defaultLanguage, defaultLogos, storageKeys } from "@/shared/config";
-import { useReadResource } from "@/shared/hooks";
-import { i18nInstance } from "@/shared/i18n";
-import { dayjsLocaleName } from "@/shared/i18n/date";
+import { CoreContext, type CoreContextValue } from "@/app/contexts";
+import { type Settings, fetchSettings } from "@/features/settings";
+import { useAbortController } from "@/shared/hooks";
+import { defaultLogos, storageKeys } from "@/shared/config";
+import { dayjsLocaleName, i18n } from "@/shared/i18n";
 import {
   getCompact,
   getTheme,
-  setCompact as setCompactStorage,
-  setTheme as setThemeStorage,
+  setCompact as saveCompact,
+  setTheme as saveTheme,
   useLocalStorageWatcher,
 } from "@/shared/storage";
 
-type CoreProviderProps = {
-  children: ReactNode;
-};
-
-const bootstrapLanguage: ApplicationSettings["language"] = {
-  calendar: "jalali",
-  code: defaultLanguage,
-  direction: "rtl",
-  name: "Persian",
-  nativeName: "فارسی",
-};
-
-export const CoreProvider = ({ children }: CoreProviderProps) => {
+export const CoreProvider = ({ children }: PropsWithChildren) => {
+  const { t } = useTranslation();
   const [compact, setCompact] = useState(getCompact);
-  const [currentRoute, setCurrentRoute] = useState<RouteKey>("root");
-  const [language, setLanguage] = useState(bootstrapLanguage);
-  const [logos, setLogos] = useState<CoreContextValue["logos"]>(defaultLogos);
-  const [theme, setTheme] = useState<Theme>(getTheme);
-  const [themePalettes, setThemePalettes] =
-    useState<CoreContextValue["themePalettes"]>();
+  const [currentRoute, setCurrentRoute] =
+    useState<CoreContextValue["currentRoute"]>("root");
+  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<Settings>();
+  const [theme, setTheme] = useState(getTheme);
   const [user, setUser] = useState<CoreContextValue["user"]>();
+  const { cancel, start } = useAbortController();
+  const language = settings?.language;
 
-  const applySettings = useCallback((value: ApplicationSettings) => {
-    setLanguage(value.language);
-    setLogos({
-      dark: value.darkLogo?.url ?? defaultLogos.dark,
-      light: value.lightLogo?.url ?? defaultLogos.light,
-    });
-    setThemePalettes({ dark: value.darkTheme, light: value.lightTheme });
-  }, []);
-  const loadSettings = useCallback(
-    async (signal: AbortSignal) => {
-      const value = await fetchApplicationSettings(signal);
-      if (!signal.aborted) applySettings(value);
-      return value;
+  const fetchData = useCallback(async () => {
+    const signal = start();
+    setLoading(true);
+
+    try {
+      const data = await fetchSettings(signal);
+      if (signal.aborted) return;
+
+      setSettings(data);
+    } catch {
+      // The provider offers an inline retry and keeps accepted settings.
+    } finally {
+      if (!signal.aborted) setLoading(false);
+    }
+  }, [start]);
+
+  const changeSettings = useCallback(
+    (value: Settings) => {
+      cancel();
+      setSettings(value);
+      setLoading(false);
     },
-    [applySettings],
-  );
-  const {
-    error: settingsError,
-    loading: settingsLoading,
-    reload: reloadSettings,
-    replace: replaceSettings,
-  } = useReadResource(loadSettings);
-  const acceptSettings = useCallback(
-    (value: ApplicationSettings) => {
-      replaceSettings(value);
-      applySettings(value);
-    },
-    [applySettings, replaceSettings],
+    [cancel],
   );
 
-  const changeTheme = useCallback((theme: Theme, fromStorage?: boolean) => {
-    if (!fromStorage) setThemeStorage(theme);
-    setTheme(theme);
-  }, []);
+  const changeCompact: CoreContextValue["setCompact"] = (value) => {
+    saveCompact(value);
+    setCompact(value);
+  };
 
-  const changeCompact = useCallback(
-    (compact: boolean, fromStorage?: boolean) => {
-      if (!fromStorage) setCompactStorage(compact);
-      setCompact(compact);
-    },
-    [],
-  );
+  const changeTheme: CoreContextValue["setTheme"] = (value) => {
+    saveTheme(value);
+    setTheme(value);
+  };
 
-  useLocalStorageWatcher(storageKeys.compact, () => {
-    changeCompact(getCompact(), true);
-  });
+  useLocalStorageWatcher(storageKeys.compact, () => setCompact(getCompact()));
 
-  useLocalStorageWatcher(storageKeys.theme, () => {
-    changeTheme(getTheme(), true);
-  });
-
-  const value = useMemo<CoreContextValue>(
-    () => ({
-      acceptSettings,
-      compact,
-      currentRoute,
-      language,
-      logos,
-      retrySettings: reloadSettings,
-      settingsError,
-      settingsLoading,
-      setCompact: changeCompact,
-      setCurrentRoute,
-      setLogos,
-      setTheme: changeTheme,
-      setThemePalettes,
-      setUser,
-      theme,
-      themePalettes,
-      user,
-    }),
-    [
-      acceptSettings,
-      changeCompact,
-      changeTheme,
-      compact,
-      currentRoute,
-      language,
-      logos,
-      reloadSettings,
-      settingsError,
-      settingsLoading,
-      theme,
-      themePalettes,
-      user,
-    ],
-  );
+  useLocalStorageWatcher(storageKeys.theme, () => setTheme(getTheme()));
 
   useEffect(() => {
-    void i18nInstance.changeLanguage(language.code);
-    dayjs.calendar(
-      language.calendar === "gregorian" ? "gregory" : language.calendar,
-    );
+    void (async () => {
+      await fetchData();
+    })();
+
+    return cancel;
+  }, [cancel, fetchData]);
+
+  useEffect(() => {
+    if (!language) return;
+
+    void i18n.changeLanguage(language.code);
+    dayjs.calendar(language.calendar);
     dayjs.locale(dayjsLocaleName(language.code));
-  }, [language.calendar, language.code]);
+  }, [language]);
 
-  useEffect(() => {
-    const refreshOnFocus = () => {
-      void reloadSettings();
-    };
-    window.addEventListener("focus", refreshOnFocus);
-    return () => window.removeEventListener("focus", refreshOnFocus);
-  }, [reloadSettings]);
+  if (!settings) {
+    return (
+      <Flex
+        align="center"
+        gap="middle"
+        justify="center"
+        style={{ minHeight: "100vh" }}
+        vertical
+      >
+        {loading ? (
+          <Spin
+            aria-label={t("loading")}
+            ref={(node) => node?.nativeElement.setAttribute("role", "status")}
+          />
+        ) : (
+          <Result
+            extra={
+              <Button onClick={() => void fetchData()} type="primary">
+                {t("retry")}
+              </Button>
+            }
+            status="500"
+            title={t("settingsLoadFailed")}
+          />
+        )}
+      </Flex>
+    );
+  }
 
-  return <CoreContext.Provider value={value}>{children}</CoreContext.Provider>;
+  return (
+    <CoreContext.Provider
+      value={{
+        compact,
+        currentRoute,
+        language: settings.language,
+        logos: {
+          dark: settings.darkLogo?.url ?? defaultLogos.dark,
+          light: settings.lightLogo?.url ?? defaultLogos.light,
+        },
+        settings,
+        setCompact: changeCompact,
+        setCurrentRoute,
+        setSettings: changeSettings,
+        setTheme: changeTheme,
+        setUser,
+        theme,
+        user,
+      }}
+    >
+      {children}
+    </CoreContext.Provider>
+  );
 };

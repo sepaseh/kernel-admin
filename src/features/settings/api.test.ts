@@ -1,220 +1,71 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { apiClient } from "../../shared/api/index.ts";
-import { i18nInstance } from "../../shared/i18n/index.ts";
-import { localeCodes } from "../../shared/i18n/locales.ts";
-import {
-  fetchApplicationSettings,
-  fetchLanguages,
-  updateApplicationSettings,
-} from "./api.ts";
-import type { ApplicationSettings } from "./types.ts";
+import { apiClient } from "@/shared/api";
 
-vi.mock("../../shared/api/index.ts", () => ({
-  apiClient: { get: vi.fn(), put: vi.fn() },
-}));
+import { fetchLanguages, fetchSettings, updateSettings } from "./api";
+import type { SettingsRequest } from "./types";
 
-const settings: ApplicationSettings = {
-  darkTheme: {
-    colorBgBase: "#141414",
-    colorBgContainer: "#1f1f1f",
-    colorBorder: "#424242",
-    colorLink: "#1668dc",
-    colorPrimary: "#1677ff",
-    colorTextBase: "#ffffff",
-    colorTextDescription: "#bfbfbf",
-  },
-  language: {
-    calendar: "jalali",
-    code: "fa",
-    direction: "rtl",
-    name: "Persian",
-    nativeName: "فارسی",
-  },
-  lightTheme: {
-    colorBgBase: "#ffffff",
-    colorBgContainer: "#ffffff",
-    colorBorder: "#d9d9d9",
-    colorLink: "#1677ff",
-    colorPrimary: "#1677ff",
-    colorTextBase: "#000000",
-    colorTextDescription: "#8c8c8c",
-  },
-};
+vi.mock("@/shared/api", () => ({ apiClient: { get: vi.fn(), put: vi.fn() } }));
 
 beforeEach(() => {
-  vi.mocked(apiClient.get).mockResolvedValue(settings);
-  vi.mocked(apiClient.put).mockResolvedValue(settings);
+  vi.resetAllMocks();
 });
 
-describe("settings API", () => {
-  it.each([null, [], "settings", 42, {}, { language: settings.language }])(
-    "rejects a malformed settings envelope with a localized controlled error: %j",
-    async (response) => {
-      vi.mocked(apiClient.get).mockResolvedValueOnce(response);
-      await expect(fetchApplicationSettings()).rejects.toThrow(
-        i18nInstance.t("unexpectedError"),
-      );
-    },
-  );
-
-  it.each(localeCodes)(
-    "preserves complete server-owned metadata for %s without deriving direction or calendar from its code",
-    async (code) => {
-      const language = {
-        calendar: "jalali",
-        code,
-        direction: "rtl",
-        name: "Server name",
-        nativeName: "Server native name",
-      };
-      vi.mocked(apiClient.get).mockResolvedValueOnce({ ...settings, language });
-      await expect(fetchApplicationSettings()).resolves.toHaveProperty(
-        "language",
-        language,
-      );
-    },
-  );
-
-  it.each([
-    { ...settings, darkTheme: null },
-    { ...settings, lightTheme: {} },
-    { ...settings, darkTheme: { ...settings.darkTheme, colorPrimary: 42 } },
-    { ...settings, darkLogo: {} },
-    { ...settings, lightLogo: { id: "id", url: " " } },
-  ])(
-    "rejects malformed branding contracts instead of forwarding unsafe shapes: %j",
-    async (response) => {
-      vi.mocked(apiClient.get).mockResolvedValueOnce(response);
-      await expect(fetchApplicationSettings()).rejects.toThrow(
-        i18nInstance.t("unexpectedError"),
-      );
-    },
-  );
-
-  it("preserves optional server logos and empty palette overrides", async () => {
-    const response = {
-      ...settings,
-      darkLogo: { id: "dark", url: "/files/dark" },
-      lightLogo: { id: "light", url: "/files/light" },
-      darkTheme: { ...settings.darkTheme, colorPrimary: "" },
-    };
-    vi.mocked(apiClient.get).mockResolvedValueOnce(response);
-    await expect(fetchApplicationSettings()).resolves.toEqual(response);
-  });
-
-  it("loads settings and supported languages", async () => {
-    vi.mocked(apiClient.get)
-      .mockResolvedValueOnce(settings)
-      .mockResolvedValueOnce([settings.language]);
-
+describe("settings HTTP contract", () => {
+  it("bounds settings reads while forwarding cancellation to both read owners", async () => {
     const controller = new AbortController();
-    await fetchApplicationSettings(controller.signal);
+    await fetchSettings(controller.signal);
     await fetchLanguages(controller.signal);
 
     expect(apiClient.get).toHaveBeenNthCalledWith(1, "/settings", {
       signal: controller.signal,
+      timeout: 15_000,
     });
     expect(apiClient.get).toHaveBeenNthCalledWith(2, "/languages", {
       signal: controller.signal,
     });
   });
 
-  it("normalizes regional language codes", async () => {
-    vi.mocked(apiClient.get).mockResolvedValueOnce({
-      ...settings,
-      language: {
-        ...settings.language,
-        calendar: "gregorian",
-        code: "fa-IR",
-        direction: "ltr",
-        name: "Server Persian",
-        nativeName: "Server native Persian",
-      },
-    });
-
-    await expect(fetchApplicationSettings()).resolves.toMatchObject({
-      language: {
-        calendar: "gregorian",
-        code: "fa",
-        direction: "ltr",
-        name: "Server Persian",
-        nativeName: "Server native Persian",
-      },
-    });
-  });
-
-  it.each([
-    null,
-    [],
-    {},
-    { ...settings.language, code: "xx" },
-    { ...settings.language, code: "fa-" },
-    { ...settings.language, code: 42 },
-    { ...settings.language, direction: "auto" },
-    { ...settings.language, direction: undefined },
-    { ...settings.language, calendar: "hebrew" },
-    { ...settings.language, calendar: undefined },
-    { ...settings.language, name: " " },
-    { ...settings.language, nativeName: 42 },
-  ])(
-    "rejects invalid API language metadata instead of replacing it locally: %j",
-    async (language) => {
-      vi.mocked(apiClient.get).mockResolvedValueOnce({ ...settings, language });
-      await expect(fetchApplicationSettings()).rejects.toThrow(
-        i18nInstance.t("unexpectedError"),
-      );
-    },
-  );
-
-  it("validates language-list and mutation responses through the same boundary", async () => {
-    vi.mocked(apiClient.get).mockResolvedValueOnce({
-      language: settings.language,
-    });
-    await expect(fetchLanguages()).rejects.toThrow(
-      i18nInstance.t("unexpectedError"),
-    );
-    vi.mocked(apiClient.get).mockResolvedValueOnce([
-      { ...settings.language, direction: "auto" },
-    ]);
-    await expect(fetchLanguages()).rejects.toThrow(
-      i18nInstance.t("unexpectedError"),
-    );
-    vi.mocked(apiClient.put).mockResolvedValueOnce({
-      ...settings,
-      language: { ...settings.language, calendar: "unknown" },
-    });
-    await expect(
-      updateApplicationSettings({
-        darkTheme: settings.darkTheme,
-        lightTheme: settings.lightTheme,
-      }),
-    ).rejects.toThrow(i18nInstance.t("unexpectedError"));
-  });
-
-  it("updates the complete settings payload", async () => {
-    const request = {
-      darkTheme: settings.darkTheme,
-      languageCode: settings.language.code,
-      lightTheme: settings.lightTheme,
+  it("persists palettes, image limits, API language and uploaded logo identifiers together", async () => {
+    const colors = {
+      colorBgBase: "#fff",
+      colorBgContainer: "#fff",
+      colorBorder: "#ccc",
+      colorLink: "#05a",
+      colorPrimary: "#05a",
+      colorTextBase: "#111",
+      colorTextDescription: "#333",
     };
-
-    await updateApplicationSettings(request);
-
-    expect(apiClient.put).toHaveBeenCalledWith("/settings", request);
-  });
-
-  it("forwards optional mutation cancellation without changing the settings payload", async () => {
+    const request: SettingsRequest = {
+      darkTheme: colors,
+      lightTheme: colors,
+      imageSettings: {
+        logo: { width: 100, height: 100, size: 1024 },
+        contents: { width: 400, height: 200, size: 4096 },
+      },
+      languageCode: "fa",
+      darkLogoId: "synthetic-dark",
+      lightLogoId: "synthetic-light",
+    };
+    const response = {
+      ...request,
+      language: { code: "fa", calendar: "jalali", direction: "rtl" },
+    };
+    vi.mocked(apiClient.put).mockResolvedValue(response);
     const controller = new AbortController();
-    const request = {
-      darkTheme: settings.darkTheme,
-      lightTheme: settings.lightTheme,
-    };
-    await expect(
-      updateApplicationSettings(request, controller.signal),
-    ).resolves.toEqual(settings);
+
+    await expect(updateSettings(request, controller.signal)).resolves.toBe(
+      response,
+    );
     expect(apiClient.put).toHaveBeenCalledWith("/settings", request, {
       signal: controller.signal,
     });
+  });
+
+  it("propagates a rejected settings read without substituting local settings", async () => {
+    const error = new Error("Synthetic settings conflict");
+    vi.mocked(apiClient.get).mockRejectedValue(error);
+
+    await expect(fetchSettings()).rejects.toBe(error);
   });
 });

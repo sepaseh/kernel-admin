@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { act, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import type { FC, ReactNode } from "react";
 import { Outlet } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +9,7 @@ const routeState = vi.hoisted(() => ({
     "account",
     "auth",
     "calendar",
+    "files",
     "forgotPassword",
     "notFound",
     "register",
@@ -21,7 +21,6 @@ const routeState = vi.hoisted(() => ({
   antdMount: vi.fn(),
   antdUnmount: vi.fn(),
   appearanceInitialized: vi.fn(),
-  feedbackInitialized: vi.fn(),
   routesInitialized: vi.fn(),
   authInitialized: vi.fn(),
   loginInitialized: vi.fn(),
@@ -32,20 +31,12 @@ const routeState = vi.hoisted(() => ({
   usersLoadError: null as Error | null,
   usersRendered: vi.fn(),
   dashboardError: false,
-  retrySettings: vi.fn(),
-  settingsError: null as Error | null,
-  settingsLoading: false,
-  settingsReady: true,
   setCurrentRoute: vi.fn(),
 }));
 
 vi.mock("@/app/hooks/useCore", () => ({
   useCore: () => ({
-    retrySettings: routeState.retrySettings,
     setCurrentRoute: routeState.setCurrentRoute,
-    settingsError: routeState.settingsError,
-    settingsLoading: routeState.settingsLoading,
-    themePalettes: routeState.settingsReady ? {} : undefined,
     user: {},
   }),
 }));
@@ -67,12 +58,6 @@ vi.mock("@/app/providers/antd/Antd", async () => {
   };
   return { AntdProvider };
 });
-vi.mock("@/app/providers/core/SettingsFeedback", async (importOriginal) => {
-  routeState.feedbackInitialized();
-  return importOriginal<
-    typeof import("@/app/providers/core/SettingsFeedback")
-  >();
-});
 vi.mock("@/app/lib", () => ({
   hasRouteAccess: (route: string) => routeState.allowedRoutes.has(route),
 }));
@@ -87,6 +72,7 @@ vi.mock("@/features/dashboard", () => ({
 vi.mock("@/features/calendar", () => ({
   CalendarPage: () => "Calendar page",
 }));
+vi.mock("@/features/files", () => ({ FilesPage: () => "Files page" }));
 vi.mock("@/features/forgot-pass", () => ({
   ForgotPassPage: () => "Forgot password page",
 }));
@@ -102,7 +88,6 @@ beforeEach(() => {
   routeState.antdMount.mockClear();
   routeState.antdUnmount.mockClear();
   routeState.appearanceInitialized.mockClear();
-  routeState.feedbackInitialized.mockClear();
   routeState.routesInitialized.mockClear();
   routeState.authInitialized.mockClear();
   routeState.loginInitialized.mockClear();
@@ -113,10 +98,6 @@ beforeEach(() => {
   routeState.usersLoadError = null;
   routeState.usersRendered.mockClear();
   routeState.dashboardError = false;
-  routeState.retrySettings.mockClear();
-  routeState.settingsError = null;
-  routeState.settingsLoading = false;
-  routeState.settingsReady = true;
   routeState.setCurrentRoute.mockClear();
   vi.doMock("@/layouts/auth", async () => {
     routeState.authInitialized();
@@ -144,86 +125,6 @@ beforeEach(() => {
 });
 
 describe("application routes", () => {
-  it("waits for initial settings and keeps bootstrap failure retryable before mounting routes", async () => {
-    vi.doMock("./Routes", () => {
-      routeState.routesInitialized();
-      return { Routes: () => <output>Verified application routes</output> };
-    });
-    const user = userEvent.setup();
-    routeState.settingsReady = false;
-    routeState.settingsLoading = true;
-    window.history.replaceState({}, "", "/auth");
-    const { App } = await import("./App");
-    const { rerender } = render(<App />);
-    const bootstrapStatus = screen.getByLabelText(/Loading|در حال بارگذاری/);
-    expect(bootstrapStatus).toBeVisible();
-    expect(bootstrapStatus).toHaveTextContent(/Loading|در حال بارگذاری/);
-    expect(routeState.antdMount).not.toHaveBeenCalled();
-    expect(routeState.appearanceInitialized).not.toHaveBeenCalled();
-    expect(routeState.feedbackInitialized).not.toHaveBeenCalled();
-    expect(routeState.routesInitialized).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("antd-provider")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Verified application routes"),
-    ).not.toBeInTheDocument();
-
-    routeState.settingsLoading = false;
-    routeState.settingsError = new Error("synthetic initial settings failure");
-    rerender(<App />);
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "synthetic initial settings failure",
-    );
-    const retryProvider = screen.getByTestId("antd-provider");
-    expect(routeState.antdMount).toHaveBeenCalledTimes(1);
-    expect(routeState.appearanceInitialized).toHaveBeenCalledTimes(1);
-    expect(routeState.feedbackInitialized).toHaveBeenCalledTimes(1);
-    expect(routeState.routesInitialized).toHaveBeenCalledTimes(1);
-    await user.click(screen.getByRole("button", { name: /Retry|تلاش دوباره/ }));
-    expect(routeState.retrySettings).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId("antd-provider")).toBe(retryProvider);
-    expect(routeState.setCurrentRoute).not.toHaveBeenCalled();
-    expect(
-      screen.queryByText("Verified application routes"),
-    ).not.toBeInTheDocument();
-
-    routeState.settingsReady = true;
-    routeState.settingsError = null;
-    rerender(<App />);
-    expect(
-      await screen.findByText("Verified application routes"),
-    ).toBeVisible();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.getByTestId("antd-provider")).toBe(retryProvider);
-    expect(routeState.antdMount).toHaveBeenCalledTimes(1);
-    expect(routeState.antdUnmount).not.toHaveBeenCalled();
-  }, 30_000);
-
-  it("retains the verified route while a later settings refresh fails", async () => {
-    vi.doMock("./Routes", () => ({
-      Routes: () => <output>Verified application routes</output>,
-    }));
-    window.history.replaceState({}, "", "/auth");
-    const { App } = await import("./App");
-    const { rerender } = render(<App />);
-    const verifiedRoute = await screen.findByText(
-      "Verified application routes",
-    );
-    expect(verifiedRoute).toBeVisible();
-    const verifiedProvider = screen.getByTestId("antd-provider");
-    expect(routeState.antdMount).toHaveBeenCalledTimes(1);
-
-    routeState.settingsError = new Error("synthetic settings refresh failure");
-    rerender(<App />);
-    expect(screen.getByText("Verified application routes")).toBe(verifiedRoute);
-    expect(verifiedRoute).toBeVisible();
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "synthetic settings refresh failure",
-    );
-    expect(screen.getByTestId("antd-provider")).toBe(verifiedProvider);
-    expect(routeState.antdMount).toHaveBeenCalledTimes(1);
-    expect(routeState.antdUnmount).not.toHaveBeenCalled();
-  }, 30_000);
-
   it("renders the not-found page for an unknown route", async () => {
     window.history.replaceState({}, "", "/unknown-route");
     const { Routes } = await import("./Routes");
@@ -275,6 +176,7 @@ describe("application routes", () => {
     ["/users", "Users page", "users"],
     ["/roles", "Roles page", "roles"],
     ["/settings", "Settings page", "settings"],
+    ["/files", "Files page", "files"],
     ["/auth", "Login page", "auth"],
     ["/auth/forgot-password", "Forgot password page", "forgotPassword"],
     ["/auth/register", "Register page", "register"],

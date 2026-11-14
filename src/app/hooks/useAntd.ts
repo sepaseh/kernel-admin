@@ -1,27 +1,11 @@
-import { App as AntdApp, theme as antdTheme } from "antd";
-import { createElement } from "react";
-
-import { trapDialogFocus } from "@/shared/lib/dialog-focus";
+import { App, theme } from "antd";
 
 export const useAntd = () => {
   const {
     message: messageAPI,
-    modal,
+    modal: modalAPI,
     notification: notificationAPI,
-  } = AntdApp.useApp();
-  const { token } = antdTheme.useToken();
-  const modalAPI = {
-    ...modal,
-    confirm: (config: Parameters<typeof modal.confirm>[0]) =>
-      modal.confirm({
-        ...config,
-        modalRender: (node) =>
-          createElement(
-            "div",
-            { onKeyDown: trapDialogFocus },
-            config.modalRender ? config.modalRender(node) : node,
-          ),
-      }),
-  };
+  } = App.useApp();
+  const { token } = theme.useToken();
   return { messageAPI, modalAPI, notificationAPI, token };
 };

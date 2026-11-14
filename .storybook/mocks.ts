@@ -4,19 +4,16 @@ import * as accountAPI from "@/features/account/api";
 import * as authAPI from "@/features/auth/api";
 import * as calendarAPI from "@/features/calendar/api";
 import * as rolesAPI from "@/features/roles/api";
-import * as settingsAPI from "@/features/settings/api";
-import * as uploadAPI from "@/features/settings/components/logo-upload/api";
-import type { ApplicationSettings } from "@/features/settings/types";
+import type { Settings, SettingsRequest } from "@/features/settings/types";
 import * as usersAPI from "@/features/users/api";
 import { apiClient, setUnauthorizedHandler } from "@/shared/api";
-import type { Theme } from "@/shared/config";
-import { createThemeConfig, themeColorFields } from "@/shared/config";
-import type { ThemeColors } from "@/shared/contracts/appearance";
 import {
   permissions,
   roles,
   sampleAccount,
   sampleLanguages,
+  sampleSettings,
+  sampleFiles,
   users,
 } from "@/test/storybook/fixtures";
 
@@ -26,63 +23,83 @@ import {
   resetRequestGuard,
 } from "./request-guard";
 
-const palette = (theme: Theme): ThemeColors => {
-  const token = createThemeConfig(theme).token;
-  return Object.fromEntries(
-    themeColorFields.map((field) => {
-      const value = token?.[field];
-      if (typeof value !== "string")
-        throw new Error(`Missing synthetic palette field: ${field}`);
-      return [field, value];
-    }),
-  ) as ThemeColors;
-};
-
-export const resetStoryMocks = (initialSettings?: ApplicationSettings) => {
+export const resetStoryMocks = () => {
   resetRequestGuard();
   let account = structuredClone(sampleAccount);
   let roleList = structuredClone(roles);
   let userList = structuredClone(users);
   let calendarDates = ["2026-09-15", "2026-09-23"];
-  let settings: ApplicationSettings = structuredClone(
-    initialSettings ?? {
-      darkTheme: palette("dark"),
-      language: sampleLanguages.en,
-      lightTheme: palette("light"),
-    },
-  );
-  const uploadedLogos = new Map<string, { id: string; url: string }>();
-  for (const logo of [settings.darkLogo, settings.lightLogo]) {
-    if (logo) uploadedLogos.set(logo.id, structuredClone(logo));
-  }
-  const findLogo = (id: string | undefined) => {
-    if (id === undefined) return undefined;
-    const logo = uploadedLogos.get(id);
-    if (!logo) throw new Error(`Unknown synthetic logo: ${id}`);
-    return structuredClone(logo);
-  };
+  let settings: Settings = structuredClone(sampleSettings);
+  let files = structuredClone(sampleFiles);
   let sequence = 0;
 
   mocked(apiClient.get)
     .mockReset()
-    .mockImplementation(async (url) => rejectUnexpectedRequest("GET", url));
-  mocked(apiClient.blob)
-    .mockReset()
-    .mockImplementation(async (url) =>
-      rejectUnexpectedRequest("GET(blob)", url),
-    );
+    .mockImplementation(async (url) => {
+      if (url === "/settings") return structuredClone(settings);
+      if (url === "/languages")
+        return Object.values(sampleLanguages).map((language) => ({
+          ...language,
+          calendar:
+            language.calendar === "gregorian" ? "gregory" : language.calendar,
+        }));
+      if (url === "/files") return structuredClone(files);
+      return rejectUnexpectedRequest("GET", url);
+    });
   mocked(apiClient.post)
     .mockReset()
     .mockImplementation(async (url) => rejectUnexpectedRequest("POST", url));
-  mocked(apiClient.put)
-    .mockReset()
-    .mockImplementation(async (url) => rejectUnexpectedRequest("PUT", url));
   mocked(apiClient.patch)
     .mockReset()
     .mockImplementation(async (url) => rejectUnexpectedRequest("PATCH", url));
   mocked(apiClient.del)
     .mockReset()
-    .mockImplementation(async (url) => rejectUnexpectedRequest("DELETE", url));
+    .mockImplementation(async (url) => {
+      if (files.some(({ id, isUsed }) => url === `/files/${id}` && !isUsed)) {
+        files = files.filter(({ id }) => url !== `/files/${id}`);
+        return undefined;
+      }
+      return rejectUnexpectedRequest("DELETE", url);
+    });
+  mocked(apiClient.put)
+    .mockReset()
+    .mockImplementation(async (url, request) => {
+      if (url !== "/settings") return rejectUnexpectedRequest("PUT", url);
+      const { darkLogoId, lightLogoId, languageCode, ...values } =
+        request as SettingsRequest;
+      const language = Object.values(sampleLanguages).find(
+        ({ code }) => code === languageCode,
+      );
+      settings = {
+        ...settings,
+        ...values,
+        darkLogo: files.find(({ id }) => id === darkLogoId),
+        lightLogo: files.find(({ id }) => id === lightLogoId),
+        language: language
+          ? {
+              ...language,
+              calendar:
+                language.calendar === "gregorian"
+                  ? "gregory"
+                  : language.calendar,
+            }
+          : settings.language,
+      };
+      return structuredClone(settings);
+    });
+  mocked(apiClient.upload)
+    .mockReset()
+    .mockImplementation(async (url, request) => {
+      if (url !== "/files") return rejectUnexpectedRequest("UPLOAD", url);
+      const uploaded = {
+        id: `story-upload-${++sequence}`,
+        url: "/logo.svg",
+        size: (request as { file: File }).file.size,
+        isUsed: false,
+      };
+      files.push(uploaded);
+      return structuredClone(uploaded);
+    });
   mocked(setUnauthorizedHandler).mockReset();
 
   mocked(accountAPI.getAccount)
@@ -242,44 +259,6 @@ export const resetStoryMocks = (initialSettings?: ApplicationSettings) => {
     .mockReset()
     .mockImplementation(async (date) => {
       calendarDates = calendarDates.filter((item) => item !== date);
-    });
-  mocked(settingsAPI.fetchApplicationSettings)
-    .mockReset()
-    .mockImplementation(async () => structuredClone(settings));
-  mocked(settingsAPI.fetchLanguages)
-    .mockReset()
-    .mockResolvedValue([sampleLanguages.en, sampleLanguages.fa]);
-  mocked(settingsAPI.updateApplicationSettings)
-    .mockReset()
-    .mockImplementation(async (params) => {
-      if (params.languageCode && !["en", "fa"].includes(params.languageCode))
-        throw new Error("Unsupported synthetic language fixture");
-      settings = {
-        ...settings,
-        darkLogo: findLogo(params.darkLogoId),
-        darkTheme: params.darkTheme,
-        lightLogo: findLogo(params.lightLogoId),
-        lightTheme: params.lightTheme,
-        language:
-          params.languageCode === "fa"
-            ? sampleLanguages.fa
-            : params.languageCode === "en"
-              ? sampleLanguages.en
-              : settings.language,
-      };
-      return structuredClone(settings);
-    });
-  mocked(uploadAPI.uploadFile)
-    .mockReset()
-    .mockImplementation(async (file, visibility) => {
-      const uploaded = {
-        contentType: file.type || "image/svg+xml",
-        id: `story-upload-${++sequence}`,
-        url: "/logo.svg",
-        visibility,
-      };
-      uploadedLogos.set(uploaded.id, { id: uploaded.id, url: uploaded.url });
-      return uploaded;
     });
 };
 

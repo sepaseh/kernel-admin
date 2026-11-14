@@ -20,7 +20,7 @@ test("failed initial settings retain bootstrap error language and retry before r
         }),
   );
   await page.goto("/auth");
-  await expect(page.getByText("Synthetic settings unavailable")).toBeVisible();
+  await expect(page.getByText(catalogs.fa.settingsLoadFailed)).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "fa");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await expect(page.getByRole("heading")).toHaveCount(0);
@@ -32,7 +32,7 @@ test("failed initial settings retain bootstrap error language and retry before r
   await page
     .getByRole("button", { name: catalogs.fa.retry, exact: true })
     .click();
-  await expect(page.getByText("Synthetic settings unavailable")).toHaveCount(0);
+  await expect(page.getByText(catalogs.fa.settingsLoadFailed)).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   await expect(
@@ -40,7 +40,7 @@ test("failed initial settings retain bootstrap error language and retry before r
   ).toBeVisible();
 });
 
-test("returning to an anonymous page reloads the global API language", async ({
+test("each anonymous page bootstrap uses the current API language", async ({
   page,
 }) => {
   let language: LocaleCode = "en";
@@ -50,7 +50,7 @@ test("returning to an anonymous page reloads the global API language", async ({
   await page.goto("/auth");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   language = "fa";
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "fa");
   await expect(
     page.getByRole("heading", { name: catalogs.fa.login }),
@@ -60,12 +60,12 @@ test("returning to an anonymous page reloads the global API language", async ({
   ).toBeNull();
 });
 
-test("same-code API direction and calendar changes update HTML, Ant Design and the displayed calendar", async ({
+test("same-code API direction and calendar metadata apply on each bootstrap", async ({
   page,
 }) => {
   await page.clock.setFixedTime(new Date("2026-09-01T12:00:00Z"));
   let direction: "ltr" | "rtl" = "ltr";
-  let calendar: "gregorian" | "jalali" = "gregorian";
+  let calendar: "gregory" | "jalali" = "gregory";
   await page.route("https://api.example.com/settings", (route) => {
     const settings = applicationSettingsFixture("en");
     return route.fulfill({
@@ -104,7 +104,7 @@ test("same-code API direction and calendar changes update HTML, Ant Design and t
 
   direction = "rtl";
   calendar = "jalali";
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await expect(year).toContainText("1405");
@@ -117,35 +117,12 @@ test("same-code API direction and calendar changes update HTML, Ant Design and t
   await expect(nextArrow).toHaveClass(/lucide-chevron-left/);
 
   direction = "ltr";
-  calendar = "gregorian";
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  calendar = "gregory";
+  await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   await expect(year).toContainText("2026");
   await expect(year).not.toHaveClass(/ant-select-rtl/);
-});
-
-test("malformed API metadata shows an error and keeps the last verified language metadata", async ({
-  page,
-}) => {
-  let direction = "ltr";
-  await page.route("https://api.example.com/settings", (route) => {
-    const settings = applicationSettingsFixture("en");
-    return route.fulfill({
-      json: { ...settings, language: { ...settings.language, direction } },
-    });
-  });
-  await page.goto("/auth");
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  direction = "auto";
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(page.getByText(catalogs.en.unexpectedError)).toBeVisible();
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
-  direction = "rtl";
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  await expect(page.getByText(catalogs.en.unexpectedError)).toHaveCount(0);
 });
 
 for (const isSystemAdmin of [false, true]) {
@@ -165,6 +142,9 @@ for (const isSystemAdmin of [false, true]) {
         else expect(payload).not.toHaveProperty("language_code");
         expect(payload).toHaveProperty("dark_theme");
         expect(payload).toHaveProperty("light_theme");
+        expect(payload.image_settings).toEqual(
+          applicationSettingsFixture(language).image_settings,
+        );
         // A normal appearance save also consumes the backend's current language.
         language = "fa";
       }
@@ -196,6 +176,11 @@ for (const isSystemAdmin of [false, true]) {
     await expect(
       page.getByRole("button", { name: catalogs.en.submit, exact: true }),
     ).toBeEnabled();
+    const imageWidth = page
+      .getByLabel(catalogs.en.imageWidth, { exact: true })
+      .first();
+    await expect(imageWidth).toHaveRole("spinbutton");
+    await expect(imageWidth).toHaveValue("1200");
     const languageControl = page.getByRole("combobox", {
       name: catalogs.en.language,
     });
@@ -206,21 +191,10 @@ for (const isSystemAdmin of [false, true]) {
         .filter({ hasText: "fa" })
         .click();
     } else {
-      await expect(languageControl).toHaveCount(0);
+      await expect(languageControl).toBeDisabled();
     }
     await page
       .getByRole("button", { name: catalogs.en.submit, exact: true })
-      .click();
-    const confirmation = page.getByRole("dialog", {
-      name: catalogs.en.settingsChangeConfirm,
-      exact: true,
-    });
-    await expect(confirmation).toBeVisible();
-    // Firefox can report the scaled button stable between opening-motion phases.
-    // Wait for the dialog's real transition before the same pointer confirmation.
-    await expect(confirmation).not.toHaveClass(/\bant-zoom-(?:appear|enter)\b/);
-    await confirmation
-      .getByRole("button", { name: catalogs.en.yes, exact: true })
       .click();
     await expect(page.locator("html")).toHaveAttribute("lang", "fa");
     expect(writes).toHaveLength(1);

@@ -7,6 +7,7 @@ import {
   Routes,
   useLocation,
   useNavigate,
+  useOutletContext,
 } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,8 +21,10 @@ import {
   setUnauthorizedHandler,
 } from "@/shared/api";
 import { render, screen } from "@/test/render";
+import { deferred } from "@/test/deferred";
 
 import { DefaultLayout } from "./Default";
+import type { DefaultLayoutContext } from "./types";
 
 const mocks = vi.hoisted(() => {
   const account: Account = {
@@ -38,6 +41,7 @@ const mocks = vi.hoisted(() => {
 
   return {
     account,
+    reloadFinished: vi.fn(),
     core: {
       compact: false,
       currentRoute: "root",
@@ -111,13 +115,36 @@ const AccountPage = () => {
   );
 };
 
-const renderLayout = () =>
+const ContextConsumer = () => {
+  const { clearSession, currentUser, fetchCurrentUser } =
+    useOutletContext<DefaultLayoutContext>();
+
+  return (
+    <>
+      <output aria-label="account identity">{currentUser.id}</output>
+      <button
+        onClick={async () => {
+          await fetchCurrentUser();
+          mocks.reloadFinished();
+        }}
+        type="button"
+      >
+        Refresh account
+      </button>
+      <button onClick={clearSession} type="button">
+        Clear session
+      </button>
+    </>
+  );
+};
+
+const renderLayout = (content = <h1>Dashboard content</h1>) =>
   render(
     <MemoryRouter initialEntries={["/"]}>
       <Location />
       <Routes>
         <Route element={<DefaultLayout />} path="/">
-          <Route index element={<h1>Dashboard content</h1>} />
+          <Route index element={content} />
           <Route element={<AccountPage />} path="account" />
           <Route element={<h1>Users content</h1>} path="users" />
         </Route>
@@ -142,6 +169,33 @@ beforeEach(() => {
 });
 
 describe("DefaultLayout", () => {
+  it("exposes the accepted account, awaited reload and session cleanup to its children", async () => {
+    const response = deferred<Account>();
+    const updated = { ...mocks.account, lastName: "Updated" };
+    vi.mocked(getAccount)
+      .mockResolvedValueOnce(mocks.account)
+      .mockReturnValueOnce(response.promise);
+    const { user } = renderLayout(<ContextConsumer />);
+
+    expect(await screen.findByLabelText("account identity")).toHaveTextContent(
+      mocks.account.id,
+    );
+    await user.click(screen.getByRole("button", { name: "Refresh account" }));
+    expect(getAccount).toHaveBeenCalledTimes(2);
+    expect(mocks.reloadFinished).not.toHaveBeenCalled();
+
+    response.resolve(updated);
+    await waitFor(() =>
+      expect(mocks.core.setUser).toHaveBeenCalledWith(updated),
+    );
+    await waitFor(() => expect(mocks.reloadFinished).toHaveBeenCalledOnce());
+
+    await user.click(screen.getByRole("button", { name: "Clear session" }));
+    expect(clearAccessToken).toHaveBeenCalledOnce();
+    expect(mocks.core.setUser).toHaveBeenCalledWith();
+    await screen.findByRole("heading", { name: "Authentication" });
+  });
+
   it.each(["pointer", "keyboard"])(
     "closes the mobile drawer after %s navigation without remounting the layout",
     async (interaction) => {

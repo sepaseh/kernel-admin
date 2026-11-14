@@ -286,7 +286,10 @@ describe("authentication pages", () => {
     const { user } = renderPage(<ForgotPassPage />, "/auth/forgot-password");
 
     await user.type(screen.getByLabelText("mobile"), "09120000000");
-    await user.type(screen.getByLabelText("OTP Input 1"), "123456");
+    await user.type(
+      within(screen.getByRole("group")).getAllByRole("textbox")[0],
+      "123456",
+    );
     await user.type(screen.getByLabelText("newPassword"), "replacement-pass");
     await user.type(
       screen.getByLabelText("confirmPassword"),
@@ -312,7 +315,10 @@ describe("authentication pages", () => {
     await user.type(screen.getByLabelText("firstName"), "Ada");
     await user.type(screen.getByLabelText("lastName"), "Lovelace");
     await user.type(screen.getByLabelText("mobile"), "09120000000");
-    await user.type(screen.getByLabelText("OTP Input 1"), "123456");
+    await user.type(
+      within(screen.getByRole("group")).getAllByRole("textbox")[0],
+      "123456",
+    );
     await user.type(screen.getByLabelText("password"), "registration-pass");
     await user.type(
       screen.getByLabelText("confirmPassword"),
@@ -403,7 +409,10 @@ describe("account page", () => {
     await user.clear(email);
     await user.type(email, "augusta@example.com");
     await user.click(screen.getByRole("button", { name: "sendCode" }));
-    await user.type(screen.getByLabelText("OTP Input 1"), "123456");
+    await user.type(
+      within(screen.getByRole("group")).getAllByRole("textbox")[0],
+      "123456",
+    );
     await user.click(screen.getByRole("button", { name: "verifyEmail" }));
 
     expect(api.requestEmailVerification).toHaveBeenCalledWith(
