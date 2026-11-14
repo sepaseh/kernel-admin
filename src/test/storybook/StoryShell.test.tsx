@@ -9,15 +9,35 @@ import {
 import { ConfigProvider, theme as antdTheme } from "antd";
 import { useContext } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router";
-import { afterEach, describe, expect, it } from "vitest";
+import { useLocation, useNavigate, useOutletContext } from "react-router";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { PreviewFrame } from "../../../.storybook/PreviewFrame";
 import { useCore } from "@/app/hooks";
+import { fetchCurrentUser } from "@/features/account/api";
+import type { DefaultLayoutContext } from "@/layouts/default";
 import { i18nInstance } from "@/shared/i18n";
 
-import { sampleLanguages, sampleSettings } from "./fixtures";
+import { sampleAccount, sampleLanguages, sampleSettings } from "./fixtures";
 import { StoryShell } from "./StoryShell";
+
+vi.mock("@/features/account/api", () => ({ fetchCurrentUser: vi.fn() }));
+
+const SessionProbe = () => {
+  const { currentUser, fetchCurrentUser, clearSession } =
+    useOutletContext<DefaultLayoutContext>();
+  return (
+    <>
+      <output aria-label="Current story identity">
+        {currentUser.firstName}
+      </output>
+      <button onClick={() => void fetchCurrentUser()}>
+        Reload story identity
+      </button>
+      <button onClick={clearSession}>Clear story identity</button>
+    </>
+  );
+};
 
 const lightTheme = {
   colorBgBase: "#fff",
@@ -211,5 +231,35 @@ describe("StoryShell appearance ownership", () => {
     await screen.findByRole("button", { name: "Submit" });
     expect(document.documentElement).toHaveAttribute("lang", "en");
     expect(document.documentElement).toHaveAttribute("dir", "rtl");
+  });
+
+  it("supplies and reloads current-user Outlet context and handles session cleanup", async () => {
+    vi.mocked(fetchCurrentUser).mockResolvedValueOnce({
+      ...sampleAccount,
+      firstName: "Updated story user",
+    });
+    render(
+      <StoryShell>
+        <SessionProbe />
+      </StoryShell>,
+    );
+    expect(screen.getByLabelText("Current story identity")).toHaveTextContent(
+      sampleAccount.firstName!,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Reload story identity" }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Current story identity")).toHaveTextContent(
+        "Updated story user",
+      ),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Clear story identity" }),
+    );
+    expect(screen.getByText("Session cleared")).toBeVisible();
+    expect(screen.queryByLabelText("Current story identity")).toBeNull();
   });
 });

@@ -2,19 +2,18 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Route, Routes } from "react-router";
 import { expect, within } from "storybook/test";
 
-import { useCore } from "@/app/hooks";
+import { getAccessToken } from "@/shared/api";
 import { StoryShell } from "@/test/storybook/StoryShell";
 
 import { AuthLayout } from "./Auth";
 
 const AuthContent = () => {
-  const { user } = useCore();
   return (
     <section style={{ display: "grid", gap: 16 }}>
       <h1>Sign in</h1>
       <p>Authentication content renders inside the layout.</p>
       <output aria-label="Session state">
-        {user ? "Signed in" : "Signed out"}
+        {getAccessToken() ? "Signed in" : "Signed out"}
       </output>
     </section>
   );

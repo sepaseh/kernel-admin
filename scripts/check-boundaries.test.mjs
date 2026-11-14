@@ -212,41 +212,32 @@ test("features reject another feature's UI, private helpers and barrels in every
   );
 });
 
-test("authentication and role capabilities retain only their approved consumer and dependency kind", () => {
+test("retired account imports cannot retain broad authentication or role capabilities", () => {
   for (const [source, target, typeOnly] of [
     ["src/features/account/Account.tsx", "src/features/auth/api.ts", false],
     ["src/features/account/Account.tsx", "src/features/auth/types.ts", true],
     ["src/features/account/api.ts", "src/features/auth/types.ts", true],
     ["src/features/account/types.ts", "src/features/roles/types.ts", true],
   ]) {
-    const specifier = "@/" + target.slice("src/".length).replace(/\.ts$/, "");
-    const owner = path.join(root, source);
-    const resolved = path.join(root, target);
-    assert.equal(
-      check(specifier, resolved, owner, typeOnly),
-      undefined,
-      source,
-    );
-    assert.match(
-      check(specifier, resolved, owner, !typeOnly),
-      /(?:exact erased|Features may import another feature only through their exact approved)/,
-      source,
-    );
     assert.match(
       check(
-        specifier,
-        resolved,
-        path.join(root, "src/features/settings/Settings.tsx"),
+        "@/" + target.slice(4).replace(/\.ts$/, ""),
+        path.join(root, target),
+        path.join(root, source),
         typeOnly,
       ),
-      /Features may import another feature only through their exact approved/,
-      source,
+      /(?:exact erased|exact approved)/,
     );
   }
 });
 
 test("authentication screens receive only their named services, hook and erased request model", () => {
   const capabilities = [
+    [
+      "src/features/account/components/password-form/PasswordForm.tsx",
+      ["changePassword"],
+      ["ChangePasswordParams"],
+    ],
     ["src/features/login/Login.tsx", ["login"], ["LoginParams"]],
     [
       "src/features/register/Register.tsx",
@@ -331,6 +322,51 @@ test("authentication screens receive only their named services, hook and erased 
     ),
     /exact approved/,
   );
+});
+
+test("account models receive only the named erased user and permission vocabulary", () => {
+  const owner = path.join(root, "src/features/account/types.ts");
+  for (const [target, name, forbidden] of [
+    ["roles", "PermissionKey", "Role"],
+    ["users", "User", "UserForm"],
+  ]) {
+    const resolved = path.join(root, "src/features/" + target + "/index.ts");
+    for (const syntax of [
+      "import type { " + name + " } from '@/features/" + target + "';",
+      "export type { " + name + " } from '@/features/" + target + "';",
+    ]) {
+      const [edge] = inspectImports(syntax);
+      assert.equal(
+        check(
+          edge.specifier,
+          resolved,
+          owner,
+          edge.typeOnly,
+          undefined,
+          edge.bindings,
+        ),
+        undefined,
+      );
+    }
+    for (const syntax of [
+      "import { " + name + " } from '@/features/" + target + "';",
+      "import type { " + forbidden + " } from '@/features/" + target + "';",
+      "export type * from '@/features/" + target + "';",
+    ]) {
+      const [edge] = inspectImports(syntax);
+      assert.match(
+        check(
+          edge.specifier,
+          resolved,
+          owner,
+          edge.typeOnly,
+          undefined,
+          edge.bindings,
+        ),
+        /(?:exact erased|exact approved)/,
+      );
+    }
+  }
 });
 
 test("user screens receive only the named role list service and erased role model", () => {
@@ -493,6 +529,9 @@ test("migrated screens receive only the erased Default layout context contract",
     );
   };
   for (const source of [
+    "src/features/account/Account.tsx",
+    "src/features/account/components/profile-form/ProfileForm.tsx",
+    "src/features/account/components/password-form/PasswordForm.tsx",
     "src/features/calendar/Calendar.tsx",
     "src/features/files/Files.tsx",
     "src/features/roles/Roles.tsx",
@@ -523,7 +562,7 @@ test("migrated screens receive only the erased Default layout context contract",
   assert.match(
     inspect(
       'import type { DefaultLayoutContext } from "@/layouts/default";',
-      "src/features/account/Account.tsx",
+      "src/features/account/api.ts",
     ),
     /only the approved app hooks/,
   );
@@ -989,10 +1028,7 @@ test("the published phase retains every admitted production module", async () =>
       !file.endsWith(".stories.tsx") &&
       !/\.(?:test|spec)\./.test(file),
   );
-  assert.equal(
-    result.files,
-    publication.applicationReady ? 135 : production.length,
-  );
+  assert.equal(result.files, production.length);
   assert.deepEqual(result.violations, []);
 });
 

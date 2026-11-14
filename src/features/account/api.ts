@@ -1,51 +1,18 @@
-import { apiClient } from "../../shared/api/index.ts";
-import type { OtpRequestProps } from "../auth/types.ts";
-import type {
-  Account,
-  EmailVerificationRequest,
-  UpdateProfileRequest,
-  UpdateUsernameRequest,
-  VerifyEmailRequest,
-} from "./types.ts";
+import { apiClient } from "@/shared/api";
 
-const basePath = "/account";
+import type { CurrentUser, ProfileRequest } from "./types";
 
-export const getAccount = async (signal?: AbortSignal): Promise<Account> => {
-  return apiClient.get<Account>(`${basePath}/me`, { signal });
-};
-
-export const requestEmailVerification = async (
-  params: EmailVerificationRequest,
+export const fetchCurrentUser = async (
   signal?: AbortSignal,
-): Promise<OtpRequestProps> => {
-  return apiClient.post<OtpRequestProps>(
-    `${basePath}/request-email-verification`,
-    params,
-    { signal },
-  );
+): Promise<CurrentUser> => {
+  return apiClient.get<CurrentUser>("/account/me", { signal });
 };
 
 export const updateProfile = async (
-  params: UpdateProfileRequest,
+  params: ProfileRequest,
   signal?: AbortSignal,
-): Promise<Account> => {
-  return apiClient.patch<Account>(`${basePath}/update-profile`, params, {
+): Promise<CurrentUser> => {
+  return apiClient.patch<CurrentUser>("/account/update-profile", params, {
     signal,
   });
-};
-
-export const updateUsername = async (
-  params: UpdateUsernameRequest,
-  signal?: AbortSignal,
-): Promise<Account> => {
-  return apiClient.post<Account>(`${basePath}/update-username`, params, {
-    signal,
-  });
-};
-
-export const verifyEmail = async (
-  params: VerifyEmailRequest,
-  signal?: AbortSignal,
-): Promise<void> => {
-  return apiClient.post<void>(`${basePath}/verify-email`, params, { signal });
 };

@@ -9,7 +9,8 @@ import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import type { RouteKey } from "@/app/config/routes";
 import { CoreContext, type CoreContextValue } from "@/app/contexts";
 import { AntdProvider } from "@/app/providers";
-import type { Account } from "@/features/account";
+import type { CurrentUser } from "@/features/account";
+import { fetchCurrentUser } from "@/features/account/api";
 import type { ApplicationLanguage, Settings } from "@/features/settings/types";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { defaultLogos } from "@/shared/config";
@@ -24,7 +25,7 @@ type StoryShellProps = {
   initialEntries?: string[];
   initialLanguage?: ApplicationLanguage;
   initialTheme?: Theme;
-  initialUser?: Account;
+  initialUser?: CurrentUser;
   withUser?: boolean;
 };
 
@@ -76,7 +77,7 @@ export const StoryShell = ({
   const [theme, setTheme] = useState(appearance?.theme ?? initialTheme);
   const [toolbarLanguage, setToolbarLanguage] = useState(appearance?.language);
   const [toolbarTheme, setToolbarTheme] = useState(appearance?.theme);
-  const [user, setUser] = useState<CoreContextValue["user"]>(
+  const [user, setUser] = useState<CurrentUser | undefined>(
     withUser ? initialUser : undefined,
   );
   if (toolbarLanguage !== appearance?.language) {
@@ -104,10 +105,8 @@ export const StoryShell = ({
     setCurrentRoute,
     setSettings,
     setTheme,
-    setUser,
     settings,
     theme,
-    user,
   };
 
   useEffect(() => {

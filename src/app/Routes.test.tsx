@@ -37,7 +37,6 @@ const routeState = vi.hoisted(() => ({
 vi.mock("@/app/hooks/useCore", () => ({
   useCore: () => ({
     setCurrentRoute: routeState.setCurrentRoute,
-    user: {},
   }),
 }));
 vi.mock("@/app/providers/core/Core", async () => {
@@ -61,7 +60,9 @@ vi.mock("@/app/providers/antd/Antd", async () => {
 vi.mock("@/app/lib", () => ({
   hasRouteAccess: (route: string) => routeState.allowedRoutes.has(route),
 }));
-vi.mock("@/layouts/default", () => ({ DefaultLayout: () => <Outlet /> }));
+vi.mock("@/layouts/default", () => ({
+  DefaultLayout: () => <Outlet context={{ currentUser: {} }} />,
+}));
 vi.mock("@/features/account", () => ({ AccountPage: () => "Account page" }));
 vi.mock("@/features/dashboard", () => ({
   DashboardPage: () => {

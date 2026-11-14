@@ -206,7 +206,8 @@
         "src/app/providers/antd/Antd.tsx",
         "src/app/config/routes.ts",
         "src/app/lib/access.ts",
-        "src/app/not-found/NotFound.tsx"
+        "src/app/not-found/NotFound.tsx",
+        "src/layouts/default/Default.tsx"
       ],
       "contracts": [
         "docs/architecture.md",
@@ -223,7 +224,33 @@
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [".agents/rules/react.md", ".agents/rules/localization.md"],
-      "limitations": "Client access rules control UI visibility. The HTTP API enforces authorization."
+      "limitations": "Client access rules control UI visibility. The HTTP API enforces authorization. The default layout owns current-user data through Outlet context; Core owns accepted settings and appearance preferences."
+    },
+    {
+      "id": "account-profile",
+      "when": "Change current-user profile, password forms, account reload or session continuation.",
+      "owners": [
+        "src/features/account/Account.tsx",
+        "src/features/account/components/profile-form/ProfileForm.tsx",
+        "src/features/account/components/password-form/PasswordForm.tsx",
+        "src/features/account/api.ts",
+        "src/layouts/default/Default.tsx"
+      ],
+      "contracts": [
+        "src/features/account/types.ts",
+        "src/layouts/default/types.ts",
+        "docs/authentication.md"
+      ],
+      "tests": [
+        "src/features/account/Account.test.tsx",
+        "src/features/account/components/profile-form/ProfileForm.test.tsx",
+        "src/features/account/components/password-form/PasswordForm.test.tsx",
+        "src/features/account/api.test.ts",
+        "src/layouts/default/Default.test.tsx"
+      ],
+      "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
+      "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
+      "limitations": "Forms use direct cancellation, synchronous submission locks and session-generation guards. A successful profile PATCH warrants success feedback even if reloading the current user fails."
     },
     {
       "id": "active-language",

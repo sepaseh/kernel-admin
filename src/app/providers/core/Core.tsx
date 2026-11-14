@@ -29,7 +29,6 @@ export const CoreProvider = ({ children }: PropsWithChildren) => {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings>();
   const [theme, setTheme] = useState(getTheme);
-  const [user, setUser] = useState<CoreContextValue["user"]>();
   const { cancel, start } = useAbortController();
   const language = settings?.language;
 
@@ -132,9 +131,7 @@ export const CoreProvider = ({ children }: PropsWithChildren) => {
         setCurrentRoute,
         setSettings: changeSettings,
         setTheme: changeTheme,
-        setUser,
         theme,
-        user,
       }}
     >
       {children}

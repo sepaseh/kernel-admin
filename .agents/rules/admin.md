@@ -19,8 +19,7 @@ These alias conventions apply to `src`; pure catalog data references local
 data modules within `src/shared/i18n`.
 
 Use named `type` shapes and existing component/hook conventions. Prefer derived
-state and accessible controls. Follow the owning screen's direct request lifecycle
-or its existing request hook. Preserve request
+state and accessible controls. Follow the owning screen's direct request lifecycle, cancellation and submission locks. Preserve request
 identity across retries and authentication changes. See
 [request reliability](../../docs/authentication.md).
 Use root ESLint for configured import/type rules and the AST boundary checker for
