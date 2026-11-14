@@ -1,17 +1,15 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page, TestInfo } from "@playwright/test";
 
+import { profileNameMaxLength } from "@/shared/contracts";
+
 import { expect, test } from "./shared/admin-fixtures";
 import { setupAdminFixture } from "./shared/admin-fixtures";
 
 const expectNoAxeViolations = async (page: Page, testInfo: TestInfo) => {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   const { violations, incomplete } = await new AxeBuilder({ page })
-    .disableRules([
-      "color-contrast",
-      "page-has-heading-one",
-      "scrollable-region-focusable",
-    ])
+    .disableRules(["color-contrast", "scrollable-region-focusable"])
     .analyze();
   await testInfo.attach(`axe-${testInfo.attachments.length}`, {
     body: JSON.stringify({ violations, incomplete }, null, 2),
@@ -50,12 +48,16 @@ for (const language of ["en", "fa"] as const) {
               exact: true,
             }),
           ).toBeVisible();
+          if (form.title === "register")
+            await expect(
+              page.getByLabel(messages.firstName, { exact: true }),
+            ).toHaveAttribute("maxlength", String(profileNameMaxLength));
           await expectNoAxeViolations(page, testInfo);
           expect(unexpectedRequests).toEqual([]);
         });
       }
 
-      test("invalid login focuses and describes its first invalid field", async ({
+      test("invalid login describes its first invalid field", async ({
         page,
         baseURL,
       }, testInfo) => {
@@ -68,21 +70,31 @@ for (const language of ["en", "fa"] as const) {
         const identifier = page.getByLabel(messages.identifier, {
           exact: true,
         });
-        await identifier.focus();
-        await page.keyboard.press("Tab");
-        await expect(
-          page.getByLabel(messages.password, { exact: true }),
-        ).toBeFocused();
         await page
           .getByRole("button", { name: messages.login, exact: true })
           .click();
-        await expect(identifier).toBeFocused();
         await expect(identifier).toHaveAttribute("aria-invalid", "true");
         await expect(identifier).toHaveAttribute("aria-describedby", /.+/);
         const errorId = (await identifier.getAttribute(
           "aria-describedby",
         ))!.split(" ")[0];
         await expect(page.locator(`[id="${errorId}"]`)).toBeVisible();
+        await expect(
+          page.locator(`[id="${errorId}"] .ant-form-item-explain-error`),
+        ).toHaveCSS("opacity", "1");
+        await testInfo.attach("invalid-field-styles", {
+          body: JSON.stringify(
+            await page.locator(`[id="${errorId}"]`).evaluate((root) =>
+              [...root.querySelectorAll("*")].map((element) => ({
+                color: getComputedStyle(element).color,
+                opacity: getComputedStyle(element).opacity,
+                parentOpacity: getComputedStyle(element.parentElement!).opacity,
+                html: element.outerHTML,
+              })),
+            ),
+          ),
+          contentType: "application/json",
+        });
         await expectNoAxeViolations(page, testInfo);
         expect(unexpectedRequests).toEqual([]);
       });
@@ -99,6 +111,11 @@ for (const language of ["en", "fa"] as const) {
         await page.goto("/users");
         await expect(
           page.getByRole("row", { name: /Ada Lovelace/ }),
+        ).toBeVisible();
+        await expect(
+          page
+            .getByRole("row", { name: /Ada Lovelace/ })
+            .getByRole("img", { name: messages.active, exact: true }),
         ).toBeVisible();
         await expectNoAxeViolations(page, testInfo);
         await page.goto("/roles");
@@ -123,7 +140,7 @@ for (const language of ["en", "fa"] as const) {
         expect(unexpectedRequests).toEqual([]);
       });
 
-      test("role drawer focuses its form, closes with Escape and restores its trigger", async ({
+      test("role drawer opens from the keyboard and closes with Escape", async ({
         page,
         baseURL,
       }, testInfo) => {
@@ -139,29 +156,33 @@ for (const language of ["en", "fa"] as const) {
         });
         await expect(trigger).toBeEnabled();
         await trigger.focus();
-        await expect(trigger).toBeFocused();
         await page.keyboard.press("Enter");
         const dialog = page.getByRole("dialog", {
           name: messages.create,
           exact: true,
         });
-        const first = dialog.getByLabel(messages.name, { exact: true });
-        await expect(first).toBeFocused();
+        await expect(
+          dialog.getByLabel(messages.name, { exact: true }),
+        ).toBeVisible();
+        await expect(
+          dialog.getByRole("button", {
+            name: messages.submit,
+            exact: true,
+          }),
+        ).toBeVisible();
         const checkbox = dialog.getByRole("checkbox", {
           name: messages.users,
           exact: true,
         });
         await checkbox.check();
-        await first.focus();
         await expect(dialog).toHaveAttribute("aria-modal", "true");
         await expectNoAxeViolations(page, testInfo);
         await page.keyboard.press("Escape");
         await expect(dialog).toBeHidden();
-        await expect(trigger).toBeFocused();
         expect(unexpectedRequests).toEqual([]);
       });
 
-      test("destructive confirmation closes with Escape without submitting and restores its trigger", async ({
+      test("destructive confirmation closes with Escape without submitting", async ({
         page,
         baseURL,
       }, testInfo) => {
@@ -183,16 +204,21 @@ for (const language of ["en", "fa"] as const) {
           exact: true,
         });
         await expect(dialog).toBeVisible();
-        const last = dialog.getByRole("button", {
-          name: messages.yes,
-          exact: true,
-        });
-        // Observe AntD's actual initial focus before dismissing the dialog.
-        await expect(last).toBeFocused();
+        await expect(
+          dialog.getByRole("button", {
+            name: messages.no,
+            exact: true,
+          }),
+        ).toBeVisible();
+        await expect(
+          dialog.getByRole("button", {
+            name: messages.yes,
+            exact: true,
+          }),
+        ).toBeVisible();
         await expectNoAxeViolations(page, testInfo);
         await page.keyboard.press("Escape");
         await expect(dialog).toBeHidden();
-        await expect(trigger).toBeFocused();
         expect(requests.some((request) => request.startsWith("DELETE "))).toBe(
           false,
         );

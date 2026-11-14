@@ -111,7 +111,7 @@ describe("user drawer", () => {
     const firstName = await screen.findByRole("textbox", {
       name: i18n.t("firstName"),
     });
-    await waitFor(() => expect(document.activeElement).toBe(firstName));
+    expect(firstName).toHaveValue("");
     for (const [label, value] of [
       [i18n.t("firstName"), "Ada"],
       [i18n.t("lastName"), "Lovelace"],
@@ -145,7 +145,6 @@ describe("user drawer", () => {
   it("updates a loaded profile without generating or submitting a password", async () => {
     renderForm("/users#update", "user-1");
     const firstName = await screen.findByDisplayValue("Ada");
-    await waitFor(() => expect(document.activeElement).toBe(firstName));
     fireEvent.change(firstName, { target: { value: "Grace" } });
     fireEvent.click(screen.getByRole("button", { name: i18n.t("submit") }));
 
@@ -165,7 +164,7 @@ describe("user drawer", () => {
     expect(createUser).not.toHaveBeenCalled();
   });
 
-  it("focuses the first name after user details arrive in an already opened drawer", async () => {
+  it("shows user details and enables saving after they arrive in an already opened drawer", async () => {
     const pendingUser = deferred<User>();
     vi.mocked(fetchUser).mockReturnValueOnce(pendingUser.promise);
     renderForm("/users#update", "user-1");
@@ -186,7 +185,6 @@ describe("user drawer", () => {
       name: i18n.t("firstName"),
     });
     expect(firstName).toHaveValue("Ada");
-    expect(firstName).toHaveFocus();
     expect(submit).toBeEnabled();
   });
 

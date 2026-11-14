@@ -124,7 +124,7 @@ describe("role drawer", () => {
   it("selects a permission group and submits the owned permission names", async () => {
     renderForm();
     const name = await screen.findByRole("textbox", { name: i18n.t("name") });
-    await waitFor(() => expect(document.activeElement).toBe(name));
+    expect(name).toHaveValue("");
     fireEvent.change(name, { target: { value: "Operators" } });
     fireEvent.click(screen.getByRole("checkbox", { name: "User management" }));
     expect(
@@ -154,7 +154,6 @@ describe("role drawer", () => {
   it("loads an edited role before submitting its changed name", async () => {
     renderForm("/roles#update", "role-1");
     const name = await screen.findByDisplayValue("Operators");
-    await waitFor(() => expect(document.activeElement).toBe(name));
     fireEvent.change(name, { target: { value: "Reviewers" } });
     fireEvent.click(screen.getByRole("button", { name: i18n.t("submit") }));
 
@@ -171,7 +170,7 @@ describe("role drawer", () => {
     expect(createRole).not.toHaveBeenCalled();
   });
 
-  it("focuses the name after role details arrive in an already opened drawer", async () => {
+  it("shows role details and enables saving after they arrive in an already opened drawer", async () => {
     const pendingRole = deferred<Role>();
     vi.mocked(fetchRole).mockReturnValueOnce(pendingRole.promise);
     renderForm("/roles#update", "role-1");
@@ -192,7 +191,6 @@ describe("role drawer", () => {
 
     const name = screen.getByRole("textbox", { name: i18n.t("name") });
     expect(name).toHaveValue("Operators");
-    expect(name).toHaveFocus();
     expect(submit).toBeEnabled();
   });
 

@@ -19,7 +19,7 @@ const fillOtp = async (page: Page, otp: string) => {
   const inputs = page
     .getByRole("group", { name: "Verification code", exact: true })
     .getByRole("textbox");
-
+  await expect(inputs).toHaveCount(otp.length);
   for (const [index, digit] of [...otp].entries()) {
     await inputs.nth(index).fill(digit);
   }

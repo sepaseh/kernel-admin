@@ -1,6 +1,6 @@
 import "@/shared/i18n/date";
 
-import { theme as antdTheme } from "antd";
+import { ConfigProvider, theme as antdTheme } from "antd";
 import dayjs from "dayjs";
 import type { ReactNode } from "react";
 import { useContext, useEffect, useState } from "react";
@@ -118,31 +118,33 @@ export const StoryShell = ({
 
   return (
     <CoreContext.Provider value={value}>
-      <AntdProvider>
-        <StorySurface language={language}>
-          <MemoryRouter initialEntries={initialEntries}>
-            <Routes>
-              <Route
-                element={
-                  <Outlet
-                    context={
-                      user
-                        ? ({
-                            currentUser: user,
-                            fetchCurrentUser: async () => undefined,
-                            clearSession: () => setUser(undefined),
-                          } satisfies DefaultLayoutContext)
-                        : undefined
-                    }
-                  />
-                }
-              >
-                <Route path="*" element={children} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </StorySurface>
-      </AntdProvider>
+      <ConfigProvider theme={{ inherit: false }}>
+        <AntdProvider>
+          <StorySurface language={language}>
+            <MemoryRouter initialEntries={initialEntries}>
+              <Routes>
+                <Route
+                  element={
+                    <Outlet
+                      context={
+                        user
+                          ? ({
+                              currentUser: user,
+                              fetchCurrentUser: async () => undefined,
+                              clearSession: () => setUser(undefined),
+                            } satisfies DefaultLayoutContext)
+                          : undefined
+                      }
+                    />
+                  }
+                >
+                  <Route path="*" element={children} />
+                </Route>
+              </Routes>
+            </MemoryRouter>
+          </StorySurface>
+        </AntdProvider>
+      </ConfigProvider>
     </CoreContext.Provider>
   );
 };

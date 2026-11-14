@@ -139,6 +139,7 @@ for (const isSystemAdmin of [false, true]) {
         >;
         writes.push(payload);
         if (isSystemAdmin) expect(payload.language_code).toBe("fa");
+        else expect(payload).not.toHaveProperty("language_code");
         expect(payload).toHaveProperty("dark_theme");
         expect(payload).toHaveProperty("light_theme");
         expect(payload.image_settings).toEqual(
@@ -175,9 +176,11 @@ for (const isSystemAdmin of [false, true]) {
     await expect(
       page.getByRole("button", { name: catalogs.en.submit, exact: true }),
     ).toBeEnabled();
-    await expect(
-      page.getByRole("spinbutton", { name: catalogs.en.imageWidth }).first(),
-    ).toHaveValue("1200");
+    const imageWidth = page
+      .getByLabel(catalogs.en.imageWidth, { exact: true })
+      .first();
+    await expect(imageWidth).toHaveRole("spinbutton");
+    await expect(imageWidth).toHaveValue("1200");
     const languageControl = page.getByRole("combobox", {
       name: catalogs.en.language,
     });
