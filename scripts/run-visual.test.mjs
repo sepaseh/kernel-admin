@@ -391,6 +391,76 @@ test("comparison reads reviewed provenance without marking or overwriting baseli
   assert.equal(fixture.events.at(-1), "release");
 });
 
+test("compatible Node upgrades warn once, retain both runtimes and preserve image comparison failures", async (context) => {
+  const warnings = [];
+  context.mock.method(console, "warn", (message) => warnings.push(message));
+  for (const exitCode of [0, 1]) {
+    const fixture = syntheticVisualDrivers();
+    const baseline = await fixture.drivers.baseline();
+    const metadata = await fixture.drivers.metadata();
+    fixture.events.length = 0;
+    const runtime = {
+      playwright: metadata.playwright,
+      arch: "x64",
+      node: "v24.22.2",
+      nodeRange: ">=24.15.0 <25",
+      osRelease: "synthetic-os",
+      strictProvenance: true,
+    };
+    const reviewed = {
+      ...baseline,
+      arch: runtime.arch,
+      node: "v24.18.0",
+      osRelease: runtime.osRelease,
+      generatedAt: "2026-01-15T11:00:00Z",
+    };
+    const current = {
+      ...metadata,
+      arch: runtime.arch,
+      node: runtime.node,
+      nodeRange: runtime.nodeRange,
+      osRelease: runtime.osRelease,
+      generatedAt: "2026-01-16T11:00:00Z",
+    };
+    const originalReviewed = structuredClone(reviewed);
+    fixture.drivers.runtime = async () => runtime;
+    fixture.drivers.baseline = async () => reviewed;
+    fixture.drivers.metadata = async () => current;
+    fixture.drivers.capture = async ({ update }) => {
+      fixture.events.push("capture");
+      assert.equal(update, false);
+      return exitCode;
+    };
+
+    const result = await runVisual({
+      platform: "win32",
+      drivers: fixture.drivers,
+    });
+
+    assert.equal(result.exitCode, exitCode);
+    assert.equal(result.node, "v24.22.2");
+    assert.equal(result.baselineIdentity.node, "v24.18.0");
+    assert.equal(result.nodeRange, runtime.nodeRange);
+    assert.deepEqual(reviewed, originalReviewed);
+    assert.equal(
+      fixture.events.filter((event) => event === "capture").length,
+      1,
+    );
+    assert.equal(
+      fixture.events.filter((event) => event === "images").length,
+      2,
+    );
+    assert.equal(fixture.events.includes("pending"), false);
+    assert.equal(fixture.events.includes("result"), true);
+    assert.equal(fixture.events.at(-1), "release");
+  }
+  assert.equal(warnings.length, 2);
+  for (const warning of warnings) {
+    assert.match(warning, /v24\.18\.0/);
+    assert.match(warning, /v24\.22\.2/);
+  }
+});
+
 for (const invalid of [null, false, 0, undefined, "", {}])
   test(`comparison rejects malformed baseline ${JSON.stringify(invalid)} before acquiring fixtures`, async () => {
     const fixture = syntheticVisualDrivers();
@@ -409,6 +479,7 @@ test("visual orchestration passes strict runtime identity through before acquiri
     playwright: "synthetic-version",
     arch: "x64",
     node: "v24.18.0",
+    nodeRange: ">=24.15.0 <25",
     osRelease: "synthetic-os",
     strictProvenance: true,
   });
