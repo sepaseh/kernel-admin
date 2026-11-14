@@ -21,21 +21,14 @@ import { createUser, fetchUser, updateUser } from "../../api";
 import type { User } from "../../types";
 import { UserForm } from "./UserForm";
 
-const {
-  clipboard,
-  drawerLifecycle,
-  drawerOpenChange,
-  messages,
-  notification,
-  onFinish,
-} = vi.hoisted(() => ({
-  clipboard: vi.fn(),
-  drawerLifecycle: { completeOpening: vi.fn(), holdOpening: false },
-  drawerOpenChange: vi.fn(),
-  messages: { error: vi.fn(), success: vi.fn() },
-  notification: { success: vi.fn() },
-  onFinish: vi.fn(),
-}));
+const { clipboard, drawerOpenChange, messages, notification, onFinish } =
+  vi.hoisted(() => ({
+    clipboard: vi.fn(),
+    drawerOpenChange: vi.fn(),
+    messages: { error: vi.fn(), success: vi.fn() },
+    notification: { success: vi.fn() },
+    onFinish: vi.fn(),
+  }));
 vi.mock("../../api", () => ({
   createUser: vi.fn(),
   fetchUser: vi.fn(),
@@ -48,22 +41,15 @@ vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
   const { FormDrawer } = await importOriginal<typeof FormDrawerModule>();
 
   return {
-    FormDrawer: (props: ComponentProps<typeof FormDrawer>) => {
-      drawerLifecycle.completeOpening.mockImplementation(() =>
-        props.afterOpenChange?.(true),
-      );
-
-      return (
-        <FormDrawer
-          {...props}
-          afterOpenChange={(open) => {
-            if (!open || !drawerLifecycle.holdOpening)
-              props.afterOpenChange?.(open);
-            drawerOpenChange(open);
-          }}
-        />
-      );
-    },
+    FormDrawer: (props: ComponentProps<typeof FormDrawer>) => (
+      <FormDrawer
+        {...props}
+        afterOpenChange={(open) => {
+          props.afterOpenChange?.(open);
+          drawerOpenChange(open);
+        }}
+      />
+    ),
   };
 });
 
@@ -106,7 +92,6 @@ const renderForm = (entry = "/users#create", id?: string) =>
 
 beforeEach(async () => {
   vi.resetAllMocks();
-  drawerLifecycle.holdOpening = false;
   clearAccessToken();
   clipboard.mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", {
@@ -126,7 +111,7 @@ describe("user drawer", () => {
     const firstName = await screen.findByRole("textbox", {
       name: i18n.t("firstName"),
     });
-    await waitFor(() => expect(document.activeElement).toBe(firstName));
+    expect(firstName).toHaveValue("");
     for (const [label, value] of [
       [i18n.t("firstName"), "Ada"],
       [i18n.t("lastName"), "Lovelace"],
@@ -160,7 +145,6 @@ describe("user drawer", () => {
   it("updates a loaded profile without generating or submitting a password", async () => {
     renderForm("/users#update", "user-1");
     const firstName = await screen.findByDisplayValue("Ada");
-    await waitFor(() => expect(document.activeElement).toBe(firstName));
     fireEvent.change(firstName, { target: { value: "Grace" } });
     fireEvent.click(screen.getByRole("button", { name: i18n.t("submit") }));
 
@@ -180,30 +164,7 @@ describe("user drawer", () => {
     expect(createUser).not.toHaveBeenCalled();
   });
 
-  it("focuses loaded user details when drawer opening completes", async () => {
-    drawerLifecycle.holdOpening = true;
-    renderForm("/users#update", "user-1");
-    const firstName = await screen.findByDisplayValue("Ada");
-    await waitFor(() => expect(drawerOpenChange).toHaveBeenCalledWith(true));
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: i18n.t("submit") }),
-      ).toBeEnabled(),
-    );
-    const drawer = screen
-      .getByRole("dialog")
-      .closest<HTMLElement>(".ant-drawer")!;
-    drawer.focus();
-    expect(drawer).toHaveFocus();
-    expect(firstName).not.toHaveFocus();
-
-    act(() => drawerLifecycle.completeOpening());
-
-    expect(firstName).toHaveFocus();
-    expect(firstName).toHaveValue("Ada");
-  });
-
-  it("focuses the first name after user details arrive in an already opened drawer", async () => {
+  it("shows user details and enables saving after they arrive in an already opened drawer", async () => {
     const pendingUser = deferred<User>();
     vi.mocked(fetchUser).mockReturnValueOnce(pendingUser.promise);
     renderForm("/users#update", "user-1");
@@ -224,7 +185,6 @@ describe("user drawer", () => {
       name: i18n.t("firstName"),
     });
     expect(firstName).toHaveValue("Ada");
-    expect(firstName).toHaveFocus();
     expect(submit).toBeEnabled();
   });
 

@@ -81,8 +81,9 @@ export const LoadError: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    const message = await body.findByText("Synthetic roles unavailable");
-    await waitFor(() => expect(message).toBeVisible());
+    await waitFor(() =>
+      expect(body.getByText("Synthetic roles unavailable")).toBeVisible(),
+    );
     await expect(canvas.getByRole("table")).toBeVisible();
   },
 };

@@ -20,7 +20,7 @@ Follow the owning screen's direct request lifecycle. Authentication, account and
 
 For interface changes, read [DESIGN](../DESIGN.md), the closest `*.stories.tsx`, and the canonical [React](../.agents/rules/react.md) and [styling](../.agents/rules/styling.md) rules. Keep React, Ant Design/antd-style, React Router and Axios. Reuse component props and semantic tokens before adding custom styling.
 
-Cover the relevant populated, empty, loading, initial failure, retained-data refresh failure, validation, submitting and permitted/read-only states. Preserve keyboard focus, reduced motion, narrow layouts, RTL/LTR and light/dark/compact behavior.
+Cover the relevant populated, empty, loading, initial failure, retained-data refresh failure, validation, submitting and permitted/read-only states. Preserve native keyboard interaction, reduced motion, narrow layouts, RTL/LTR and light/dark/compact behavior.
 
 ## 3. Connect routes, permissions and labels
 

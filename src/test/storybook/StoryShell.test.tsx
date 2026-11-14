@@ -63,7 +63,9 @@ const AppearanceProbe = () => {
     theme,
   } = useCore();
   const { language } = settings;
-  const { direction } = useContext(ConfigProvider.ConfigContext);
+  const { direction, theme: themeConfig } = useContext(
+    ConfigProvider.ConfigContext,
+  );
   const { token } = antdTheme.useToken();
   const { t } = useTranslation();
   const location = useLocation();
@@ -76,6 +78,10 @@ const AppearanceProbe = () => {
       </output>
       <output data-testid="antd-appearance">
         {direction}:{token.colorBgBase}
+      </output>
+      <output data-testid="button-appearance">
+        {token.colorPrimary}:
+        {themeConfig?.components?.Button?.primaryColor ?? "default"}
       </output>
       <output data-testid="route">
         {currentRoute}:{location.pathname}
@@ -118,6 +124,20 @@ afterEach(async () => {
 });
 
 describe("StoryShell appearance ownership", () => {
+  it("keeps application button colors independent of the preview surface", () => {
+    render(
+      <PreviewFrame direction="ltr" languageCode="en" themeMode="light">
+        <StoryShell>
+          <AppearanceProbe />
+        </StoryShell>
+      </PreviewFrame>,
+    );
+
+    expect(screen.getByTestId("button-appearance")).toHaveTextContent(
+      `${sampleSettings.lightTheme.colorPrimary}:default`,
+    );
+  });
+
   it("uses standalone initial metadata and working route state", async () => {
     render(
       <StoryShell initialLanguage={sampleLanguages.fa} initialTheme="dark">

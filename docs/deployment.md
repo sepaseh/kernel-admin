@@ -34,6 +34,10 @@ Browser build values are public. The API must allow the actual frontend origin a
 
 The [optional reporter](../src/shared/lib/observability.ts) uses the configured receiver for sanitized error and performance events. The receiver is separate from this standalone frontend; building or packaging the panel does not provision one. The examples leave the receiver URL blank.
 
+For native hosting, set `VITE_OBSERVABILITY_URL` to the same receiver URL in both the browser build values and the separate [native Nginx input](../deploy/native/nginx.env.example). The [renderer](../scripts/render-deployment.mjs) reads that input through `--config-file` and adds the receiver's origin to CSP `connect-src`. Rebuild the frontend, then render and install the updated configuration so the browser can reach the receiver.
+
+For Docker hosting, set `VITE_OBSERVABILITY_URL` to the receiver URL in the [Compose input](../deploy/docker/compose.env.example), then rebuild the image with a new immutable release ID using the [Docker procedure](../deploy/docker/README.md#build-and-start-the-service). Shell environment values take precedence over the Compose input, including an explicitly empty receiver; use a fresh terminal or clear or correct overrides, then check the resolved build arguments. Compose passes the resolved receiver to the image build for both the browser bundle and rendered Nginx CSP. Restarting an existing image does not update either value.
+
 ## Build an immutable package
 
 After complete source verification, this PowerShell example builds and packages a local demonstration release. Choose an unused release ID and keep the environment value and `--release` argument identical.
@@ -56,6 +60,8 @@ After complete source verification, this PowerShell example builds and packages 
    ```
 
    Expect static assets and `dist/_kernel/build.json`. Port 3000 is the local API example from [usage](usage.md); no API needs to be running for this build. For a real release, use the selected target's public HTTPS API origin, canonical base path and new immutable ID.
+
+   This demonstration intentionally disables reporting. Before a native build with reporting enabled, replace the empty value assigned to `$env:VITE_OBSERVABILITY_URL` with the receiver URL in this build's PowerShell session, matching the separate native Nginx input, then run `npm run build`. Keep `KERNEL_SYNTHETIC_ENV` set to `1` when supplying the build values explicitly: it disables environment-file discovery, not the receiver supplied in the process environment. The unchanged demonstration is not a reporting-enabled native release.
 
 3. Package that completed build:
 

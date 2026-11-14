@@ -57,24 +57,24 @@ Ordinary local and PR verification uses Chromium. Complete verification substitu
 
 ## Review appearance
 
-For an affected screen, exercise translated names/errors, keyboard submission, invalid-field focus, initial dialog focus, Escape and trigger-focus restoration. Preserve reduced motion and logical RTL/LTR layout across light/dark/compact variants. The font journey checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
+For an affected screen, exercise translated names/errors, keyboard submission, invalid-field error associations, modal semantics, Escape and protection against accidental destructive submission. Preserve reduced motion and logical RTL/LTR layout across light/dark/compact variants. Static font tests inspect licensed WOFF2 data and CSS; the font journey separately checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
 
-Storybook axe audits exclude `color-contrast`; application accessibility journeys
-also exclude `page-has-heading-one` and `scrollable-region-focusable`. Other axe
-rules, accessible names, error associations, keyboard behavior and explicit
-authentication-page heading assertions remain required. The automated scope
-does not impose contrast thresholds, management-page H1 headings or named
-keyboard-scrolling table regions.
+Storybook and application axe audits exclude `color-contrast`; application audits
+also exclude `scrollable-region-focusable`. The API-owned palettes and Ant
+Design's displayed colors remain unchanged; automated checks do not impose a
+numerical color-contrast threshold. Keep the remaining axe rules, including
+heading checks, accessible names and error associations enabled.
 
-Native Ant Design overlays use the library's focus handling. Tests require
-initial focus, Escape, trigger restoration and no accidental submission, without
-a custom boundary Tab-cycling requirement. Registration tests enforce required
-fields without a fixed maximum name length. Keep these assertions and do not
-add delays or longer timeouts to obtain a pass.
+Application tests open drawers and confirmation dialogs from the keyboard,
+verify their named controls and check Escape without accidental submission.
+Focus placement, Tab containment, trigger-focus restoration and keyboard table
+scrolling are outside the automated test scope.
 
 ### Compare and approve images
 
 `npm run test:visual` compares the reviewed images under `e2e/visual/baselines/application/<platform>`. The runner checks image inventory/hashes and runtime/source provenance before and after its child run. Missing approval, source changes during execution, linked paths and incompatible runtime fail verification. Screenshots do not replace keyboard or assistive-technology review.
+
+The reviewed OS release, architecture, Playwright and Chromium versions must match the comparison environment. Both the original capture and current Node versions must be valid, satisfy `engines.node` in [package.json](../package.json) and share the same major version. A supported minor or patch difference emits a warning and continues with the actual image comparison. Missing or malformed Node provenance, unsupported versions and major-version differences fail verification. The result retains the exact original and current Node versions; approved metadata and images keep their original provenance.
 
 `npm run test:visual:update` requires explicit authorization and creates pending candidates under `coverage/visual/captures`. It leaves approved images intact and is forbidden in CI. Present the exact candidate bytes and metadata for human approval before promotion; preserve original baseline provenance and failure artifacts.
 

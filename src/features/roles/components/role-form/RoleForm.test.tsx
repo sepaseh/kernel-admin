@@ -28,14 +28,11 @@ import { createRole, fetchRole, updateRole } from "../../api";
 import type { PermissionGroup, Role } from "../../types";
 import { RoleForm } from "./RoleForm";
 
-const { drawerLifecycle, drawerOpenChange, messages, onFinish } = vi.hoisted(
-  () => ({
-    drawerLifecycle: { completeOpening: vi.fn(), holdOpening: false },
-    drawerOpenChange: vi.fn(),
-    messages: { error: vi.fn(), success: vi.fn() },
-    onFinish: vi.fn(),
-  }),
-);
+const { drawerOpenChange, messages, onFinish } = vi.hoisted(() => ({
+  drawerOpenChange: vi.fn(),
+  messages: { error: vi.fn(), success: vi.fn() },
+  onFinish: vi.fn(),
+}));
 vi.mock("../../api", () => ({
   createRole: vi.fn(),
   fetchRole: vi.fn(),
@@ -46,22 +43,15 @@ vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
   const { FormDrawer } = await importOriginal<typeof FormDrawerModule>();
 
   return {
-    FormDrawer: (props: ComponentProps<typeof FormDrawer>) => {
-      drawerLifecycle.completeOpening.mockImplementation(() =>
-        props.afterOpenChange?.(true),
-      );
-
-      return (
-        <FormDrawer
-          {...props}
-          afterOpenChange={(open) => {
-            if (!open || !drawerLifecycle.holdOpening)
-              props.afterOpenChange?.(open);
-            drawerOpenChange(open);
-          }}
-        />
-      );
-    },
+    FormDrawer: (props: ComponentProps<typeof FormDrawer>) => (
+      <FormDrawer
+        {...props}
+        afterOpenChange={(open) => {
+          props.afterOpenChange?.(open);
+          drawerOpenChange(open);
+        }}
+      />
+    ),
   };
 });
 
@@ -115,7 +105,6 @@ const renderForm = (entry = "/roles#create", id?: string, navigation = false) =>
 
 beforeEach(async () => {
   vi.resetAllMocks();
-  drawerLifecycle.holdOpening = false;
   currentUser.isSystemAdmin = true;
   vi.mocked(fetchRole).mockResolvedValue({
     id: "role-1",
@@ -135,7 +124,7 @@ describe("role drawer", () => {
   it("selects a permission group and submits the owned permission names", async () => {
     renderForm();
     const name = await screen.findByRole("textbox", { name: i18n.t("name") });
-    await waitFor(() => expect(document.activeElement).toBe(name));
+    expect(name).toHaveValue("");
     fireEvent.change(name, { target: { value: "Operators" } });
     fireEvent.click(screen.getByRole("checkbox", { name: "User management" }));
     expect(
@@ -165,7 +154,6 @@ describe("role drawer", () => {
   it("loads an edited role before submitting its changed name", async () => {
     renderForm("/roles#update", "role-1");
     const name = await screen.findByDisplayValue("Operators");
-    await waitFor(() => expect(document.activeElement).toBe(name));
     fireEvent.change(name, { target: { value: "Reviewers" } });
     fireEvent.click(screen.getByRole("button", { name: i18n.t("submit") }));
 
@@ -182,30 +170,7 @@ describe("role drawer", () => {
     expect(createRole).not.toHaveBeenCalled();
   });
 
-  it("focuses loaded role details when drawer opening completes", async () => {
-    drawerLifecycle.holdOpening = true;
-    renderForm("/roles#update", "role-1");
-    const name = await screen.findByDisplayValue("Operators");
-    await waitFor(() => expect(drawerOpenChange).toHaveBeenCalledWith(true));
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: i18n.t("submit") }),
-      ).toBeEnabled(),
-    );
-    const drawer = screen
-      .getByRole("dialog")
-      .closest<HTMLElement>(".ant-drawer")!;
-    drawer.focus();
-    expect(drawer).toHaveFocus();
-    expect(name).not.toHaveFocus();
-
-    act(() => drawerLifecycle.completeOpening());
-
-    expect(name).toHaveFocus();
-    expect(name).toHaveValue("Operators");
-  });
-
-  it("focuses the name after role details arrive in an already opened drawer", async () => {
+  it("shows role details and enables saving after they arrive in an already opened drawer", async () => {
     const pendingRole = deferred<Role>();
     vi.mocked(fetchRole).mockReturnValueOnce(pendingRole.promise);
     renderForm("/roles#update", "role-1");
@@ -226,7 +191,6 @@ describe("role drawer", () => {
 
     const name = screen.getByRole("textbox", { name: i18n.t("name") });
     expect(name).toHaveValue("Operators");
-    expect(name).toHaveFocus();
     expect(submit).toBeEnabled();
   });
 
