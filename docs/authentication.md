@@ -4,15 +4,16 @@ Use this reference when changing an HTTP adapter, session transition or asynchro
 
 The application composes transport, feature HTTP adapters, settings metadata, guarded requests, providers and authentication forms. Local tests use synthetic responses. Live backend integration requires separate verification.
 
-| Change                                        | Owner                                                             | Regression examples                                                    |
-| --------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Dispatch, refresh, replay or transport errors | [`client.ts`](../src/shared/api/client.ts)                        | [`client.test.ts`](../src/shared/api/client.test.ts)                   |
-| Credential lifetime or generation             | [`token.ts`](../src/shared/api/token.ts)                          | [`token.test.ts`](../src/shared/api/token.test.ts)                     |
-| Login, registration or logout                 | [Authentication API](../src/features/auth/api.ts)                 | [Logout lifecycle](../src/features/auth/logout.test.ts)                |
-| OTP cancellation and cooldown                 | [OTP request hook](../src/features/auth/useOtpRequest.ts)         | [OTP lifecycle](../src/features/auth/useOtpRequest.test.tsx)           |
-| Account loading and logout in protected UI    | [Default layout](../src/layouts/default/Default.tsx)              | [Layout lifecycle](../src/layouts/default/Default.test.tsx)            |
-| Read cancellation and replacement             | [`useReadResource`](../src/shared/hooks/useReadResource.ts)       | [Read lifecycles](../src/shared/hooks/useReadResource.test.ts)         |
-| Mutation identity and continuation            | [`useMutationRequest`](../src/shared/hooks/useMutationRequest.ts) | [Mutation lifecycles](../src/shared/hooks/useMutationRequest.test.tsx) |
+| Change                                        | Owner                                                                              | Regression examples                                                                           |
+| --------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Dispatch, refresh, replay or transport errors | [`client.ts`](../src/shared/api/client.ts)                                         | [`client.test.ts`](../src/shared/api/client.test.ts)                                          |
+| Credential lifetime or generation             | [`token.ts`](../src/shared/api/token.ts)                                           | [`token.test.ts`](../src/shared/api/token.test.ts)                                            |
+| Login, registration or logout                 | [Authentication API](../src/features/auth/api.ts)                                  | [Logout lifecycle](../src/features/auth/logout.test.ts)                                       |
+| OTP cancellation and cooldown                 | [OTP request hook](../src/features/auth/useOtpRequest.ts)                          | [OTP lifecycle](../src/features/auth/useOtpRequest.test.tsx)                                  |
+| Account loading and logout in protected UI    | [Default layout](../src/layouts/default/Default.tsx)                               | [Layout lifecycle](../src/layouts/default/Default.test.tsx)                                   |
+| Read cancellation and replacement             | [Calendar screen](../src/features/calendar/Calendar.tsx)                           | [Calendar lifecycles](../src/features/calendar/Calendar.test.tsx)                             |
+| Profile mutation and refresh                  | [Profile form](../src/features/account/components/profile-form/ProfileForm.tsx)    | [Profile lifecycles](../src/features/account/components/profile-form/ProfileForm.test.tsx)    |
+| Password mutation and session cleanup         | [Password form](../src/features/account/components/password-form/PasswordForm.tsx) | [Password lifecycles](../src/features/account/components/password-form/PasswordForm.test.tsx) |
 
 Feature HTTP owners consume the configured backend. Database operations, authorization, session revocation and cookie/CORS policy belong to that service. Client presentation checks do not enforce server authorization.
 
@@ -58,37 +59,25 @@ Login/registration validate a nonblank access token and check both cancellation 
 
 ## Read resources
 
-Business screens bind direct effects to their filters, route identifiers and owned AbortControllers. A replacement request or cleanup aborts the previous intent; handlers check cancellation before accepting data or presenting errors. Keep list and optional lookup state independent. Shared filter hooks parse query state and debounce text input without changing the transport contract.
+Screens and layouts own their read state and direct effects. Bind each read to every filter, route identifier and permission that changes its meaning. Forward an owned AbortSignal to the feature API and cancel the request when that scope changes or its owner unmounts. Check cancellation before accepting data or presenting failures, including when a mocked or custom loader ignores its signal. Shared filter hooks parse query state and debounce text input without changing the transport contract.
 
-Account consumers also use the following request hooks:
+Use [`useAbortController`](../src/shared/hooks/useAbortController.ts) where the owning request workflow needs a replaceable controller: `start()` aborts its previous request, and `cancel()` invalidates pending work. Keep independent list and optional lookup loading, error and retry state separate. A failed optional lookup must not erase a usable list. Preserve accepted data on a refresh failure and expose an explicit retry; cancellation does not create a user-visible failure.
 
-[`useReadRequest`](../src/shared/hooks/useReadRequest.ts) binds each read intent to a sequence and AbortController. A new read, accepted replacement, resource identity change or unmount invalidates older work, including loaders that ignore their signal. Cancellation settles loading without exposing a failure. A real refresh failure keeps previously accepted data.
-
-[`useReadResource`](../src/shared/hooks/useReadResource.ts) connects that intent to a stable loader and enabled state. Commit-time identity cleanup invalidates the previous resource before passive effects run. Callers use `useCallback`, include every relevant filter/identifier and forward the supplied signal. Retained callbacks from an obsolete identity cannot cancel or replace current work.
-
-To connect a feature read:
-
-1. Define a stable loader with `useCallback`. Include every filter or identifier that changes the resource, and forward its `AbortSignal` to the feature API.
-2. Pass the loader and its enabled state to `useReadResource(load, enabled)`. Render its loading, data, error and retry states.
-3. Use `reload` for an explicit retry. After an accepted mutation returns replacement data, use `replace` so an older read cannot overwrite that result.
-
-Disabled resources expose no stale data, loading or error. Keep independent list and lookup resources separate so an optional lookup failure does not erase a usable list. The hook's resource identity and the client's authentication generation protect different boundaries; both remain necessary.
+The [default layout](../src/layouts/default/Default.tsx) owns current-user loading. It waits for the initial accepted user before rendering protected children and exposes that user, an awaited reload and local session cleanup through [`DefaultLayoutContext`](../src/layouts/default/types.ts). During a refresh, it keeps the Outlet mounted so child form state survives. Refresh failures retain accepted identity and show retry feedback; initial failures also offer logout. The layout checks its mounted state, request cancellation and initiating authentication generation before accepting data or handling a failure. Core owns settings and appearance preferences.
 
 ## Mutation guards
 
-The shared `useMutationRequest` hook binds work to its identity, enabled state and initiating authentication generation. Its `run` method forwards an owned cancellation signal and returns accepted data with an `isCurrent()` guard. Use that guard before success effects and `isCurrentMutationError` before failure presentation. Unmounting or changing the scope invalidates pending continuation; stale or cancelled work returns no accepted result.
+Put asynchronous submit work directly in the owning form's typed submit handler. Use [`useLock`](../src/shared/hooks/useLock.ts) for synchronous duplicate-submit protection alongside submitting state, and own cancellation with `useAbortController`. Enter and button submission must use the same validation and lock. Abort abandoned requests and ignore cancellation errors. A stale completion must not unlock or reset a replacement operation.
 
-When adding a feature form that uses this hook, connect cancellation and submitting state to the owning form.
+The transport rejects a protected operation after its initiating authentication generation changes, including after HTTP fulfillment. Login and registration also check the caller's signal and initiating generation before installing validated credentials. Account forms capture their generation and check it before submission and after each request, before feedback, form resets or session cleanup. Changing the current account or generation cancels the old form scope and releases the new scope for submission. Keep these consumer guards when mocking an API boundary, because a mock can ignore transport cancellation.
 
-Authentication forms use [`useAbortController`](../src/shared/hooks/useAbortController.ts) for caller cancellation and [`useLock`](../src/shared/hooks/useLock.ts) for synchronous duplicate-submit protection alongside local submitting state. They check cancellation after requests before navigation or notifications, and ignore cancelled errors. Login displays the optional logo selected from the current settings by the browser theme.
+The [profile form](../src/features/account/components/profile-form/ProfileForm.tsx) submits first and last names, retaining the shared profile-name length limit. A successful profile PATCH warrants `profileUpdated` feedback even if the subsequent current-user GET fails; the layout owns refresh failure feedback and retains its accepted user. The [password form](../src/features/account/components/password-form/PasswordForm.tsx) validates confirmation, submits the current and new passwords, then resets the form and clears the session only while that operation remains current. Login displays the optional logo selected from current settings by the browser theme.
 
-An admitted authentication form must cancel its OTP request and clear old OTP/cooldown state when the mobile number changes. Its pending-operation guard must bind the intent before asynchronous OTP validation. Enter and button submission must use the same form validation and duplicate-request guard. The current login and registration APIs already guard credential installation after transport fulfillment.
-
-Changing the mobile number releases OTP loading and its lock immediately. An older cancelled request cannot unlock a replacement request when it later settles. Registration requires first and last names without imposing a client-side length ceiling.
+The OTP request hook binds intent before asynchronous mobile validation. Changing the mobile number cancels its pending request, clears old OTP and cooldown state, and releases loading and its lock immediately. An older cancelled request cannot set a cooldown or unlock a replacement request when it settles. Registration requires first and last names without imposing a client-side length ceiling.
 
 The [user form](../src/features/users/components/user-form/UserForm.tsx) and [password reset](../src/features/users/Users.tsx) must reveal a generated password only after a successful API response and while the initiating login is current. They must display a notification and attempt to copy the value to the clipboard. The notification must still appear if clipboard access fails. The form's navigation and completion callbacks also require the mutation to remain current. Preserve those separate guards and the owning feature's field validation.
 
-The default layout checks the account before rendering protected children and exposes explicit loading, error and retry states. The API independently enforces administrator safeguards and authorizes each mutation. Cancellation protects client continuation. Server mutations and browser cookie effects can persist after cancellation.
+The API independently enforces administrator safeguards and authorizes each mutation. Cancellation protects client continuation. Server mutations and browser cookie effects can persist after cancellation.
 
 ## Settings and troubleshooting
 

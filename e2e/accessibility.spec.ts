@@ -4,10 +4,18 @@ import type { Page, TestInfo } from "@playwright/test";
 import { expect, test } from "./shared/admin-fixtures";
 import { setupAdminFixture } from "./shared/admin-fixtures";
 
-const expectNoAxeViolations = async (page: Page, testInfo: TestInfo) => {
+const expectNoAxeViolations = async (
+  page: Page,
+  testInfo: TestInfo,
+  requirePageHeading = true,
+) => {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   const { violations, incomplete } = await new AxeBuilder({ page })
-    .disableRules(["color-contrast", "scrollable-region-focusable"])
+    .disableRules([
+      "color-contrast",
+      "scrollable-region-focusable",
+      ...(!requirePageHeading ? ["page-has-heading-one"] : []),
+    ])
     .analyze();
   await testInfo.attach(`axe-${testInfo.attachments.length}`, {
     body: JSON.stringify({ violations, incomplete }, null, 2),
@@ -115,12 +123,12 @@ for (const language of ["en", "fa"] as const) {
             .getByRole("row", { name: /Ada Lovelace/ })
             .getByRole("img", { name: messages.active, exact: true }),
         ).toBeVisible();
-        await expectNoAxeViolations(page, testInfo);
+        await expectNoAxeViolations(page, testInfo, false);
         await page.goto("/roles");
         await expect(
           page.getByRole("button", { name: messages.create, exact: true }),
         ).toBeVisible();
-        await expectNoAxeViolations(page, testInfo);
+        await expectNoAxeViolations(page, testInfo, false);
         const roleName =
           "Support operators with user administration permissions";
         await page.route("https://api.example.com/roles", async (route) => {
@@ -134,7 +142,7 @@ for (const language of ["en", "fa"] as const) {
         await expect(
           page.getByRole("cell", { name: roleName, exact: true }),
         ).toBeVisible();
-        await expectNoAxeViolations(page, testInfo);
+        await expectNoAxeViolations(page, testInfo, false);
         expect(unexpectedRequests).toEqual([]);
       });
 
@@ -174,7 +182,7 @@ for (const language of ["en", "fa"] as const) {
         });
         await checkbox.check();
         await expect(dialog).toHaveAttribute("aria-modal", "true");
-        await expectNoAxeViolations(page, testInfo);
+        await expectNoAxeViolations(page, testInfo, false);
         await page.keyboard.press("Escape");
         await expect(dialog).toBeHidden();
         expect(unexpectedRequests).toEqual([]);
@@ -214,7 +222,7 @@ for (const language of ["en", "fa"] as const) {
             exact: true,
           }),
         ).toBeVisible();
-        await expectNoAxeViolations(page, testInfo);
+        await expectNoAxeViolations(page, testInfo, false);
         await page.keyboard.press("Escape");
         await expect(dialog).toBeHidden();
         expect(requests.some((request) => request.startsWith("DELETE "))).toBe(

@@ -196,4 +196,22 @@ describe("core settings ownership", () => {
 
     expect(signal.aborted).toBe(true);
   });
+
+  it("retries initial settings loading without exposing children before acceptance", async () => {
+    fetchSettings
+      .mockRejectedValueOnce(new Error("Synthetic offline response"))
+      .mockResolvedValueOnce(settings);
+    render(
+      <CoreProvider>
+        <Consumer />
+      </CoreProvider>,
+    );
+    await screen.findByText(i18n.t("settingsLoadFailed"));
+    expect(screen.queryByText("fa/rtl/dark/false")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("retry") }));
+
+    await screen.findByText("fa/rtl/dark/false");
+    expect(fetchSettings).toHaveBeenCalledTimes(2);
+  });
 });

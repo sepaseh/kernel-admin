@@ -4,6 +4,9 @@ import type * as ReactI18next from "react-i18next";
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { CurrentUser } from "@/features/account";
+import { useState } from "react";
+import type { DefaultLayoutContext } from "@/layouts/default";
 import { AccountPage } from "@/features/account";
 import * as accountApi from "@/features/account/api";
 import * as authApi from "@/features/auth/api";
@@ -18,8 +21,7 @@ import * as usersApi from "@/features/users/api";
 import { render, screen } from "@/test/render";
 
 const mocks = vi.hoisted(() => {
-  const account = {
-    email: "ada@example.com",
+  const account: CurrentUser = {
     firstName: "Ada",
     id: "user-1",
     isSystemAdmin: false,
@@ -27,14 +29,14 @@ const mocks = vi.hoisted(() => {
     mobile: "09120000000",
     permissions: [],
     status: "active",
-    username: "ada",
   };
   const messageError = vi.fn();
   const messageSuccess = vi.fn();
   const modalConfirm = vi.fn();
   const notificationSuccess = vi.fn();
   const setFilters = vi.fn();
-  const setUser = vi.fn();
+  const reloadCurrentUser = vi.fn();
+  const clearSession = vi.fn();
   const writeClipboard = vi.fn();
 
   return {
@@ -51,6 +53,9 @@ const mocks = vi.hoisted(() => {
       },
     },
     account,
+    currentUser: account,
+    reloadCurrentUser,
+    clearSession,
     antd: {
       messageAPI: {
         error: messageError,
@@ -78,9 +83,7 @@ const mocks = vi.hoisted(() => {
         darkLogo: { url: "/dark-logo.svg" },
         lightLogo: { url: "/light-logo.svg" },
       },
-      setUser,
       theme: "light" as const,
-      user: account as typeof account | undefined,
     },
     filterState: {
       filters: {},
@@ -91,17 +94,13 @@ const mocks = vi.hoisted(() => {
     modalConfirm,
     notificationSuccess,
     setFilters,
-    setUser,
     writeClipboard,
   };
 });
 
 vi.mock("@/features/account/api", () => ({
-  getAccount: vi.fn(),
-  requestEmailVerification: vi.fn(),
+  fetchCurrentUser: vi.fn(),
   updateProfile: vi.fn(),
-  updateUsername: vi.fn(),
-  verifyEmail: vi.fn(),
 }));
 
 vi.mock("@/features/auth/api", () => ({
@@ -182,11 +181,30 @@ const Location = () => {
   );
 };
 
+const DefaultCurrentUserOutlet = () => {
+  const [currentUser, setCurrentUser] = useState(mocks.currentUser);
+  const fetchCurrentUser = async () => {
+    mocks.reloadCurrentUser();
+    setCurrentUser(await api.fetchCurrentUser());
+  };
+  return (
+    <Outlet
+      context={
+        {
+          currentUser,
+          fetchCurrentUser,
+          clearSession: mocks.clearSession,
+        } satisfies DefaultLayoutContext
+      }
+    />
+  );
+};
+
 const renderPage = (page: React.ReactNode, initialEntry = "/") =>
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route element={<Outlet context={{ currentUser: mocks.core.user }} />}>
+        <Route element={<DefaultCurrentUserOutlet />}>
           <Route
             path="*"
             element={
@@ -217,13 +235,13 @@ beforeEach(() => {
     canDelete: false,
     canUpdate: false,
   });
-  mocks.core.user = mocks.account;
+  mocks.currentUser = mocks.account;
   mocks.writeClipboard.mockResolvedValue(undefined);
   vi.mocked(api.deleteUser).mockResolvedValue(undefined);
   vi.mocked(api.fetchRoles).mockResolvedValue([]);
   vi.mocked(api.changePassword).mockResolvedValue(undefined);
   vi.mocked(api.forgotPassword).mockResolvedValue(undefined);
-  vi.mocked(api.getAccount).mockResolvedValue(mocks.account);
+  vi.mocked(api.fetchCurrentUser).mockResolvedValue(mocks.account);
   vi.mocked(api.login).mockResolvedValue({
     accessToken: "access-token",
   });
@@ -232,16 +250,10 @@ beforeEach(() => {
     remainingSeconds: 60,
   });
   vi.mocked(api.register).mockResolvedValue({ accessToken: "access-token" });
-  vi.mocked(api.requestEmailVerification).mockResolvedValue({
-    expiresIn: 300,
-    remainingSeconds: 60,
-  });
   vi.mocked(api.updateProfile).mockResolvedValue(mocks.account);
-  vi.mocked(api.updateUsername).mockResolvedValue(mocks.account);
   vi.mocked(api.updateUserPassword).mockResolvedValue(undefined);
   vi.mocked(api.updateUserStatus).mockResolvedValue(undefined);
   vi.mocked(api.updateUserSystemAdmin).mockResolvedValue(undefined);
-  vi.mocked(api.verifyEmail).mockResolvedValue(undefined);
   vi.mocked(api.fetchRoles).mockResolvedValue([]);
   vi.mocked(api.fetchUsers).mockResolvedValue({ items: [], total: 0 });
 });
@@ -377,17 +389,10 @@ describe("authentication pages", () => {
 });
 
 describe("account page", () => {
-  it("renders nothing until an account is available", () => {
-    mocks.core.user = undefined;
-
-    renderPage(<AccountPage />);
-
-    expect(screen.queryByRole("heading", { name: "account" })).toBeNull();
-  });
-
   it("updates the account profile", async () => {
     const updatedAccount = { ...mocks.account, firstName: "Augusta" };
     vi.mocked(api.updateProfile).mockResolvedValue(updatedAccount);
+    vi.mocked(api.fetchCurrentUser).mockResolvedValue(updatedAccount);
     const { user } = renderPage(<AccountPage />);
     const firstName = screen.getByLabelText("firstName");
     const profileForm = firstName.closest("form");
@@ -406,63 +411,8 @@ describe("account page", () => {
       },
       expect.any(AbortSignal),
     );
-    expect(mocks.setUser).toHaveBeenCalledWith(updatedAccount);
+    expect(mocks.reloadCurrentUser).toHaveBeenCalledOnce();
     expect(mocks.messageSuccess).toHaveBeenCalledWith("profileUpdated");
-  });
-
-  it("updates the account username", async () => {
-    const updatedAccount = { ...mocks.account, username: "augusta" };
-    vi.mocked(api.updateUsername).mockResolvedValue(updatedAccount);
-    const { user } = renderPage(<AccountPage />);
-
-    const username = screen.getByLabelText("username");
-    await user.clear(username);
-    await user.type(username, "augusta");
-    await user.click(
-      within(username.closest("form")!).getByRole("button", {
-        name: "saveUsername",
-      }),
-    );
-
-    expect(api.updateUsername).toHaveBeenCalledWith(
-      { username: "augusta" },
-      expect.any(AbortSignal),
-    );
-    expect(mocks.setUser).toHaveBeenCalledWith(updatedAccount);
-  });
-
-  it("verifies a replacement account email", async () => {
-    const updatedAccount = {
-      ...mocks.account,
-      email: "augusta@example.com",
-    };
-    vi.mocked(api.getAccount).mockResolvedValue(updatedAccount);
-    const { user } = renderPage(<AccountPage />);
-    const email = screen.getByLabelText("email");
-
-    await user.clear(email);
-    await user.type(email, "augusta@example.com");
-    await user.click(screen.getByRole("button", { name: "sendCode" }));
-    await user.type(
-      within(screen.getByRole("group")).getAllByRole("textbox")[0],
-      "123456",
-    );
-    await user.click(screen.getByRole("button", { name: "verifyEmail" }));
-
-    expect(api.requestEmailVerification).toHaveBeenCalledWith(
-      {
-        email: "augusta@example.com",
-      },
-      expect.any(AbortSignal),
-    );
-    expect(api.verifyEmail).toHaveBeenCalledWith(
-      {
-        email: "augusta@example.com",
-        otp: "123456",
-      },
-      expect.any(AbortSignal),
-    );
-    expect(mocks.setUser).toHaveBeenCalledWith(updatedAccount);
   });
 
   it("changes the account password", async () => {
@@ -500,7 +450,7 @@ describe("account page", () => {
     await waitFor(() =>
       expect(mocks.messageError).toHaveBeenCalledWith("Profile unavailable"),
     );
-    expect(mocks.setUser).not.toHaveBeenCalled();
+    expect(mocks.reloadCurrentUser).not.toHaveBeenCalled();
   });
 });
 
@@ -647,7 +597,7 @@ describe("users page", () => {
       canDelete: true,
       canUpdate: true,
     });
-    mocks.core.user = { ...mocks.account, isSystemAdmin: true };
+    mocks.currentUser = { ...mocks.account, isSystemAdmin: true };
     const userRecord = {
       firstName: "Ada",
       id: "user-1",

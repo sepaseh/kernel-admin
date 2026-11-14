@@ -7,6 +7,16 @@ import ts from "typescript";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const productionPaths = [
+  "src/features/account/components/password-form/PasswordForm.tsx",
+  "src/features/account/components/profile-form/ProfileForm.tsx",
+  "src/features/account/components/password-form/index.ts",
+  "src/features/account/components/profile-form/index.ts",
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.tsx",
+  "src/layouts/default/components/navigation/Navigation.tsx",
+  "src/layouts/default/components/breadcrumbs/index.ts",
+  "src/layouts/default/components/navigation/index.ts",
+  "src/shared/ui/request-error/RequestError.tsx",
+  "src/shared/ui/request-error/index.ts",
   "src/shared/storage/hooks/index.ts",
   "src/shared/ui/error-boundary/ErrorFallback.tsx",
   "src/main.tsx",
@@ -123,7 +133,6 @@ const productionPaths = [
   "src/shared/ui/password-fields/PasswordFields.tsx",
   "src/shared/ui/password-fields/index.ts",
   "src/shared/ui/request-feedback/RequestFeedback.tsx",
-  "src/shared/ui/request-feedback/index.ts",
   "src/shared/ui/route-loading/RouteLoading.tsx",
   "src/shared/ui/route-loading/index.ts",
   "src/GlobalStyle.tsx",
@@ -144,6 +153,31 @@ const productionPaths = [
   "src/shared/lib/password.ts",
 ];
 const runtimeImports = {
+  "src/features/account/components/password-form/PasswordForm.tsx": [
+    "antd",
+    "axios",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/account/components/profile-form/ProfileForm.tsx": [
+    "antd",
+    "axios",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.tsx": [
+    "antd",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/layouts/default/components/navigation/Navigation.tsx": [
+    "antd",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/shared/ui/request-error/RequestError.tsx": ["antd", "react-i18next"],
   "src/GlobalStyle.tsx": ["antd-style"],
   "src/features/files/Files.tsx": [
     "antd",
@@ -217,8 +251,9 @@ const runtimeImports = {
     "react-i18next",
     "react-router",
   ],
-  "src/layouts/auth/Auth.tsx": ["antd-style", "react", "react-router"],
+  "src/layouts/auth/Auth.tsx": ["react", "react-router"],
   "src/layouts/default/Default.tsx": [
+    "axios",
     "antd",
     "antd-style",
     "lucide-react",
@@ -331,6 +366,13 @@ const runtimeImports = {
   "src/shared/hooks/useMutationRequest.ts": ["axios", "react"],
 };
 const typeImports = {
+  "src/features/account/components/password-form/PasswordForm.tsx": ["antd"],
+  "src/features/account/components/profile-form/ProfileForm.tsx": ["antd"],
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.tsx": ["i18next"],
+  "src/layouts/default/components/navigation/Navigation.tsx": [
+    "antd",
+    "i18next",
+  ],
   "src/shared/api/types.ts": ["axios"],
   "src/app/App.tsx": ["react"],
   "src/app/Routes.tsx": ["react", "react-router"],
@@ -370,7 +412,10 @@ const typeImports = {
 };
 const wireImports = {
   "src/features/auth/types.ts": [],
-  "src/features/account/types.ts": ["src/features/roles/types.ts"],
+  "src/features/account/types.ts": [
+    "src/features/roles/index.ts",
+    "src/features/users/index.ts",
+  ],
   "src/features/roles/types.ts": [],
   "src/features/files/types.ts": [],
   "src/features/users/types.ts": [
@@ -385,14 +430,8 @@ const wireImports = {
   ],
 };
 const crossFeatureImports = {
-  runtime: {
-    "src/features/account/Account.tsx": ["src/features/auth/api.ts"],
-  },
-  type: {
-    "src/features/account/Account.tsx": ["src/features/auth/types.ts"],
-    "src/features/account/api.ts": ["src/features/auth/types.ts"],
-    "src/features/account/types.ts": ["src/features/roles/types.ts"],
-  },
+  runtime: {},
+  type: {},
 };
 const featureAppImports = new Set([
   "src/app/config/index.ts",
@@ -405,6 +444,9 @@ const featureAppImports = new Set([
 ]);
 const namedCrossFeatureImports = {
   runtime: {
+    "src/features/account/components/password-form/PasswordForm.tsx": {
+      "src/features/auth/index.ts": ["changePassword"],
+    },
     "src/features/forgot-pass/ForgotPass.tsx": {
       "src/features/auth/index.ts": ["forgotPassword", "useOtpRequest"],
     },
@@ -422,6 +464,13 @@ const namedCrossFeatureImports = {
     },
   },
   type: {
+    "src/features/account/types.ts": {
+      "src/features/roles/index.ts": ["PermissionKey"],
+      "src/features/users/index.ts": ["User"],
+    },
+    "src/features/account/components/password-form/PasswordForm.tsx": {
+      "src/features/auth/index.ts": ["ChangePasswordParams"],
+    },
     "src/features/forgot-pass/ForgotPass.tsx": {
       "src/features/auth/index.ts": ["ForgotPasswordParams"],
     },
@@ -446,6 +495,9 @@ const namedCrossFeatureImports = {
   },
 };
 const layoutContextConsumers = new Set([
+  "src/features/account/Account.tsx",
+  "src/features/account/components/password-form/PasswordForm.tsx",
+  "src/features/account/components/profile-form/ProfileForm.tsx",
   "src/features/calendar/Calendar.tsx",
   "src/features/files/Files.tsx",
   "src/features/roles/Roles.tsx",

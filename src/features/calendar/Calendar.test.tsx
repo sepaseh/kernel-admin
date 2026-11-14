@@ -10,7 +10,7 @@ import {
 import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Account as CurrentUser } from "@/features/account";
+import type { CurrentUser } from "@/features/account";
 import { i18n } from "@/shared/i18n";
 import { deferred } from "@/test/deferred";
 

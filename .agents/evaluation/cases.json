@@ -85,7 +85,7 @@
         "Single-flight refresh and originating request generation protect new logins.",
         "Exhausted network, timeout and server refresh failures preserve the session for a later manual retry without replaying the failed operation. Other refresh failures, including definitive 401/403 rejection or an invalid access-token response, and a current retried 401 clear client state once; server revocation is an API responsibility.",
         "Login submits mobile and password through the named auth public service. Login and registration validate access tokens before installing credentials and check caller cancellation plus session identity after fulfillment.",
-        "OTP response validation and mobile-change cancellation prevent stale codes and cooldowns. Legacy account email verification and password changes retain their existing HTTP contract."
+        "OTP response validation and mobile-change cancellation prevent stale codes and cooldowns. Account forms use the default layout current-user context; profile updates and password changes retain their declared HTTP contracts."
       ],
       "mustNot": [
         "Claim JWT rotation/reuse detection exists.",

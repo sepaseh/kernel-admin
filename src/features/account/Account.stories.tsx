@@ -32,9 +32,6 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
     const firstName = canvas.getByLabelText(i18nInstance.t("firstName"));
-    await expect(
-      canvas.getByLabelText(i18nInstance.t("mobile")),
-    ).toBeDisabled();
     await userEvent.clear(firstName);
     await userEvent.type(firstName, "Samira");
     await userEvent.click(
@@ -52,23 +49,6 @@ export const Default: Story = {
   },
 };
 
-export const WithoutAuthenticatedUser: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(
-      canvas.queryByLabelText(i18nInstance.t("firstName")),
-    ).not.toBeInTheDocument();
-    await expect(
-      canvas.queryByRole("button", { name: i18nInstance.t("saveProfile") }),
-    ).not.toBeInTheDocument();
-  },
-  render: () => (
-    <StoryShell initialEntries={["/account"]} withUser={false}>
-      <AccountPage />
-    </StoryShell>
-  ),
-};
-
 export const DarkRtl: Story = {
   globals: { direction: "rtl", language: "fa", theme: "dark" },
   play: async ({ canvasElement }) => {
@@ -77,7 +57,7 @@ export const DarkRtl: Story = {
       canvas.getByLabelText(i18nInstance.t("firstName")),
     ).toHaveValue("Sample");
     await expect(
-      canvas.getByRole("group", { name: i18nInstance.t("otp") }),
+      canvas.getByLabelText(i18nInstance.t("currentPassword")),
     ).toBeVisible();
     await expect(
       canvas.getByRole("button", { name: i18nInstance.t("saveProfile") }),

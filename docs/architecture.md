@@ -11,18 +11,18 @@ Kernel Admin is one independent React/Vite TypeScript application. Developers se
 3. `App` composes the Ant Design provider, shared global styles and lazy routes after settings are available. Ant Design applies the API-owned palette, language and direction, together with browser theme and compact preferences.
 4. [Routes](../src/app/Routes.tsx) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.
 
-The [default layout](../src/layouts/default/Default.tsx) loads the current account before rendering protected children. It exposes that account, account reload and session cleanup through its typed Outlet context. Menu and route checks describe what the client presents; the API authorizes each request independently.
+The [default layout](../src/layouts/default/Default.tsx) loads the current user before rendering protected children. It retains accepted data and keeps the Outlet mounted during a refresh or refresh failure. It exposes the current user, awaited reload and session cleanup through its typed Outlet context. Menu and route checks describe what the client presents; the API authorizes each request independently.
 
 ## Locate the owner
 
-| Responsibility                                                | Owner                                             | Contract                                                                                  |
-| ------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Accepted settings, account context and appearance preferences | [Core](../src/app/providers/core/Core.tsx)        | Server settings remain authoritative; the browser persists theme and compact mode.        |
-| Paths, wire types and response validation for a feature       | `src/features/<feature>/api.ts` and `types.ts`    | Keep the contract with its feature.                                                       |
-| Credentials and HTTP behavior                                 | [`src/shared/api`](../src/shared/api)             | Memory-only tokens, generation checks, bounded refresh, conversion and normalized errors. |
-| Read and mutation state                                       | [`src/shared/hooks`](../src/shared/hooks)         | Cancellation, current-resource identity and stale-result protection.                      |
-| Shared product vocabulary                                     | [`src/shared/contracts`](../src/shared/contracts) | Reuse limits and appearance contracts across features.                                    |
-| Catalog data and runtime adapters                             | [`src/shared/i18n`](../src/shared/i18n)           | Keep pure catalog/calendar data separate from UI and vendor initialization.               |
+| Responsibility                                          | Owner                                                        | Contract                                                                                  |
+| ------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Accepted settings and appearance preferences            | [Core](../src/app/providers/core/Core.tsx)                   | Server settings remain authoritative; the browser persists theme and compact mode.        |
+| Paths, wire types and response validation for a feature | `src/features/<feature>/api.ts` and `types.ts`               | Keep the contract with its feature.                                                       |
+| Credentials and HTTP behavior                           | [`src/shared/api`](../src/shared/api)                        | Memory-only tokens, generation checks, bounded refresh, conversion and normalized errors. |
+| Read and mutation state                                 | Owning feature and [`src/shared/hooks`](../src/shared/hooks) | Direct request cancellation, submission locks and session-generation guards.              |
+| Shared product vocabulary                               | [`src/shared/contracts`](../src/shared/contracts)            | Reuse limits and appearance contracts across features.                                    |
+| Catalog data and runtime adapters                       | [`src/shared/i18n`](../src/shared/i18n)                      | Keep pure catalog/calendar data separate from UI and vendor initialization.               |
 
 The API selects language, text direction, calendar, logos and palettes. A browser theme choice selects which accepted palette to display; it does not change the global settings contract. See [localization](localization.md) and [authentication and requests](authentication.md) for the detailed lifecycles.
 
@@ -30,7 +30,7 @@ The API selects language, text direction, calendar, logos and palettes. A browse
 
 Keep screens, APIs, request/response types, forms, hooks and tools with their owning `src/features/<feature>`. Shared modules provide domain-independent infrastructure and controls; their local source dependencies stay within `src/shared`. Application composition belongs in `app`, and route shells belong in `layouts`.
 
-Features use only the exact authentication API/OTP, roles API/type and settings-to-files capabilities declared by [the boundary checker](../scripts/check-boundaries.mjs). Settings imports the reviewed file upload service and erased file models through the files public exports. Users imports only its declared roles list service and erased role model. Settings, Files, Calendar, Roles, Users and the declared role/user forms may import the erased `DefaultLayoutContext` from the default layout; layout components and other internals remain private. The [import rules](../.agents/rules/imports.md) describe enforcement and how to review a new dependency.
+Features use only the exact authentication API/OTP, roles API/type and settings-to-files capabilities declared by [the boundary checker](../scripts/check-boundaries.mjs). Settings imports the reviewed file upload service and erased file models through the files public exports. Users imports only its declared roles list service and erased role model. Account, Settings, Files, Calendar, Roles, Users and the declared account/role/user forms may import the erased `DefaultLayoutContext` from the default layout; layout components and other internals remain private. The [import rules](../.agents/rules/imports.md) describe enforcement and how to review a new dependency.
 
 ## Trace a change
 

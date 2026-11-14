@@ -30,6 +30,24 @@ const policy = (overrides = {}) => ({
   ...overrides,
 });
 const completeApplicationFiles = [
+  "src/features/account/components/password-form/PasswordForm.tsx",
+  "src/features/account/components/password-form/PasswordForm.test.tsx",
+  "src/features/account/components/password-form/PasswordForm.stories.tsx",
+  "src/features/account/components/profile-form/ProfileForm.tsx",
+  "src/features/account/components/profile-form/ProfileForm.test.tsx",
+  "src/features/account/components/profile-form/ProfileForm.stories.tsx",
+  "src/features/account/components/password-form/index.ts",
+  "src/features/account/components/profile-form/index.ts",
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.tsx",
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.stories.tsx",
+  "src/layouts/default/components/navigation/Navigation.tsx",
+  "src/layouts/default/components/navigation/Navigation.stories.tsx",
+  "src/layouts/default/components/breadcrumbs/index.ts",
+  "src/layouts/default/components/navigation/index.ts",
+  "src/shared/ui/request-error/RequestError.tsx",
+  "src/shared/ui/request-error/RequestError.test.tsx",
+  "src/shared/ui/request-error/RequestError.stories.tsx",
+  "src/shared/ui/request-error/index.ts",
   "src/shared/storage/hooks/index.ts",
   "src/shared/ui/error-boundary/ErrorFallback.tsx",
   ".agents/README.md",
@@ -407,7 +425,6 @@ const completeApplicationFiles = [
   "src/shared/ui/password-fields/index.ts",
   "src/shared/ui/request-feedback/RequestFeedback.test.tsx",
   "src/shared/ui/request-feedback/RequestFeedback.tsx",
-  "src/shared/ui/request-feedback/index.ts",
   "src/shared/ui/route-loading/RouteLoading.stories.tsx",
   "src/shared/ui/route-loading/RouteLoading.test.tsx",
   "src/shared/ui/route-loading/RouteLoading.tsx",
@@ -481,6 +498,24 @@ const applicationPolicy = () =>
     allowedFiles: [...completeApplicationFiles],
   });
 const applicationFiles = [
+  "src/features/account/components/password-form/PasswordForm.tsx",
+  "src/features/account/components/password-form/PasswordForm.test.tsx",
+  "src/features/account/components/password-form/PasswordForm.stories.tsx",
+  "src/features/account/components/profile-form/ProfileForm.tsx",
+  "src/features/account/components/profile-form/ProfileForm.test.tsx",
+  "src/features/account/components/profile-form/ProfileForm.stories.tsx",
+  "src/features/account/components/password-form/index.ts",
+  "src/features/account/components/profile-form/index.ts",
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.tsx",
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.stories.tsx",
+  "src/layouts/default/components/navigation/Navigation.tsx",
+  "src/layouts/default/components/navigation/Navigation.stories.tsx",
+  "src/layouts/default/components/breadcrumbs/index.ts",
+  "src/layouts/default/components/navigation/index.ts",
+  "src/shared/ui/request-error/RequestError.tsx",
+  "src/shared/ui/request-error/RequestError.test.tsx",
+  "src/shared/ui/request-error/RequestError.stories.tsx",
+  "src/shared/ui/request-error/index.ts",
   ".github/workflows/codeql.yml",
   ".github/workflows/dast.yml",
   ".github/workflows/release.yml",
@@ -1341,7 +1376,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 91);
+  assert.equal(required.length, 90);
   for (const missing of required)
     assert.throws(
       () =>

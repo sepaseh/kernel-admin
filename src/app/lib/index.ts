@@ -1,1 +1,5 @@
-export * from "./access";
+export {
+  getAllowedNavigation,
+  getRoutePermissions,
+  hasRouteAccess,
+} from "./access";

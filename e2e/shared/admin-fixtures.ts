@@ -46,7 +46,6 @@ export const test = base.extend<{ networkGuard: void }>({
 export { expect };
 
 const adminFixtureUser = {
-  email: "ada@example.com",
   first_name: "Ada",
   id: "user-1",
   is_system_admin: false,
@@ -54,7 +53,6 @@ const adminFixtureUser = {
   mobile: "09121111111",
   roles: [],
   status: "active",
-  username: "ada",
 } as const;
 
 /** Route every browser API call to explicit synthetic data; no real backend. */
@@ -95,7 +93,6 @@ export const setupAdminFixture = async (
       if (url.pathname === "/account/me")
         return route.fulfill({
           json: {
-            email: "manager@example.com",
             first_name: "Test",
             id: "manager-1",
             is_system_admin: false,
@@ -103,7 +100,6 @@ export const setupAdminFixture = async (
             mobile: "09120000000",
             permissions,
             status: "active",
-            username: "manager",
           },
         });
       if (url.pathname === "/users") {
@@ -112,13 +108,11 @@ export const setupAdminFixture = async (
               adminFixtureUser,
               {
                 ...adminFixtureUser,
-                email: "grace@example.com",
                 first_name: "Grace",
                 id: "user-2",
                 last_name: "Hopper",
                 mobile: "09121111112",
                 status: "inactive",
-                username: "grace",
               },
             ]
           : [adminFixtureUser];

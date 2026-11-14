@@ -62,8 +62,12 @@ For an affected screen, exercise translated names/errors, keyboard submission, i
 Storybook and application axe audits exclude `color-contrast`; application audits
 also exclude `scrollable-region-focusable`. The API-owned palettes and Ant
 Design's displayed colors remain unchanged; automated checks do not impose a
-numerical color-contrast threshold. Keep the remaining axe rules, including
-heading checks, accessible names and error associations enabled.
+numerical color-contrast threshold. Protected admin pages identify the current
+page through breadcrumbs, so their application audits also exclude
+`page-has-heading-one`; a separate level-one page heading is not required.
+Public authentication pages retain that rule and their explicit title
+assertions. Keep all other heading rules, accessible names and error
+associations enabled.
 
 Application tests open drawers and confirmation dialogs from the keyboard,
 verify their named controls and check Escape without accidental submission.

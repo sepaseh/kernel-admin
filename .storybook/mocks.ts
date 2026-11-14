@@ -102,12 +102,9 @@ export const resetStoryMocks = () => {
     });
   mocked(setUnauthorizedHandler).mockReset();
 
-  mocked(accountAPI.getAccount)
+  mocked(accountAPI.fetchCurrentUser)
     .mockReset()
     .mockImplementation(async () => structuredClone(account));
-  mocked(accountAPI.requestEmailVerification)
-    .mockReset()
-    .mockResolvedValue({ expiresIn: 120, remainingSeconds: 30 });
   mocked(accountAPI.updateProfile)
     .mockReset()
     .mockImplementation(async ({ firstName, lastName }) => {
@@ -117,17 +114,6 @@ export const resetStoryMocks = () => {
         lastName: lastName?.trim() || account.lastName,
       };
       return structuredClone(account);
-    });
-  mocked(accountAPI.updateUsername)
-    .mockReset()
-    .mockImplementation(async ({ username }) => {
-      account = { ...account, username };
-      return structuredClone(account);
-    });
-  mocked(accountAPI.verifyEmail)
-    .mockReset()
-    .mockImplementation(async ({ email }) => {
-      account = { ...account, email };
     });
   mocked(authAPI.changePassword).mockReset().mockResolvedValue(undefined);
   mocked(authAPI.forgotPassword).mockReset().mockResolvedValue(undefined);

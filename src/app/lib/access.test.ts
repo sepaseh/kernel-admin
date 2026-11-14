@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type Account } from "@/features/account/types";
+import { type CurrentUser } from "@/features/account/types";
 
 import {
   getAllowedNavigation,
@@ -8,7 +8,7 @@ import {
   hasRouteAccess,
 } from "./access";
 
-const createUser = (overrides: Partial<Account> = {}): Account => ({
+const createUser = (overrides: Partial<CurrentUser> = {}): CurrentUser => ({
   firstName: "Test",
   id: "user-1",
   isSystemAdmin: false,
@@ -16,7 +16,6 @@ const createUser = (overrides: Partial<Account> = {}): Account => ({
   mobile: "09120000000",
   permissions: [],
   status: "active",
-  username: "test-user",
   ...overrides,
 });
 

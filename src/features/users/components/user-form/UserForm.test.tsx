@@ -11,7 +11,7 @@ import type { ComponentProps } from "react";
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Account as CurrentUser } from "@/features/account";
+import type { CurrentUser } from "@/features/account";
 import { clearAccessToken, setAccessToken } from "@/shared/api/token";
 import { i18n } from "@/shared/i18n";
 import { deferred } from "@/test/deferred";

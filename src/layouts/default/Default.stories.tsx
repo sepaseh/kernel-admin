@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ComponentProps } from "react";
 import { useEffect } from "react";
-import { Route, Routes } from "react-router";
+import type { RouteObject } from "react-router";
 import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
 
 import type { RouteKey } from "@/app/config";
 import { useCore } from "@/app/hooks";
-import { getAccount } from "@/features/account/api.ts";
-import type { Account } from "@/features/account/types.ts";
+import { fetchCurrentUser } from "@/features/account/api.ts";
+import type { CurrentUser } from "@/features/account/types.ts";
 import { logout } from "@/features/auth/api.ts";
 import { i18nInstance } from "@/shared/i18n";
 import { StoryShell } from "@/test/storybook/StoryShell";
@@ -15,8 +15,7 @@ import { sampleLanguages } from "@/test/storybook/fixtures";
 
 import { DefaultLayout } from "./Default";
 
-const account: Account = {
-  email: "admin@example.com",
+const account: CurrentUser = {
   firstName: "Sample",
   id: "storybook-user",
   isSystemAdmin: true,
@@ -24,7 +23,6 @@ const account: Account = {
   mobile: "09120000000",
   permissions: [],
   status: "active",
-  username: "admin",
 };
 
 type DefaultLayoutStoryProps = Pick<
@@ -39,27 +37,31 @@ const LayoutContent = ({ route, title }: LayoutContentProps) => {
   return <h2>{title}</h2>;
 };
 
+const layoutRoutes: RouteObject[] = [
+  {
+    path: "/",
+    element: <DefaultLayout />,
+    children: [
+      {
+        index: true,
+        element: <LayoutContent route="root" title="Dashboard content" />,
+      },
+      {
+        path: "users",
+        element: <LayoutContent route="users" title="Users destination" />,
+      },
+    ],
+  },
+  { path: "/auth", element: <h1>Signed out destination</h1> },
+];
+
 const DefaultLayoutStory = (props: DefaultLayoutStoryProps) => (
-  <StoryShell initialUser={account} {...props}>
-    <Routes>
-      <Route element={<DefaultLayout />} path="/">
-        <Route
-          index
-          element={<LayoutContent route="root" title="Dashboard content" />}
-        />
-        <Route
-          element={<LayoutContent route="users" title="Users destination" />}
-          path="users"
-        />
-      </Route>
-      <Route element={<h1>Signed out destination</h1>} path="/auth" />
-    </Routes>
-  </StoryShell>
+  <StoryShell initialUser={account} routes={layoutRoutes} {...props} />
 );
 
 const meta = {
   beforeEach() {
-    mocked(getAccount).mockReset().mockResolvedValue(account);
+    mocked(fetchCurrentUser).mockReset().mockResolvedValue(account);
     mocked(logout).mockReset().mockResolvedValue(undefined);
   },
   component: DefaultLayout,
@@ -111,17 +113,17 @@ export const Mobile: Story = {
     await waitFor(() =>
       expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
     );
-    await expect(mocked(getAccount)).toHaveBeenCalledOnce();
+    await expect(mocked(fetchCurrentUser)).toHaveBeenCalledOnce();
   },
 };
 
 export const LoadingAccount: Story = {
   beforeEach() {
-    mocked(getAccount).mockReturnValue(new Promise(() => undefined));
+    mocked(fetchCurrentUser).mockReturnValue(new Promise(() => undefined));
   },
   render: () => <DefaultLayoutStory withUser={false} />,
   play: async ({ canvasElement }) => {
-    await expect(mocked(getAccount)).toHaveBeenCalledOnce();
+    await expect(mocked(fetchCurrentUser)).toHaveBeenCalledOnce();
     await expect(canvasElement.querySelector(".ant-spin")).toBeVisible();
     await expect(
       within(canvasElement).queryByRole("heading", {

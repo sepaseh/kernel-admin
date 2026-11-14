@@ -1,17 +1,14 @@
-import type { MenuProps } from "antd";
 import {
   Avatar,
-  Breadcrumb,
   Button,
   Drawer,
   Dropdown,
   Flex,
-  Grid,
-  Menu,
+  Layout,
   Spin,
   Tooltip,
 } from "antd";
-import { useAntdToken } from "antd-style";
+import { useResponsive } from "antd-style";
 import {
   FoldVertical,
   LogOut,
@@ -21,16 +18,25 @@ import {
   UnfoldVertical,
   UserRound,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Outlet, useNavigate } from "react-router";
 
-import type { NavigationItem } from "@/app/config";
 import { routeTree } from "@/app/config";
-import { useCore } from "@/app/hooks";
+import { useAntd, useCore } from "@/app/hooks";
 import { getAllowedNavigation } from "@/app/lib";
-import { getAccount } from "@/features/account/api.ts";
-import { logout } from "@/features/auth/api.ts";
+import {
+  type CurrentUser,
+  fetchCurrentUser as fetchCurrentUserRequest,
+} from "@/features/account";
+import { isCancel } from "axios";
+import { logout } from "@/features/auth";
 import {
   AdminApiError,
   clearAccessToken,
@@ -38,160 +44,169 @@ import {
   getAccessTokenVersion,
   setUnauthorizedHandler,
 } from "@/shared/api";
-import { useReadResource } from "@/shared/hooks";
-import { RequestFeedback } from "@/shared/ui/request-feedback";
 
+import { useAbortController, useLock } from "@/shared/hooks";
+import { getErrorMessage } from "@/shared/lib";
+import { RequestError } from "@/shared/ui/request-error";
+import { Breadcrumbs } from "./components/breadcrumbs";
+import { Navigation } from "./components/navigation";
 import type { DefaultLayoutContext } from "./types";
-
-const { useBreakpoint } = Grid;
 
 export const DefaultLayout = () => {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<CurrentUser>();
+  const [error, setError] = useState<Error>();
+  const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
-  const logoutPending = useRef(false);
+  const [open, setOpen] = useState(false);
+  const { cancel, start } = useAbortController();
+  const { messageAPI, token } = useAntd();
+  const { compact, currentRoute, settings, setCompact, setTheme, theme } =
+    useCore();
+  const { lock, unlock } = useLock();
   const mounted = useRef(false);
-  const { lg } = useBreakpoint();
-  const {
-    compact,
-    currentRoute,
-    logos,
-    setCompact,
-    setTheme,
-    setUser,
-    theme: coreTheme,
-    user,
-  } = useCore();
-  const token = useAntdToken();
   const navigate = useNavigate();
-  const allowedNavigation = getAllowedNavigation(user);
-  const darkMode = coreTheme === "dark";
-
-  const createMenuItems = (
-    items: readonly NavigationItem[],
-  ): MenuProps["items"] =>
-    items.map((item) => {
-      if ("route" in item) {
-        const { label, path } = routeTree[item.route];
-        return {
-          key: item.route,
-          label: <Link to={path}>{t(label)}</Link>,
-        };
-      }
-
-      return {
-        children: createMenuItems(item.children),
-        key: item.key,
-        label: t(item.label),
-      };
-    });
-
-  const menuItems = createMenuItems(allowedNavigation);
-
-  const findBreadcrumbItems = (
-    items: readonly NavigationItem[],
-  ): { title: string }[] | undefined => {
-    for (const item of items) {
-      if ("route" in item) {
-        if (item.route === currentRoute) {
-          return [{ title: t(routeTree[item.route].label) }];
-        }
-
-        continue;
-      }
-
-      const children = findBreadcrumbItems(item.children);
-      if (children) return [{ title: t(item.label) }, ...children];
-    }
-  };
-
-  const currentRouteConfig = routeTree[currentRoute];
-  const currentBreadcrumbItems =
-    findBreadcrumbItems(allowedNavigation) ??
-    ("label" in currentRouteConfig
-      ? [{ title: t(currentRouteConfig.label) }]
-      : []);
-  const breadcrumbItems =
-    currentRoute === "root"
-      ? currentBreadcrumbItems
-      : [
-          {
-            title: (
-              <Link to={routeTree.root.path}>{t(routeTree.root.label)}</Link>
-            ),
-          },
-          ...currentBreadcrumbItems,
-        ];
+  const { lg } = useResponsive();
+  const allowedNavigation = getAllowedNavigation(currentUser);
+  const darkMode = theme === "dark";
+  const logo = settings[`${theme}Logo`]?.url;
 
   const clearSession = useCallback(() => {
     clearAccessToken();
-    setUser();
+    cancel();
+    setCurrentUser(undefined);
+    setError(undefined);
+    setLoading(false);
     void navigate(routeTree.auth.path, { replace: true });
-  }, [navigate, setUser]);
+  }, [cancel, navigate]);
+
+  const fetchCurrentUser = useCallback(async () => {
+    if (!mounted.current) return;
+
+    const signal = start();
+    const version = getAccessTokenVersion();
+    setLoading(true);
+
+    try {
+      const data = await fetchCurrentUserRequest(signal);
+      if (
+        !mounted.current ||
+        signal.aborted ||
+        version !== getAccessTokenVersion()
+      )
+        return;
+
+      setCurrentUser(data);
+      setError(undefined);
+    } catch (error) {
+      if (
+        !mounted.current ||
+        signal.aborted ||
+        version !== getAccessTokenVersion() ||
+        isCancel(error)
+      )
+        return;
+
+      if (error instanceof AdminApiError && error.status === 401) {
+        clearSession();
+        return;
+      }
+
+      setError(
+        error instanceof Error ? error : new Error(getErrorMessage(error)),
+      );
+    } finally {
+      if (
+        mounted.current &&
+        !signal.aborted &&
+        version === getAccessTokenVersion()
+      )
+        setLoading(false);
+    }
+  }, [clearSession, start]);
 
   const handleLogout = async () => {
-    if (logoutPending.current) return;
+    if (!mounted.current || !lock()) return;
+
     const version = getAccessTokenVersion();
-    logoutPending.current = true;
     setLoggingOut(true);
-    await logout().catch(() => undefined);
+
+    try {
+      await logout();
+    } catch (error) {
+      if (
+        mounted.current &&
+        (version === getAccessTokenVersion() || getAccessToken() === null)
+      )
+        void messageAPI.error(getErrorMessage(error));
+    } finally {
+      if (mounted.current) {
+        unlock();
+        setLoggingOut(false);
+      }
+    }
+
     if (!mounted.current) return;
-    logoutPending.current = false;
-    setLoggingOut(false);
-    // logout() may itself clear this session. A non-null token from another
-    // generation belongs to a newer login and must not be cleared here.
+    // logout() may clear this session, but a newer login still owns its token.
     if (version !== getAccessTokenVersion() && getAccessToken() !== null)
       return;
+
     clearSession();
   };
 
-  const loadAccount = useCallback(
-    async (signal: AbortSignal) => {
-      const value = await getAccount(signal);
-      if (!signal.aborted) setUser(value);
-      return value;
-    },
-    [setUser],
-  );
-  const session = useReadResource(loadAccount);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     mounted.current = true;
-    setUnauthorizedHandler(clearSession);
     return () => {
       mounted.current = false;
+      cancel();
+    };
+  }, [cancel]);
+
+  useEffect(() => {
+    setUnauthorizedHandler(clearSession);
+    return () => {
       setUnauthorizedHandler(null);
     };
   }, [clearSession]);
 
   useEffect(() => {
-    if (session.error instanceof AdminApiError && session.error.status === 401)
-      clearSession();
-  }, [clearSession, session.error]);
+    void (async () => {
+      await fetchCurrentUser();
+    })();
 
-  if (session.loading) return <Spin fullscreen />;
-  if (session.error)
+    return cancel;
+  }, [cancel, fetchCurrentUser]);
+
+  if (!currentUser && loading)
+    return (
+      <Spin
+        aria-label={t("loading")}
+        fullscreen
+        ref={(node) => node?.nativeElement.setAttribute("role", "status")}
+      />
+    );
+
+  if (!currentUser)
     return (
       <>
-        <RequestFeedback error={session.error} retry={session.reload} />
-        {session.error instanceof AdminApiError &&
-          session.error.status === 403 && (
-            <Button danger loading={loggingOut} onClick={handleLogout}>
-              {t("logout")}
-            </Button>
-          )}
+        <RequestError
+          error={error ?? new Error(t("currentUserLoadFailed"))}
+          onRetry={fetchCurrentUser}
+        />
+        {error instanceof AdminApiError && error.status === 403 && (
+          <Button danger loading={loggingOut} onClick={handleLogout}>
+            {t("logout")}
+          </Button>
+        )}
       </>
     );
-  if (!user) return <Spin fullscreen />;
-
-  const userName = `${user.firstName} ${user.lastName}`.trim();
 
   return (
-    <>
-      <header style={{ backgroundColor: token.colorBgContainer }}>
+    <Layout style={{ minHeight: "100dvh" }}>
+      <Layout.Header>
         <Flex
           align="center"
-          gap={16}
+          gap={token.size}
           justify="space-between"
           style={{
             height: 64,
@@ -201,20 +216,33 @@ export const DefaultLayout = () => {
           }}
         >
           <Link aria-label={t("logo")} to={routeTree.root.path}>
-            {logos?.[coreTheme] ? (
+            {logo ? (
               <img
                 alt={t("logo")}
-                src={logos[coreTheme]}
+                src={logo}
                 style={{ display: "block", height: 28, width: "auto" }}
               />
             ) : null}
           </Link>
           {lg ? (
-            <Menu
-              builtinPlacements={{ bottomLeft: { points: ["tr", "br"] } }}
-              items={menuItems}
+            <Navigation
+              builtinPlacements={{
+                bottomLeft: {
+                  points:
+                    settings.language.direction === "rtl"
+                      ? ["tr", "br"]
+                      : ["tl", "bl"],
+                },
+                bottomRight: {
+                  points:
+                    settings.language.direction === "rtl"
+                      ? ["tr", "br"]
+                      : ["tl", "bl"],
+                },
+              }}
+              currentRoute={currentRoute}
+              items={allowedNavigation}
               mode="horizontal"
-              selectedKeys={[currentRoute]}
               style={{ flexGrow: 1, lineHeight: "64px" }}
             />
           ) : (
@@ -273,7 +301,10 @@ export const DefaultLayout = () => {
               ],
             }}
           >
-            <Tooltip placement="right" title={userName}>
+            <Tooltip
+              placement="right"
+              title={`${currentUser.firstName} ${currentUser.lastName}`.trim()}
+            >
               <Button
                 aria-label={t("account")}
                 icon={
@@ -289,13 +320,10 @@ export const DefaultLayout = () => {
             </Tooltip>
           </Dropdown>
         </Flex>
-      </header>
-      <main
+      </Layout.Header>
+      <Layout.Content
         style={{
           backgroundColor: token.colorBgLayout,
-          display: "flex",
-          flexDirection: "column",
-          flexGrow: 1,
           marginInline: "auto",
           maxWidth: token.screenXXXL,
           minWidth: 0,
@@ -304,52 +332,34 @@ export const DefaultLayout = () => {
           width: "100%",
         }}
       >
-        <h1
-          style={{
-            clip: "rect(0 0 0 0)",
-            clipPath: "inset(50%)",
-            height: 1,
-            overflow: "hidden",
-            position: "absolute",
-            whiteSpace: "nowrap",
-            width: 1,
-          }}
-        >
-          {currentBreadcrumbItems.at(-1)?.title}
-        </h1>
-        <Breadcrumb
-          aria-label={t("breadcrumb")}
-          items={breadcrumbItems}
-          style={{ marginBottom: token.marginMD }}
-        />
+        {error && <RequestError error={error} onRetry={fetchCurrentUser} />}
+        <Breadcrumbs currentRoute={currentRoute} items={allowedNavigation} />
         <Outlet
           context={
             {
+              currentUser,
+              fetchCurrentUser,
               clearSession,
-              currentUser: user,
-              fetchCurrentUser: async () => {
-                await session.reload();
-              },
             } satisfies DefaultLayoutContext
           }
         />
-      </main>
+      </Layout.Content>
       <Drawer
         closeIcon={false}
         onClose={() => setOpen(false)}
         open={!lg && open}
-        styles={{ body: { padding: 8 } }}
+        styles={{ body: { padding: token.paddingXS } }}
         title={false}
       >
         <nav aria-label={t("menu")}>
-          <Menu
-            items={menuItems}
+          <Navigation
+            currentRoute={currentRoute}
+            items={allowedNavigation}
             mode="inline"
             onClick={() => setOpen(false)}
-            selectedKeys={[currentRoute]}
           />
         </nav>
       </Drawer>
-    </>
+    </Layout>
   );
 };
