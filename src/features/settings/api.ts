@@ -5,7 +5,7 @@ import type { Settings, SettingsRequest } from "./types.ts";
 const basePath = "/settings";
 
 export const fetchSettings = (signal?: AbortSignal): Promise<Settings> =>
-  apiClient.get<Settings>(basePath, { signal });
+  apiClient.get<Settings>(basePath, { signal, timeout: 15_000 });
 
 export const fetchLanguages = (
   signal?: AbortSignal,
