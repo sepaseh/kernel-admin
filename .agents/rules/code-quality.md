@@ -64,8 +64,11 @@ callbacks or configuration that obscure their behavior. Extract a shared
 responsibility when it improves the design, not solely to reduce duplication.
 
 Follow the documented [SonarQube Cloud setup](../../docs/validation.md#configure-sonarqube-cloud)
-when configuring or restoring the **5.0% new-code duplication limit**. This limit
-does not authorize metric-only abstractions, broad analysis exclusions or weaker
+when configuring or restoring the deliberate CPD-only exclusion. Duplication
+measurement is disabled; an empty or zero result is not evidence of zero actual
+duplication. Keep source and test analysis, coverage inputs, scanner execution
+and other quality-gate conditions intact. This exception does not authorize
+metric-only abstractions, broader source or coverage exclusions, or weaker
 behavioral and security checks.
 
 - Treat SonarQube findings as prompts to improve the design, not targets to

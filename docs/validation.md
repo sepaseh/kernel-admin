@@ -109,37 +109,40 @@ Standalone production and verification builds still perform their own typecheck.
 
 ## Configure SonarQube Cloud
 
-The repository standard allows at most **5.0% duplicated lines on new code**
-(`new_duplicated_lines_density > 5` is the failing condition). Preserve the
-remaining quality-gate conditions and the required correctness, security and
-scanner checks.
+Copy/paste detection (CPD) is intentionally disabled for all source files through
+the versioned [scanner configuration](../sonar-project.properties):
 
-Configure this remote setting after importing a project. Verify it again after
-moving or recreating the repository, organization or Sonar project:
+```properties
+sonar.cpd.exclusions=**/*
+```
 
-1. Confirm that the organization's plan supports assigning custom quality gates
-   and that the configuring account has the required administrative permission.
-   If assignment is unavailable, report the remote setup as incomplete and
-   preserve the actual provider result; a documented target is not an applied
-   setting.
-2. In the organization's **Quality Gates**, copy **Sonar way** into a custom gate,
-   or reuse the verified gate intended for this project. Set only the new-code
-   duplication condition to **greater than 5.0%**. Keep the copied reliability,
-   security, hotspot-review and other conditions unchanged.
-3. In the target project's **Quality Gate**, choose **Use a specific quality gate**,
-   select the custom gate and save. Verify its assignment. The assigned gate also
-   applies to the project's branches and pull requests.
-4. Run an authorized analysis of the current revision. Verify the analyzed
-   project and revision, the assigned gate and its threshold. Check scanner
-   execution and the resulting provider quality gate separately.
+The project does not collect a measured duplication report. An empty or zero
+provider value must not be described as zero actual duplication or as measured
+duplication that is merely advisory. This exception applies only to CPD. Preserve
+source and test analysis, enabled bug and security rules, coverage inputs,
+scanner execution and the remaining quality-gate conditions. Do not broaden
+source, test or coverage exclusions to obtain a passing result.
 
-`sonar-project.properties` configures analysis inputs; it does not provision or
-assign a remote quality gate. Restoring that file or changing project identifiers
-alone does not restore this setup. Keep existing duplication exclusions narrow;
-do not exclude entire feature owners merely to satisfy the threshold.
+After importing, moving or recreating the repository, organization or Sonar
+project:
 
-See [custom quality gates](https://docs.sonarsource.com/sonarqube-cloud/standards/managing-quality-gates/managing-custom-quality-gates)
-and [project assignment](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/project-analysis/changing-quality-gate).
+1. Restore the versioned scanner configuration and configure the destination's
+   organization and project identifiers. Confirm that CI reads this file and
+   that scanner arguments do not override its CPD exclusion. Scanner
+   configuration on the CI/CD host takes precedence over the same UI setting;
+   a UI-only exclusion does not replace the versioned property.
+2. Run an authorized fresh analysis of the current revision. Verify that the
+   all-source CPD exclusion is effective and that the analyzed project and
+   revision match the intended source.
+3. Check scanner completion and the resulting provider quality gate separately.
+   This opt-out does not provision or assign a custom quality gate; keep the
+   existing gate and its other conditions unchanged.
+4. If configuration drift restores duplication detection, restore the versioned
+   CPD property, resolve any conflicting scanner override and analyze again.
+   Do not compensate by excluding files from source or coverage analysis.
+
+See [duplication exclusions](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/project-analysis/setting-analysis-scope/exclude-from-coverage-duplication)
+and [matching patterns](https://docs.sonarsource.com/sonarqube-cloud/appendices/defining-matching-patterns).
 
 ## Hosted checks and review
 
