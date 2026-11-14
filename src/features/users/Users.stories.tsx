@@ -61,7 +61,9 @@ export const LoadError: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await expect(await body.findByText("Unable to load users")).toBeVisible();
+    await waitFor(() =>
+      expect(body.getByText("Unable to load users")).toBeVisible(),
+    );
     await expect(canvas.getByRole("table")).toBeVisible();
   },
 };
