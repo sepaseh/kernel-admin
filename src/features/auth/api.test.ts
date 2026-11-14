@@ -1,12 +1,10 @@
-import { isCancel } from "axios";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import axios from "axios";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  apiClient,
-  clearAccessToken,
-  getAccessTokenVersion,
-  setAccessToken,
-} from "../../shared/api/index.ts";
+import type * as SharedApi from "@/shared/api";
+import { clearAccessToken, getAccessToken, setAccessToken } from "@/shared/api";
+import { deferred } from "@/test/deferred";
+
 import {
   changePassword,
   forgotPassword,
@@ -14,203 +12,161 @@ import {
   logout,
   register,
   requestOtp,
-} from "./api.ts";
+} from "./api";
 
-vi.mock("../../shared/api/index.ts", () => ({
-  apiClient: {
-    post: vi.fn(),
-  },
-  clearAccessToken: vi.fn(),
-  getAccessTokenVersion: vi.fn(() => 0),
-  setAccessToken: vi.fn(),
-}));
-
-const currentCredential = "current-test-credential";
-const replacementCredential = "replacement-test-credential";
-const syntheticCredential = "synthetic-test-credential";
-
-beforeEach(() => {
-  vi.mocked(getAccessTokenVersion).mockReturnValue(0);
-  vi.mocked(apiClient.post).mockResolvedValue({});
+const { post } = vi.hoisted(() => ({ post: vi.fn() }));
+vi.mock("@/shared/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof SharedApi>();
+  return {
+    ...actual,
+    apiClient: {
+      del: vi.fn(),
+      get: vi.fn(),
+      patch: vi.fn(),
+      post,
+      put: vi.fn(),
+      upload: vi.fn(),
+    },
+  };
 });
 
-describe("authentication API", () => {
-  it.each(["login", "register"] as const)(
-    "does not commit a %s reply when its caller cancels after transport fulfillment",
-    async (operation) => {
-      const controller = new AbortController();
-      let release!: (value: unknown) => void;
-      vi.mocked(apiClient.post).mockImplementationOnce(
-        () => new Promise((resolve) => (release = resolve)),
-      );
-      const pending =
-        operation === "login"
-          ? login(
-              { identifier: "ada", password: syntheticCredential },
-              controller.signal,
-            )
-          : register(
-              {
-                firstName: "Ada",
-                lastName: "Lovelace",
-                mobile: "09120000000",
-                otp: "123456",
-                password: syntheticCredential,
-              },
-              controller.signal,
-            );
-      release({ accessToken: "aborted-reply" });
-      controller.abort();
+beforeEach(() => {
+  clearAccessToken();
+  post.mockReset();
+});
+afterEach(clearAccessToken);
 
-      expect(isCancel(await pending.catch((error: unknown) => error))).toBe(
-        true,
-      );
-      expect(setAccessToken).not.toHaveBeenCalled();
-    },
-  );
-
-  it.each(["login", "register"] as const)(
-    "does not commit a %s reply after its transport completed but the session changed before the feature resumed",
-    async (operation) => {
-      let release!: (value: unknown) => void;
-      vi.mocked(apiClient.post).mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            release = resolve;
-          }),
-      );
-      const pending =
-        operation === "login"
-          ? login({ identifier: "ada", password: syntheticCredential })
-          : register({
-              firstName: "Ada",
-              lastName: "Lovelace",
-              mobile: "09120000000",
-              otp: "123456",
-              password: syntheticCredential,
-            });
-      release({ accessToken: "obsolete-reply" });
-      // The fulfilled transport has queued the feature continuation. A newer login
-      // or logout invalidates it before that continuation is allowed to commit.
-      vi.mocked(getAccessTokenVersion).mockReturnValue(1);
-      expect(isCancel(await pending.catch((error: unknown) => error))).toBe(
-        true,
-      );
-      expect(setAccessToken).not.toHaveBeenCalled();
-    },
-  );
-
-  it("stores access tokens returned by login and registration", async () => {
-    vi.mocked(apiClient.post)
-      .mockResolvedValueOnce({ accessToken: "login-token" })
-      .mockResolvedValueOnce({ accessToken: "register-token" });
+describe("authentication responses", () => {
+  it("accepts a validated login credential", async () => {
+    post.mockResolvedValue({ accessToken: "synthetic-login-token" });
 
     await expect(
-      login({ identifier: "ada", password: syntheticCredential }),
-    ).resolves.toEqual({ accessToken: "login-token" });
-    await expect(
-      register({
-        firstName: "Ada",
-        lastName: "Lovelace",
-        mobile: "09120000000",
-        otp: "123456",
-        password: syntheticCredential,
-      }),
-    ).resolves.toEqual({ accessToken: "register-token" });
-
-    expect(setAccessToken).toHaveBeenNthCalledWith(1, "login-token");
-    expect(setAccessToken).toHaveBeenNthCalledWith(2, "register-token");
+      login({ mobile: "09120000000", password: "synthetic-password" }),
+    ).resolves.toEqual({ accessToken: "synthetic-login-token" });
+    expect(getAccessToken()).toBe("synthetic-login-token");
   });
 
-  it("clears the access token when logout succeeds or fails", async () => {
-    await logout();
-
-    vi.mocked(apiClient.post).mockRejectedValueOnce(new Error("offline"));
-    await expect(logout()).rejects.toThrow("offline");
-
-    expect(apiClient.post).toHaveBeenNthCalledWith(1, "/auth/logout");
-    expect(apiClient.post).toHaveBeenNthCalledWith(2, "/auth/logout");
-    expect(clearAccessToken).toHaveBeenCalledTimes(2);
-  });
-
-  it("submits password and OTP operations to their endpoints", async () => {
-    const controller = new AbortController();
-    await changePassword(
-      {
-        currentPassword: currentCredential,
-        newPassword: replacementCredential,
-      },
-      controller.signal,
-    );
-    await forgotPassword({
-      mobile: "09120000000",
-      otp: "123456",
-      password: replacementCredential,
-    });
-    const otpResponse = { expiresIn: 120, remainingSeconds: 0 };
-    vi.mocked(apiClient.post).mockResolvedValueOnce(otpResponse);
-    await expect(
-      requestOtp({ mobile: "09120000000", purpose: "login" }),
-    ).resolves.toEqual(otpResponse);
-
-    expect(apiClient.post).toHaveBeenNthCalledWith(
-      1,
-      "/auth/change-password",
-      {
-        currentPassword: currentCredential,
-        newPassword: replacementCredential,
-      },
-      { signal: controller.signal },
-    );
-    expect(apiClient.post).toHaveBeenNthCalledWith(
-      2,
-      "/auth/forgot-password",
-      {
-        mobile: "09120000000",
-        otp: "123456",
-        password: replacementCredential,
-      },
-      { signal: undefined },
-    );
-    expect(apiClient.post).toHaveBeenNthCalledWith(
-      3,
-      "/auth/otp-request",
-      { mobile: "09120000000", purpose: "login" },
-      { signal: undefined },
-    );
-  });
-
-  it.each([
-    { label: "null", response: null },
-    { label: "a primitive", response: "invalid" },
-    { label: "an array", response: [] },
-    { label: "a missing expiry", response: { remainingSeconds: 30 } },
-    { label: "a missing cooldown", response: { expiresIn: 120 } },
-    {
-      label: "a string expiry",
-      response: { expiresIn: "120", remainingSeconds: 30 },
-    },
-    {
-      label: "an infinite expiry",
-      response: { expiresIn: Infinity, remainingSeconds: 30 },
-    },
-    {
-      label: "a string cooldown",
-      response: { expiresIn: 120, remainingSeconds: "30" },
-    },
-    {
-      label: "a non-finite cooldown",
-      response: { expiresIn: 120, remainingSeconds: NaN },
-    },
-    {
-      label: "a negative cooldown",
-      response: { expiresIn: 120, remainingSeconds: -1 },
-    },
-  ])("rejects an OTP reply with $label", async ({ response }) => {
-    vi.mocked(apiClient.post).mockResolvedValueOnce(response);
+  it("does not replace the session after a malformed login response", async () => {
+    setAccessToken("synthetic-existing-token");
+    post.mockResolvedValue({ accessToken: " " });
 
     await expect(
-      requestOtp({ mobile: "09120000000", purpose: "login" }),
+      login({ mobile: "09120000000", password: "synthetic-password" }),
     ).rejects.toThrow();
+    expect(getAccessToken()).toBe("synthetic-existing-token");
   });
+
+  it("forwards caller cancellation to logout and password changes", async () => {
+    const controller = new AbortController();
+    const { signal } = controller;
+    const params = {
+      currentPassword: "synthetic-old",
+      newPassword: "synthetic-new",
+    };
+
+    await logout(signal);
+    expect(post).toHaveBeenLastCalledWith("/auth/logout", undefined, {
+      signal,
+    });
+
+    await changePassword(params, signal);
+    expect(post).toHaveBeenLastCalledWith("/auth/change-password", params, {
+      signal,
+    });
+  });
+
+  it("forwards the caller signal to each public authentication request", async () => {
+    const controller = new AbortController();
+    const { signal } = controller;
+    const loginParams = {
+      mobile: "09120000000",
+      password: "synthetic-password",
+    };
+    const recoveryParams = { ...loginParams, otp: "123456" };
+    const registerParams = {
+      ...recoveryParams,
+      firstName: "Test",
+      lastName: "User",
+    };
+    const otpParams = {
+      mobile: loginParams.mobile,
+      purpose: "register" as const,
+    };
+
+    post.mockResolvedValueOnce({ accessToken: "synthetic-login-token" });
+    await login(loginParams, signal);
+    expect(post).toHaveBeenLastCalledWith("/auth/login", loginParams, {
+      signal,
+    });
+
+    post.mockResolvedValueOnce({ accessToken: "synthetic-register-token" });
+    await register(registerParams, signal);
+    expect(post).toHaveBeenLastCalledWith("/auth/register", registerParams, {
+      signal,
+    });
+
+    post.mockResolvedValueOnce(undefined);
+    await forgotPassword(recoveryParams, signal);
+    expect(post).toHaveBeenLastCalledWith(
+      "/auth/forgot-password",
+      recoveryParams,
+      { signal },
+    );
+
+    post.mockResolvedValueOnce({ expiresIn: 300, remainingSeconds: 60 });
+    await requestOtp(otpParams, signal);
+    expect(post).toHaveBeenLastCalledWith("/auth/otp-request", otpParams, {
+      signal,
+    });
+  });
+
+  it.each(["login", "register"] as const)(
+    "rejects a late %s credential when its caller aborted",
+    async (action) => {
+      setAccessToken("synthetic-existing-token");
+      const controller = new AbortController();
+      const pending = deferred<unknown>();
+      post.mockReturnValue(pending.promise);
+      const params = {
+        mobile: "09120000000",
+        password: "synthetic-password",
+        firstName: "Test",
+        lastName: "User",
+        otp: "123456",
+      };
+      const request =
+        action === "login"
+          ? login(params, controller.signal)
+          : register(params, controller.signal);
+      const rejected = expect(request).rejects.toSatisfy(axios.isCancel);
+
+      controller.abort();
+      pending.resolve({ accessToken: "synthetic-abandoned-token" });
+
+      await rejected;
+      expect(getAccessToken()).toBe("synthetic-existing-token");
+    },
+  );
+
+  it.each(["login", "register"] as const)(
+    "rejects a late %s response from an abandoned session",
+    async (action) => {
+      const pending = deferred<unknown>();
+      post.mockReturnValue(pending.promise);
+      const params = {
+        mobile: "09120000000",
+        password: "synthetic-password",
+        firstName: "Test",
+        lastName: "User",
+        otp: "123456",
+      };
+      const request = action === "login" ? login(params) : register(params);
+      const rejected = expect(request).rejects.toSatisfy(axios.isCancel);
+      setAccessToken("synthetic-new-session");
+      pending.resolve({ accessToken: "synthetic-stale-token" });
+
+      await rejected;
+      expect(getAccessToken()).toBe("synthetic-new-session");
+    },
+  );
 });

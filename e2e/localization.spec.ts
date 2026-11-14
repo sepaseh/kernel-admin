@@ -18,12 +18,12 @@ test.describe("localized critical journeys", () => {
       const legacyLanguage = language === "fa" ? "en" : "fa";
       await page.addInitScript((legacyLanguage) => {
         localStorage.setItem("language", JSON.stringify(legacyLanguage));
-        localStorage.setItem("theme", "light");
+        localStorage.setItem("theme", JSON.stringify("light"));
       }, legacyLanguage);
       await mockApplicationSettings(page, language);
       await page.route("https://api.example.com/auth/login", async (route) => {
         expect(route.request().postDataJSON()).toEqual({
-          identifier: "ada",
+          mobile: "09120000000",
           password: syntheticCredential,
         });
         await route.fulfill({
@@ -69,7 +69,7 @@ test.describe("localized critical journeys", () => {
         }),
       ).toBeVisible();
       await expect(
-        page.getByLabel(messages.identifier, { exact: true }),
+        page.getByLabel(messages.mobile, { exact: true }),
       ).toBeVisible();
       await expect(
         page.getByLabel(messages.password, { exact: true }),
@@ -97,7 +97,9 @@ test.describe("localized critical journeys", () => {
           contentType: "image/png",
         });
       }
-      await page.getByLabel(messages.identifier, { exact: true }).fill("ada");
+      await page
+        .getByLabel(messages.mobile, { exact: true })
+        .fill("09120000000");
       await page
         .getByLabel(messages.password, { exact: true })
         .fill(syntheticCredential);

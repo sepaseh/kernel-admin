@@ -1,67 +1,57 @@
-import { Button, Flex, Form, Input, Typography } from "antd";
+import { Button, Flex, Form, type FormProps, Input, Typography } from "antd";
 import { isCancel } from "axios";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
 
 import { routeTree } from "@/app/config";
 import { useAntd, useCore } from "@/app/hooks";
-import { login } from "@/features/auth/api.ts";
-import type { LoginParams } from "@/features/auth/types.ts";
-import { getErrorMessage } from "@/shared/lib";
-
-import { useLoginStyles } from "./styles";
+import { login, type LoginParams } from "@/features/auth";
+import { useAbortController, useLock } from "@/shared/hooks";
+import { DigitsInput } from "@/shared/ui/digits-input";
 
 export const LoginPage = () => {
   const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
-  const submission = useRef<AbortController | undefined>(undefined);
+  const { cancel, start } = useAbortController();
   const { messageAPI } = useAntd();
-  const { logos, theme } = useCore();
-  const [form] = Form.useForm<LoginParams>();
+  const { settings, theme } = useCore();
+  const { lock, unlock } = useLock();
   const navigate = useNavigate();
-  const { styles } = useLoginStyles();
+  const logo = settings[`${theme}Logo`]?.url;
 
-  const handleSubmit = async (values: LoginParams): Promise<void> => {
-    if (submission.current) return;
+  const handleSubmit: FormProps<LoginParams>["onFinish"] = async (values) => {
+    if (!lock()) return;
 
-    const controller = new AbortController();
-    submission.current = controller;
+    const signal = start();
     setSubmitting(true);
+
     try {
-      await login(values, controller.signal);
-      if (controller.signal.aborted) return;
+      await login(values, signal);
+      if (signal.aborted) return;
+
       void navigate(routeTree.root.path, { replace: true });
     } catch (error) {
-      if (!controller.signal.aborted && !isCancel(error))
-        void messageAPI.error(getErrorMessage(error));
+      if (signal.aborted || isCancel(error)) return;
+
+      if (error instanceof Error) void messageAPI.error(error.message);
     } finally {
-      if (submission.current === controller) {
-        submission.current = undefined;
-        if (!controller.signal.aborted) setSubmitting(false);
+      if (!signal.aborted) {
+        unlock();
+        setSubmitting(false);
       }
     }
   };
 
-  const handleSubmitTrigger = () => {
-    form.submit();
-  };
-
-  useEffect(
-    () => () => {
-      submission.current?.abort();
-      submission.current = undefined;
-    },
-    [],
-  );
+  useLayoutEffect(() => cancel, [cancel]);
 
   return (
     <Flex gap={32} vertical>
       <Flex align="center" gap={8} vertical>
-        {logos?.[theme] ? (
+        {logo ? (
           <img
             alt={t("logo")}
-            src={logos[theme]}
+            src={logo}
             style={{ display: "block", height: 40, width: "auto" }}
           />
         ) : null}
@@ -69,23 +59,24 @@ export const LoginPage = () => {
           {t("login")}
         </Typography.Title>
       </Flex>
-      <Form
-        form={form}
+      <Form<LoginParams>
+        disabled={submitting}
         layout="vertical"
-        onFinish={(values) => void handleSubmit(values)}
+        name="login-form"
+        onFinish={handleSubmit}
         requiredMark={false}
         scrollToFirstError={{ focus: true }}
       >
         <Form.Item<LoginParams>
-          label={t("identifier")}
-          name="identifier"
+          label={t("mobile")}
+          name="mobile"
           rules={[{ required: true }]}
         >
-          <Input
-            className={styles.input}
-            onPressEnter={handleSubmitTrigger}
-            placeholder={t("identifier")}
+          <DigitsInput
+            autoComplete="username"
+            placeholder={t("mobile")}
             size="large"
+            style={{ direction: "ltr" }}
           />
         </Form.Item>
         <Form.Item<LoginParams>
@@ -94,27 +85,27 @@ export const LoginPage = () => {
           rules={[{ required: true }]}
         >
           <Input.Password
-            classNames={{ input: styles.input }}
-            onPressEnter={handleSubmitTrigger}
+            autoComplete="current-password"
             placeholder={t("password")}
             size="large"
-            type="password"
+            styles={{ input: { direction: "ltr" } }}
           />
         </Form.Item>
         <Flex justify="space-between">
           <Link to={routeTree.register.path}>{t("register")}</Link>
           <Link to={routeTree.forgotPassword.path}>{t("forgotPassword")}</Link>
         </Flex>
+        <Button
+          block
+          htmlType="submit"
+          loading={submitting}
+          size="large"
+          style={{ marginTop: 32 }}
+          type="primary"
+        >
+          {t("login")}
+        </Button>
       </Form>
-      <Button
-        block
-        loading={submitting}
-        onClick={handleSubmitTrigger}
-        size="large"
-        type="primary"
-      >
-        {t("login")}
-      </Button>
     </Flex>
   );
 };

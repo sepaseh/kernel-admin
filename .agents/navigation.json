@@ -43,14 +43,12 @@
       "when": "Change admitted shared runtime helpers, language catalogs or date adapters.",
       "owners": [
         "src/shared/api/token.ts",
-        "src/shared/config/language.ts",
+        "src/shared/i18n/locales.ts",
         "src/shared/i18n/catalogs.ts",
         "src/shared/i18n/index.ts",
         "src/shared/i18n/date.ts",
         "src/shared/i18n/dayjs/fa.ts",
-        "src/shared/lib/transform.ts",
-        "src/shared/lib/error.ts",
-        "src/shared/lib/color-contrast.ts"
+        "src/shared/lib/transform.ts"
       ],
       "contracts": [
         "src/shared/api/types.ts",
@@ -60,14 +58,11 @@
       ],
       "tests": [
         "src/shared/api/token.test.ts",
-        "src/shared/config/language.test.ts",
         "src/shared/i18n/catalogs.test.ts",
         "src/shared/i18n/index.test.ts",
         "src/shared/i18n/date.test.ts",
         "src/shared/i18n/dayjs.test.ts",
-        "src/shared/lib/transform.test.ts",
-        "src/shared/lib/error.test.ts",
-        "src/shared/lib/color-contrast.test.ts"
+        "src/shared/lib/transform.test.ts"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [".agents/rules/code-quality.md", ".agents/rules/safety.md"],
@@ -75,14 +70,13 @@
     },
     {
       "id": "http-lifecycle",
-      "when": "Change admitted HTTP adapters, session generations, settings validation or cancellable read resources.",
+      "when": "Change admitted HTTP adapters, session generations, settings metadata or cancellable reads.",
       "owners": [
         "src/shared/api/client.ts",
         "src/shared/api/config.ts",
         "src/shared/api/path.ts",
-        "src/shared/api/token-response.ts",
-        "src/shared/hooks/useReadRequest.ts",
-        "src/shared/hooks/useReadResource.ts",
+        "src/shared/api/token.ts",
+        "src/shared/hooks/useAbortController.ts",
         "src/features/account/api.ts",
         "src/features/auth/api.ts",
         "src/features/calendar/api.ts",
@@ -107,14 +101,13 @@
       ],
       "tests": [
         "src/shared/api/client.test.ts",
-        "src/shared/api/transport.test.ts",
+        "src/shared/api/refresh.test.ts",
         "src/shared/api/config.test.ts",
         "src/shared/api/path.test.ts",
-        "src/shared/api/token-response.test.ts",
-        "src/shared/hooks/useReadResource.test.ts",
+        "src/shared/api/token.test.ts",
+        "src/shared/hooks/useAbortController.test.tsx",
         "src/features/account/api.test.ts",
         "src/features/auth/api.test.ts",
-        "src/features/auth/logout.test.ts",
         "src/features/calendar/api.test.ts",
         "src/features/roles/api.test.ts",
         "src/features/settings/api.test.ts",
@@ -145,6 +138,7 @@
       ],
       "tests": [
         "src/shared/api/client.test.ts",
+        "src/shared/api/transport.test.ts",
         "src/features/settings/api.test.ts",
         "src/features/users/api.test.ts",
         "src/features/files/api.test.ts"
@@ -201,7 +195,7 @@
         "src/app/providers/antd/Antd.tsx",
         "src/app/config/routes.ts",
         "src/app/lib/access.ts",
-        "src/app/not-found/NotFound.tsx"
+        "src/features/not-found/NotFound.tsx"
       ],
       "contracts": [
         "docs/architecture.md",
@@ -213,7 +207,7 @@
         "src/app/providers/core/Core.test.tsx",
         "src/app/providers/antd/Antd.test.tsx",
         "src/app/lib/access.test.ts",
-        "src/app/not-found/NotFound.test.tsx",
+        "src/features/not-found/NotFound.stories.tsx",
         "src/layouts/default/Default.test.tsx"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
@@ -222,7 +216,7 @@
     },
     {
       "id": "active-language",
-      "when": "Trace validated API language code/direction/calendar/names, fixed bootstrap, vendor adapters, calendar display or super-admin language changes.",
+      "when": "Trace API language code/direction/calendar/names, fixed bootstrap, vendor adapters, calendar display or super-admin language changes.",
       "owners": [
         "src/app/providers/core/Core.tsx",
         "src/app/providers/antd/Antd.tsx",
@@ -252,7 +246,7 @@
         ".agents/rules/react.md",
         ".agents/rules/imports.md"
       ],
-      "limitations": "Validated API metadata owns active language, direction, calendar and names. Local code maps select catalogs/vendor adapters only; toolbar choices are synthetic fixtures."
+      "limitations": "API metadata owns active language, direction, calendar and names. Local code maps select catalogs/vendor adapters only; toolbar choices are synthetic fixtures."
     },
     {
       "id": "shared-translation",
@@ -321,21 +315,20 @@
       "id": "admin-request-reliability",
       "when": "Change cancellation, obsolete-read handling, manual retry/error states, timeouts, shared refresh, generation guards or logout completion.",
       "owners": [
-        "src/shared/hooks/useReadRequest.ts",
-        "src/shared/hooks/useReadResource.ts",
+        "src/shared/hooks/useAbortController.ts",
         "src/shared/api/client.ts",
         "src/shared/api/token.ts",
         "src/features/auth/api.ts",
         "src/app/providers/core/Core.tsx",
         "src/layouts/default/Default.tsx",
-        "src/shared/ui/request-feedback/RequestFeedback.tsx"
+        "src/shared/ui/request-error/RequestError.tsx"
       ],
       "contracts": ["docs/authentication.md"],
       "tests": [
-        "src/shared/hooks/useReadResource.test.ts",
+        "src/shared/hooks/useAbortController.test.tsx",
         "src/shared/api/client.test.ts",
         "src/layouts/default/Default.test.tsx",
-        "src/features/auth/logout.test.ts"
+        "src/features/auth/api.test.ts"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
@@ -374,23 +367,21 @@
     },
     {
       "id": "ui-foundation",
-      "when": "Change admitted shared UI controls, themes, browser preferences, mutation hooks, observability or local assets.",
+      "when": "Change admitted shared UI controls, themes, browser preferences, submission locks, error fallbacks or local assets.",
       "owners": [
-        "src/shared/config/theme.ts",
+        "src/app/providers/antd/Antd.tsx",
         "src/shared/storage/state.ts",
         "src/shared/storage/theme.ts",
         "src/shared/storage/compact.ts",
         "src/shared/storage/hooks/useLocalStorageWatcher.ts",
-        "src/shared/hooks/useMutationRequest.ts",
+        "src/shared/hooks/useLock.ts",
         "src/shared/hooks/useGoBack.ts",
-        "src/shared/lib/dialog-focus.ts",
-        "src/shared/lib/observability.ts",
         "src/shared/ui/digits-input/DigitsInput.tsx",
         "src/shared/ui/otp-input/OtpInput.tsx",
         "src/shared/ui/password-fields/PasswordFields.tsx",
         "src/shared/ui/form-drawer/FormDrawer.tsx",
         "src/shared/ui/error-boundary/ErrorBoundary.tsx",
-        "src/shared/ui/request-feedback/RequestFeedback.tsx",
+        "src/shared/ui/request-error/RequestError.tsx",
         "src/shared/ui/route-loading/RouteLoading.tsx",
         "src/assets/styles/index.css",
         "src/assets/styles/vazirmatn.css",
@@ -409,21 +400,18 @@
         ".agents/rules/styling.md"
       ],
       "tests": [
-        "src/shared/config/theme.test.ts",
+        "src/app/providers/antd/Antd.test.tsx",
         "src/shared/storage/state.test.ts",
         "src/shared/storage/preferences.test.ts",
         "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
-        "src/shared/hooks/useMutationRequest.test.tsx",
+        "src/shared/hooks/useLock.test.tsx",
         "src/shared/hooks/useGoBack.test.tsx",
-        "src/shared/lib/dialog-focus.test.tsx",
-        "src/shared/lib/observability.test.ts",
-        "src/shared/lib/observability.vitals.test.ts",
         "src/shared/ui/digits-input/DigitsInput.test.tsx",
         "src/shared/ui/otp-input/OtpInput.test.tsx",
         "src/shared/ui/password-fields/PasswordFields.test.tsx",
         "src/shared/ui/form-drawer/FormDrawer.test.tsx",
         "src/shared/ui/error-boundary/ErrorBoundary.test.tsx",
-        "src/shared/ui/request-feedback/RequestFeedback.test.tsx",
+        "src/shared/ui/request-error/RequestError.test.tsx",
         "src/shared/ui/route-loading/RouteLoading.test.tsx",
         "src/assets/assets.test.ts",
         "src/shared/hooks/useAbortController.test.tsx",
@@ -444,6 +432,7 @@
       "id": "admin-feature",
       "when": "Change published admin screen, form, menu or permission-gated component behavior.",
       "owners": [
+        "src/features/files",
         "src/features/roles",
         "src/features/settings",
         "src/features/users",
@@ -483,7 +472,7 @@
       "when": "Change component contrast, keyboard/focus behavior or responsive fixtures, and plan later visual-baseline verification.",
       "owners": [
         "src/shared/ui",
-        "src/shared/config/theme.ts",
+        "src/app/providers/antd/Antd.tsx",
         ".storybook/preview.tsx"
       ],
       "contracts": [
@@ -492,7 +481,7 @@
         "docs/development.md"
       ],
       "tests": [
-        "src/shared/lib/color-contrast.test.ts",
+        ".storybook/request-guard.test.ts",
         "src/test/storybook/StoryShell.test.tsx",
         "src/shared/ui/form-drawer/FormDrawer.stories.tsx"
       ],
@@ -512,7 +501,7 @@
       "owners": [
         "DESIGN.md",
         ".agents/skills/design-ui/SKILL.md",
-        "src/shared/config/theme.ts",
+        "src/app/providers/antd/Antd.tsx",
         "src/layouts/default/Default.tsx",
         "src/features/users/Users.tsx",
         "src/shared/ui",
@@ -524,7 +513,7 @@
         ".agents/rules/localization.md"
       ],
       "tests": [
-        "src/test/storybook/StoryShell.test.tsx",
+        ".storybook/request-guard.test.ts",
         "src/features/users/Users.stories.tsx",
         "src/features/users/components/user-form/UserForm.stories.tsx"
       ],
@@ -605,7 +594,7 @@
     },
     {
       "id": "application-composition",
-      "when": "Change application startup, composed routes or the runnable verification gate",
+      "when": "Change application startup, composed routes, browser error reporting, Web Vitals or the runnable verification gate",
       "owners": [
         "src/main.tsx",
         "src/app/App.tsx",
@@ -621,7 +610,9 @@
       ],
       "tests": [
         "src/app/Routes.test.tsx",
-        "src/test/integration/pages.test.tsx",
+        "src/layouts/default/Default.test.tsx",
+        "src/shared/lib/observability.test.ts",
+        "src/shared/lib/observability.vitals.test.ts",
         "contract/api.contract.test.ts",
         "e2e/auth.spec.ts",
         "e2e/visual/admin.spec.ts"
@@ -639,7 +630,7 @@
         "visual",
         "lighthouse"
       ],
-      "limitations": "Synthetic consumer fixtures do not verify a deployed backend or deployment. Local/PR Chromium validation, complete browser compatibility, approved-runtime image comparison and time-bounded advisory performance have distinct manifest roles. Reused evidence must match the actual tested head, base and merge tree."
+      "limitations": "Synthetic consumer fixtures do not verify a deployed backend or deployment. Local/PR Chromium validation, complete browser compatibility, approved-runtime image comparison and advisory performance have distinct manifest roles. Reused evidence must match the actual tested head, base and merge tree."
     }
   ],
   "phase": "application-verification",

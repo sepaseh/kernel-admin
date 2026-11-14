@@ -1,78 +1,57 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button, Form } from "antd";
-import type { ComponentProps } from "react";
-import { useState } from "react";
-import { expect, userEvent, waitFor, within } from "storybook/test";
-
-import { i18nInstance } from "@/shared/i18n";
-
-import { PasswordFields } from "./PasswordFields";
-
-type PasswordFieldsStoryProps = ComponentProps<typeof PasswordFields>;
-
-const PasswordFieldsStory = ({
-  passwordLabel,
-  size,
-}: PasswordFieldsStoryProps) => {
-  const [validated, setValidated] = useState(false);
-  return (
-    <Form
-      layout="vertical"
-      onFinish={() => setValidated(true)}
-      onValuesChange={() => setValidated(false)}
-      style={{ width: 320 }}
-    >
-      <PasswordFields passwordLabel={passwordLabel} size={size} />
-      <Button htmlType="submit" type="primary">
-        Validate
-      </Button>
-      <output aria-label="Validation result">
-        {validated ? "Validated" : "Not submitted"}
-      </output>
-    </Form>
-  );
-};
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import { PasswordFields } from "@/shared/ui/password-fields";
+import { i18n } from "@/shared/i18n";
 
 const meta = {
-  component: PasswordFields,
-  parameters: { layout: "centered" },
-  play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement);
-    const password = canvas.getByLabelText(
-      i18nInstance.t(args.passwordLabel ?? "password"),
-      { exact: true },
-    );
-    const confirmation = canvas.getByLabelText(
-      i18nInstance.t("confirmPassword"),
-    );
-    await userEvent.type(password, "synthetic-password");
-    await userEvent.type(confirmation, "different-password");
-    await userEvent.click(canvas.getByRole("button", { name: "Validate" }));
-    await waitFor(() =>
-      expect(
-        canvas.getByText(i18nInstance.t("passwordMismatch")),
-      ).toBeVisible(),
-    );
-    await userEvent.clear(confirmation);
-    await userEvent.type(confirmation, "synthetic-password");
-    await userEvent.click(canvas.getByRole("button", { name: "Validate" }));
-    await expect(await canvas.findByText("Validated")).toBeVisible();
-    // Cleared Ant Design errors remain mounted until their exit motion ends.
-    await waitFor(() =>
-      expect(
-        canvasElement.querySelector(".ant-form-item-explain-error"),
-      ).not.toBeInTheDocument(),
-    );
-  },
-  render: (args) => <PasswordFieldsStory {...args} />,
-  title: "Shared UI/PasswordFields",
-} satisfies Meta<typeof PasswordFields>;
-
+  title: "Shared/PasswordFields",
+  args: { onFinish: fn() },
+  render: ({ onFinish }, { id }) => (
+    <Form
+      layout="vertical"
+      name={`password-fields-story-${id}`}
+      onFinish={onFinish}
+    >
+      <PasswordFields />
+      <Button htmlType="submit">Save password</Button>
+    </Form>
+  ),
+} satisfies Meta<{ onFinish: (values: unknown) => void }>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
-export const Large: Story = { args: { size: "large" } };
-export const NewPassword: Story = {
-  args: { passwordLabel: "newPassword" },
+export const MismatchThenCorrect: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(
+      canvas.getByLabelText(i18n.t("password"), { exact: true }),
+      "Synthetic-password!",
+    );
+    const confirmation = canvas.getByLabelText(i18n.t("confirmPassword"), {
+      exact: true,
+    });
+    await userEvent.type(confirmation, "Different-password!");
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Save password" }),
+    );
+    await expect(
+      await canvas.findByText(i18n.t("passwordMismatch")),
+    ).toBeVisible();
+    await expect(args.onFinish).not.toHaveBeenCalled();
+    await userEvent.clear(confirmation);
+    await userEvent.type(confirmation, "Synthetic-password!");
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Save password" }),
+    );
+    await expect(args.onFinish).toHaveBeenCalledWith({
+      password: "Synthetic-password!",
+      confirmPassword: "Synthetic-password!",
+    });
+    await waitFor(() =>
+      expect(
+        canvas.queryByText(i18n.t("passwordMismatch")),
+      ).not.toBeInTheDocument(),
+    );
+  },
 };

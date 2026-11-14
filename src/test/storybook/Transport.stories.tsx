@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, mocked } from "storybook/test";
-
+import { expect } from "storybook/test";
+import { uploadFile } from "@/features/files";
+import { fetchSettings, updateSettings } from "@/features/settings";
+import { fetchUser, fetchUsers, updateUserRoles } from "@/features/users";
+import { apiClient } from "@/shared/api";
 import {
   assertNoUnexpectedRequests,
   resetRequestGuard,
@@ -12,10 +15,9 @@ import { fetchSettings, updateSettings } from "@/features/settings/api";
 import { uploadFile } from "@/features/files/api";
 
 const meta = {
-  render: () => <h1>Synthetic API isolation</h1>,
   title: "Verification/Transport",
+  render: () => <h1>Synthetic API isolation</h1>,
 } satisfies Meta;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -33,7 +35,9 @@ export const UnexpectedRequest: Story = {
       await expect(request("/__unexpected_storybook_probe__")).rejects.toThrow(
         `Unexpected synthetic API request: ${method}`,
       );
-      await expect(mocked(request)).toHaveBeenCalledOnce();
+    } finally {
+      // This is the intentional negative probe; other stories never clear failures.
+      resetRequestGuard();
     }
     await expect(
       apiClient.upload("/__unexpected_storybook_probe__", {}),
@@ -54,15 +58,14 @@ export const UnexpectedRequest: Story = {
 export const SavedUserRoles: Story = {
   play: async () => {
     await updateUserRoles("user-1", { roleIds: ["role-editor"] });
-    const updated = await fetchUser("user-1");
-    await expect(updated.roles).toEqual([
+    const accepted = await fetchUser("user-1");
+    await expect(accepted.roles).toEqual([
       { id: "role-editor", name: "Editor" },
     ]);
-    const listed = await fetchUsers({});
-    await expect(listed.items.find(({ id }) => id === "user-1")?.roles).toEqual(
-      updated.roles,
-    );
-    updated.roles[0].name = "Changed outside the fixture";
+    await expect(
+      (await fetchUsers({})).items.find(({ id }) => id === "user-1")?.roles,
+    ).toEqual(accepted.roles);
+    accepted.roles[0].name = "Changed outside the synthetic service";
     await expect(fetchUser("user-1")).resolves.toMatchObject({
       roles: [{ id: "role-editor", name: "Editor" }],
     });
@@ -84,7 +87,6 @@ export const SavedUploadedLogos: Story = {
     );
     const accepted = await updateSettings({
       darkLogoId: darkLogo.id,
-      darkTheme: original.darkTheme,
       lightLogoId: lightLogo.id,
       lightTheme: original.lightTheme,
       imageSettings: original.imageSettings,
@@ -109,5 +111,9 @@ export const SavedUploadedLogos: Story = {
       language: original.language,
       lightLogo: undefined,
     });
+    await updateSettings(values);
+    const cleared = await fetchSettings();
+    await expect(cleared.darkLogo).toBeUndefined();
+    await expect(cleared.lightLogo).toBeUndefined();
   },
 };

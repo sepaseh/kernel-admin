@@ -8,7 +8,7 @@ data may use only their permitted local erased type edges; follow
 Local source dependencies of the shared layer must stay within `src/shared`.
 This excludes app, features, layouts and application entry points. Features own
 their HTTP types, endpoint paths, local helpers and hooks. Shared transport stays in
-`src/shared/api`; genuinely shared constraints such as `profileNameMaxLength`
+`src/shared/api`; genuinely shared appearance contracts
 stay in framework-free `src/shared/contracts`. Permission contracts belong to
 `src/features/roles`. Do not move a feature-only helper into shared merely because
 two files use it.
@@ -42,7 +42,7 @@ aliases. Extend an ownership policy only for a reviewed requirement and add
 positive and negative regressions for the intended capability and forbidden
 internal access.
 
-Root ESLint enforces its configured type-only imports and import/export sorting.
+Root ESLint enforces its configured type-only imports and reports advisory import/export sorting.
 The boundary checker owns source dependency enforcement; ESLint does not replace
 that check or enforce style-property ordering. Keep source independent of
 external project sources, backend/database/auth/storage implementation, local
@@ -51,7 +51,7 @@ package links, npm workspaces and retired multi-project directories.
 ## Type-only edges
 
 Use `import type` or `export type` for declarations used only as types. Mixed
-imports/re-exports may mark individual type specifiers inline. Runtime components,
+imports/re-exports combine values and inline `type` specifiers from the same module. Runtime components,
 schemas, enum values and classes still require value imports. An erased edge must
 obey the same ownership boundary; it does not bypass the published dependency
 policy. Leaf catalogs and calendar data accept only the exact erased local types

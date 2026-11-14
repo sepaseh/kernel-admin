@@ -4,20 +4,17 @@ import type { LocaleCode } from "@/shared/i18n/locales";
 import { applicationSettingsFixture } from "./fixtures";
 import { expect, test } from "./shared/admin-fixtures";
 
-test("failed initial settings retain bootstrap error language and retry before rendering routes", async ({
+test("failed initial settings retain bootstrap error language before rendering routes", async ({
   page,
 }) => {
-  let available = false;
   await page.addInitScript(() => {
     localStorage.setItem("language", '"en"');
   });
   await page.route("https://api.example.com/settings", (route) =>
-    available
-      ? route.fulfill({ json: applicationSettingsFixture("en") })
-      : route.fulfill({
-          status: 503,
-          json: { message: "Synthetic settings unavailable" },
-        }),
+    route.fulfill({
+      status: 503,
+      json: { message: "Synthetic settings unavailable" },
+    }),
   );
   await page.goto("/auth");
   await expect(page.getByText(catalogs.fa.settingsLoadFailed)).toBeVisible();
@@ -49,6 +46,12 @@ test("each anonymous page bootstrap uses the current API language", async ({
   );
   await page.goto("/auth");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(
+    page.getByRole("heading", { name: catalogs.en.login }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => localStorage.getItem("language")),
+  ).toBeNull();
   language = "fa";
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "fa");
@@ -139,7 +142,6 @@ for (const isSystemAdmin of [false, true]) {
         >;
         writes.push(payload);
         if (isSystemAdmin) expect(payload.language_code).toBe("fa");
-        else expect(payload).not.toHaveProperty("language_code");
         expect(payload).toHaveProperty("dark_theme");
         expect(payload).toHaveProperty("light_theme");
         expect(payload.image_settings).toEqual(

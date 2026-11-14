@@ -1,70 +1,73 @@
-import "@/shared/i18n/date";
-
-import { ConfigProvider } from "antd";
-import en from "antd/locale/en_GB";
-import fa from "antd/locale/fa_IR";
+import { useLayoutEffect, useMemo, type PropsWithChildren } from "react";
+import { CoreContext } from "@/app/contexts";
+import { AntdProvider } from "@/app/providers";
+import { GlobalStyle } from "@/GlobalStyle";
+import { dayjsLocaleName, i18n } from "@/shared/i18n";
 import dayjs from "dayjs";
-import type { CSSProperties, ReactNode } from "react";
-import { useLayoutEffect, useMemo } from "react";
+import { sampleSettings } from "./fixtures";
 
-import { createThemeConfig } from "@/shared/config";
-import { i18nInstance } from "@/shared/i18n";
-import { sampleLanguages } from "@/test/storybook/fixtures";
-import { StoryAppearanceContext } from "@/test/storybook/StoryAppearance";
-
-type PreviewFrameProps = {
-  children: ReactNode;
-  direction: "ltr" | "rtl";
+type PreviewFrameProps = PropsWithChildren<{
   languageCode: "en" | "fa";
-  themeMode: "dark" | "light";
-};
+  themeMode: "light" | "dark";
+  compact: boolean;
+  direction?: "ltr" | "rtl";
+  ownsMain?: boolean;
+}>;
 
 export const PreviewFrame = ({
   children,
+  compact,
   direction,
   languageCode,
+  ownsMain,
   themeMode,
 }: PreviewFrameProps) => {
-  const language = useMemo(
-    () => ({ ...sampleLanguages[languageCode], direction }),
+  const Frame = ownsMain ? "div" : "main";
+  const settings = useMemo(
+    () => ({
+      ...sampleSettings,
+      language:
+        languageCode === "fa"
+          ? {
+              code: "fa" as const,
+              name: "Persian",
+              nativeName: "فارسی",
+              direction: direction ?? "rtl",
+              calendar: "jalali" as const,
+            }
+          : {
+              ...sampleSettings.language,
+              direction: direction ?? sampleSettings.language.direction,
+            },
+    }),
     [direction, languageCode],
   );
-  const appearance = useMemo(
-    () => ({ language, theme: themeMode }),
-    [language, themeMode],
-  );
-  const themeConfig = useMemo(() => createThemeConfig(themeMode), [themeMode]);
-  const frameStyle: CSSProperties & { "--admin-focus-color": string } = {
-    "--admin-focus-color": String(themeConfig.token?.colorTextBase),
-    backgroundColor: String(themeConfig.token?.colorBgBase),
-    color: String(themeConfig.token?.colorTextBase),
-    minHeight: "100vh",
-  };
-  useLayoutEffect(() => {
-    document.documentElement.dir = direction;
-    document.documentElement.lang = languageCode;
-  }, [direction, languageCode]);
 
   useLayoutEffect(() => {
-    void i18nInstance.changeLanguage(language.code);
-    dayjs.calendar(
-      language.calendar === "gregorian" ? "gregory" : language.calendar,
-    );
-    dayjs.locale(language.code === "en" ? "en-gb" : language.code);
-  }, [language.calendar, language.code]);
+    void i18n.changeLanguage(languageCode);
+    dayjs.calendar(settings.language.calendar);
+    dayjs.locale(dayjsLocaleName(languageCode));
+  }, [languageCode, settings.language.calendar]);
 
   return (
-    <ConfigProvider
-      direction={direction}
-      form={{ scrollToFirstError: { focus: true } }}
-      locale={languageCode === "fa" ? fa : en}
-      theme={themeConfig}
+    <CoreContext
+      value={{
+        compact,
+        currentRoute: "root",
+        settings,
+        theme: themeMode,
+        setCompact: () => undefined,
+        setCurrentRoute: () => undefined,
+        setSettings: () => undefined,
+        setTheme: () => undefined,
+      }}
     >
-      <StoryAppearanceContext.Provider value={appearance}>
-        <div dir={direction} lang={languageCode} style={frameStyle}>
+      <AntdProvider>
+        <GlobalStyle />
+        <Frame data-story-frame style={{ minHeight: "100vh", padding: 24 }}>
           {children}
-        </div>
-      </StoryAppearanceContext.Provider>
-    </ConfigProvider>
+        </Frame>
+      </AntdProvider>
+    </CoreContext>
   );
 };

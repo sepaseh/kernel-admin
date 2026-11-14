@@ -1,4 +1,3 @@
-import type { TableProps } from "antd";
 import {
   Button,
   Col,
@@ -8,9 +7,10 @@ import {
   Row,
   Select,
   Table,
+  type TableProps,
   Tooltip,
 } from "antd";
-import { useAntdToken } from "antd-style";
+import { isCancel } from "axios";
 import {
   Check,
   KeyRound,
@@ -22,252 +22,217 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate, useOutletContext } from "react-router";
 
-import { useAntd, useCore } from "@/app/hooks";
+import { useAntd } from "@/app/hooks";
 import { getRoutePermissions } from "@/app/lib";
-import { fetchRoles } from "@/features/roles/api";
-import type { Role } from "@/features/roles/types";
-import { UserForm } from "@/features/users/components/user-form/UserForm";
-import { UserRoleForm } from "@/features/users/components/user-role-form/UserRoleForm";
-import { useFilterParams } from "@/features/users/hooks/useFilterParams";
-import { useDebouncedFilters } from "@/features/users/hooks/useDebouncedFilters";
-import { generatePassword } from "@/features/users/tools/password";
-import { getAccessTokenVersion } from "@/shared/api/token";
+import { fetchRoles, type Role } from "@/features/roles";
+import type { DefaultLayoutContext } from "@/layouts/default";
+import { defaultPageSize, modalKeys } from "@/shared/config";
 import {
-  isCurrentMutationError,
-  useMutationRequest,
-  useReadRequest,
-  useReadResource,
+  useAbortController,
+  useDebouncedFilters,
+  useFilterParams,
+  useLock,
 } from "@/shared/hooks";
-import { getErrorMessage } from "@/shared/lib";
-import { ensureContrast } from "@/shared/lib/color-contrast";
+import { generatePassword, getAllowedValue, getPage } from "@/shared/lib";
 import { DigitsInput } from "@/shared/ui/digits-input";
-import { RequestFeedback } from "@/shared/ui/request-feedback";
 
 import {
   deleteUser,
-  fetchUser,
   fetchUsers,
   updateUserPassword,
-  updateUserStatus,
   updateUserSystemAdmin,
 } from "./api";
-import { defaultPageSize, userDrawerKeys } from "./constants";
-import type {
-  User,
-  UserListQuery,
-  UserStatusRequest,
-  UserSystemAdminRequest,
-} from "./types";
+import { UserForm } from "./components/user-form";
+import { UserRoleForm } from "./components/user-role-form";
+import { userStatuses } from "./constants";
+import type { User, UserQuery, UserSystemAdminRequest } from "./types";
 
 export const UsersPage = () => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<UserListQuery>();
-  const { messageAPI, modalAPI, notificationAPI } = useAntd();
-  const { user } = useCore();
+  const [form] = Form.useForm<UserQuery>();
+  const [loading, setLoading] = useState(false);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [selectedId, setSelectedId] = useState<User["id"]>();
+  const [submitting, setSubmitting] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [users, setUsers] = useState<User[]>([]);
+  const { cancel, start } = useAbortController();
+  const { messageAPI, modalAPI, notificationAPI, token } = useAntd();
+  const { filters, setFilters } = useFilterParams<UserQuery>();
+  const debouncedHandleFilter = useDebouncedFilters(setFilters);
+  const { pathname, search } = useLocation();
+  const { lock, unlock } = useLock();
+  const navigate = useNavigate();
+  const { currentUser } = useOutletContext<DefaultLayoutContext>();
   const { canCreate, canDelete, canUpdate } = getRoutePermissions(
     "users",
-    user,
+    currentUser,
   );
-  const { filters, setFilters } = useFilterParams<UserListQuery>();
-  const { hash, pathname, search } = useLocation();
-  const token = useAntdToken();
-  const iconSurfaces = [token.colorBgContainer, token.colorBgLayout];
-  const positiveIconColor = ensureContrast(token.colorSuccess, iconSurfaces, 3);
-  const negativeIconColor = ensureContrast(token.colorError, iconSurfaces, 3);
-  const navigate = useNavigate();
-  const parsedOffset = Number(filters.offset ?? "0");
-  const offset =
-    Number.isSafeInteger(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
-  const current = Math.floor(offset / defaultPageSize) + 1;
-  const isSystemAdmin = user?.isSystemAdmin ?? false;
-  const hasActions = canDelete || canUpdate;
-  const loadUsers = useCallback(
-    (signal: AbortSignal) =>
-      fetchUsers(
+  const current = getPage(filters.page);
+
+  const fetchData = useCallback(async () => {
+    const signal = start();
+    setLoading(true);
+
+    try {
+      const data = await fetchUsers(
         {
           ...filters,
-          offset: String(offset),
-          size: String(defaultPageSize),
+          status: getAllowedValue(filters.status, userStatuses),
         },
         signal,
-      ),
-    [filters, offset],
-  );
-  const list = useReadResource(loadUsers);
-  const roleOptions = useReadResource<Role[]>(fetchRoles, canUpdate);
-  const details = useReadRequest<User>();
-  const [detailTarget, setDetailTarget] = useState<{
-    id: string;
-    hash: typeof userDrawerKeys.roles | typeof userDrawerKeys.update;
-  }>();
-  const data = list.data?.items ?? [];
-  const total = list.data?.total ?? 0;
-  const roles = roleOptions.data ?? [];
-  const selectedData = details.data;
-  const loading = list.loading || details.loading;
-  const fetchData = list.reload;
-  const mutation = useMutationRequest(
-    JSON.stringify([
-      pathname,
-      search,
-      hash,
-      user?.id,
-      canDelete,
-      canUpdate,
-      isSystemAdmin,
-    ]),
-    canDelete || canUpdate || isSystemAdmin,
-  );
-  const debouncedHandleFilter = useDebouncedFilters(setFilters);
+      );
+      if (signal.aborted) return;
 
-  const openUserDrawer = async (
-    id: User["id"],
-    hash: typeof userDrawerKeys.roles | typeof userDrawerKeys.update,
-  ) => {
-    if (!canUpdate) return;
-    setDetailTarget({ id, hash });
-    const value = await details.run((signal) => fetchUser(id, signal));
-    if (value) {
-      void navigate({ hash, pathname, search }, { state: true });
+      setUsers(data.items);
+      setTotal(data.total);
+    } catch (error) {
+      if (signal.aborted || isCancel(error)) return;
+
+      if (error instanceof Error) void messageAPI.error(error.message);
+    } finally {
+      if (!signal.aborted) setLoading(false);
+    }
+  }, [filters, messageAPI, start]);
+
+  const handleDelete = async (id: User["id"]) => {
+    if (!lock()) return;
+
+    setSubmitting(true);
+
+    try {
+      await deleteUser(id);
+      void messageAPI.success(t("userDeleted"));
+    } catch (error) {
+      if (error instanceof Error) void messageAPI.error(error.message);
+      throw error;
+    } finally {
+      setSubmitting(false);
+      unlock();
     }
   };
 
-  const handleStatus = (id: User["id"], params: UserStatusRequest) => {
-    if (!canUpdate) return;
+  const handlePassword = async (id: User["id"]) => {
+    if (!lock()) return;
+
+    setSubmitting(true);
+
+    try {
+      const password = generatePassword();
+      await updateUserPassword(id, { password });
+      notificationAPI.success({
+        description: password,
+        title: t("password"),
+      });
+
+      try {
+        await navigator.clipboard?.writeText(password);
+      } catch {
+        // The generated password remains available in the notification.
+      }
+
+      return password;
+    } catch (error) {
+      if (error instanceof Error) void messageAPI.error(error.message);
+      throw error;
+    } finally {
+      setSubmitting(false);
+      unlock();
+    }
+  };
+
+  const handleSystemAdmin = async (
+    id: User["id"],
+    params: UserSystemAdminRequest,
+  ) => {
+    if (!lock()) return;
+
+    setSubmitting(true);
+
+    try {
+      await updateUserSystemAdmin(id, params);
+      void messageAPI.success(t("systemAdminUpdated"));
+    } catch (error) {
+      if (error instanceof Error) void messageAPI.error(error.message);
+      throw error;
+    } finally {
+      setSubmitting(false);
+      unlock();
+    }
+  };
+
+  const handleDeleteConfirm = (id: User["id"]) => {
+    if (!canDelete || submitting) return;
+
     modalAPI.confirm({
-      onCancel: mutation.cancel,
       cancelText: t("no"),
+      okButtonProps: { danger: true },
       okText: t("yes"),
       onOk: async () => {
-        try {
-          const result = await mutation.run((signal) =>
-            updateUserStatus(id, params, signal),
-          );
-          if (!result?.isCurrent()) return;
-          messageAPI.success(t("statusUpdated"));
-          await fetchData();
-        } catch (error) {
-          if (isCurrentMutationError(error))
-            messageAPI.error(getErrorMessage(error.cause));
-        }
+        await handleDelete(id);
+        await fetchData();
       },
-      title: t("statusConfirm"),
+      title: t("deleteUserConfirm"),
     });
   };
 
-  const handlePassword = (id: User["id"]) => {
-    if (!canUpdate) return;
+  const handlePasswordConfirm = (id: User["id"]) => {
+    if (!canUpdate || submitting) return;
 
     modalAPI.confirm({
-      onCancel: mutation.cancel,
       cancelText: t("no"),
       okText: t("yes"),
-      okType: "default",
-      onOk: async () => {
-        try {
-          const loginVersion = getAccessTokenVersion();
-          let appliedPassword: string | undefined;
-          await mutation.run(async (signal) => {
-            const password = generatePassword();
-            await updateUserPassword(id, { password }, signal);
-            appliedPassword = password;
-          });
-          if (!appliedPassword || getAccessTokenVersion() !== loginVersion)
-            return;
-
-          void navigator.clipboard
-            ?.writeText(appliedPassword)
-            .catch(() => undefined);
-          notificationAPI.success({
-            description: appliedPassword,
-            message: t("password"),
-          });
-        } catch (error) {
-          if (isCurrentMutationError(error))
-            messageAPI.error(getErrorMessage(error.cause));
-        }
-      },
+      onOk: async () => await handlePassword(id),
       title: t("passwordConfirm"),
     });
   };
 
-  const handleSystemAdmin = (
-    id: User["id"],
-    params: UserSystemAdminRequest,
-  ) => {
-    if (!isSystemAdmin) return;
+  const handleSystemAdminConfirm = (id: User["id"], isSystemAdmin: boolean) => {
+    if (!currentUser.isSystemAdmin || submitting) return;
+
     modalAPI.confirm({
-      onCancel: mutation.cancel,
       cancelText: t("no"),
       okText: t("yes"),
       onOk: async () => {
-        try {
-          const result = await mutation.run((signal) =>
-            updateUserSystemAdmin(id, params, signal),
-          );
-          if (!result?.isCurrent()) return;
-          messageAPI.success(t("systemAdminUpdated"));
-          await fetchData();
-        } catch (error) {
-          if (isCurrentMutationError(error))
-            messageAPI.error(getErrorMessage(error.cause));
-        }
+        await handleSystemAdmin(id, { isSystemAdmin });
+        await fetchData();
       },
       title: t("systemAdminConfirm"),
     });
   };
 
-  const handleDelete = (id: User["id"]) => {
-    if (!canDelete) return;
-    modalAPI.confirm({
-      onCancel: mutation.cancel,
-      cancelText: t("no"),
-      okButtonProps: { danger: true },
-      okText: t("yes"),
-      onOk: async () => {
-        try {
-          const result = await mutation.run((signal) => deleteUser(id, signal));
-          if (!result?.isCurrent()) return;
-          messageAPI.success(t("userDeleted"));
-          await fetchData();
-        } catch (error) {
-          if (isCurrentMutationError(error))
-            messageAPI.error(getErrorMessage(error.cause));
-        }
-      },
-      title: t("deleteUserConfirm"),
-    });
+  const openUserDrawer = (
+    id: User["id"],
+    drawer: typeof modalKeys.roles | typeof modalKeys.update,
+  ) => {
+    if (!canUpdate || submitting) return;
+
+    setSelectedId(id);
+    void navigate({ hash: drawer, pathname, search }, { state: true });
   };
 
   const tableColumns: TableProps<User>["columns"] = [
     {
       align: "center",
       key: "index",
-      render: (_, _record, index) => offset + index + 1,
+      render: (_, _record, index) =>
+        (current - 1) * defaultPageSize + index + 1,
       title: t("row"),
       width: 60,
     },
     {
       key: "name",
-      render: (_, record) => `${record.firstName} ${record.lastName}`,
+      render: (_, { firstName, lastName }) => `${firstName} ${lastName}`,
       title: t("name"),
     },
-    { align: "center", dataIndex: "mobile", title: t("mobile") },
     {
       align: "center",
-      dataIndex: "email",
-      render: (_, { email }) => email || "-",
-      title: t("email"),
+      dataIndex: "mobile",
+      title: t("mobile"),
     },
-    {
-      align: "center",
-      dataIndex: "username",
-      render: (_, { username }) => username || "-",
-      title: t("username"),
-    },
-    ...(isSystemAdmin
+    ...(currentUser.isSystemAdmin
       ? ([
           {
             align: "center",
@@ -280,11 +245,7 @@ export const UsersPage = () => {
                   <Button
                     aria-label={label}
                     color={isSystemAdmin ? "green" : "red"}
-                    style={{
-                      color: isSystemAdmin
-                        ? positiveIconColor
-                        : negativeIconColor,
-                    }}
+                    disabled={submitting}
                     icon={
                       isSystemAdmin ? (
                         <Check aria-hidden color="currentColor" size="1em" />
@@ -292,99 +253,69 @@ export const UsersPage = () => {
                         <X aria-hidden color="currentColor" size="1em" />
                       )
                     }
-                    onClick={() =>
-                      handleSystemAdmin(id, { isSystemAdmin: !isSystemAdmin })
-                    }
+                    onClick={() => handleSystemAdminConfirm(id, !isSystemAdmin)}
+                    style={{
+                      color: isSystemAdmin
+                        ? token.colorSuccess
+                        : token.colorError,
+                    }}
                     variant="link"
                   />
                 </Tooltip>
               );
             },
             title: t("systemAdmin"),
-            width: 120,
           },
         ] satisfies TableProps<User>["columns"])
       : []),
     {
       align: "center",
       dataIndex: "status",
-      render: (_, { id, status }) => {
-        const active = status === "active";
-        const label = t(status);
-
-        return (
-          <Tooltip title={label}>
-            {canUpdate ? (
-              <Button
-                aria-label={label}
-                color={active ? "green" : "red"}
-                style={{
-                  color: active ? positiveIconColor : negativeIconColor,
-                }}
-                icon={
-                  active ? (
-                    <Check aria-hidden color="currentColor" size="1em" />
-                  ) : (
-                    <X aria-hidden color="currentColor" size="1em" />
-                  )
-                }
-                onClick={() =>
-                  handleStatus(id, {
-                    status: active ? "inactive" : "active",
-                  })
-                }
-                variant="link"
-              />
+      render: (_, { status }) => (
+        <Tooltip title={t(status)}>
+          <span
+            aria-label={t(status)}
+            role="img"
+            style={{
+              color:
+                status === "active" ? token.colorSuccess : token.colorError,
+            }}
+          >
+            {status === "active" ? (
+              <Check aria-hidden size="1em" />
             ) : (
-              <span
-                aria-label={label}
-                role="img"
-                style={{
-                  color: active ? positiveIconColor : negativeIconColor,
-                }}
-              >
-                {active ? (
-                  <Check aria-hidden color="currentColor" size="1em" />
-                ) : (
-                  <X aria-hidden color="currentColor" size="1em" />
-                )}
-              </span>
+              <X aria-hidden size="1em" />
             )}
-          </Tooltip>
-        );
-      },
+          </span>
+        </Tooltip>
+      ),
       title: t("status"),
       width: 120,
     },
-    ...(hasActions
-      ? [
+    ...(canDelete || canUpdate
+      ? ([
           {
-            align: "center" as const,
+            align: "center",
             key: "actions",
-            render: (_: unknown, record: User) => (
+            render: (_, { id }) => (
               <>
                 {canUpdate && (
                   <>
                     <Tooltip title={t("update")}>
                       <Button
                         aria-label={t("update")}
+                        disabled={submitting}
                         icon={
                           <Pencil aria-hidden color="currentColor" size="1em" />
                         }
-                        onClick={() =>
-                          openUserDrawer(record.id, userDrawerKeys.update)
-                        }
+                        onClick={() => openUserDrawer(id, modalKeys.update)}
                         type="text"
                       />
                     </Tooltip>
                     <Tooltip title={t("roles")}>
                       <Button
                         aria-label={t("roles")}
-                        disabled={
-                          roleOptions.loading ||
-                          !!roleOptions.error ||
-                          !roleOptions.data
-                        }
+                        disabled={submitting}
                         icon={
                           <KeyRound
                             aria-hidden
@@ -392,15 +323,14 @@ export const UsersPage = () => {
                             size="1em"
                           />
                         }
-                        onClick={() =>
-                          openUserDrawer(record.id, userDrawerKeys.roles)
-                        }
+                        onClick={() => openUserDrawer(id, modalKeys.roles)}
                         type="text"
                       />
                     </Tooltip>
                     <Tooltip title={t("password")}>
                       <Button
                         aria-label={t("password")}
+                        disabled={submitting}
                         icon={
                           <LockKeyhole
                             aria-hidden
@@ -408,7 +338,7 @@ export const UsersPage = () => {
                             size="1em"
                           />
                         }
-                        onClick={() => handlePassword(record.id)}
+                        onClick={() => handlePasswordConfirm(id)}
                         type="text"
                       />
                     </Tooltip>
@@ -418,10 +348,11 @@ export const UsersPage = () => {
                   <Tooltip title={t("delete")}>
                     <Button
                       aria-label={t("delete")}
+                      disabled={submitting}
                       icon={
                         <Trash2 aria-hidden color="currentColor" size="1em" />
                       }
-                      onClick={() => handleDelete(record.id)}
+                      onClick={() => handleDeleteConfirm(id)}
                       type="text"
                     />
                   </Tooltip>
@@ -431,127 +362,124 @@ export const UsersPage = () => {
             title: t("action"),
             width: 160,
           },
-        ]
+        ] satisfies TableProps<User>["columns"])
       : []),
   ];
 
   useEffect(() => {
-    form.resetFields();
-    form.setFieldsValue(filters);
-  }, [filters, form]);
+    if (!canUpdate) return;
 
-  useEffect(() => details.cancel, [details.cancel, hash, pathname, search]);
+    const controller = new AbortController();
+
+    void (async () => {
+      try {
+        const roles = await fetchRoles(controller.signal);
+        if (controller.signal.aborted) return;
+
+        setRoles(roles);
+      } catch (error) {
+        if (controller.signal.aborted || isCancel(error)) return;
+
+        if (error instanceof Error) void messageAPI.error(error.message);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [canUpdate, messageAPI]);
+
+  useEffect(() => {
+    void (async () => {
+      await fetchData();
+    })();
+
+    return cancel;
+  }, [cancel, fetchData]);
+
+  useEffect(() => {
+    form.resetFields();
+    form.setFieldsValue({
+      firstName: filters.firstName,
+      lastName: filters.lastName,
+      mobile: filters.mobile,
+      status: getAllowedValue(filters.status, userStatuses),
+    });
+  }, [filters, form]);
 
   return (
     <>
-      <div
-        style={{
-          flexGrow: 1,
-          minWidth: 0,
-        }}
+      <Form<UserQuery>
+        disabled={submitting}
+        form={form}
+        name="users-filter"
+        onValuesChange={(_, values) =>
+          debouncedHandleFilter({ ...values, page: undefined })
+        }
       >
-        <RequestFeedback
-          error={list.error}
-          hasData={!!list.data}
-          loading={list.loading}
-          retry={list.reload}
-        />
-        <RequestFeedback
-          error={roleOptions.error}
-          hasData={!!roleOptions.data}
-          loading={roleOptions.loading}
-          retry={roleOptions.reload}
-        />
-        <RequestFeedback
-          error={details.error}
-          loading={details.loading}
-          retry={() =>
-            detailTarget && openUserDrawer(detailTarget.id, detailTarget.hash)
-          }
-        />
-        <Form<UserListQuery>
-          form={form}
-          onValuesChange={(_, values) =>
-            debouncedHandleFilter({ ...values, offset: undefined })
-          }
-        >
-          <Row gutter={24}>
-            <Col xs={24} sm={12} md={8} lg={6} xxl={4} xxxl={3}>
-              <Form.Item<UserListQuery> name="firstName">
-                <Input allowClear placeholder={t("firstName")} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6} xxl={4} xxxl={3}>
-              <Form.Item<UserListQuery> name="lastName">
-                <Input allowClear placeholder={t("lastName")} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6} xxl={4} xxxl={3}>
-              <Form.Item<UserListQuery> name="email">
-                <Input allowClear placeholder={t("email")} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6} xxl={4} xxxl={3}>
-              <Form.Item<UserListQuery> name="mobile">
-                <DigitsInput allowClear placeholder={t("mobile")} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6} xxl={4} xxxl={3}>
-              <Form.Item<UserListQuery> name="username">
-                <Input allowClear placeholder={t("username")} />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6} xxl={4} xxxl={3}>
-              <Form.Item<UserListQuery> name="status">
-                <Select
-                  aria-label={t("status")}
-                  allowClear
-                  options={[
-                    { label: t("active"), value: "active" },
-                    { label: t("inactive"), value: "inactive" },
-                  ]}
-                  placeholder={t("status")}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-        {(!list.error || list.data) && (
-          <section
-            aria-label={t("users")}
-            style={{ overflowX: "auto" }}
-            tabIndex={0}
-          >
-            <Table<User>
-              columns={tableColumns}
-              dataSource={data}
-              loading={loading}
-              onChange={({ current: page }) =>
-                setFilters({
-                  ...filters,
-                  offset: String(((page ?? 1) - 1) * defaultPageSize),
-                })
-              }
-              pagination={{
-                current,
-                pageSize: defaultPageSize,
-                showSizeChanger: false,
-                total,
-              }}
-              rowKey="id"
-              size="small"
-              styles={{ content: { minWidth: token.screenXL } }}
-            />
-          </section>
-        )}
-      </div>
+        <Row gutter={token.marginLG}>
+          <Col lg={6} md={8} sm={12} xs={24} xxl={4} xxxl={3}>
+            <Form.Item<UserQuery> name="firstName">
+              <Input
+                allowClear
+                aria-label={t("firstName")}
+                placeholder={t("firstName")}
+              />
+            </Form.Item>
+          </Col>
+          <Col lg={6} md={8} sm={12} xs={24} xxl={4} xxxl={3}>
+            <Form.Item<UserQuery> name="lastName">
+              <Input
+                allowClear
+                aria-label={t("lastName")}
+                placeholder={t("lastName")}
+              />
+            </Form.Item>
+          </Col>
+          <Col lg={6} md={8} sm={12} xs={24} xxl={4} xxxl={3}>
+            <Form.Item<UserQuery> name="mobile">
+              <DigitsInput
+                allowClear
+                aria-label={t("mobile")}
+                placeholder={t("mobile")}
+              />
+            </Form.Item>
+          </Col>
+          <Col lg={6} md={8} sm={12} xs={24} xxl={4} xxxl={3}>
+            <Form.Item<UserQuery> name="status">
+              <Select
+                allowClear
+                aria-label={t("status")}
+                options={userStatuses.map((value) => ({
+                  label: t(value),
+                  value,
+                }))}
+                placeholder={t("status")}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+      </Form>
+      <Table<User>
+        columns={tableColumns}
+        dataSource={users}
+        loading={loading}
+        pagination={{
+          current,
+          disabled: submitting,
+          onChange: (page) => setFilters({ page: String(page) }),
+          pageSize: defaultPageSize,
+          showSizeChanger: false,
+          total: total,
+        }}
+        rowKey="id"
+        size="small"
+      />
       {canCreate && (
         <FloatButton
           aria-label={t("create")}
-          icon={<Plus aria-hidden color="currentColor" size="1em" />}
+          icon={<Plus aria-hidden size="1em" />}
           onClick={() =>
-            navigate(
-              { hash: userDrawerKeys.create, pathname, search },
+            void navigate(
+              { hash: modalKeys.create, pathname, search },
               { state: true },
             )
           }
@@ -559,14 +487,8 @@ export const UsersPage = () => {
           type="primary"
         />
       )}
-      <UserForm data={selectedData} onFinish={fetchData} />
-      {roleOptions.data && !roleOptions.error && (
-        <UserRoleForm
-          data={selectedData}
-          onFinish={fetchData}
-          options={{ roles }}
-        />
-      )}
+      <UserForm id={selectedId} onFinish={fetchData} />
+      <UserRoleForm id={selectedId} onFinish={fetchData} options={{ roles }} />
     </>
   );
 };

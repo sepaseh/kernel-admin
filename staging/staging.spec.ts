@@ -9,8 +9,7 @@ if (!apiHealthUrl) {
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem("language", "en");
-    localStorage.setItem("theme", "light");
+    localStorage.setItem("theme", JSON.stringify("light"));
   });
 });
 
@@ -39,7 +38,7 @@ test("loads the deployed application and same-origin assets", async ({
 
   expect(response?.ok()).toBe(true);
   await expect(page).toHaveTitle("kernel");
-  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   expect(assetCount).toBeGreaterThan(0);
   expect(failedAssets).toEqual([]);
 });

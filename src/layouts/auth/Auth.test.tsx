@@ -1,54 +1,47 @@
-// @vitest-environment jsdom
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { clearAccessToken } from "@/shared/api";
-import { render, screen } from "@/test/render";
+import { clearAccessToken, getAccessToken, setAccessToken } from "@/shared/api";
 
 import { AuthLayout } from "./Auth";
 
-const mocks = vi.hoisted(() => ({
-  setUser: vi.fn(),
-}));
-
-vi.mock("@/shared/api", () => ({
-  clearAccessToken: vi.fn(),
-}));
-
 vi.mock("@/app/hooks", () => ({
-  useCore: () => ({ setUser: mocks.setUser }),
-}));
-
-vi.mock("antd-style", () => ({
-  useAntdToken: () => ({
-    colorBgBase: "#ffffff",
-    colorBgContainer: "#fafafa",
-    colorBgLayout: "#f5f5f5",
-    paddingSM: 8,
-    screenXS: 480,
+  useAntd: () => ({
+    token: {
+      colorBgLayout: "#eee",
+      colorBgContainer: "#fff",
+      colorTextBase: "#111",
+      paddingSM: 8,
+      paddingLG: 24,
+      screenXS: 480,
+      borderRadiusLG: 8,
+    },
   }),
 }));
+afterEach(() => {
+  cleanup();
+  clearAccessToken();
+});
 
-describe("AuthLayout", () => {
-  it("clears the existing session and renders the auth route", () => {
+describe("authentication layout", () => {
+  it("clears the previous in-memory session when displaying an authentication route", () => {
+    setAccessToken("synthetic-prior-session");
     render(
-      <MemoryRouter initialEntries={["/auth"]}>
+      <MemoryRouter>
         <Routes>
-          <Route element={<AuthLayout />} path="/auth">
-            <Route index element={<h1>Sign in</h1>} />
+          <Route element={<AuthLayout />}>
+            <Route path="*" element={<h1>Sign in</h1>} />
           </Route>
         </Routes>
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "Sign in" })).toBeVisible();
-    expect(screen.getByRole("main")).toHaveStyle({
-      backgroundColor: "#f5f5f5",
-    });
-    expect(screen.getByRole("main").firstElementChild).toHaveStyle({
-      backgroundColor: "#fafafa",
-    });
-    expect(clearAccessToken).toHaveBeenCalledOnce();
-    expect(mocks.setUser).toHaveBeenCalledWith();
+    expect(getAccessToken()).toBeNull();
+    expect(
+      screen
+        .getByRole("main")
+        .contains(screen.getByRole("heading", { name: "Sign in" })),
+    ).toBe(true);
   });
 });

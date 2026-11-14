@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type Account } from "@/features/account/types";
+import type { CurrentUser } from "@/features/account";
 
 import {
   getAllowedNavigation,
@@ -8,64 +8,68 @@ import {
   hasRouteAccess,
 } from "./access";
 
-const createUser = (overrides: Partial<Account> = {}): Account => ({
+const user: CurrentUser = {
+  id: "synthetic-user",
   firstName: "Test",
-  id: "user-1",
-  isSystemAdmin: false,
   lastName: "User",
   mobile: "09120000000",
+  isSystemAdmin: false,
   permissions: [],
   status: "active",
-  username: "test-user",
-  ...overrides,
-});
+};
 
-describe("access policy", () => {
-  it("allows only public routes without a user", () => {
+describe("route and action access", () => {
+  it("allows public screens and denies protected screens to an anonymous visitor", () => {
     expect(hasRouteAccess("auth")).toBe(true);
+    expect(hasRouteAccess("register")).toBe(true);
     expect(hasRouteAccess("root")).toBe(false);
     expect(hasRouteAccess("users")).toBe(false);
+    expect(getAllowedNavigation()).toEqual([]);
   });
 
-  it("allows authenticated routes without granting permission routes", () => {
-    const user = createUser();
-
+  it("allows authenticated-only routes without granting administrative access", () => {
+    expect(hasRouteAccess("account", user)).toBe(true);
     expect(hasRouteAccess("root", user)).toBe(true);
-    expect(hasRouteAccess("calendar", user)).toBe(false);
-    expect(hasRouteAccess("settings", user)).toBe(false);
     expect(hasRouteAccess("users", user)).toBe(false);
-  });
-
-  it("allows every route and action for a system administrator", () => {
-    const user = createUser({ isSystemAdmin: true });
-
-    expect(hasRouteAccess("users", user)).toBe(true);
-    expect(getRoutePermissions("roles", user)).toEqual({
-      canCreate: true,
-      canDelete: true,
-      canUpdate: true,
-    });
-  });
-
-  it("returns only granted actions", () => {
-    expect(
-      getRoutePermissions(
-        "users",
-        createUser({ permissions: ["users.create", "users.update"] }),
-      ),
-    ).toEqual({ canCreate: true, canDelete: false, canUpdate: true });
-  });
-
-  it("separates calendar visibility from calendar editing", () => {
-    const user = createUser({ permissions: ["calendar.read"] });
-
-    expect(hasRouteAccess("calendar", user)).toBe(true);
-    expect(getRoutePermissions("calendar", user)).toEqual({
+    expect(getRoutePermissions("users", user)).toEqual({
+      canCreate: false,
+      canDelete: false,
       canUpdate: false,
     });
   });
 
-  it("removes empty navigation groups", () => {
-    expect(getAllowedNavigation(createUser())).toEqual([{ route: "root" }]);
+  it("checks page and mutation permissions independently", () => {
+    const reader = {
+      ...user,
+      permissions: ["users.read", "users.update"],
+    } satisfies CurrentUser;
+
+    expect(hasRouteAccess("users", reader)).toBe(true);
+    expect(hasRouteAccess("roles", reader)).toBe(false);
+    expect(getRoutePermissions("users", reader)).toEqual({
+      canCreate: false,
+      canDelete: false,
+      canUpdate: true,
+    });
+    expect(getAllowedNavigation(reader)).toEqual([
+      { route: "root" },
+      {
+        key: "userManagement",
+        label: "userManagement",
+        children: [{ route: "users" }],
+      },
+    ]);
+  });
+
+  it("grants system administrators access without requiring explicit permission entries", () => {
+    const administrator = { ...user, isSystemAdmin: true };
+
+    expect(hasRouteAccess("settings", administrator)).toBe(true);
+    expect(getRoutePermissions("roles", administrator)).toEqual({
+      canCreate: true,
+      canDelete: true,
+      canUpdate: true,
+    });
+    expect(getAllowedNavigation(administrator).length).toBeGreaterThan(1);
   });
 });

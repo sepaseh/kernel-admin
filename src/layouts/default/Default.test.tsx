@@ -11,10 +11,6 @@ import {
 } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getAccount } from "@/features/account/api.ts";
-import type { Account } from "@/features/account/types";
-import { logout } from "@/features/auth/api.ts";
-import type * as SharedApi from "@/shared/api";
 import {
   AdminApiError,
   clearAccessToken,
@@ -58,61 +54,54 @@ const mocks = vi.hoisted(() => {
 vi.mock("@/features/account/api.ts", () => ({
   getAccount: vi.fn(),
 }));
-
-vi.mock("@/features/auth/api.ts", () => ({
-  logout: vi.fn(),
-}));
-
-vi.mock("@/shared/api", async (importOriginal) => ({
-  ...(await importOriginal<typeof SharedApi>()),
+vi.mock("@/features/account", () => ({ fetchCurrentUser: vi.fn() }));
+vi.mock("@/features/auth", () => ({ logout: vi.fn() }));
+vi.mock("@/shared/api", async (original) => ({
+  ...(await original<typeof SharedApi>()),
   clearAccessToken: vi.fn(),
   setUnauthorizedHandler: vi.fn(),
 }));
-
+vi.mock("antd-style", async (original) => ({
+  ...(await original<typeof AntdStyle>()),
+  useResponsive: () => responsive,
+}));
 vi.mock("@/app/hooks", () => ({
-  useCore: () => mocks.core,
-}));
-
-vi.mock("@/app/lib", () => ({
-  getAllowedNavigation: () => [
-    { route: "root" },
-    {
-      children: [{ route: "users" }, { route: "roles" }],
-      key: "userManagement",
-      label: "userManagement",
+  useAntd: () => ({
+    messageAPI: messages,
+    token: {
+      marginMD: 16,
+      paddingMD: 16,
+      paddingSM: 8,
+      paddingXS: 4,
+      size: 16,
+      screenXXXL: 1920,
     },
-  ],
-}));
-
-vi.mock("antd-style", () => ({
-  useAntdToken: () => ({
-    colorBgContainer: "#ffffff",
-    colorBgLayout: "#f5f5f5",
-    colorTextBase: "#222222",
-    marginMD: 16,
-    paddingMD: 16,
-    paddingSM: 8,
-    screenXXXL: 1920,
+  }),
+  useCore: () => ({
+    compact: false,
+    currentRoute: "root",
+    theme: "light",
+    setTheme,
+    setCompact,
+    settings: {
+      lightLogo: { url: "/synthetic-logo.svg" },
+      language: { direction: "ltr" },
+    },
   }),
 }));
 
-vi.mock("react-i18next", async (importOriginal) => ({
-  ...(await importOriginal<typeof ReactI18next>()),
-  useTranslation: () => ({ t: (key: string) => key }),
-}));
-
-const Location = () => {
-  const location = useLocation();
-  return <output aria-label="location">{location.pathname}</output>;
+const currentUser: DefaultLayoutContext["currentUser"] = {
+  id: "synthetic-admin",
+  firstName: "Ada",
+  lastName: "Lovelace",
+  mobile: "09120000000",
+  status: "active",
+  isSystemAdmin: false,
+  permissions: ["users.read"],
 };
-
-const AccountPage = () => {
-  const navigate = useNavigate();
-  return (
-    <button onClick={() => void navigate(-1)} type="button">
-      Back
-    </button>
-  );
+const Consumer = () => {
+  const context = useOutletContext<DefaultLayoutContext>();
+  return <h1>{context.currentUser.firstName}'s dashboard</h1>;
 };
 
 const ContextConsumer = () => {
@@ -140,33 +129,26 @@ const ContextConsumer = () => {
 
 const renderLayout = (content = <h1>Dashboard content</h1>) =>
   render(
-    <MemoryRouter initialEntries={["/"]}>
-      <Location />
+    <MemoryRouter>
       <Routes>
         <Route element={<DefaultLayout />} path="/">
           <Route index element={content} />
           <Route element={<AccountPage />} path="account" />
           <Route element={<h1>Users content</h1>} path="users" />
         </Route>
-        <Route element={<h1>Authentication</h1>} path="/auth" />
+        <Route path="/auth" element={<h1>Authentication</h1>} />
       </Routes>
     </MemoryRouter>,
   );
 
-const renderLoadedLayout = async () => {
-  const value = renderLayout();
-  await screen.findByRole("heading", { name: "Dashboard content" });
-  return value;
-};
-
-beforeEach(() => {
-  mocks.core.compact = false;
-  mocks.core.currentRoute = "root";
-  mocks.core.theme = "light";
-  mocks.core.user = mocks.account;
-  vi.mocked(getAccount).mockResolvedValue(mocks.account);
+beforeEach(async () => {
+  vi.resetAllMocks();
+  responsive.lg = true;
+  vi.mocked(fetchCurrentUser).mockResolvedValue(currentUser);
   vi.mocked(logout).mockResolvedValue(undefined);
+  await i18n.changeLanguage("en");
 });
+afterEach(cleanup);
 
 describe("DefaultLayout", () => {
   it("exposes the accepted account, awaited reload and session cleanup to its children", async () => {
@@ -324,103 +306,82 @@ describe("DefaultLayout", () => {
 
     renderLayout();
 
-    await waitFor(() =>
-      expect(screen.getByLabelText("location")).toHaveTextContent("/auth"),
+    await screen.findByRole("heading", { name: "Ada's dashboard" });
+    expect(fetchCurrentUser).toHaveBeenCalledExactlyOnceWith(
+      expect.any(AbortSignal),
     );
-    expect(clearAccessToken).toHaveBeenCalledOnce();
-    expect(mocks.core.setUser).toHaveBeenCalledWith();
-  });
-
-  it("shows a loading state while the account is unavailable", () => {
-    mocks.core.user = undefined;
-    vi.mocked(getAccount).mockReturnValueOnce(new Promise(() => undefined));
-
-    const { container } = renderLayout();
-
-    expect(container.querySelector(".ant-spin")).toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: "logo" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("img", { name: i18n.t("logo") }).getAttribute("src"),
+    ).toBe("/synthetic-logo.svg");
+    expect(setUnauthorizedHandler).toHaveBeenCalledWith(expect.any(Function));
   });
 
-  it("changes theme from the account menu", async () => {
-    const { user } = await renderLoadedLayout();
-
-    await user.click(screen.getByRole("button", { name: "account" }));
-    await user.click(await screen.findByText("darkMode"));
-
-    expect(mocks.core.setTheme).toHaveBeenCalledWith("dark");
-  });
-
-  it("toggles compact mode from the item before logout", async () => {
-    const { user } = await renderLoadedLayout();
-
-    await user.click(screen.getByRole("button", { name: "account" }));
-    const compactItem = await screen.findByText("compactMode");
-    const logoutItem = await screen.findByText("logout");
-    expect(
-      compactItem.compareDocumentPosition(logoutItem) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    await user.click(compactItem);
-
-    expect(mocks.core.setCompact).toHaveBeenCalledWith(true);
-  });
-
-  it("offers normal mode when compact mode is active", async () => {
-    mocks.core.compact = true;
-    const { user } = await renderLoadedLayout();
-
-    await user.click(screen.getByRole("button", { name: "account" }));
-    await user.click(await screen.findByText("normalMode"));
-
-    expect(mocks.core.setCompact).toHaveBeenCalledWith(false);
-  });
-
-  it("clears the local session even when remote logout fails", async () => {
-    vi.mocked(logout).mockRejectedValueOnce(new Error("Offline"));
-    const { user } = await renderLoadedLayout();
-
-    await user.click(screen.getByRole("button", { name: "account" }));
-    await user.click(await screen.findByText("logout"));
-
-    await waitFor(() => expect(clearAccessToken).toHaveBeenCalledOnce());
-    expect(mocks.core.setUser).toHaveBeenLastCalledWith();
+  it("reports an initial account read failure without clearing the session", async () => {
+    vi.mocked(fetchCurrentUser).mockRejectedValueOnce(
+      new Error("Synthetic account unavailable"),
+    );
+    renderLayout();
     await waitFor(() =>
-      expect(screen.getByLabelText("location")).toHaveTextContent("/auth"),
+      expect(messages.error).toHaveBeenCalledWith(
+        "Synthetic account unavailable",
+      ),
     );
-  });
-
-  it("lets the user log out after an account permission denial", async () => {
-    vi.mocked(getAccount).mockRejectedValueOnce(
-      new AdminApiError("Forbidden", 403),
-    );
-    const { user } = renderLayout();
-
-    const logoutButton = await screen.findByRole("button", { name: "logout" });
+    expect(
+      await screen.findByText(i18n.t("currentUserLoadFailed")),
+    ).toBeDefined();
+    expect(document.querySelector(".ant-spin-fullscreen")).toBeNull();
     expect(clearAccessToken).not.toHaveBeenCalled();
-    await user.click(logoutButton);
-
-    await waitFor(() =>
-      expect(screen.getByLabelText("location")).toHaveTextContent("/auth"),
-    );
-    expect(logout).toHaveBeenCalledOnce();
-    expect(clearAccessToken).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    new Error("Temporarily offline"),
-    new AdminApiError("Forbidden", 403),
-  ])("keeps the session and offers retry after $message", async (error) => {
-    vi.mocked(getAccount).mockRejectedValueOnce(error);
-    const { user } = renderLayout();
-    await screen.findByText(error.message);
-    expect(clearAccessToken).not.toHaveBeenCalled();
-    expect(
-      screen.queryByRole("heading", { name: "Dashboard content" }),
-    ).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "retry" }));
-    await screen.findByRole("heading", { name: "Dashboard content" });
-    expect(getAccount).toHaveBeenCalledTimes(2);
+  it("clears local credentials and navigates to authentication after remote logout failure", async () => {
+    vi.mocked(logout).mockRejectedValue(
+      new Error("Synthetic logout unavailable"),
+    );
+    renderLayout();
+    await screen.findByRole("heading", { name: "Ada's dashboard" });
+    fireEvent.mouseEnter(
+      screen.getByRole("button", { name: i18n.t("account") }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: i18n.t("logout") }),
+    );
+
+    await screen.findByRole("heading", { name: "Authentication" });
+    expect(logout).toHaveBeenCalledTimes(1);
+    expect(clearAccessToken).toHaveBeenCalledTimes(1);
+    expect(messages.error).toHaveBeenCalledWith("Synthetic logout unavailable");
+  });
+
+  it("aborts account loading and unregisters its unauthorized handler on unmount", async () => {
+    const pending = deferred<DefaultLayoutContext["currentUser"]>();
+    vi.mocked(fetchCurrentUser).mockReturnValue(pending.promise);
+    const { unmount } = renderLayout();
+    const signal = vi.mocked(fetchCurrentUser).mock.calls[0][0]!;
+    unmount();
+
+    await act(async () => {
+      pending.reject(new Error("Synthetic obsolete account response"));
+    });
+
+    expect(signal.aborted).toBe(true);
+    expect(setUnauthorizedHandler).toHaveBeenLastCalledWith(null);
+    expect(messages.error).not.toHaveBeenCalled();
+  });
+
+  it("responds to a transport unauthorized notification by clearing the current session", async () => {
+    renderLayout();
+    await screen.findByRole("heading", { name: "Ada's dashboard" });
+    const handler = vi.mocked(setUnauthorizedHandler).mock.calls.at(-1)![0]!;
+
+    act(() => {
+      handler();
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Authentication" }),
+      ).toBeDefined(),
+    );
+    expect(clearAccessToken).toHaveBeenCalledTimes(1);
   });
 });

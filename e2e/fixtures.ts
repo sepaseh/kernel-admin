@@ -18,6 +18,8 @@ export const fixtureDirections = {
 } as const satisfies Record<LocaleCode, "ltr" | "rtl">;
 
 export const applicationSettingsFixture = (language: LocaleCode = "en") => ({
+  dark_logo: { id: "dark-logo", is_used: true, size: 1000, url: "/logo.svg" },
+  light_logo: { id: "light-logo", is_used: true, size: 1000, url: "/logo.svg" },
   dark_theme: {
     color_bg_base: "#141414",
     color_bg_container: "#1f1f1f",
@@ -46,6 +48,10 @@ export const applicationSettingsFixture = (language: LocaleCode = "en") => ({
     color_primary: "#61dafb",
     color_text_base: "#000000",
     color_text_description: "#8c8c8c",
+  },
+  image_settings: {
+    logo: { width: 256, height: 256, size: 1_000_000 },
+    contents: { width: 1200, height: 630, size: 2_000_000 },
   },
 });
 

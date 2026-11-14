@@ -2,8 +2,8 @@
 
 These Ant Design, i18next, icon and React Router conventions apply to this standalone admin. Keep components, hooks and accessibility consistent with the existing source.
 
-The `core-auth` snapshot admits shared controls, hooks, core providers and authentication screens with jsdom tests.
-Route composition and the remaining feature screens are planned for later phases.
+The admitted application includes shared controls, hooks, core providers,
+authentication screens, route composition and feature screens.
 
 ## Components
 
@@ -51,8 +51,9 @@ export const UserCard = ({ name }: UserCardProps) => <div>{name}</div>;
 
 For admin reads, cancellation, stale-result guards, timeouts and session-bound
 refresh/logout, follow [request reliability](../../docs/authentication.md).
-Prefer the existing shared
-read hooks over another local effect implementation. Preserve request identity
+Use direct async/await and local request state in the owning page or provider,
+with the existing `useAbortController` and `useLock` helpers; do not introduce
+a generic read-hook/cache framework. Preserve request identity
 through retries; a new login must not inherit an old mutation or logout completion.
 
 ## Forms
@@ -82,7 +83,7 @@ through retries; a new login must not inherit an old mutation or logout completi
 ## Independent resources and read-only screens
 
 - Give independent list/lookup resources their own loading, error and retry state
-  using the existing guarded read hooks. One failed optional lookup should not
+  in their owning component. One failed optional lookup should not
   erase a usable list or unrelated options. Requests may run concurrently; use
   an aggregate failure only when the screen genuinely requires the complete set.
 - Preserve cancellation and request-generation guards when parameter or session

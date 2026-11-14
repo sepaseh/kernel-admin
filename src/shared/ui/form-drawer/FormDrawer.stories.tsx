@@ -1,79 +1,56 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Form, Input } from "antd";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
-
-import { i18nInstance } from "@/shared/i18n";
-
-import { FormDrawer } from "./FormDrawer";
-
-const content = (
-  <Form layout="vertical">
-    <Form.Item label="Name" name="name">
-      <Input placeholder="Enter a name" />
-    </Form.Item>
-  </Form>
-);
+import { FormDrawer } from "@/shared/ui/form-drawer";
+import { i18n } from "@/shared/i18n";
 
 const meta = {
+  title: "Shared/FormDrawer",
+  component: FormDrawer,
   args: {
-    children: content,
     onClose: fn(),
     onSubmit: fn(),
     open: true,
     submitting: false,
-    title: "Example form",
+    title: "Edit record",
   },
-  component: FormDrawer,
-  parameters: { layout: "fullscreen" },
-  title: "Shared UI/FormDrawer",
+  render: (args, { id }) => (
+    <FormDrawer {...args}>
+      <Form layout="vertical" name={`form-drawer-story-${id}`}>
+        <Form.Item label="Name" name="name" initialValue="Example record">
+          <Input />
+        </Form.Item>
+      </Form>
+    </FormDrawer>
+  ),
 } satisfies Meta<typeof FormDrawer>;
-
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
+export const SubmitAndCancel: Story = {
   play: async ({ args, canvasElement }) => {
     const dialog = await within(canvasElement.ownerDocument.body).findByRole(
       "dialog",
-      { name: "Example form" },
+      { name: "Edit record" },
     );
-    const drawer = within(dialog);
-    await userEvent.type(
-      drawer.getByRole("textbox", { name: "Name" }),
-      "Operators",
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: i18n.t("submit") }),
     );
-    const submit = drawer.getByRole("button", {
-      name: i18nInstance.t("submit"),
-    });
-    submit.focus();
-    await userEvent.keyboard("{Enter}");
     await expect(args.onSubmit).toHaveBeenCalledOnce();
     await userEvent.click(
-      drawer.getByRole("button", { name: i18nInstance.t("cancel") }),
+      within(dialog).getByRole("button", { name: i18n.t("cancel") }),
     );
     await expect(args.onClose).toHaveBeenCalledOnce();
   },
 };
-
-export const Submitting: Story = {
-  args: { submitting: true },
-  play: async ({ args, canvasElement }) => {
+export const SubmitDisabled: Story = {
+  args: { submitDisabled: true },
+  play: async ({ canvasElement }) => {
     const dialog = await within(canvasElement.ownerDocument.body).findByRole(
       "dialog",
-      { name: "Example form" },
     );
-    const drawer = within(dialog);
-    await userEvent.click(
-      drawer.getByRole("button", {
-        name: new RegExp(i18nInstance.t("submit")),
-      }),
-    );
-    await userEvent.click(
-      drawer.getByRole("button", {
-        name: new RegExp(i18nInstance.t("cancel")),
-      }),
-    );
-    await expect(args.onSubmit).not.toHaveBeenCalled();
-    await expect(args.onClose).not.toHaveBeenCalled();
+    await expect(
+      within(dialog).getByRole("button", { name: i18n.t("submit") }),
+    ).toBeDisabled();
   },
 };

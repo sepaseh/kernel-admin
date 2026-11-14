@@ -1,185 +1,143 @@
-// @vitest-environment jsdom
-import { act, fireEvent, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import "@/test/browser";
 
-import { register, requestOtp } from "@/features/auth/api.ts";
-import { i18nInstance } from "@/shared/i18n/index.ts";
-import { render, screen } from "@/test/render.tsx";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { RegisterPage } from "./Register.tsx";
+import type * as AuthModule from "@/features/auth";
+import { register } from "@/features/auth";
+import { i18n } from "@/shared/i18n";
+import { deferred } from "@/test/deferred";
 
-const messages = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }));
-vi.mock("@/features/auth/api.ts", () => ({
+import { RegisterPage } from "./Register";
+
+const { messages } = vi.hoisted(() => ({
+  messages: { error: vi.fn(), success: vi.fn() },
+}));
+vi.mock("@/features/auth", async (original) => ({
+  ...(await original<typeof AuthModule>()),
   register: vi.fn(),
-  requestOtp: vi.fn(),
 }));
 vi.mock("@/app/hooks", () => ({ useAntd: () => ({ messageAPI: messages }) }));
-const Location = () => (
-  <output aria-label="location">{useLocation().pathname}</output>
-);
+
 const renderPage = () =>
   render(
     <MemoryRouter initialEntries={["/auth/register"]}>
-      <Location />
       <Routes>
-        <Route element={<RegisterPage />} path="/auth/register" />
-        <Route element={<h1>Login</h1>} path="/auth" />
-        <Route element={<h1>Dashboard</h1>} path="/" />
+        <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/auth" element={<h1>Login remains active</h1>} />
+        <Route path="/" element={<h1>Dashboard</h1>} />
       </Routes>
     </MemoryRouter>,
   );
 
-beforeEach(async () => {
-  await i18nInstance.changeLanguage("en");
-  vi.mocked(register)
-    .mockReset()
-    .mockResolvedValue({ accessToken: "synthetic" });
-  vi.mocked(requestOtp)
-    .mockReset()
-    .mockResolvedValue({ expiresIn: 120, remainingSeconds: 30 });
-});
-
-const fillRegistration = async (user: ReturnType<typeof render>["user"]) => {
-  await user.type(screen.getByLabelText(i18nInstance.t("firstName")), "Ada");
-  await user.type(
-    screen.getByLabelText(i18nInstance.t("lastName")),
-    "Lovelace",
-  );
-  await user.type(
-    screen.getByLabelText(i18nInstance.t("mobile")),
-    "09120000000",
-  );
-  const otp = screen.getByRole("group", { name: i18nInstance.t("otp") });
-  await user.type(within(otp).getAllByRole("textbox")[0], "123456");
-  await user.type(
-    screen.getByLabelText(i18nInstance.t("password"), { exact: true }),
-    "secret",
-  );
-  await user.type(
-    screen.getByLabelText(i18nInstance.t("confirmPassword")),
-    "secret",
-  );
+const fillRegistration = (confirmation = "synthetic-password") => {
+  for (const [label, value] of [
+    [i18n.t("firstName"), "Ada"],
+    [i18n.t("lastName"), "Lovelace"],
+    [i18n.t("mobile"), "09120000000"],
+    [i18n.t("password"), "synthetic-password"],
+    [i18n.t("confirmPassword"), confirmation],
+  ])
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  within(screen.getByRole("group", { name: i18n.t("otp") }))
+    .getAllByRole("textbox")
+    .forEach((input, index) => {
+      fireEvent.input(input, { target: { value: String(index + 1) } });
+    });
 };
 
-describe("RegisterPage", () => {
-  it("deduplicates OTP clicks while mobile validation is pending", async () => {
-    const { user } = renderPage();
-    await user.type(
-      screen.getByLabelText(i18nInstance.t("mobile")),
-      "09120000000",
-    );
-    const send = screen.getByRole("button", {
-      name: i18nInstance.t("sendCode"),
-    });
-    await act(async () => {
-      fireEvent.click(send);
-      fireEvent.click(send);
-    });
-    await waitFor(() => expect(requestOtp).toHaveBeenCalled());
-    expect(requestOtp).toHaveBeenCalledTimes(1);
-    expect(requestOtp).toHaveBeenCalledWith(
-      { mobile: "09120000000", purpose: "register" },
-      expect.any(AbortSignal),
-    );
-    expect(send).toBeDisabled();
-    expect(send).toHaveTextContent("30");
-  });
+beforeEach(async () => {
+  vi.resetAllMocks();
+  vi.mocked(register).mockResolvedValue({ accessToken: "synthetic-token" });
+  await i18n.changeLanguage("en");
+});
+afterEach(cleanup);
 
-  it("invalidates an OTP request when its mobile changes", async () => {
-    let resolve!: (value: Awaited<ReturnType<typeof requestOtp>>) => void;
-    vi.mocked(requestOtp).mockReturnValueOnce(
-      new Promise((done) => {
-        resolve = done;
-      }),
-    );
-    const { user } = renderPage();
-    const mobile = screen.getByLabelText(i18nInstance.t("mobile"));
-    await user.type(mobile, "09120000000");
-    const otpInputs = within(
-      screen.getByRole("group", { name: i18nInstance.t("otp") }),
-    ).getAllByRole("textbox");
-    await user.type(otpInputs[0], "123456");
-    const send = screen.getByRole("button", {
-      name: i18nInstance.t("sendCode"),
-    });
-    await user.click(send);
-    await waitFor(() => expect(requestOtp).toHaveBeenCalledOnce());
-    await user.clear(mobile);
-    await user.type(mobile, "09121111111");
-    await act(async () => {
-      resolve({ expiresIn: 120, remainingSeconds: 30 });
-    });
-    expect(vi.mocked(requestOtp).mock.calls[0][1]?.aborted).toBe(true);
-    expect(send).toBeEnabled();
-    expect(send).toHaveTextContent(i18nInstance.t("sendCode"));
-    for (const input of otpInputs) expect(input).toHaveValue("");
-    expect(messages.success).not.toHaveBeenCalled();
-  });
+describe("registration form", () => {
+  it("submits registration fields and excludes password confirmation", async () => {
+    renderPage();
+    fillRegistration();
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("register") }));
 
-  it("submits only the registration contract and navigates after success", async () => {
-    const { user } = renderPage();
-    await fillRegistration(user);
-    await user.click(
-      screen.getByRole("button", { name: i18nInstance.t("register") }),
-    );
     await screen.findByRole("heading", { name: "Dashboard" });
-    expect(register).toHaveBeenCalledWith(
+    expect(register).toHaveBeenCalledExactlyOnceWith(
       {
         firstName: "Ada",
         lastName: "Lovelace",
         mobile: "09120000000",
         otp: "123456",
-        password: "secret",
+        password: "synthetic-password",
       },
       expect.any(AbortSignal),
     );
   });
 
-  it("submits with Enter once while registration is pending", async () => {
-    let resolve!: (value: Awaited<ReturnType<typeof register>>) => void;
-    vi.mocked(register).mockReturnValueOnce(
-      new Promise((done) => {
-        resolve = done;
-      }),
-    );
-    const { user } = renderPage();
-    await fillRegistration(user);
-    await user.keyboard("{Enter}");
-    await waitFor(() => expect(register).toHaveBeenCalledOnce());
+  it("validates password confirmation before issuing a registration request", async () => {
+    renderPage();
+    fillRegistration("different-password");
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("register") }));
 
-    await user.keyboard("{Enter}{Enter}");
-    expect(register).toHaveBeenCalledOnce();
-    expect(requestOtp).not.toHaveBeenCalled();
-    expect(vi.mocked(register).mock.calls[0][1]?.aborted).toBe(false);
-
-    await act(async () => {
-      resolve({ accessToken: "synthetic" });
-    });
-    await screen.findByRole("heading", { name: "Dashboard" });
-    expect(register).toHaveBeenCalledOnce();
+    await screen.findByText(i18n.t("passwordMismatch"));
+    expect(register).not.toHaveBeenCalled();
   });
 
-  it("aborts registration when its page is left and ignores a late success", async () => {
-    let resolve!: (value: Awaited<ReturnType<typeof register>>) => void;
-    vi.mocked(register).mockReturnValueOnce(
-      new Promise((done) => {
-        resolve = done;
-      }),
+  it("shows a service error and retains the form for correction", async () => {
+    vi.mocked(register).mockRejectedValue(
+      new Error("Synthetic mobile already registered"),
     );
-    const { user } = renderPage();
-    await fillRegistration(user);
-    await user.click(
-      screen.getByRole("button", { name: i18nInstance.t("register") }),
+    renderPage();
+    fillRegistration();
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("register") }));
+
+    await waitFor(() =>
+      expect(messages.error).toHaveBeenCalledWith(
+        "Synthetic mobile already registered",
+      ),
     );
-    await waitFor(() => expect(register).toHaveBeenCalledOnce());
-    await user.click(
-      screen.getByRole("link", { name: i18nInstance.t("backToLogin") }),
-    );
-    await act(async () => {
-      resolve({ accessToken: "obsolete" });
-    });
-    expect(screen.getByLabelText("location")).toHaveTextContent("/auth");
-    expect(vi.mocked(register).mock.calls[0][1]?.aborted).toBe(true);
+    expect(
+      (screen.getByLabelText(i18n.t("firstName")) as HTMLInputElement).value,
+    ).toBe("Ada");
   });
+
+  it.each(["success", "error"] as const)(
+    "ignores a late registration %s after returning to login",
+    async (outcome) => {
+      const pending = deferred<{ accessToken: string }>();
+      vi.mocked(register).mockReturnValue(pending.promise);
+      renderPage();
+      fillRegistration();
+      fireEvent.click(screen.getByRole("button", { name: i18n.t("register") }));
+      await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
+      const signal = vi.mocked(register).mock.calls[0][1]!;
+      expect(signal).toBeInstanceOf(AbortSignal);
+      expect(signal.aborted).toBe(false);
+
+      fireEvent.click(
+        screen.getByRole("link", { name: i18n.t("backToLogin") }),
+      );
+      await screen.findByRole("heading", { name: "Login remains active" });
+      expect(signal.aborted).toBe(true);
+      await act(async () => {
+        if (outcome === "success")
+          pending.resolve({ accessToken: "late-token" });
+        else pending.reject(new Error("Late registration failure"));
+      });
+
+      expect(
+        screen.getByRole("heading", { name: "Login remains active" }),
+      ).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: "Dashboard" })).toBeNull();
+      expect(messages.error).not.toHaveBeenCalled();
+      expect(messages.success).not.toHaveBeenCalled();
+    },
+  );
 });

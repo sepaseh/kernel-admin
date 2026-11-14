@@ -8,20 +8,19 @@ import type { Settings, SettingsRequest } from "@/features/settings/types";
 import * as usersAPI from "@/features/users/api";
 import { apiClient, setUnauthorizedHandler } from "@/shared/api";
 import {
-  permissions,
-  roles,
-  sampleAccount,
+  samplePermissions,
+  sampleRoles,
+  sampleSettings,
+  sampleUser,
+  sampleUsers,
+  sampleFiles,
   sampleLanguages,
   sampleSettings,
   sampleFiles,
   users,
 } from "@/test/storybook/fixtures";
 
-import {
-  assertNoUnexpectedRequests,
-  rejectUnexpectedRequest,
-  resetRequestGuard,
-} from "./request-guard";
+export { assertNoUnexpectedRequests } from "./request-guard";
 
 export const resetStoryMocks = () => {
   resetRequestGuard();
@@ -51,7 +50,28 @@ export const resetStoryMocks = () => {
     .mockImplementation(async (url) => rejectUnexpectedRequest("POST", url));
   mocked(apiClient.patch)
     .mockReset()
-    .mockImplementation(async (url) => rejectUnexpectedRequest("PATCH", url));
+    .mockImplementation(async (url, request) => {
+      if (url === "/account/update-profile") {
+        Object.assign(account, request);
+        return structuredClone(account);
+      }
+      const role = roles.find(({ id }) => url === `/roles/${id}`);
+      if (role) {
+        Object.assign(role, request);
+        return structuredClone(role);
+      }
+      const user = users.find(
+        ({ id }) =>
+          url === `/users/${id}` ||
+          url === `/users/${id}/status` ||
+          url === `/users/${id}/system-admin`,
+      );
+      if (user) {
+        Object.assign(user, request);
+        return structuredClone(user);
+      }
+      return rejectUnexpectedRequest("PATCH", url);
+    });
   mocked(apiClient.del)
     .mockReset()
     .mockImplementation(async (url) => {
@@ -104,17 +124,42 @@ export const resetStoryMocks = () => {
 
   mocked(accountAPI.getAccount)
     .mockReset()
-    .mockImplementation(async () => structuredClone(account));
-  mocked(accountAPI.requestEmailVerification)
+    .mockImplementation(async (url, request) => {
+      if (url === "/settings") {
+        const { darkLogoId, lightLogoId, languageCode, ...values } =
+          request as SettingsRequest;
+        const language =
+          sampleLanguages.find(({ code }) => code === languageCode) ??
+          settings.language;
+        settings = {
+          ...settings,
+          ...values,
+          language,
+          darkLogo: files.find(({ id }) => id === darkLogoId),
+          lightLogo: files.find(({ id }) => id === lightLogoId),
+        };
+        return structuredClone(settings);
+      }
+      const user = users.find(({ id }) => url === `/users/${id}/roles`);
+      if (user) {
+        user.roles = roles
+          .filter(({ id }) =>
+            (request as { roleIds: string[] }).roleIds.includes(id),
+          )
+          .map(({ id, name }) => ({ id, name }));
+        return undefined;
+      }
+      return rejectUnexpectedRequest("PUT", url);
+    });
+  mocked(apiClient.upload)
     .mockReset()
-    .mockResolvedValue({ expiresIn: 120, remainingSeconds: 30 });
-  mocked(accountAPI.updateProfile)
-    .mockReset()
-    .mockImplementation(async ({ firstName, lastName }) => {
-      account = {
-        ...account,
-        firstName: firstName?.trim() || account.firstName,
-        lastName: lastName?.trim() || account.lastName,
+    .mockImplementation(async (url, request) => {
+      if (url !== "/files") return rejectUnexpectedRequest("UPLOAD", url);
+      const created = {
+        id: `file-uploaded-${files.length}`,
+        url: sampleFiles[0].url,
+        size: (request as { file: File }).file.size,
+        isUsed: false,
       };
       return structuredClone(account);
     });
@@ -261,5 +306,3 @@ export const resetStoryMocks = () => {
       calendarDates = calendarDates.filter((item) => item !== date);
     });
 };
-
-export { assertNoUnexpectedRequests };

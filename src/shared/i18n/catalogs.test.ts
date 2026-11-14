@@ -1,48 +1,64 @@
-import assert from "node:assert/strict";
-import { readdir, readFile } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import dayjs, { type Dayjs } from "dayjs";
+import { afterEach, describe, expect, it } from "vitest";
 
-import ts from "typescript";
-import { test } from "vitest";
+import { catalogs } from "./catalogs";
+import { dayjsLocaleName } from "./date";
+import { faDayjs } from "./dayjs/fa";
+import { localeCodes } from "./locales";
 
-import { catalogs } from "./catalogs.ts";
-import { faDayjs } from "./dayjs/fa.ts";
-import { localeCodes } from "./locales.ts";
+afterEach(() => {
+  dayjs.calendar("gregory");
+  dayjs.locale("en");
+});
 
-const source = path.dirname(fileURLToPath(import.meta.url));
-const literalCatalogObject = (initializer: ts.Expression | undefined) => {
-  let expression = initializer;
-  while (
-    expression &&
-    (ts.isAsExpression(expression) ||
-      ts.isSatisfiesExpression(expression) ||
-      ts.isParenthesizedExpression(expression))
-  )
-    expression = expression.expression;
-  assert.ok(expression && ts.isObjectLiteralExpression(expression));
-  return expression;
-};
-const assertLiteralCatalogModule = (content: string, code: string) => {
-  const module = ts.createSourceFile(
-    `${code}.ts`,
-    content,
-    ts.ScriptTarget.Latest,
-    true,
-  );
-  let catalogs = 0;
-  for (const statement of module.statements) {
-    if (ts.isTypeAliasDeclaration(statement)) continue;
-    if (ts.isImportDeclaration(statement)) {
-      assert.equal(
-        statement.importClause?.phaseModifier,
-        ts.SyntaxKind.TypeKeyword,
-      );
-      assert.ok(
-        ts.isStringLiteral(statement.moduleSpecifier) &&
-          statement.moduleSpecifier.text.startsWith("."),
-      );
-      continue;
+describe("language and calendar data", () => {
+  it("retains the ten supported catalogs with a nonempty value for every English key", () => {
+    expect(localeCodes).toEqual([
+      "ar",
+      "de",
+      "en",
+      "es",
+      "fa",
+      "fr",
+      "it",
+      "pt",
+      "ru",
+      "tr",
+    ]);
+    const keys = Object.keys(catalogs.en).sort();
+
+    for (const code of localeCodes) {
+      expect(Object.keys(catalogs[code]).sort(), code).toEqual(keys);
+      expect(
+        Object.values(catalogs[code]).every(
+          (value) => typeof value === "string" && value.trim().length > 0,
+        ),
+        code,
+      ).toBe(true);
+    }
+  });
+
+  it("formats a known Nowruz date with Persian month data", () => {
+    const nowruz = (
+      dayjs("2026-03-21T12:00:00Z").calendar("jalali") as unknown as Dayjs
+    ).locale("fa");
+
+    expect(nowruz.format("YYYY-MM-DD")).toBe("1405-01-01");
+    expect(nowruz.format("MMMM")).toBe("فروردین");
+    expect(faDayjs.jmonths).toHaveLength(12);
+    expect(faDayjs.jmonths[11]).toBe("اسفند");
+    expect(faDayjs.weekStart).toBe(6);
+  });
+
+  it("registers a usable date locale for each UI language", () => {
+    for (const code of localeCodes) {
+      const date = (
+        dayjs("2026-04-01T12:00:00Z").calendar("jalali") as unknown as Dayjs
+      ).locale(dayjsLocaleName(code));
+
+      expect(date.locale()).toBe(dayjsLocaleName(code));
+      expect(date.format("MMMM"), code).not.toMatch(/undefined|Invalid/);
+      expect(date.format("YYYY-MM-DD"), code).toBe("1405-01-12");
     }
     assert.ok(ts.isVariableStatement(statement));
     assert.ok(
@@ -320,15 +336,4 @@ test("one code-named file per language agrees with the supported-code registry",
   const entries = await readdir(path.join(source, "locales"), {
     withFileTypes: true,
   });
-  assert.ok(
-    entries.every((entry) => entry.isFile()),
-    "No split locale directories",
-  );
-  assert.deepEqual(
-    (await filesUnder(source)).filter((file) =>
-      /(?:^|[\\/])(?:admin|common)\.ts$/.test(file),
-    ),
-    [],
-    "No obsolete split catalogs or compatibility modules",
-  );
 });

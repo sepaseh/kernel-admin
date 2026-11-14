@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "commandRunner": {
-    "command": "node node_modules/vitest/vitest.mjs run --config vitest.config.ts --maxWorkers=1 src/shared/api/token.test.ts src/shared/storage/state.test.ts src/shared/lib/error.test.ts src/shared/lib/transform.test.ts"
+    "command": "node node_modules/vitest/vitest.mjs run --config vitest.config.ts --maxWorkers=1 src/shared/api/token.test.ts src/shared/storage/state.test.ts src/shared/api/refresh.test.ts src/shared/lib/transform.test.ts"
   },
   "concurrency": 2,
   "coverageAnalysis": "off",
@@ -38,7 +38,7 @@
   "mutate": [
     "src/shared/api/token.ts",
     "src/shared/storage/state.ts",
-    "src/shared/lib/error.ts",
+    "src/shared/api/refresh.ts",
     "src/shared/lib/transform.ts"
   ],
   "reporters": ["clear-text", "progress", "html", "json"],

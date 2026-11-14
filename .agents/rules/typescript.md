@@ -112,3 +112,11 @@ type DeleteUserId = User["id"];
 // Avoid: this can silently diverge if the domain identifier changes.
 type ManuallyTypedUserId = string;
 ```
+
+For query filters matching model fields, use `Partial<Pick<Model, "field">>`
+rather than repeating their types. Keep distinct wire representations explicit.
+Compose paginated queries with `PaginationQuery` from `@/shared/api`: optional
+string `page` and `size`, defaulted in the service to `"1"` and
+`String(defaultPageSize)`. Send page/size rather than offset; pages using the
+default size omit it from URL filters. Encode boolean filters as `"0"`/`"1"`,
+omitting an unset value while keeping domain/response fields boolean.

@@ -90,6 +90,8 @@ const completeApplicationFiles = [
   ".prettierrc.json",
   ".release-please-manifest.json",
   ".storybook/PreviewFrame.tsx",
+  ".storybook/StoryShell.tsx",
+  ".storybook/fixtures.ts",
   ".storybook/main.ts",
   ".storybook/mocks.ts",
   ".storybook/preview.tsx",
@@ -141,6 +143,7 @@ const completeApplicationFiles = [
   "e2e/visual/baselines/application/win32/admin-login-fa-dark.png",
   "e2e/visual/baselines/application/win32/admin-register-en-light.png",
   "e2e/visual/baselines/application/win32/admin-role-drawer-en-dark.png",
+  "e2e/visual/baselines/application/win32/admin-settings-en-light.png",
   "e2e/visual/baselines/application/win32/admin-users-fa-light.png",
   "e2e/visual/baselines/application/win32/metadata.json",
   "e2e/visual/baselines/win32/admin-login-en-light.png",
@@ -170,6 +173,11 @@ const completeApplicationFiles = [
   "scripts/check-guidance.mjs",
   "scripts/check-guidance.test-support.mjs",
   "scripts/check-guidance.test.mjs",
+  "scripts/ci-application-single-pass.test.yml",
+  "scripts/ci-evidence.mjs",
+  "scripts/ci-evidence.test.mjs",
+  "scripts/ci-single-pass.test.yml",
+  "scripts/ci-split-suites.test.yml",
   "scripts/dependency-compatibility.test.mjs",
   "scripts/deploy-runtime.test.mjs",
   "scripts/deployment.integration.test.mjs",
@@ -190,6 +198,8 @@ const completeApplicationFiles = [
   "scripts/render-deployment.integration.test.mjs",
   "scripts/render-deployment.mjs",
   "scripts/render-deployment.test.mjs",
+  "scripts/run-actionlint.mjs",
+  "scripts/run-actionlint.test.mjs",
   "scripts/run-audit.mjs",
   "scripts/run-audit.test.mjs",
   "scripts/run-lighthouse.mjs",
@@ -219,6 +229,7 @@ const completeApplicationFiles = [
   "smoke/deployment.spec.ts",
   "smoke/setup.ts",
   "sonar-project.properties",
+  "src/GlobalStyle.tsx",
   "src/app/App.tsx",
   "src/app/Routes.test.tsx",
   "src/app/Routes.tsx",
@@ -230,14 +241,15 @@ const completeApplicationFiles = [
   "src/app/hooks/index.ts",
   "src/app/hooks/useAntd.ts",
   "src/app/hooks/useCore.ts",
+  "src/app/index.ts",
   "src/app/lib/access.test.ts",
   "src/app/lib/access.ts",
   "src/app/lib/index.ts",
-  "src/app/not-found/NotFound.stories.tsx",
-  "src/app/not-found/NotFound.test.tsx",
-  "src/app/not-found/NotFound.tsx",
+  "src/app/providers/antd/Antd.stories.tsx",
   "src/app/providers/antd/Antd.test.tsx",
   "src/app/providers/antd/Antd.tsx",
+  "src/app/providers/antd/index.ts",
+  "src/app/providers/core/Core.stories.tsx",
   "src/app/providers/core/Core.test.tsx",
   "src/app/providers/core/Core.tsx",
   "src/app/providers/index.ts",
@@ -251,11 +263,17 @@ const completeApplicationFiles = [
   "src/features/account/Account.tsx",
   "src/features/account/api.test.ts",
   "src/features/account/api.ts",
+  "src/features/account/components/password-form/PasswordForm.stories.tsx",
+  "src/features/account/components/password-form/PasswordForm.tsx",
+  "src/features/account/components/password-form/index.ts",
+  "src/features/account/components/profile-form/ProfileForm.stories.tsx",
+  "src/features/account/components/profile-form/ProfileForm.tsx",
+  "src/features/account/components/profile-form/index.ts",
   "src/features/account/index.ts",
   "src/features/account/types.ts",
   "src/features/auth/api.test.ts",
   "src/features/auth/api.ts",
-  "src/features/auth/logout.test.ts",
+  "src/features/auth/index.ts",
   "src/features/auth/types.ts",
   "src/features/auth/useOtpRequest.test.tsx",
   "src/features/auth/useOtpRequest.ts",
@@ -268,6 +286,12 @@ const completeApplicationFiles = [
   "src/features/calendar/styles.ts",
   "src/features/dashboard/Dashboard.tsx",
   "src/features/dashboard/index.ts",
+  "src/features/files/Files.stories.tsx",
+  "src/features/files/Files.tsx",
+  "src/features/files/api.test.ts",
+  "src/features/files/api.ts",
+  "src/features/files/index.ts",
+  "src/features/files/types.ts",
   "src/features/forgot-pass/ForgotPass.stories.tsx",
   "src/features/forgot-pass/ForgotPass.test.tsx",
   "src/features/forgot-pass/ForgotPass.tsx",
@@ -276,8 +300,9 @@ const completeApplicationFiles = [
   "src/features/login/Login.test.tsx",
   "src/features/login/Login.tsx",
   "src/features/login/index.ts",
-  "src/features/login/styles.test.ts",
-  "src/features/login/styles.ts",
+  "src/features/not-found/NotFound.stories.tsx",
+  "src/features/not-found/NotFound.tsx",
+  "src/features/not-found/index.ts",
   "src/features/register/Register.stories.tsx",
   "src/features/register/Register.test.tsx",
   "src/features/register/Register.tsx",
@@ -288,8 +313,8 @@ const completeApplicationFiles = [
   "src/features/roles/api.test.ts",
   "src/features/roles/api.ts",
   "src/features/roles/components/role-form/RoleForm.stories.tsx",
+  "src/features/roles/components/role-form/RoleForm.test.tsx",
   "src/features/roles/components/role-form/RoleForm.tsx",
-  "src/features/roles/constants.ts",
   "src/features/roles/index.ts",
   "src/features/roles/types.ts",
   "src/features/settings/Settings.stories.tsx",
@@ -306,18 +331,18 @@ const completeApplicationFiles = [
   "src/features/users/api.test.ts",
   "src/features/users/api.ts",
   "src/features/users/components/user-form/UserForm.stories.tsx",
+  "src/features/users/components/user-form/UserForm.test.tsx",
   "src/features/users/components/user-form/UserForm.tsx",
+  "src/features/users/components/user-form/index.ts",
   "src/features/users/components/user-role-form/UserRoleForm.stories.tsx",
+  "src/features/users/components/user-role-form/UserRoleForm.test.tsx",
   "src/features/users/components/user-role-form/UserRoleForm.tsx",
+  "src/features/users/components/user-role-form/index.ts",
   "src/features/users/constants.ts",
-  "src/features/users/hooks/useDebouncedFilters.test.tsx",
-  "src/features/users/hooks/useDebouncedFilters.ts",
-  "src/features/users/hooks/useFilterParams.test.tsx",
-  "src/features/users/hooks/useFilterParams.ts",
   "src/features/users/index.ts",
-  "src/features/users/tools/password.test.ts",
-  "src/features/users/tools/password.ts",
   "src/features/users/types.ts",
+  "src/index.css",
+  "src/index.ts",
   "src/layouts/auth/Auth.stories.tsx",
   "src/layouts/auth/Auth.test.tsx",
   "src/layouts/auth/Auth.tsx",
@@ -325,7 +350,14 @@ const completeApplicationFiles = [
   "src/layouts/default/Default.stories.tsx",
   "src/layouts/default/Default.test.tsx",
   "src/layouts/default/Default.tsx",
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.stories.tsx",
+  "src/layouts/default/components/breadcrumbs/Breadcrumbs.tsx",
+  "src/layouts/default/components/breadcrumbs/index.ts",
+  "src/layouts/default/components/navigation/Navigation.stories.tsx",
+  "src/layouts/default/components/navigation/Navigation.tsx",
+  "src/layouts/default/components/navigation/index.ts",
   "src/layouts/default/index.ts",
+  "src/layouts/default/types.ts",
   "src/main.tsx",
   "src/shared/api/client.test.ts",
   "src/shared/api/client.ts",
@@ -334,29 +366,27 @@ const completeApplicationFiles = [
   "src/shared/api/index.ts",
   "src/shared/api/path.test.ts",
   "src/shared/api/path.ts",
-  "src/shared/api/token-response.test.ts",
-  "src/shared/api/token-response.ts",
+  "src/shared/api/refresh.test.ts",
+  "src/shared/api/refresh.ts",
   "src/shared/api/token.test.ts",
   "src/shared/api/token.ts",
   "src/shared/api/transport.test.ts",
   "src/shared/api/types.ts",
   "src/shared/config/constants.ts",
   "src/shared/config/index.ts",
-  "src/shared/config/language.test.ts",
-  "src/shared/config/language.ts",
-  "src/shared/config/theme.test.ts",
-  "src/shared/config/theme.ts",
-  "src/shared/contracts/appearance.test.ts",
   "src/shared/contracts/appearance.ts",
   "src/shared/contracts/index.ts",
   "src/shared/hooks/index.ts",
+  "src/shared/hooks/useAbortController.test.tsx",
+  "src/shared/hooks/useAbortController.ts",
+  "src/shared/hooks/useDebouncedFilters.test.tsx",
+  "src/shared/hooks/useDebouncedFilters.ts",
+  "src/shared/hooks/useFilterParams.test.tsx",
+  "src/shared/hooks/useFilterParams.ts",
   "src/shared/hooks/useGoBack.test.tsx",
   "src/shared/hooks/useGoBack.ts",
-  "src/shared/hooks/useMutationRequest.test.tsx",
-  "src/shared/hooks/useMutationRequest.ts",
-  "src/shared/hooks/useReadRequest.ts",
-  "src/shared/hooks/useReadResource.test.ts",
-  "src/shared/hooks/useReadResource.ts",
+  "src/shared/hooks/useLock.test.tsx",
+  "src/shared/hooks/useLock.ts",
   "src/shared/i18n/catalogs.test.ts",
   "src/shared/i18n/catalogs.ts",
   "src/shared/i18n/date.test.ts",
@@ -376,19 +406,19 @@ const completeApplicationFiles = [
   "src/shared/i18n/locales/pt.ts",
   "src/shared/i18n/locales/ru.ts",
   "src/shared/i18n/locales/tr.ts",
-  "src/shared/lib/color-contrast.test.ts",
-  "src/shared/lib/color-contrast.ts",
-  "src/shared/lib/dialog-focus.test.tsx",
-  "src/shared/lib/dialog-focus.ts",
-  "src/shared/lib/error.test.ts",
-  "src/shared/lib/error.ts",
+  "src/shared/lib/allowed-value.ts",
+  "src/shared/lib/boolean.ts",
   "src/shared/lib/index.ts",
   "src/shared/lib/observability.test.ts",
   "src/shared/lib/observability.ts",
   "src/shared/lib/observability.vitals.test.ts",
+  "src/shared/lib/pagination.ts",
+  "src/shared/lib/password.test.ts",
+  "src/shared/lib/password.ts",
   "src/shared/lib/transform.test.ts",
   "src/shared/lib/transform.ts",
   "src/shared/storage/compact.ts",
+  "src/shared/storage/hooks/index.ts",
   "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
   "src/shared/storage/hooks/useLocalStorageWatcher.ts",
   "src/shared/storage/index.ts",
@@ -403,12 +433,20 @@ const completeApplicationFiles = [
   "src/shared/ui/error-boundary/ErrorBoundary.stories.tsx",
   "src/shared/ui/error-boundary/ErrorBoundary.test.tsx",
   "src/shared/ui/error-boundary/ErrorBoundary.tsx",
+  "src/shared/ui/error-boundary/ErrorFallback.stories.tsx",
+  "src/shared/ui/error-boundary/ErrorFallback.tsx",
   "src/shared/ui/error-boundary/index.ts",
   "src/shared/ui/form-drawer/FormDrawer.stories.tsx",
   "src/shared/ui/form-drawer/FormDrawer.test.tsx",
   "src/shared/ui/form-drawer/FormDrawer.tsx",
   "src/shared/ui/form-drawer/index.ts",
   "src/shared/ui/icon/Icon.stories.tsx",
+  "src/shared/ui/image-upload/ImageUpload.stories.tsx",
+  "src/shared/ui/image-upload/ImageUpload.test.tsx",
+  "src/shared/ui/image-upload/ImageUpload.tsx",
+  "src/shared/ui/image-upload/image.test.ts",
+  "src/shared/ui/image-upload/image.ts",
+  "src/shared/ui/image-upload/index.ts",
   "src/shared/ui/otp-input/OtpInput.stories.tsx",
   "src/shared/ui/otp-input/OtpInput.test.tsx",
   "src/shared/ui/otp-input/OtpInput.tsx",
@@ -417,26 +455,19 @@ const completeApplicationFiles = [
   "src/shared/ui/password-fields/PasswordFields.test.tsx",
   "src/shared/ui/password-fields/PasswordFields.tsx",
   "src/shared/ui/password-fields/index.ts",
-  "src/shared/ui/request-feedback/RequestFeedback.test.tsx",
-  "src/shared/ui/request-feedback/RequestFeedback.tsx",
-  "src/shared/ui/request-feedback/index.ts",
+  "src/shared/ui/request-error/RequestError.stories.tsx",
+  "src/shared/ui/request-error/RequestError.test.tsx",
+  "src/shared/ui/request-error/RequestError.tsx",
+  "src/shared/ui/request-error/index.ts",
   "src/shared/ui/route-loading/RouteLoading.stories.tsx",
   "src/shared/ui/route-loading/RouteLoading.test.tsx",
   "src/shared/ui/route-loading/RouteLoading.tsx",
   "src/shared/ui/route-loading/index.ts",
-  "src/test/http-setup.ts",
-  "src/test/integration/forms.test.tsx",
-  "src/test/integration/pages.test.tsx",
-  "src/test/mocks/handlers.ts",
-  "src/test/mocks/server.ts",
-  "src/test/render.tsx",
-  "src/test/setup.ts",
-  "src/test/storybook/StoryAppearance.stories.tsx",
-  "src/test/storybook/StoryAppearance.ts",
+  "src/test/browser.ts",
+  "src/test/deferred.ts",
+  "src/test/resource-paths.test.ts",
   "src/test/storybook/StoryShell.test.tsx",
-  "src/test/storybook/StoryShell.tsx",
   "src/test/storybook/Transport.stories.tsx",
-  "src/test/storybook/fixtures.ts",
   "src/vite-env.d.ts",
   "staging.config.ts",
   "staging/setup.ts",
@@ -496,8 +527,6 @@ const applicationFiles = [
   "CHANGELOG.md",
   "scripts/stop-visual-process-tree.ps1",
   "scripts/stop-visual-process-tree.test.ps1",
-  "src/shared/lib/dialog-focus.ts",
-  "src/shared/lib/dialog-focus.test.tsx",
   "contract/api.contract.test.ts",
   "e2e/accessibility.spec.ts",
   "e2e/auth.spec.ts",
@@ -519,7 +548,6 @@ const applicationFiles = [
   "src/app/Routes.test.tsx",
   "src/app/Routes.tsx",
   "src/main.tsx",
-  "src/test/integration/pages.test.tsx",
   "tsconfig.node.json",
   "vite.config.ts",
   "vitest.contract.config.ts",
@@ -530,6 +558,7 @@ const applicationFiles = [
   "e2e/visual/baselines/application/win32/admin-users-fa-light.png",
   "e2e/visual/baselines/application/win32/admin-forgot-password-en-light.png",
   "e2e/visual/baselines/application/win32/admin-register-en-light.png",
+  "e2e/visual/baselines/application/win32/admin-settings-en-light.png",
   "e2e/visual/baselines/application/win32/metadata.json",
   "src/GlobalStyle.tsx",
   "src/app/providers/antd/index.ts",
@@ -554,7 +583,7 @@ const applicationFiles = [
   "src/test/deferred.ts",
 ];
 const isCoreAuthPhaseFile = (file) =>
-  /^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|register))\/|docs\/architecture\.md$)/.test(
+  /^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|not-found|register))\/|docs\/architecture\.md$)/.test(
     file,
   ) ||
   [
@@ -571,15 +600,16 @@ const isBusinessPhaseFile = (file) =>
     file,
   )
     ? !/\/(?:api(?:\.helpers)?(?:\.test)?|types)\.tsx?$/.test(file)
-    : /^src\/test\/(?:storybook\/|integration\/forms\.test)/.test(file));
+    : /^src\/shared\/(?:hooks\/use(?:DebouncedFilters|FilterParams)|lib\/password)(?:\.test)?\.tsx?$/.test(
+        file,
+      ));
 
 const isStorybookPhaseFile = (file) =>
   file.startsWith(".storybook/") ||
   file.endsWith(".stories.tsx") ||
+  file === "src/test/storybook/StoryShell.test.tsx" ||
   file === "vitest.storybook.config.ts" ||
-  /^(?:docs\/testing\.md|src\/test\/storybook\/StoryShell\.test\.tsx)$/.test(
-    file,
-  );
+  file === "docs/testing.md";
 
 const isGuidancePhaseFile = (file) =>
   (file.startsWith(".agents/") && file !== ".agents/validation.json") ||
@@ -716,10 +746,6 @@ const earlierPhaseDocuments = new Set([
   "docs/testing.md",
   "SECURITY.md",
 ]);
-const earlyApplicationSources = new Set([
-  "src/shared/lib/dialog-focus.ts",
-  "src/shared/lib/dialog-focus.test.tsx",
-]);
 const earlierOperationsSources = new Set([
   "scripts/deployment.test-support.mjs",
   "tooling/paths.ts",
@@ -738,8 +764,7 @@ const historicalStorybookPolicy = async () => {
     allowedFiles: historicalPublicationFiles(latest).filter(
       (file) =>
         !isGuidancePhaseFile(file) &&
-        (!applicationFiles.includes(file) ||
-          earlyApplicationSources.has(file)) &&
+        !applicationFiles.includes(file) &&
         (!operationsPrerequisiteFiles.includes(file) ||
           earlierPhaseDocuments.has(file) ||
           earlierOperationsSources.has(file)),
@@ -755,8 +780,7 @@ const historicalGuidancePolicy = async () => {
     applicationReady: false,
     allowedFiles: historicalPublicationFiles(latest).filter(
       (file) =>
-        (!applicationFiles.includes(file) ||
-          earlyApplicationSources.has(file)) &&
+        !applicationFiles.includes(file) &&
         (!operationsPrerequisiteFiles.includes(file) ||
           earlierPhaseDocuments.has(file) ||
           earlierOperationsSources.has(file) ||
@@ -774,8 +798,7 @@ const historicalReleasePolicy = async () => {
     applicationReady: false,
     allowedFiles: historicalPublicationFiles(latest).filter(
       (file) =>
-        (!applicationFiles.includes(file) ||
-          earlyApplicationSources.has(file)) &&
+        !applicationFiles.includes(file) &&
         !deferredApplicationPrerequisites.includes(file),
     ),
   };
@@ -797,8 +820,6 @@ const foundationFiles = [
   "src/shared/contracts/index.ts",
   "src/shared/lib/transform.ts",
   "src/shared/lib/transform.test.ts",
-  "src/shared/lib/color-contrast.ts",
-  "src/shared/lib/color-contrast.test.ts",
   "tsconfig.json",
 ];
 const foundationPolicy = (overrides = {}) =>
@@ -1077,7 +1098,7 @@ test("repository foundation requires its verification toolchain and canonical Gi
 
 test("foundation requires every pure application primitive after the repository-only phase", () => {
   const primitives = foundationFiles.filter((file) => file.startsWith("src/"));
-  assert.equal(primitives.length, 8);
+  assert.equal(primitives.length, 6);
   for (const missing of primitives)
     assert.throws(
       () =>
@@ -1239,15 +1260,11 @@ test("generated output names cannot hide files or links", async (context) => {
 
 const runtimeFiles = [
   "tooling/paths.ts",
-  "src/shared/config/language.ts",
-  "src/shared/config/language.test.ts",
   "src/shared/i18n/index.ts",
   "src/shared/i18n/index.test.ts",
   "src/shared/i18n/date.ts",
   "src/shared/i18n/date.test.ts",
   "src/shared/i18n/dayjs.test.ts",
-  "src/shared/lib/error.ts",
-  "src/shared/lib/error.test.ts",
 ];
 const runtimePolicy = (overrides = {}) =>
   catalogPolicy({
@@ -1335,7 +1352,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 95);
+  assert.equal(required.length, 72);
   for (const missing of required)
     assert.throws(
       () =>
@@ -1815,9 +1832,7 @@ test("application admission requires the exact runnable closure and matching rea
   );
   const historical = await historicalGuidancePolicy();
   for (const file of applicationFiles.filter(
-    (entry) =>
-      !earlyApplicationSources.has(entry) &&
-      entry !== ".github/workflows/codeql.yml",
+    (entry) => entry !== ".github/workflows/codeql.yml",
   ))
     assert.throws(
       () =>

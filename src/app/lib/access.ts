@@ -1,14 +1,14 @@
 import {
   type AccessRule,
   type NavigationItem,
-  navigationTree,
   type RouteKey,
+  navigationTree,
   routeTree,
 } from "@/app/config";
-import { type Account } from "@/features/account/types";
-import { type PermissionKey } from "@/features/roles/types";
+import type { CurrentUser } from "@/features/account";
+import type { PermissionKey } from "@/features/roles";
 
-const hasAccess = (access: AccessRule, user?: Account): boolean => {
+const hasAccess = (access: AccessRule, user?: CurrentUser): boolean => {
   if (access === "public") return true;
   if (!user) return false;
   if (access === "authenticated" || user.isSystemAdmin) return true;
@@ -16,12 +16,12 @@ const hasAccess = (access: AccessRule, user?: Account): boolean => {
   return user.permissions.includes(access);
 };
 
-export const hasRouteAccess = (route: RouteKey, user?: Account): boolean =>
+export const hasRouteAccess = (route: RouteKey, user?: CurrentUser): boolean =>
   hasAccess(routeTree[route].permissions.access, user);
 
 const filterNavigation = (
   items: readonly NavigationItem[],
-  user?: Account,
+  user?: CurrentUser,
 ): NavigationItem[] =>
   items.flatMap<NavigationItem>((item): NavigationItem[] => {
     if ("route" in item) {
@@ -32,10 +32,13 @@ const filterNavigation = (
     return children.length ? [{ ...item, children }] : [];
   });
 
-export const getAllowedNavigation = (user?: Account): NavigationItem[] =>
+export const getAllowedNavigation = (user?: CurrentUser): NavigationItem[] =>
   filterNavigation(navigationTree, user);
 
-const hasPermission = (permission: PermissionKey, user?: Account): boolean =>
+const hasPermission = (
+  permission: PermissionKey,
+  user?: CurrentUser,
+): boolean =>
   Boolean(user?.isSystemAdmin || user?.permissions.includes(permission));
 
 type RouteActionPermissions<Key extends RouteKey> = {
@@ -44,7 +47,7 @@ type RouteActionPermissions<Key extends RouteKey> = {
 
 export const getRoutePermissions = <Key extends RouteKey>(
   route: Key,
-  user?: Account,
+  user?: CurrentUser,
 ): RouteActionPermissions<Key> => {
   const actions: Record<string, PermissionKey> =
     routeTree[route].permissions.actions;

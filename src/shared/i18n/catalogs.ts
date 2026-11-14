@@ -1,8 +1,7 @@
 import type { LocaleCode } from "./locales.ts";
 import { ar } from "./locales/ar.ts";
 import { de } from "./locales/de.ts";
-import type { TranslationCatalog } from "./locales/en.ts";
-import { en } from "./locales/en.ts";
+import { type TranslationCatalog, en } from "./locales/en.ts";
 import { es } from "./locales/es.ts";
 import { fa } from "./locales/fa.ts";
 import { fr } from "./locales/fr.ts";

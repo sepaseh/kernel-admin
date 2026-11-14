@@ -1,3 +1,3 @@
 export { AccountPage } from "./Account";
-export * from "./api";
-export type * from "./types";
+export { fetchCurrentUser, updateProfile } from "./api";
+export type { CurrentUser, ProfileRequest } from "./types";

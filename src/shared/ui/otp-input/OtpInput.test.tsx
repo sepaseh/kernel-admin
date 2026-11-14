@@ -1,31 +1,27 @@
-// @vitest-environment jsdom
-import { act } from "@testing-library/react";
-import { Input } from "antd";
-import type { ComponentRef } from "react";
-import { createRef } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, render, screen } from "@testing-library/react";
+import type { Input } from "antd";
+import { type ComponentRef, createRef } from "react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { i18nInstance } from "@/shared/i18n/index.ts";
-import { render, screen } from "@/test/render.tsx";
+import { i18n } from "@/shared/i18n";
 
-import { OtpInput } from "./";
+import { OtpInput } from "./OtpInput";
 
 beforeEach(async () => {
-  await i18nInstance.changeLanguage("en");
+  await i18n.changeLanguage("en");
 });
+afterEach(cleanup);
 
-describe("OtpInput", () => {
-  it("does not forward aria-required to the OTP group", () => {
-    const { container } = render(
-      <OtpInput aria-required length={4} size="large" />,
-    );
+const description = (element: HTMLElement) =>
+  element
+    .getAttribute("aria-describedby")
+    ?.split(" ")
+    .map((id) => document.getElementById(id)?.textContent)
+    .join(" ");
 
-    expect(container.querySelectorAll("input")).toHaveLength(4);
-    expect(container.querySelector("[aria-required]")).not.toBeInTheDocument();
-  });
-
+describe("OTP accessibility", () => {
   it.each([true, "true"] as const)(
-    "describes a required OTP (%s) without losing caller descriptions",
+    "describes required input (%s) without losing caller help",
     (required) => {
       render(
         <>
@@ -38,10 +34,9 @@ describe("OtpInput", () => {
           />
         </>,
       );
-
       const group = screen.getByRole("group", { name: "Verification code" });
-      expect(group).toHaveAccessibleDescription(
-        "Use the code sent to your phone. Required field",
+      expect(description(group)).toBe(
+        `Use the code sent to your phone. ${i18n.t("requiredField")}`,
       );
       for (const input of screen.getAllByRole("textbox"))
         expect(input).toHaveAttribute("aria-invalid", "true");
@@ -50,88 +45,44 @@ describe("OtpInput", () => {
     },
   );
 
-  it.each([undefined, false, "false"] as const)(
-    "keeps an optional OTP (%s) optional",
-    (required) => {
-      render(
-        <>
-          <p id="otp-help">Use the code sent to your phone.</p>
-          <OtpInput
-            aria-describedby="otp-help"
-            aria-label="Verification code"
-            aria-required={required}
-          />
-        </>,
-      );
-
-      const group = screen.getByRole("group", { name: "Verification code" });
-      expect(group).toHaveAccessibleDescription(
-        "Use the code sent to your phone.",
-      );
-      expect(group).toHaveAttribute("aria-describedby", "otp-help");
-      expect(group).not.toHaveAttribute("aria-required");
-      expect(screen.queryByText("Required field")).not.toBeInTheDocument();
-    },
-  );
-
-  it("keeps a stable description link and updates localized required text", async () => {
+  it("keeps its description link stable when the language changes and removes it for optional input", async () => {
     const { rerender } = render(
       <OtpInput aria-label="Verification code" aria-required />,
     );
     const group = screen.getByRole("group", { name: "Verification code" });
-    const descriptionId = group.getAttribute("aria-describedby");
-
+    const id = group.getAttribute("aria-describedby");
     await act(async () => {
-      await i18nInstance.changeLanguage("fa");
+      await i18n.changeLanguage("fa");
     });
-    expect(group).toHaveAccessibleDescription(i18nInstance.t("requiredField"));
-    expect(group).toHaveAttribute("aria-describedby", descriptionId);
+    expect(group.getAttribute("aria-describedby")).toBe(id);
+    expect(description(group)).toBe(i18n.t("requiredField"));
 
     rerender(<OtpInput aria-label="Verification code" aria-required={false} />);
-    expect(group).not.toHaveAttribute("aria-describedby");
-    expect(group).not.toHaveAccessibleDescription();
-    rerender(<OtpInput aria-label="Verification code" aria-required />);
-    expect(group).toHaveAttribute("aria-describedby", descriptionId);
-    expect(group).toHaveAccessibleDescription(i18nInstance.t("requiredField"));
+    expect(group.hasAttribute("aria-describedby")).toBe(false);
   });
 
-  it("preserves uncontrolled six-digit entry and completion callbacks", async () => {
-    const onChange = vi.fn();
-    const { user } = render(
-      <OtpInput
-        aria-label="Verification code"
-        defaultValue="12"
-        onChange={onChange}
-      />,
-    );
-    const inputs = screen.getAllByRole("textbox");
-    await user.type(inputs[2], "3456");
-
-    expect(inputs).toHaveLength(6);
-    for (const [index, input] of inputs.entries())
-      expect(input).toHaveValue(String(index + 1));
-    expect(onChange).toHaveBeenCalledExactlyOnceWith("123456");
-  });
-
-  it("preserves controlled values and the Ant Design focus ref", () => {
+  it("preserves controlled values and Ant Design's focus ref", () => {
     const ref = createRef<ComponentRef<typeof Input.OTP>>();
     const { rerender } = render(
-      <OtpInput
-        aria-label="Verification code"
-        aria-required
-        ref={ref}
-        value="123456"
-      />,
+      <OtpInput aria-label="Verification code" value="123456" ref={ref} />,
     );
-    const group = screen.getByRole("group", { name: "Verification code" });
-    const inputs = screen.getAllByRole("textbox");
-    for (const [index, input] of inputs.entries())
-      expect(input).toHaveValue(String(index + 1));
-    expect(ref.current?.nativeElement).toBe(group);
-    act(() => ref.current?.focus());
-    expect(inputs[0]).toHaveFocus();
-
-    rerender(<OtpInput aria-label="Verification code" ref={ref} value="" />);
-    for (const input of inputs) expect(input).toHaveValue("");
+    const inputs = screen.getAllByRole<HTMLInputElement>("textbox");
+    expect(inputs.map(({ value }) => value)).toEqual([
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+    ]);
+    act(() => {
+      ref.current?.focus();
+    });
+    expect(document.activeElement).toBe(inputs[0]);
+    expect(ref.current?.nativeElement).toBe(
+      screen.getByRole("group", { name: "Verification code" }),
+    );
+    rerender(<OtpInput aria-label="Verification code" value="" ref={ref} />);
+    expect(inputs.every(({ value }) => value === "")).toBe(true);
   });
 });

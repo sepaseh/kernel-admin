@@ -2,18 +2,19 @@
 
 Use this reference when changing translated text, language settings or displayed dates. The API owns the active language, direction, calendar and public/native language names. Only a system super-admin changes the global language. There is no visitor language selector, browser-language inference or stored language preference. Theme and compact mode are separate browser preferences.
 
-The `core-auth` snapshot admits catalogs, normalization, i18next initialization, date adapters, settings HTTP validation, shared controls, and the Core and Ant Design providers. Application route composition and Storybook fixtures belong to later phases.
+The admitted application includes catalogs, i18next initialization, date adapters,
+settings HTTP types, shared controls, Core/Ant Design providers and route composition.
 
 ## Find the owner
 
-| Responsibility                                  | Source                                                                                                                                     |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Supported product codes and complete catalogs   | [`locales.ts`](../src/shared/i18n/locales.ts), [`catalogs.ts`](../src/shared/i18n/catalogs.ts) and [`locales`](../src/shared/i18n/locales) |
-| Fixed bootstrap language and code normalization | [`config/language.ts`](../src/shared/config/language.ts)                                                                                   |
-| Runtime validation of server metadata           | [Settings API](../src/features/settings/api.ts)                                                                                            |
-| Applying accepted language and calendar         | [Core](../src/app/providers/core/Core.tsx)                                                                                                 |
-| Ant Design locale and document `lang`/`dir`     | [Antd provider](../src/app/providers/antd/Antd.tsx)                                                                                        |
-| Date locales and calendar adapters              | [`date.ts`](../src/shared/i18n/date.ts) and [Persian date data](../src/shared/i18n/dayjs/fa.ts)                                            |
+| Responsibility                                | Source                                                                                                                                     |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Supported product codes and complete catalogs | [`locales.ts`](../src/shared/i18n/locales.ts), [`catalogs.ts`](../src/shared/i18n/catalogs.ts) and [`locales`](../src/shared/i18n/locales) |
+| Fixed bootstrap language                      | [`index.ts`](../src/shared/i18n/index.ts)                                                                                                  |
+| Server metadata types and HTTP boundary       | [Settings API](../src/features/settings/api.ts)                                                                                            |
+| Applying accepted language and calendar       | [Core](../src/app/providers/core/Core.tsx)                                                                                                 |
+| Ant Design locale and document `lang`/`dir`   | [Antd provider](../src/app/providers/antd/Antd.tsx)                                                                                        |
+| Date locales and calendar adapters            | [`date.ts`](../src/shared/i18n/date.ts) and [Persian date data](../src/shared/i18n/dayjs/fa.ts)                                            |
 
 ## Catalog ownership
 
@@ -31,11 +32,13 @@ For a new supported code, update the registered catalogs, language validation an
 
 ## Runtime metadata
 
-[`index.ts`](../src/shared/i18n/index.ts) initializes i18next/react-i18next with the local catalogs and fixed Persian bootstrap/fallback. Module loading awaits initialization. Missing keys retain their identity and produce a diagnostic; fallback does not excuse an incomplete catalog.
+[`index.ts`](../src/shared/i18n/index.ts) initializes i18next/react-i18next with the local catalogs and fixed English bootstrap/fallback. Module loading awaits initialization. Fallback does not excuse an incomplete catalog.
 
-`config/language.ts` normalizes supported regional code prefixes to a catalog code only. It does not infer direction or calendar. The settings HTTP adapter requires a supported code, explicit `ltr`/`rtl`, Gregorian/Jalali calendar and nonblank names. It preserves server direction/calendar even when they differ from code conventions and rejects malformed metadata with a controlled translated error.
+The settings HTTP adapter returns typed language metadata without runtime code
+normalization or validation. The contract includes a supported code, explicit
+`ltr`/`rtl`, Gregorian/Jalali calendar and names.
 
-Core applies accepted metadata to i18next and Day.js and refreshes public settings on window focus. The Ant Design provider selects the matching vendor locale and applies server language and direction to the document. Ordinary settings editors retain theme and logo rights and omit `languageCode`. Only a system super-admin changes it.
+Core applies accepted metadata to i18next and Day.js. The Ant Design provider selects the matching vendor locale and applies server language and direction to the document. Ordinary settings editors retain theme and logo rights while the language chooser remains disabled. Their save may include the current `languageCode`; the backend ignores unauthorized language changes. Only a system super-admin changes the selected language, and the accepted API response remains authoritative for every editor.
 
 ## Dates
 
@@ -45,6 +48,6 @@ The [calendar screen](../src/features/calendar/Calendar.tsx) formats HTTP keys a
 
 ## Fixtures and checks
 
-Later Storybook controls must select complete synthetic language metadata, independently exercising direction and theme without creating production preferences. Their preview, Core fixture, document, Ant Design, i18next and Day.js must stay synchronized. All production catalogs remain complete.
+Storybook controls must select complete synthetic language metadata, independently exercising direction and theme without creating production preferences. Their preview, Core fixture, document, Ant Design, i18next and Day.js must stay synchronized. All production catalogs remain complete.
 
-If text, direction or dates disagree, inspect the accepted settings metadata before changing a catalog or vendor adapter. The [settings tests](../src/features/settings/api.test.ts), [Core tests](../src/app/providers/core/Core.test.tsx) and [date tests](../src/shared/i18n/date.test.ts) cover these boundaries separately. Key/interpolation parity, pure-data imports and catalog registration are also checked by the existing source gates. See [validation](validation.md) for the applicable commands and required gate.
+If text, direction or dates disagree, inspect the accepted settings metadata before changing a catalog or vendor adapter. The [settings tests](../src/features/settings/api.test.ts), [Core tests](../src/app/providers/core/Core.test.tsx) and [date tests](../src/shared/i18n/date.test.ts) cover these boundaries separately. Preserve key/interpolation parity, pure-data imports and catalog registration through their owning tests and review. See [validation](validation.md) for the applicable commands and required gate.

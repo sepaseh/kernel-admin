@@ -59,6 +59,38 @@ test("captures static, erased, re-export, dynamic, require and computed import e
     edges.map((edge) => edge.typeOnly),
     [false, true, true, true, false, false, false, false],
   );
+  const [mixed] = inspectImports(
+    'import { login as start, type LoginParams } from "@/features/auth";',
+  );
+  assert.deepEqual(mixed.bindings, [
+    { name: "login", typeOnly: false },
+    { name: "LoginParams", typeOnly: true },
+  ]);
+});
+
+test("only the actual literal application stylesheet edge is admitted", () => {
+  for (const [source, specifier, target] of [
+    ["src/main.tsx", "./index.css", "src/index.css"],
+  ]) {
+    const owner = path.join(root, source),
+      resolved = path.join(root, target);
+    assert.equal(check(specifier, resolved, owner), undefined);
+    assert.match(
+      check(specifier, path.resolve(root, "../outside.css"), owner),
+      /exact contained/,
+    );
+    assert.match(check(specifier, resolved, owner, true), /exact contained/);
+    assert.match(
+      check(specifier, resolved, owner, false, undefined, [
+        { name: "default", typeOnly: false },
+      ]),
+      /exact contained/,
+    );
+    assert.match(
+      check(specifier, resolved, file),
+      /(?:not allowed|published production)/,
+    );
+  }
 });
 
 test("production imports cannot target packages or builtins even through erased types", () => {
@@ -156,7 +188,7 @@ test("HTTP path validation stays inside the shared production boundary", () => {
 });
 
 test("shared source rejects every upward dependency form, including the application entrypoint", () => {
-  const source = path.join(root, "src/shared/lib/error.ts");
+  const source = path.join(root, "src/shared/lib/boolean.ts");
   for (const target of [
     "src/app/contexts/Core.ts",
     "src/features/users/Users.tsx",
@@ -212,68 +244,163 @@ test("features reject another feature's UI, private helpers and barrels in every
   );
 });
 
-test("authentication and role capabilities retain only their approved consumer and dependency kind", () => {
-  for (const [source, target, typeOnly] of [
-    ["src/features/account/Account.tsx", "src/features/auth/api.ts", false],
+test("public feature capabilities retain only their approved consumer, export and dependency kind", () => {
+  for (const [source, target, name, typeOnly] of [
     [
-      "src/features/forgot-pass/ForgotPass.tsx",
-      "src/features/auth/api.ts",
+      "src/features/account/components/password-form/PasswordForm.tsx",
+      "src/features/auth/index.ts",
+      "changePassword",
       false,
     ],
     [
       "src/features/forgot-pass/ForgotPass.tsx",
-      "src/features/auth/useOtpRequest.ts",
+      "src/features/auth/index.ts",
+      "forgotPassword",
       false,
     ],
-    ["src/features/login/Login.tsx", "src/features/auth/api.ts", false],
-    ["src/features/register/Register.tsx", "src/features/auth/api.ts", false],
+    [
+      "src/features/forgot-pass/ForgotPass.tsx",
+      "src/features/auth/index.ts",
+      "useOtpRequest",
+      false,
+    ],
+    [
+      "src/features/login/Login.tsx",
+      "src/features/auth/index.ts",
+      "login",
+      false,
+    ],
     [
       "src/features/register/Register.tsx",
-      "src/features/auth/useOtpRequest.ts",
+      "src/features/auth/index.ts",
+      "register",
       false,
     ],
-    ["src/features/users/Users.tsx", "src/features/roles/api.ts", false],
-    ["src/features/account/Account.tsx", "src/features/auth/types.ts", true],
-    ["src/features/account/api.ts", "src/features/auth/types.ts", true],
-    ["src/features/account/types.ts", "src/features/roles/types.ts", true],
+    [
+      "src/features/register/Register.tsx",
+      "src/features/auth/index.ts",
+      "useOtpRequest",
+      false,
+    ],
+    [
+      "src/features/settings/Settings.tsx",
+      "src/features/files/index.ts",
+      "uploadFile",
+      false,
+    ],
+    [
+      "src/features/users/Users.tsx",
+      "src/features/roles/index.ts",
+      "fetchRoles",
+      false,
+    ],
+    [
+      "src/features/account/components/password-form/PasswordForm.tsx",
+      "src/features/auth/index.ts",
+      "ChangePasswordParams",
+      true,
+    ],
+    [
+      "src/features/account/types.ts",
+      "src/features/roles/index.ts",
+      "PermissionKey",
+      true,
+    ],
+    [
+      "src/features/account/types.ts",
+      "src/features/users/index.ts",
+      "User",
+      true,
+    ],
     [
       "src/features/forgot-pass/ForgotPass.tsx",
-      "src/features/auth/types.ts",
+      "src/features/auth/index.ts",
+      "ForgotPasswordParams",
       true,
     ],
-    ["src/features/login/Login.tsx", "src/features/auth/types.ts", true],
-    ["src/features/register/Register.tsx", "src/features/auth/types.ts", true],
+    [
+      "src/features/login/Login.tsx",
+      "src/features/auth/index.ts",
+      "LoginParams",
+      true,
+    ],
+    [
+      "src/features/register/Register.tsx",
+      "src/features/auth/index.ts",
+      "RegisterParams",
+      true,
+    ],
+    [
+      "src/features/settings/types.ts",
+      "src/features/files/index.ts",
+      "FileContext",
+      true,
+    ],
+    [
+      "src/features/settings/types.ts",
+      "src/features/files/index.ts",
+      "StoredFile",
+      true,
+    ],
+    [
+      "src/features/users/Users.tsx",
+      "src/features/roles/index.ts",
+      "Role",
+      true,
+    ],
     [
       "src/features/users/components/user-role-form/UserRoleForm.tsx",
-      "src/features/roles/types.ts",
+      "src/features/roles/index.ts",
+      "Role",
       true,
     ],
-    ["src/features/users/types.ts", "src/features/roles/types.ts", true],
-    ["src/features/users/Users.tsx", "src/features/roles/types.ts", true],
+    [
+      "src/features/users/types.ts",
+      "src/features/roles/index.ts",
+      "Role",
+      true,
+    ],
   ]) {
-    const specifier = "@/" + target.slice("src/".length).replace(/\.ts$/, "");
-    const owner = path.join(root, source);
-    const resolved = path.join(root, target);
+    const specifier = "@/" + target.slice("src/".length, -"/index.ts".length);
+    const owner = path.join(root, source),
+      resolved = path.join(root, target);
     assert.equal(
-      check(specifier, resolved, owner, typeOnly),
+      check(specifier, resolved, owner, typeOnly, undefined, [
+        { name, typeOnly },
+      ]),
       undefined,
       source,
     );
     assert.match(
-      check(specifier, resolved, owner, !typeOnly),
+      check(specifier, resolved, owner, !typeOnly, undefined, [
+        { name, typeOnly: !typeOnly },
+      ]),
       /(?:exact erased|Features may import another feature only through their exact approved)/,
-      source,
     );
     assert.match(
       check(
         specifier,
         resolved,
-        path.join(root, "src/features/settings/Settings.tsx"),
+        path.join(root, "src/features/faqs/Faqs.tsx"),
         typeOnly,
+        undefined,
+        [{ name, typeOnly }],
       ),
       /Features may import another feature only through their exact approved/,
-      source,
     );
+    for (const forbidden of [
+      "FilesPage",
+      "RolesPage",
+      "SettingsPage",
+      "*",
+      "default",
+    ])
+      assert.match(
+        check(specifier, resolved, owner, typeOnly, undefined, [
+          { name: forbidden, typeOnly },
+        ]),
+        /(?:exact erased|Features may import another feature only through their exact approved)/,
+      );
   }
 });
 
@@ -413,17 +540,13 @@ test("local feature ownership, shared reuse and application composition remain v
       "src/features/users/types.ts",
       true,
     ],
-    [
-      "src/features/users/Users.tsx",
-      "src/shared/hooks/useReadResource.ts",
-      false,
-    ],
-    ["src/features/users/Users.tsx", "src/app/hooks/useCore.ts", false],
-    ["src/features/users/Users.tsx", "src/app/config/routes.ts", false],
-    ["src/features/users/Users.tsx", "src/app/lib/access.ts", false],
-    ["src/shared/lib/error.ts", "src/shared/api/token.ts", false],
+    ["src/features/users/Users.tsx", "src/shared/hooks/index.ts", false],
+    ["src/features/users/Users.tsx", "src/app/hooks/index.ts", false],
+    ["src/features/users/Users.tsx", "src/app/config/index.ts", false],
+    ["src/features/users/Users.tsx", "src/app/lib/index.ts", false],
+    ["src/shared/lib/boolean.ts", "src/shared/api/token.ts", false],
     ["src/app/Routes.tsx", "src/features/users/index.ts", false],
-    ["src/layouts/default/Default.tsx", "src/features/auth/api.ts", false],
+    ["src/layouts/default/Default.tsx", "src/features/auth/index.ts", false],
   ])
     assert.equal(
       check(
@@ -439,14 +562,28 @@ test("local feature ownership, shared reuse and application composition remain v
 
 test("features use app contracts without gaining access to composition, providers or layouts", () => {
   const source = path.join(root, "src/features/users/Users.tsx");
+  const layout = path.join(root, "src/layouts/default/index.ts");
+  assert.equal(
+    check("@/layouts/default", layout, source, true, undefined, [
+      { name: "DefaultLayoutContext", typeOnly: true },
+    ]),
+    undefined,
+  );
+  for (const binding of [
+    { name: "DefaultLayout", typeOnly: false },
+    { name: "*", typeOnly: true },
+    { name: "DefaultLayoutContext", typeOnly: false },
+  ])
+    assert.match(
+      check("@/layouts/default", layout, source, binding.typeOnly, undefined, [
+        binding,
+      ]),
+      /Features may use only the approved/,
+    );
   for (const target of [
     "src/app/config/index.ts",
-    "src/app/config/routes.ts",
     "src/app/hooks/index.ts",
-    "src/app/hooks/useAntd.ts",
-    "src/app/hooks/useCore.ts",
     "src/app/lib/index.ts",
-    "src/app/lib/access.ts",
   ])
     for (const typeOnly of [false, true])
       assert.equal(
@@ -460,6 +597,10 @@ test("features use app contracts without gaining access to composition, provider
         target,
       );
   for (const target of [
+    "src/app/config/routes.ts",
+    "src/app/hooks/useAntd.ts",
+    "src/app/hooks/useCore.ts",
+    "src/app/lib/access.ts",
     "src/app/App.tsx",
     "src/app/Routes.tsx",
     "src/app/contexts/index.ts",
@@ -766,7 +907,11 @@ test("actual aliases and relative resolution cannot bypass shared or feature own
     "export type Role = { id: string };\n",
   );
   await put(
-    "src/shared/lib/error.ts",
+    "src/features/roles/api.ts",
+    "export const fetchRoles = () => [];\n",
+  );
+  await put(
+    "src/shared/lib/boolean.ts",
     [
       'import type { Value } from "@/shared/facade";',
       'const page = import("../../features/users/Users");',
@@ -779,8 +924,8 @@ test("actual aliases and relative resolution cannot bypass shared or feature own
     "src/features/users/Users.tsx",
     [
       'import { Value as local } from "./api";',
-      'import { Value as roles } from "@/features/roles/api";',
-      'import type { Role } from "../roles/types";',
+      'import { fetchRoles as roles } from "@/features/roles";',
+      'import type { Role } from "@/features/roles";',
       'import type { Value } from "@/features/users/facade";',
       'import { Value as login } from "@/features/auth/api";',
       'export * from "../roles";',
@@ -793,6 +938,7 @@ test("actual aliases and relative resolution cannot bypass shared or feature own
     [
       'export * from "./api";',
       'export * from "@/features/settings/Settings";',
+      'export type { Role } from "./types";',
     ].join("\n"),
   );
 
@@ -807,10 +953,10 @@ test("actual aliases and relative resolution cannot bypass shared or feature own
     "src/features/users/Users.tsx:6",
     "src/features/users/Users.tsx:7",
     "src/features/users/Users.tsx:8",
-    "src/shared/lib/error.ts:1",
-    "src/shared/lib/error.ts:2",
-    "src/shared/lib/error.ts:3",
-    "src/shared/lib/error.ts:4",
+    "src/shared/lib/boolean.ts:1",
+    "src/shared/lib/boolean.ts:2",
+    "src/shared/lib/boolean.ts:3",
+    "src/shared/lib/boolean.ts:4",
   ]);
   for (const violation of violations)
     assert.match(
@@ -920,15 +1066,20 @@ test("runtime adapters may import only exact declared packages contained in this
   for (const [source, specifier, dependency] of [
     ["src/shared/i18n/index.ts", "i18next", "i18next"],
     ["src/shared/i18n/index.ts", "react-i18next", "react-i18next"],
-    ["src/shared/i18n/date.ts", "dayjs/locale/en-gb", "dayjs"],
+    ["src/shared/i18n/date.ts", "dayjs/locale/en", "dayjs"],
     ["src/shared/i18n/date.ts", "jalaliday", "jalaliday"],
     ["src/shared/api/client.ts", "axios", "axios"],
-    ["src/shared/hooks/useReadRequest.ts", "react", "react"],
+    ["src/shared/hooks/useAbortController.ts", "react", "react"],
     ["src/shared/ui/digits-input/DigitsInput.tsx", "react", "react"],
     ["src/app/providers/core/Core.tsx", "dayjs", "dayjs"],
     ["src/app/providers/antd/Antd.tsx", "antd/locale/fa_IR", "antd"],
-    ["src/features/login/styles.ts", "antd-style", "antd-style"],
+    ["src/features/calendar/styles.ts", "antd-style", "antd-style"],
     ["src/layouts/default/Default.tsx", "lucide-react", "lucide-react"],
+    [
+      "src/shared/ui/image-upload/ImageUpload.tsx",
+      "antd-img-crop",
+      "antd-img-crop",
+    ],
   ]) {
     const adapter = path.join(root, source);
     const target = path.join(root, "node_modules", dependency, "index.d.ts");
@@ -951,36 +1102,43 @@ test("runtime adapters may import only exact declared packages contained in this
     );
     assert.match(check("node:fs", target, adapter), /not allowed/);
     assert.match(check("dayjs/locale/xx", target, adapter), /not allowed/);
+    assert.match(
+      check(specifier, target, file, false, dependency),
+      /not allowed/,
+    );
   }
 });
 
-test("dialog focus admits only its published helper and exact runtime or erased React owners", () => {
-  const helper = path.join(root, "src/shared/lib/dialog-focus.ts");
-  for (const source of [
-    "src/app/hooks/useAntd.ts",
-    "src/shared/ui/form-drawer/FormDrawer.tsx",
-  ]) {
-    const owner = path.join(root, source);
-    assert.equal(check("@/shared/lib/dialog-focus", helper, owner), undefined);
-    assert.match(
-      check(
-        "@/shared/lib/dialog-focus-internal",
-        path.join(root, "src/shared/lib/dialog-focus-internal.ts"),
-        owner,
-      ),
-      /published production modules/,
-    );
-  }
+test("shared lock and form owners retain their exact runtime or erased React dependencies", () => {
+  const helper = path.join(root, "src/shared/hooks/useLock.ts");
+  assert.equal(
+    check(
+      "@/shared/hooks/useLock",
+      helper,
+      path.join(root, "src/features/register/Register.tsx"),
+    ),
+    undefined,
+  );
+  assert.match(
+    check(
+      "@/shared/hooks/private-lock",
+      path.join(root, "src/shared/hooks/private-lock.ts"),
+    ),
+    /published production modules/,
+  );
   const react = path.join(root, "node_modules/@types/react/index.d.ts");
   for (const [source, typeOnly] of [
-    ["src/app/hooks/useAntd.ts", false],
+    ["src/shared/hooks/useLock.ts", false],
     ["src/shared/ui/form-drawer/FormDrawer.tsx", true],
-    ["src/shared/lib/dialog-focus.ts", true],
   ]) {
     const owner = path.join(root, source);
     assert.equal(
       check("react", react, owner, typeOnly, "@types/react"),
       undefined,
+    );
+    assert.match(
+      check("react", react, owner, !typeOnly, "@types/react"),
+      /not allowed/,
     );
     assert.match(
       check("react", react, owner, typeOnly, "synthetic-alias"),
@@ -1016,14 +1174,51 @@ test("dialog focus admits only its published helper and exact runtime or erased 
         /not allowed/,
       );
   }
+});
+
+test("submission forms own only their contained Axios cancellation runtime dependency", () => {
+  const axios = path.join(root, "node_modules/axios/index.d.ts");
   for (const source of [
-    "src/shared/ui/form-drawer/FormDrawer.tsx",
-    "src/shared/lib/dialog-focus.ts",
-  ])
+    "src/features/account/components/password-form/PasswordForm.tsx",
+    "src/features/account/components/profile-form/ProfileForm.tsx",
+    "src/features/roles/components/role-form/RoleForm.tsx",
+    "src/features/settings/Settings.tsx",
+    "src/features/users/components/user-form/UserForm.tsx",
+    "src/features/users/components/user-role-form/UserRoleForm.tsx",
+  ]) {
+    const owner = path.join(root, source);
+    assert.equal(check("axios", axios, owner, false, "axios"), undefined);
+    assert.match(check("axios", axios, owner, true, "axios"), /not allowed/);
     assert.match(
-      check("react", react, path.join(root, source), false, "@types/react"),
+      check("axios", axios, owner, false, "synthetic-alias"),
       /not allowed/,
     );
+    assert.match(
+      check("axios/internal", axios, owner, false, "axios"),
+      /not allowed/,
+    );
+    assert.match(
+      check(
+        "axios",
+        path.resolve(root, "../another-checkout/node_modules/axios/index.d.ts"),
+        owner,
+        false,
+        "axios",
+      ),
+      /not allowed/,
+    );
+  }
+  for (const source of [
+    "src/features/account/types.ts",
+    "src/features/settings/api.ts",
+    "src/shared/i18n/locales/en.ts",
+    "src/shared/contracts/appearance.ts",
+  ])
+    for (const typeOnly of [false, true])
+      assert.match(
+        check("axios", axios, path.join(root, source), typeOnly, "axios"),
+        /not allowed/,
+      );
 });
 
 test("OTP accessibility owns only its exact React and translation runtime dependencies", () => {
@@ -1156,7 +1351,7 @@ test("HTTP package ownership, type erasure and package identity fail closed", ()
     ),
     /not allowed/,
   );
-  const hook = path.join(root, "src/shared/hooks/useReadRequest.ts");
+  const hook = path.join(root, "src/shared/hooks/useAbortController.ts");
   const reactTypes = path.join(root, "node_modules/@types/react/index.d.ts");
   assert.equal(
     check("react", reactTypes, hook, false, "@types/react"),
@@ -1203,20 +1398,25 @@ test("the OTP lifecycle owner admits only its exact contained runtime and erased
   );
 });
 
-test("the mutation lifecycle owner admits only its exact contained React and Axios dependencies", () => {
-  const owner = path.join(root, "src/shared/hooks/useMutationRequest.ts");
-  for (const dependency of ["react", "axios"])
-    assert.equal(
-      check(
-        dependency,
-        path.join(root, "node_modules", dependency, "index.js"),
-        owner,
-        false,
-        dependency,
-      ),
-      undefined,
-    );
-  for (const dependency of ["antd", "react-dom", "axios/internal", "node:fs"])
+test("the current refresh owner admits only its exact contained Axios dependency", () => {
+  const owner = path.join(root, "src/shared/api/refresh.ts");
+  assert.equal(
+    check(
+      "axios",
+      path.join(root, "node_modules/axios/index.js"),
+      owner,
+      false,
+      "axios",
+    ),
+    undefined,
+  );
+  for (const dependency of [
+    "react",
+    "antd",
+    "react-dom",
+    "axios/internal",
+    "node:fs",
+  ])
     assert.match(
       check(
         dependency,
@@ -1229,11 +1429,11 @@ test("the mutation lifecycle owner admits only its exact contained React and Axi
     );
   assert.match(
     check(
-      "react",
-      path.join(root, "node_modules", "alias", "index.js"),
+      "axios",
+      path.join(root, "node_modules/alias/index.js"),
       owner,
       false,
-      "react",
+      "axios",
     ),
     /not allowed/,
   );

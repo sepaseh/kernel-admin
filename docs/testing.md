@@ -7,7 +7,7 @@ Use this guide when adding a regression or changing a fixture. [Validation](vali
 | Changed behavior                                  | Test owner                                 | Exercise                                                                 |
 | ------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------ |
 | Pure helper, HTTP adapter, hook, provider or form | Closest `src/**/*.test.ts` or `*.test.tsx` | Observable results, error paths, cancellation and stale completions.     |
-| Behavior spanning application modules             | `src/test/integration`                     | Composition, resource/session changes and permissions.                   |
+| Behavior spanning application modules             | Closest composition tests or `e2e/`        | Composition, resource/session changes and permissions.                   |
 | Reusable UI interaction                           | Closest `*.stories.tsx`                    | Real browser interaction and accessibility with complete synthetic APIs. |
 | Source, guidance, CI or helper policy             | Flat `scripts/*.test.mjs`                  | Synthetic accepted and rejected cases for the actual boundary.           |
 | Composed application journey                      | `e2e/`                                     | Built-panel behavior through the browser with explicit API handlers.     |
@@ -41,11 +41,21 @@ Keep the declared browser and CI execution budgets as outer failure limits.
 
 Operational helper imports must stay free of environment-file reads, network requests, process startup and writes. Synthetic drivers do not launch infrastructure. Never read real environments, credentials, databases, uploads or browser profiles as fixtures, or reset/prune shared resources to obtain a pass.
 
+The [image upload request tests](../src/shared/ui/image-upload/ImageUpload.test.tsx)
+drive Ant Design's real file input and request lifecycle. They replace only the
+canvas crop and image-decoding boundaries with synthetic results to exercise
+upload failure, retry and late completion after unmount. They do not verify the
+cropper's browser rendering or image transformation; the separate
+[dimension tests](../src/shared/ui/image-upload/image.test.ts) exercise decoding
+success, failure and temporary URL cleanup.
+
 ## Test components in Storybook
 
 The isolated [Storybook Vite configuration](../.storybook/vite.config.ts) disables ambient environment-file and VITE discovery. The [browser test configuration](../vitest.storybook.config.ts) runs registered play interactions in real Chromium; accessibility violations fail.
 
 Use the real UI and theme with complete replacements for feature APIs and the shared client; do not use spy passthrough. Mocks reset before every story. Keep `*.stories.tsx` beside the source owner under `src/`. Language/direction/theme controls supply synthetic metadata; they do not create production visitor preferences. A workshop pass covers the component interaction, not composed application or API-provider behavior.
+
+The [harness integration tests](../src/test/storybook/StoryShell.test.tsx) exercise the real [StoryShell](../.storybook/StoryShell.tsx) and [PreviewFrame](../.storybook/PreviewFrame.tsx), with Outlet account context, synthetic settings, the production Core context and Antd provider. They cover toolbar metadata updates while preserving the current route.
 
 ## Test application journeys and contracts
 

@@ -1,7 +1,8 @@
-import dayjs, { type Dayjs } from "dayjs";
+import type { Dayjs } from "dayjs";
+import dayjs from "dayjs";
 import ar from "dayjs/locale/ar";
 import de from "dayjs/locale/de";
-import en from "dayjs/locale/en-gb";
+import en from "dayjs/locale/en";
 import es from "dayjs/locale/es";
 import fr from "dayjs/locale/fr";
 import it from "dayjs/locale/it";

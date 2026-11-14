@@ -63,6 +63,9 @@ afterEach(() => {
 afterAll(() => {
   axios.defaults.adapter = originalAdapter;
 });
+afterAll(() => {
+  axios.defaults.adapter = originalAdapter;
+});
 
 describe("HTTP boundary", () => {
   it("sends credentials and converts write bodies and response keys", async () => {

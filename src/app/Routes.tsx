@@ -1,13 +1,29 @@
-import type { ComponentType, FC, ReactNode } from "react";
-import { Fragment, lazy, Suspense, useEffect } from "react";
-import type { RouteObject } from "react-router";
-import { createBrowserRouter, Navigate, useRouteError } from "react-router";
+import {
+  type ComponentType,
+  type PropsWithChildren,
+  Fragment,
+  lazy,
+  Suspense,
+  useEffect,
+} from "react";
+import {
+  type RouteObject,
+  createBrowserRouter,
+  Navigate,
+  useOutletContext,
+  useRouteError,
+} from "react-router";
 import { RouterProvider } from "react-router/dom";
 
-import type { RouteKey, RouteLayout } from "@/app/config";
-import { baseUrl, routeTree } from "@/app/config";
+import {
+  type RouteKey,
+  type RouteLayout,
+  baseUrl,
+  routeTree,
+} from "@/app/config";
 import { useCore } from "@/app/hooks";
 import { hasRouteAccess } from "@/app/lib";
+import type { DefaultLayoutContext } from "@/layouts/default";
 import { reportError } from "@/shared/lib";
 import { ErrorFallback } from "@/shared/ui/error-boundary";
 import { RouteLoading } from "@/shared/ui/route-loading";
@@ -19,29 +35,36 @@ const pageRegistry = {
   files: async () => (await import("@/features/files")).FilesPage,
   forgotPassword: async () =>
     (await import("@/features/forgot-pass")).ForgotPassPage,
-  notFound: async () => (await import("@/app/not-found/NotFound")).NotFoundPage,
+  notFound: async () => (await import("@/features/not-found")).NotFoundPage,
   register: async () => (await import("@/features/register")).RegisterPage,
   roles: async () => (await import("@/features/roles")).RolesPage,
   root: async () => (await import("@/features/dashboard")).DashboardPage,
   settings: async () => (await import("@/features/settings")).SettingsPage,
+  files: async () => (await import("@/features/files")).FilesPage,
   users: async () => (await import("@/features/users")).UsersPage,
 } satisfies Record<RouteKey, () => Promise<ComponentType>>;
 
-type RouteWrapperProps = {
-  children: ReactNode;
+type RouteAccessProps = PropsWithChildren<{
   route: RouteKey;
-};
+}>;
 
-const RouteWrapper: FC<RouteWrapperProps> = ({ route, children }) => {
-  const { setCurrentRoute, user } = useCore();
+const RouteWrapper = ({ route, children }: RouteAccessProps) => {
+  const { setCurrentRoute } = useCore();
 
   useEffect(() => {
     setCurrentRoute(route);
   }, [route, setCurrentRoute]);
 
-  if (hasRouteAccess(route, user)) return <Fragment>{children}</Fragment>;
+  return <Fragment>{children}</Fragment>;
+};
 
-  return <Navigate to={routeTree.root.path} replace />;
+const ProtectedRoute = ({ route, children }: RouteAccessProps) => {
+  const { currentUser } = useOutletContext<DefaultLayoutContext>();
+
+  if (hasRouteAccess(route, currentUser))
+    return <Fragment>{children}</Fragment>;
+
+  return <Navigate replace to={routeTree.root.path} />;
 };
 
 const routeKeys = Object.keys(routeTree) as RouteKey[];
@@ -54,9 +77,11 @@ const createPageRoute = (route: RouteKey): RouteObject => {
     }));
     const element = (
       <RouteWrapper route={route}>
-        <Suspense fallback={<RouteLoading />}>
-          <Page />
-        </Suspense>
+        <ProtectedRoute route={route}>
+          <Suspense fallback={<RouteLoading />}>
+            <Page />
+          </Suspense>
+        </ProtectedRoute>
       </RouteWrapper>
     );
     return "index" in definition && definition.index
