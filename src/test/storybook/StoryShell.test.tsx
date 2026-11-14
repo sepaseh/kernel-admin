@@ -1,6 +1,4 @@
 // @vitest-environment jsdom
-import "@/test/browser";
-
 import {
   cleanup,
   fireEvent,
@@ -24,9 +22,34 @@ import { PreviewFrame } from "../../../.storybook/PreviewFrame";
 import { StoryShell } from "../../../.storybook/StoryShell";
 import { sampleSettings, sampleUser } from "../../../.storybook/fixtures";
 
-const ShellProbe = () => {
-  const { currentUser } = useOutletContext<DefaultLayoutContext>();
-  const { hash, pathname, search } = useLocation();
+import { sampleLanguages, sampleSettings } from "./fixtures";
+import { StoryShell } from "./StoryShell";
+
+const lightTheme = {
+  colorBgBase: "#fff",
+  colorBgContainer: "#fff",
+  colorBorder: "#767676",
+  colorLink: "#0050b3",
+  colorPrimary: "#1677ff",
+  colorTextBase: "#000",
+  colorTextDescription: "#444",
+};
+
+const AppearanceProbe = () => {
+  const {
+    setSettings,
+    currentRoute,
+    language,
+    setCurrentRoute,
+    setTheme,
+    theme,
+  } = useCore();
+  const { direction, theme: themeConfig } = useContext(
+    ConfigProvider.ConfigContext,
+  );
+  const { token } = antdTheme.useToken();
+  const { t } = useTranslation();
+  const location = useLocation();
   const navigate = useNavigate();
 
   return (
@@ -40,10 +63,37 @@ const ShellProbe = () => {
         {currentUser.id}:{String(currentUser.isSystemAdmin)}:
         {currentUser.permissions.join(",")}
       </output>
-      <input aria-label="Story draft" defaultValue="" />
+      <output data-testid="button-appearance">
+        {token.colorPrimary}:
+        {themeConfig?.components?.Button?.primaryColor ?? "default"}
+      </output>
+      <output data-testid="route">
+        {currentRoute}:{location.pathname}
+      </output>
+      <button onClick={() => setTheme("dark")}>Change menu theme</button>
       <button
-        onClick={() => void navigate("/users?page=2#update")}
-        type="button"
+        onClick={() =>
+          setSettings({
+            ...sampleSettings,
+            darkTheme: {
+              ...lightTheme,
+              colorBgBase: "#000",
+              colorBgContainer: "#141414",
+              colorTextBase: "#fff",
+              colorTextDescription: "#ddd",
+            },
+            language: sampleLanguages.fa,
+            lightTheme,
+          })
+        }
+      >
+        Accept settings
+      </button>
+      <button
+        onClick={() => {
+          setCurrentRoute("users");
+          void navigate("/users");
+        }}
       >
         Navigate users
       </button>
@@ -51,64 +101,27 @@ const ShellProbe = () => {
   );
 };
 
-const AppearanceProbe = () => {
-  const { t } = useTranslation();
-  const { compact, settings, theme } = useCore();
-  const { direction } = useContext(ConfigProvider.ConfigContext);
-  const { token } = antdTheme.useToken();
-
-  return (
-    <>
-      <output aria-label="Core appearance">
-        {settings.language.code}:{settings.language.direction}:
-        {settings.language.calendar}:{theme}:{String(compact)}
-      </output>
-      <output aria-label="Ant Design direction">{direction}</output>
-      <output aria-label="Ant Design background">{token.colorBgBase}</output>
-      <output aria-label="Ant Design control height">
-        {token.controlHeight}
-      </output>
-      <button type="button">{t("submit")}</button>
-    </>
-  );
-};
-
-const renderFrame = (
-  languageCode: ComponentProps<typeof PreviewFrame>["languageCode"],
-  themeMode: ComponentProps<typeof PreviewFrame>["themeMode"],
-  compact = false,
-  direction?: ComponentProps<typeof PreviewFrame>["direction"],
-) => (
-  <PreviewFrame
-    compact={compact}
-    direction={direction}
-    languageCode={languageCode}
-    themeMode={themeMode}
-  >
-    <StoryShell>
-      <ShellProbe />
-      <AppearanceProbe />
-    </StoryShell>
-  </PreviewFrame>
-);
-
-beforeEach(async () => {
-  await i18n.changeLanguage("en");
-  dayjs.calendar("gregory");
-  dayjs.locale(dayjsLocaleName("en"));
-});
-
 afterEach(async () => {
   cleanup();
-  await i18n.changeLanguage("en");
-  dayjs.calendar("gregory");
-  dayjs.locale(dayjsLocaleName("en"));
-  document.documentElement.removeAttribute("dir");
-  document.documentElement.removeAttribute("lang");
+  await i18nInstance.changeLanguage("fa");
 });
 
-describe("StoryShell and preview integration", () => {
-  it("provides the default story route and synthetic account through Outlet", () => {
+describe("StoryShell appearance ownership", () => {
+  it("keeps application button colors independent of the preview surface", () => {
+    render(
+      <PreviewFrame direction="ltr" languageCode="en" themeMode="light">
+        <StoryShell>
+          <AppearanceProbe />
+        </StoryShell>
+      </PreviewFrame>,
+    );
+
+    expect(screen.getByTestId("button-appearance")).toHaveTextContent(
+      `${sampleSettings.lightTheme.colorPrimary}:default`,
+    );
+  });
+
+  it("uses standalone initial metadata and working route state", async () => {
     render(
       <StoryShell>
         <ShellProbe />
@@ -119,6 +132,12 @@ describe("StoryShell and preview integration", () => {
     expect(screen.getByLabelText("Story account").textContent).toBe(
       `${sampleUser.id}:true:`,
     );
+    expect(screen.getByTestId("antd-appearance")).toHaveTextContent(
+      `rtl:${sampleSettings.darkTheme.colorBgBase}`,
+    );
+    await screen.findByRole("button", { name: "ثبت" });
+    fireEvent.click(screen.getByRole("button", { name: "Navigate users" }));
+    expect(screen.getByTestId("route")).toHaveTextContent("users:/users");
   });
 
   it("keeps a supplied account while navigating from the configured URL", () => {
@@ -234,6 +253,13 @@ describe("StoryShell and preview integration", () => {
       "value",
       "Keep this unfinished story form",
     );
+    expect(screen.getByTestId("antd-appearance")).toHaveTextContent(
+      `rtl:${sampleSettings.darkTheme.colorBgBase}`,
+    );
+    expect(screen.getByTestId("route")).toHaveTextContent("users:/users");
+    await screen.findByRole("button", { name: "ثبت" });
+    expect(document.documentElement).toHaveAttribute("lang", "fa");
+    expect(document.documentElement).toHaveAttribute("dir", "rtl");
   });
 
   it("applies compact sizing without changing the active language or theme", async () => {
@@ -253,12 +279,14 @@ describe("StoryShell and preview integration", () => {
       "en:ltr:gregory:light:true",
     );
 
-    rerender(renderFrame("en", "light"));
-    expect(
-      Number(screen.getByLabelText("Ant Design control height").textContent),
-    ).toBe(standardHeight);
-    expect(screen.getByLabelText("Core appearance").textContent).toBe(
-      "en:ltr:gregory:light:false",
+    expect(screen.getByTestId("core-appearance")).toHaveTextContent(
+      "en:rtl:gregory:light",
     );
+    expect(screen.getByTestId("antd-appearance")).toHaveTextContent(
+      `rtl:${sampleSettings.lightTheme.colorBgBase}`,
+    );
+    await screen.findByRole("button", { name: "Submit" });
+    expect(document.documentElement).toHaveAttribute("lang", "en");
+    expect(document.documentElement).toHaveAttribute("dir", "rtl");
   });
 });

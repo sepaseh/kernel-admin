@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import {
   act,
   cleanup,
@@ -114,10 +115,10 @@ describe("core settings ownership", () => {
     expect(dayjs.locale()).toBe("fa");
   });
 
-  it("reports an initial settings failure and finishes loading", async () => {
-    fetchSettings.mockRejectedValueOnce(
-      new Error("Synthetic offline response"),
-    );
+  it("finishes loading after a settings timeout and lets Retry recover", async () => {
+    fetchSettings
+      .mockRejectedValueOnce(new Error("Synthetic settings request timeout"))
+      .mockResolvedValueOnce(settings);
     render(
       <CoreProvider>
         <Consumer />
@@ -126,6 +127,13 @@ describe("core settings ownership", () => {
 
     expect(await screen.findByText(i18n.t("settingsLoadFailed"))).toBeDefined();
     expect(screen.queryByLabelText(i18n.t("loading"))).toBeNull();
+    expect(fetchSettings.mock.calls[0][0].aborted).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("retry") }));
+
+    expect(await screen.findByText("fa/rtl/dark/false")).toBeDefined();
+    expect(screen.queryByText(i18n.t("settingsLoadFailed"))).toBeNull();
+    expect(fetchSettings).toHaveBeenCalledTimes(2);
   });
 
   it("persists appearance preferences while language remains owned by accepted API settings", async () => {

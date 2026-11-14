@@ -3,14 +3,17 @@ import type { AccessTokenProps } from "./types.ts";
 
 let accessToken: string | null = null;
 let session = new AbortController();
+let version = 0;
 
 export const clearAccessToken = () => {
+  version += 1;
   session.abort();
   session = new AbortController();
   accessToken = null;
 };
 
 export const getAccessToken = () => accessToken;
+export const getAccessTokenVersion = () => version;
 export const getSessionSignal = () => session.signal;
 
 export const setRefreshedAccessToken = (token: string) => {

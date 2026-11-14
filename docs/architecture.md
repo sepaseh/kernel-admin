@@ -6,12 +6,12 @@ Kernel Admin is one independent React/Vite TypeScript application. Developers se
 
 ## Follow startup
 
-1. [The entry point](../src/main.tsx) initializes [optional observability](../src/shared/lib/observability.ts), then mounts [App](../src/app/App.tsx).
-2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings with local state and cancellation. The settings adapter returns typed language, logos and palettes without runtime validation. Bootstrap loading remains outside Ant Design.
-3. `App` composes the Ant Design provider, global styles and lazy routes. Core renders its children after settings are available and offers bootstrap retry.
+1. [The entry point](../src/main.tsx) initializes observability and mounts [App](../src/app/App.tsx).
+2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings with an owned cancellation signal. It displays loading or an inline retry before exposing accepted settings to its children. The settings API uses typed response models without runtime envelope validation.
+3. `App` composes the Ant Design provider, shared global styles and lazy routes after settings are available. Ant Design applies the API-owned palette, language and direction, together with browser theme and compact preferences.
 4. [Routes](../src/app/Routes.tsx) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.
 
-The [default layout](../src/layouts/default/Default.tsx) loads the current account before rendering protected children. Menu and route checks describe what the client presents; the API authorizes each request independently.
+The [default layout](../src/layouts/default/Default.tsx) loads the current account before rendering protected children. It exposes that account, account reload and session cleanup through its typed Outlet context. Menu and route checks describe what the client presents; the API authorizes each request independently.
 
 Observability collects `window.error`, unhandled promise rejections, React error-boundary failures and router error-fallback failures. It reports the supported Web Vitals CLS, FCP, INP, LCP and TTFB, plus long-task durations when available. Events use the public release ID and sanitized error/context data. Delivery is optional: a blank receiver URL sends no default network reports, and `setObservabilityTransport` accepts a custom transport.
 
@@ -33,7 +33,7 @@ The API selects language, text direction, calendar, logos and palettes. A browse
 
 Keep screens, APIs, request/response types, forms, hooks and tools with their owning `src/features/<feature>`. Shared modules provide domain-independent infrastructure and controls; their local source dependencies stay within `src/shared`. Application composition belongs in `app`, and route shells belong in `layouts`.
 
-Features consume reviewed API, hook or type exports through another feature's public `index.ts`; cross-feature screens, forms and private helpers remain outside that interface. Feature screens use app hooks, route configuration, access policy and public layout context; app composition internals remain with their owner. The [boundary checker](../scripts/check-boundaries.mjs) and [import rules](../.agents/rules/imports.md) describe enforcement and how to review a new dependency.
+Features use only the exact authentication API/OTP, roles API/type and settings-to-files capabilities declared by [the boundary checker](../scripts/check-boundaries.mjs). Settings imports the reviewed file upload service and erased file models through the files public exports. Settings and Files may import the erased `DefaultLayoutContext` from the default layout; layout components and other internals remain private. The [import rules](../.agents/rules/imports.md) describe enforcement and how to review a new dependency.
 
 ## Trace a change
 

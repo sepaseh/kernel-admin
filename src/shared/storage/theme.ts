@@ -1,4 +1,4 @@
-import { storageKeys } from "@/shared/config";
+import { defaultTheme, storageKeys } from "@/shared/config";
 
 import type { Theme } from "@/shared/contracts";
 import { getState, setState } from "./state";

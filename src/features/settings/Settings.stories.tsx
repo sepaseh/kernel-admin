@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { SettingsPage } from "@/features/settings";
 import { i18n } from "@/shared/i18n";
-import { StoryShell } from "../../../.storybook/StoryShell";
-import { sampleUser } from "../../../.storybook/fixtures";
+import { StoryShell } from "@/test/storybook/StoryShell";
+import { sampleAccount as sampleUser } from "@/test/storybook/fixtures";
 
 const meta = {
   title: "Features/Settings",
@@ -52,7 +52,9 @@ export const ResetUnsavedValues: Story = {
 };
 export const ReadOnly: Story = {
   render: () => (
-    <StoryShell user={{ ...sampleUser, isSystemAdmin: false, permissions: [] }}>
+    <StoryShell
+      initialUser={{ ...sampleUser, isSystemAdmin: false, permissions: [] }}
+    >
       <SettingsPage />
     </StoryShell>
   ),
@@ -69,7 +71,7 @@ export const ReadOnly: Story = {
 export const EditorCannotChangeLanguage: Story = {
   render: () => (
     <StoryShell
-      user={{
+      initialUser={{
         ...sampleUser,
         isSystemAdmin: false,
         permissions: ["settings.update"],

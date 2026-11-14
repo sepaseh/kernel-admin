@@ -38,12 +38,9 @@ describe("OTP accessibility", () => {
       expect(description(group)).toBe(
         `Use the code sent to your phone. ${i18n.t("requiredField")}`,
       );
-      expect(
-        screen
-          .getAllByRole("textbox")
-          .every((input) => input.getAttribute("aria-invalid") === "true"),
-      ).toBe(true);
-      expect(group.hasAttribute("aria-required")).toBe(false);
+      for (const input of screen.getAllByRole("textbox"))
+        expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(group).not.toHaveAttribute("aria-required");
       expect(screen.getAllByRole("textbox")).toHaveLength(6);
     },
   );

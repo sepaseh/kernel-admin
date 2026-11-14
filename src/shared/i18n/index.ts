@@ -23,7 +23,7 @@ await i18n.use(initReactI18next).init({
   ),
 });
 
-export { i18n };
+export { i18nInstance as i18n, i18nInstance };
 
 export { dayjsLocaleName } from "./date";
 export type { LocaleCode } from "./locales";

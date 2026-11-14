@@ -1,35 +1,77 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+// @vitest-environment jsdom
+import { act, render, screen, waitFor } from "@testing-library/react";
+import type { FC, ReactNode } from "react";
 import { Outlet } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { CurrentUser } from "@/features/account";
-import { i18n } from "@/shared/i18n";
-import type * as SharedLib from "@/shared/lib";
-
-const state = vi.hoisted(() => ({
-  currentUser: undefined as CurrentUser | undefined,
-  setCurrentRoute: vi.fn(),
-  reportError: vi.fn(),
-  usersImported: vi.fn(),
+const routeState = vi.hoisted(() => ({
+  allowedRoutes: new Set([
+    "account",
+    "auth",
+    "calendar",
+    "files",
+    "forgotPassword",
+    "notFound",
+    "register",
+    "roles",
+    "root",
+    "settings",
+    "users",
+  ]),
+  antdMount: vi.fn(),
+  antdUnmount: vi.fn(),
+  appearanceInitialized: vi.fn(),
+  routesInitialized: vi.fn(),
+  authInitialized: vi.fn(),
+  loginInitialized: vi.fn(),
+  authModuleReady: undefined as Promise<void> | undefined,
+  loginModuleReady: undefined as Promise<void> | undefined,
+  loginLoadError: null as Error | null,
+  usersInitialized: vi.fn(),
+  usersLoadError: null as Error | null,
   usersRendered: vi.fn(),
   dashboardError: false,
+  setCurrentRoute: vi.fn(),
 }));
 
-vi.mock("@/shared/lib", async (importOriginal) => ({
-  ...(await importOriginal<typeof SharedLib>()),
-  reportError: state.reportError,
+vi.mock("@/app/hooks/useCore", () => ({
+  useCore: () => ({
+    setCurrentRoute: routeState.setCurrentRoute,
+    user: {},
+  }),
 }));
-
-vi.mock("@/app/hooks", () => ({
-  useCore: () => ({ setCurrentRoute: state.setCurrentRoute }),
-}));
-vi.mock("@/layouts/auth", () => ({ AuthLayout: () => <Outlet /> }));
-vi.mock("@/layouts/default", () => ({
-  DefaultLayout: () => <Outlet context={{ currentUser: state.currentUser }} />,
+vi.mock("@/app/providers/core/Core", async () => {
+  const { Fragment } = await import("react");
+  await import("@/shared/i18n");
+  return { CoreProvider: Fragment };
+});
+vi.mock("@/app/providers/antd/Antd", async () => {
+  const { useEffect } = await import("react");
+  routeState.appearanceInitialized();
+  type MockProviderProps = { children?: ReactNode };
+  const AntdProvider: FC<MockProviderProps> = ({ children }) => {
+    useEffect(() => {
+      routeState.antdMount();
+      return () => routeState.antdUnmount();
+    }, []);
+    return <div data-testid="antd-provider">{children}</div>;
+  };
+  return { AntdProvider };
+});
+vi.mock("@/app/lib", () => ({
+  hasRouteAccess: (route: string) => routeState.allowedRoutes.has(route),
 }));
 vi.mock("@/features/account", () => ({ AccountPage: () => "Account page" }));
-vi.mock("@/features/login", () => ({ LoginPage: () => "Login page" }));
-vi.mock("@/features/calendar", () => ({ CalendarPage: () => "Calendar page" }));
+vi.mock("@/features/dashboard", () => ({
+  DashboardPage: () => {
+    if (routeState.dashboardError) throw new Error("dashboard failed");
+    return "Dashboard page";
+  },
+}));
+vi.mock("@/features/calendar", () => ({
+  CalendarPage: () => "Calendar page",
+}));
+vi.mock("@/features/files", () => ({ FilesPage: () => "Files page" }));
 vi.mock("@/features/forgot-pass", () => ({
   ForgotPassPage: () => "Forgot password page",
 }));
@@ -45,21 +87,32 @@ vi.mock("@/features/dashboard", () => ({
   },
 }));
 
-beforeEach(async () => {
-  state.currentUser = {
-    id: "user-1",
-    firstName: "Ada",
-    lastName: "Lovelace",
-    mobile: "09120000000",
-    status: "active",
-    isSystemAdmin: true,
-    permissions: [],
-  };
-  state.dashboardError = false;
-  state.setCurrentRoute.mockClear();
-  state.reportError.mockClear();
-  state.usersImported.mockClear();
-  state.usersRendered.mockClear();
+beforeEach(() => {
+  routeState.antdMount.mockClear();
+  routeState.antdUnmount.mockClear();
+  routeState.appearanceInitialized.mockClear();
+  routeState.routesInitialized.mockClear();
+  routeState.authInitialized.mockClear();
+  routeState.loginInitialized.mockClear();
+  routeState.authModuleReady = undefined;
+  routeState.loginModuleReady = undefined;
+  routeState.loginLoadError = null;
+  routeState.usersInitialized.mockClear();
+  routeState.usersLoadError = null;
+  routeState.usersRendered.mockClear();
+  routeState.dashboardError = false;
+  routeState.setCurrentRoute.mockClear();
+  vi.doMock("@/layouts/auth", async () => {
+    routeState.authInitialized();
+    await routeState.authModuleReady;
+    return { AuthLayout: () => <Outlet /> };
+  });
+  vi.doMock("@/features/login", async () => {
+    routeState.loginInitialized();
+    await routeState.loginModuleReady;
+    if (routeState.loginLoadError) throw routeState.loginLoadError;
+    return { LoginPage: () => "Login page" };
+  });
   vi.doMock("@/features/users", () => {
     state.usersImported();
     return {
@@ -81,7 +134,51 @@ afterEach(() => {
   window.history.replaceState({}, "", "/");
 });
 
-describe("route composition", () => {
+describe("application routes", () => {
+  it("renders the not-found page for an unknown route", async () => {
+    window.history.replaceState({}, "", "/unknown-route");
+    const { Routes } = await import("./Routes");
+
+    render(<Routes />);
+
+    expect(await screen.findByText("404")).toBeInTheDocument();
+  }, 30_000);
+
+  it("loads the matched layout and page together while retaining its mounted provider", async () => {
+    let finishAuth = () => {};
+    let finishLogin = () => {};
+    routeState.authModuleReady = new Promise<void>((resolve) => {
+      finishAuth = resolve;
+    });
+    routeState.loginModuleReady = new Promise<void>((resolve) => {
+      finishLogin = resolve;
+    });
+    window.history.replaceState({}, "", "/auth");
+    const { App } = await import("./App");
+    render(<App />);
+
+    try {
+      await waitFor(() => {
+        expect(routeState.authInitialized).toHaveBeenCalledTimes(1);
+        expect(routeState.loginInitialized).toHaveBeenCalledTimes(1);
+      });
+      const provider = await screen.findByTestId("antd-provider");
+      expect(screen.getByLabelText(/Loading|در حال بارگذاری/)).toBeVisible();
+      expect(screen.queryByText("Login page")).not.toBeInTheDocument();
+      await act(async () => finishAuth());
+      expect(screen.getByTestId("antd-provider")).toBe(provider);
+      expect(screen.queryByText("Login page")).not.toBeInTheDocument();
+      await act(async () => finishLogin());
+      expect(await screen.findByText("Login page")).toBeVisible();
+      expect(screen.getByTestId("antd-provider")).toBe(provider);
+      expect(routeState.antdMount).toHaveBeenCalledTimes(1);
+      expect(routeState.antdUnmount).not.toHaveBeenCalled();
+    } finally {
+      finishAuth();
+      finishLogin();
+    }
+  });
+
   it.each([
     ["/", "Dashboard page", "root"],
     ["/account", "Account page", "account"],

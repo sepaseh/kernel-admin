@@ -1,4 +1,4 @@
-import "@/test/browser";
+// @vitest-environment jsdom
 
 import { cleanup, render, screen } from "@testing-library/react";
 import { ConfigProvider } from "antd";

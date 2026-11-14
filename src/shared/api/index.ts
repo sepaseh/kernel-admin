@@ -7,8 +7,7 @@ export {
   parseAccessToken,
   setAccessToken,
 } from "./token.ts";
-export type {
-  AccessTokenProps,
-  PaginationQuery,
-  UploadProgressHandler,
-} from "./types.ts";
+export type { AccessTokenProps } from "./types.ts";
+
+export { encodeIdPathSegment } from "./path";
+export type { UploadProgressHandler } from "./types";

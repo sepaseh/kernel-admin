@@ -16,6 +16,7 @@ export const ru = {
   calendarUpdated: "Календарь успешно обновлён.",
   calendarYear: "Год календаря",
   cancel: "Отмена",
+  category: "Категория",
   changePassword: "Изменить пароль",
   category: "Категория",
   codeRequested: "Код подтверждения запрошен.",
@@ -60,6 +61,8 @@ export const ru = {
   editorRedo: "Повторить",
   editorUnderline: "Подчёркнутый",
   editorUndo: "Отменить",
+  email: "Электронная почта",
+  emailVerified: "Ваш адрес электронной почты подтверждён.",
   excerpt: "Краткое описание",
   faqs: "Частые вопросы",
   files: "Файлы",
@@ -68,6 +71,8 @@ export const ru = {
   fileUsed: "Используется",
   firstName: "Имя",
   forgotPassword: "Забыли пароль?",
+  home: "Главная",
+  identifier: "Имя пользователя, почта или номер телефона",
   imageHeight: "Высота изображения (пиксели)",
   imageInvalid: "Выберите корректное изображение JPEG или PNG.",
   imageMaxBytes: "Максимальный размер изображения (байты)",
@@ -88,6 +93,8 @@ export const ru = {
   logout: "Выйти",
   menu: "Меню",
   mobile: "Номер мобильного телефона",
+  mobileInvalid:
+    "Введите номер мобильного телефона из 11 цифр, начинающийся с 09.",
   moveDown: "Переместить вниз",
   moveUp: "Переместить вверх",
   name: "Имя",
@@ -122,6 +129,7 @@ export const ru = {
   roleUpdated: "Роль успешно обновлена.",
   row: "#",
   saveProfile: "Сохранить профиль",
+  saveUsername: "Сохранить имя пользователя",
   search: "Поиск",
   sendCode: "Отправить код",
   settings: "Настройки",
@@ -144,12 +152,15 @@ export const ru = {
   userDeletionInProgress:
     "Выполняется удаление пользователя. Пожалуйста, подождите.",
   userManagement: "Управление пользователями",
+  username: "Имя пользователя",
+  usernameUpdated: "Имя пользователя успешно обновлено.",
   userPasswordUpdateInProgress:
     "Выполняется изменение пароля пользователя. Пожалуйста, подождите.",
   users: "Пользователи",
   userSystemAdminUpdateInProgress:
     "Выполняется изменение прав системного администратора. Пожалуйста, подождите.",
   userUpdated: "Пользователь успешно обновлён.",
+  verifyEmail: "Подтвердить адрес почты",
   viewDetails: "Подробнее",
   yes: "Да",
 } as const satisfies TranslationCatalog;

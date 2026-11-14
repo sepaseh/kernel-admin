@@ -30,6 +30,8 @@ const policy = (overrides = {}) => ({
   ...overrides,
 });
 const completeApplicationFiles = [
+  "src/shared/storage/hooks/index.ts",
+  "src/shared/ui/error-boundary/ErrorFallback.tsx",
   ".agents/README.md",
   ".agents/evaluation/cases.json",
   ".agents/evaluation/run-template.json",
@@ -250,7 +252,6 @@ const completeApplicationFiles = [
   "src/app/providers/core/Core.stories.tsx",
   "src/app/providers/core/Core.test.tsx",
   "src/app/providers/core/Core.tsx",
-  "src/app/providers/core/index.ts",
   "src/app/providers/index.ts",
   "src/assets/assets.test.ts",
   "src/assets/fonts/vazirmatn/OFL.txt",
@@ -481,6 +482,27 @@ const completeApplicationFiles = [
   "vitest.contract.config.ts",
   "vitest.shims.d.ts",
   "vitest.storybook.config.ts",
+  "src/GlobalStyle.tsx",
+  "src/app/providers/antd/index.ts",
+  "src/app/providers/core/index.ts",
+  "src/features/files/Files.tsx",
+  "src/features/files/api.test.ts",
+  "src/features/files/api.ts",
+  "src/features/files/index.ts",
+  "src/features/files/types.ts",
+  "src/layouts/default/types.ts",
+  "src/shared/api/refresh.test.ts",
+  "src/shared/api/refresh.ts",
+  "src/shared/hooks/useAbortController.test.tsx",
+  "src/shared/hooks/useAbortController.ts",
+  "src/shared/hooks/useLock.test.tsx",
+  "src/shared/hooks/useLock.ts",
+  "src/shared/ui/image-upload/ImageUpload.test.tsx",
+  "src/shared/ui/image-upload/ImageUpload.tsx",
+  "src/shared/ui/image-upload/image.test.ts",
+  "src/shared/ui/image-upload/image.ts",
+  "src/shared/ui/image-upload/index.ts",
+  "src/test/deferred.ts",
 ];
 const applicationPolicy = () =>
   policy({
@@ -539,31 +561,13 @@ const applicationFiles = [
   "e2e/visual/baselines/application/win32/admin-settings-en-light.png",
   "e2e/visual/baselines/application/win32/metadata.json",
   "src/GlobalStyle.tsx",
-  "src/app/index.ts",
   "src/app/providers/antd/index.ts",
   "src/app/providers/core/index.ts",
-  "src/features/account/components/password-form/PasswordForm.tsx",
-  "src/features/account/components/password-form/index.ts",
-  "src/features/account/components/profile-form/ProfileForm.tsx",
-  "src/features/account/components/profile-form/index.ts",
-  "src/features/auth/index.ts",
   "src/features/files/Files.tsx",
   "src/features/files/api.test.ts",
   "src/features/files/api.ts",
   "src/features/files/index.ts",
   "src/features/files/types.ts",
-  "src/features/not-found/index.ts",
-  "src/features/roles/components/role-form/RoleForm.test.tsx",
-  "src/features/users/components/user-form/UserForm.test.tsx",
-  "src/features/users/components/user-form/index.ts",
-  "src/features/users/components/user-role-form/UserRoleForm.test.tsx",
-  "src/features/users/components/user-role-form/index.ts",
-  "src/index.css",
-  "src/index.ts",
-  "src/layouts/default/components/breadcrumbs/Breadcrumbs.tsx",
-  "src/layouts/default/components/breadcrumbs/index.ts",
-  "src/layouts/default/components/navigation/Navigation.tsx",
-  "src/layouts/default/components/navigation/index.ts",
   "src/layouts/default/types.ts",
   "src/shared/api/refresh.test.ts",
   "src/shared/api/refresh.ts",
@@ -571,22 +575,12 @@ const applicationFiles = [
   "src/shared/hooks/useAbortController.ts",
   "src/shared/hooks/useLock.test.tsx",
   "src/shared/hooks/useLock.ts",
-  "src/shared/lib/allowed-value.ts",
-  "src/shared/lib/boolean.ts",
-  "src/shared/lib/observability.test.ts",
-  "src/shared/lib/observability.ts",
-  "src/shared/lib/observability.vitals.test.ts",
-  "src/shared/lib/pagination.ts",
-  "src/shared/storage/hooks/index.ts",
-  "src/shared/ui/error-boundary/ErrorFallback.tsx",
   "src/shared/ui/image-upload/ImageUpload.test.tsx",
   "src/shared/ui/image-upload/ImageUpload.tsx",
   "src/shared/ui/image-upload/image.test.ts",
   "src/shared/ui/image-upload/image.ts",
   "src/shared/ui/image-upload/index.ts",
-  "src/test/browser.ts",
   "src/test/deferred.ts",
-  "src/test/resource-paths.test.ts",
 ];
 const isCoreAuthPhaseFile = (file) =>
   /^(?:src\/(?:app|layouts|features\/(?:forgot-pass|login|not-found|register))\/|docs\/architecture\.md$)/.test(
@@ -1411,7 +1405,7 @@ test("core-auth preserves its complete prior closure, owners and tests without a
     current.allowedFiles.length,
   );
   const phaseFiles = current.allowedFiles.filter(isCoreAuthPhaseFile);
-  assert.equal(phaseFiles.length, 36);
+  assert.equal(phaseFiles.length, 39);
   for (const missing of phaseFiles)
     assert.throws(
       () =>
@@ -1505,7 +1499,7 @@ test("Storybook verification requires every explicit story, isolated configurati
   const current = await historicalStorybookPolicy();
   assert.equal(current.phase, "storybook-verification");
   const required = current.allowedFiles.filter(isStorybookPhaseFile);
-  assert.equal(required.length, 45);
+  assert.equal(required.length, 34);
   for (const missing of required) {
     assert.throws(
       () =>

@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 import { CoreContext, type CoreContextValue } from "@/app/contexts";
 import { type Settings, fetchSettings } from "@/features/settings";
 import { useAbortController } from "@/shared/hooks";
-import { storageKeys } from "@/shared/config";
+import { defaultLogos, storageKeys } from "@/shared/config";
 import { dayjsLocaleName, i18n } from "@/shared/i18n";
 import {
   getCompact,
@@ -29,6 +29,7 @@ export const CoreProvider = ({ children }: PropsWithChildren) => {
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<Settings>();
   const [theme, setTheme] = useState(getTheme);
+  const [user, setUser] = useState<CoreContextValue["user"]>();
   const { cancel, start } = useAbortController();
   const language = settings?.language;
 
@@ -121,12 +122,19 @@ export const CoreProvider = ({ children }: PropsWithChildren) => {
       value={{
         compact,
         currentRoute,
+        language: settings.language,
+        logos: {
+          dark: settings.darkLogo?.url ?? defaultLogos.dark,
+          light: settings.lightLogo?.url ?? defaultLogos.light,
+        },
         settings,
         setCompact: changeCompact,
         setCurrentRoute,
         setSettings: changeSettings,
         setTheme: changeTheme,
+        setUser,
         theme,
+        user,
       }}
     >
       {children}

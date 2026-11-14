@@ -2,22 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as SharedApi from "@/shared/api";
 
-import { fetchUsers, updateUserRoles, updateUserSystemAdmin } from "./api";
-
-const { client } = vi.hoisted(() => ({
-  client: {
-    del: vi.fn(),
-    get: vi.fn(),
-    patch: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    upload: vi.fn(),
-  },
-}));
-vi.mock("@/shared/api", async (importOriginal) => ({
-  ...(await importOriginal<typeof SharedApi>()),
-  apiClient: client,
-}));
+vi.mock("../../shared/i18n/index.ts", () => {
+  const i18n = { t: (key: string) => key };
+  return { i18n, i18nInstance: i18n };
+});
 
 beforeEach(() => {
   vi.resetAllMocks();

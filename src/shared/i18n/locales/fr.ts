@@ -16,6 +16,7 @@ export const fr = {
   calendarUpdated: "Le calendrier a été mis à jour.",
   calendarYear: "Année du calendrier",
   cancel: "Annuler",
+  category: "Catégorie",
   changePassword: "Modifier le mot de passe",
   category: "Catégorie",
   codeRequested: "Un code de vérification a été demandé.",
@@ -60,6 +61,8 @@ export const fr = {
   editorRedo: "Rétablir",
   editorUnderline: "Souligné",
   editorUndo: "Annuler",
+  email: "Adresse e-mail",
+  emailVerified: "Votre adresse e-mail a été vérifiée.",
   excerpt: "Résumé",
   faqs: "Questions fréquentes",
   files: "Fichiers",
@@ -68,6 +71,8 @@ export const fr = {
   fileUsed: "Utilisé",
   firstName: "Prénom",
   forgotPassword: "Mot de passe oublié ?",
+  home: "Accueil",
+  identifier: "Nom d’utilisateur, adresse e-mail ou téléphone mobile",
   imageHeight: "Hauteur de l’image (pixels)",
   imageInvalid: "Choisissez une image JPEG ou PNG valide.",
   imageMaxBytes: "Taille maximale de l’image (octets)",
@@ -89,6 +94,8 @@ export const fr = {
   logout: "Se déconnecter",
   menu: "Menu",
   mobile: "Numéro de téléphone mobile",
+  mobileInvalid:
+    "Saisissez un numéro de téléphone mobile à 11 chiffres commençant par 09.",
   moveDown: "Descendre",
   moveUp: "Monter",
   name: "Nom",
@@ -124,6 +131,7 @@ export const fr = {
   roleUpdated: "Le rôle a été mis à jour.",
   row: "#",
   saveProfile: "Enregistrer le profil",
+  saveUsername: "Enregistrer le nom d’utilisateur",
   search: "Rechercher",
   sendCode: "Envoyer le code",
   settings: "Paramètres",
@@ -146,12 +154,15 @@ export const fr = {
   userDeletionInProgress:
     "La suppression d’un utilisateur est en cours. Veuillez patienter.",
   userManagement: "Gestion des utilisateurs",
+  username: "Nom d’utilisateur",
+  usernameUpdated: "Le nom d’utilisateur a été mis à jour.",
   userPasswordUpdateInProgress:
     "La modification du mot de passe de l’utilisateur est en cours. Veuillez patienter.",
   users: "Utilisateurs",
   userSystemAdminUpdateInProgress:
     "La modification des droits d’administration est en cours. Veuillez patienter.",
   userUpdated: "L’utilisateur a été mis à jour.",
+  verifyEmail: "Vérifier l’adresse e-mail",
   viewDetails: "Voir les détails",
   yes: "Oui",
 } as const satisfies TranslationCatalog;

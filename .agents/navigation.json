@@ -82,8 +82,11 @@
         "src/features/calendar/api.ts",
         "src/features/roles/api.ts",
         "src/features/settings/api.ts",
-        "src/features/files/api.ts",
-        "src/features/users/api.ts"
+        "src/features/users/api.ts",
+        "src/shared/api/refresh.ts",
+        "src/shared/hooks/useAbortController.ts",
+        "src/shared/hooks/useLock.ts",
+        "src/features/files/api.ts"
       ],
       "contracts": [
         "src/shared/api/types.ts",
@@ -93,7 +96,8 @@
         "src/features/settings/types.ts",
         "src/features/users/types.ts",
         "src/shared/contracts/appearance.ts",
-        "docs/authentication.md"
+        "docs/authentication.md",
+        "src/features/files/types.ts"
       ],
       "tests": [
         "src/shared/api/client.test.ts",
@@ -107,9 +111,12 @@
         "src/features/calendar/api.test.ts",
         "src/features/roles/api.test.ts",
         "src/features/settings/api.test.ts",
-        "src/features/files/api.test.ts",
         "src/features/users/api.helpers.test.ts",
-        "src/features/users/api.test.ts"
+        "src/features/users/api.test.ts",
+        "src/shared/api/refresh.test.ts",
+        "src/shared/hooks/useAbortController.test.tsx",
+        "src/shared/hooks/useLock.test.tsx",
+        "src/features/files/api.test.ts"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [".agents/rules/code-quality.md", ".agents/rules/safety.md"],
@@ -126,13 +133,15 @@
       "contracts": [
         "src/shared/api/types.ts",
         "src/features/settings/types.ts",
-        "docs/authentication.md"
+        "docs/authentication.md",
+        "src/features/files/types.ts"
       ],
       "tests": [
         "src/shared/api/client.test.ts",
         "src/shared/api/transport.test.ts",
         "src/features/settings/api.test.ts",
-        "src/features/users/api.test.ts"
+        "src/features/users/api.test.ts",
+        "src/features/files/api.test.ts"
       ],
       "checks": ["boundaries", "typecheck", "unit-coverage"],
       "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
@@ -144,13 +153,15 @@
       "owners": [
         "src/shared/api/client.ts",
         "src/shared/api/token.ts",
-        "src/features/auth/api.ts"
+        "src/features/auth/api.ts",
+        "src/shared/api/refresh.ts"
       ],
       "contracts": ["src/features/auth/types.ts", "src/shared/api/types.ts"],
       "tests": [
         "src/shared/api/client.test.ts",
         "src/shared/api/token.test.ts",
-        "src/features/auth/api.test.ts"
+        "src/features/auth/logout.test.ts",
+        "src/shared/api/refresh.test.ts"
       ],
       "checks": ["boundaries", "typecheck", "unit-coverage"],
       "rules": [".agents/rules/react.md", ".agents/rules/imports.md"],
@@ -186,7 +197,12 @@
         "src/app/lib/access.ts",
         "src/features/not-found/NotFound.tsx"
       ],
-      "contracts": ["docs/architecture.md", "docs/localization.md"],
+      "contracts": [
+        "docs/architecture.md",
+        "docs/localization.md",
+        "src/app/contexts/Core.ts",
+        "src/layouts/default/types.ts"
+      ],
       "tests": [
         "src/app/providers/core/Core.test.tsx",
         "src/app/providers/antd/Antd.test.tsx",
@@ -370,7 +386,11 @@
         "src/assets/styles/index.css",
         "src/assets/styles/vazirmatn.css",
         "src/assets/fonts/vazirmatn",
-        "public"
+        "public",
+        "src/shared/hooks/useAbortController.ts",
+        "src/shared/hooks/useLock.ts",
+        "src/shared/ui/image-upload/ImageUpload.tsx",
+        "src/shared/ui/image-upload/image.ts"
       ],
       "contracts": [
         "src/shared/contracts/appearance.ts",
@@ -394,7 +414,10 @@
         "src/shared/ui/request-error/RequestError.test.tsx",
         "src/shared/ui/route-loading/RouteLoading.test.tsx",
         "src/assets/assets.test.ts",
-        "e2e/font.spec.ts"
+        "src/shared/hooks/useAbortController.test.tsx",
+        "src/shared/hooks/useLock.test.tsx",
+        "src/shared/ui/image-upload/ImageUpload.test.tsx",
+        "src/shared/ui/image-upload/image.test.ts"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [
@@ -414,20 +437,24 @@
         "src/features/settings",
         "src/features/users",
         "src/app/config/routes.ts",
-        "src/app/providers/core/Core.tsx"
+        "src/app/providers/core/Core.tsx",
+        "src/features/files"
       ],
       "contracts": [
         "src/features/roles/types.ts",
         "src/shared/contracts/index.ts",
         ".agents/rules/react.md",
-        ".agents/rules/styling.md"
+        ".agents/rules/styling.md",
+        "src/layouts/default/types.ts",
+        "src/features/files/types.ts"
       ],
       "tests": [
         "src/features/roles/Roles.test.tsx",
         "src/features/settings/Settings.test.tsx",
         "src/features/users/Users.test.tsx",
-        "src/features/roles/components/role-form/RoleForm.test.tsx",
-        "src/features/users/Users.stories.tsx"
+        "src/test/integration/forms.test.tsx",
+        "src/features/users/Users.stories.tsx",
+        "src/features/files/api.test.ts"
       ],
       "checks": [
         "boundaries",
@@ -477,7 +504,8 @@
         "src/app/providers/antd/Antd.tsx",
         "src/layouts/default/Default.tsx",
         "src/features/users/Users.tsx",
-        "src/shared/ui"
+        "src/shared/ui",
+        "src/shared/ui/image-upload/ImageUpload.tsx"
       ],
       "contracts": [
         ".agents/rules/styling.md",
@@ -571,8 +599,8 @@
         "src/main.tsx",
         "src/app/App.tsx",
         "src/app/Routes.tsx",
-        "src/shared/lib/observability.ts",
-        "vite.config.ts"
+        "vite.config.ts",
+        "src/GlobalStyle.tsx"
       ],
       "contracts": [".github/bootstrap-policy.json", ".agents/validation.json"],
       "rules": [

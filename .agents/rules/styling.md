@@ -5,14 +5,15 @@ Use Ant Design and antd-style with the source recipes in
 
 ## Theme architecture
 
-The current theme owner is `src/app/providers/antd/Antd.tsx`. Reuse Ant Design
-semantic tokens and algorithms; appearance types own Theme
-and all seven palette fields. The `AntdProvider` must follow API
-language and direction metadata. Only theme and compact mode are browser preferences.
+The application theme owner is `src/app/providers/antd/Antd.tsx`. Reuse Ant Design
+semantic tokens and algorithms with API-owned palettes; appearance types own Theme
+and all seven palette fields. The provider follows API language and direction
+metadata. The Storybook frame also uses `src/shared/config/theme.ts` for its synthetic
+preview surface. Only theme and compact mode are browser preferences.
 
 Prefer Ant Design component props before custom styles. Keep inline `style` or
 Ant Design `styles` for local layout, and shared global styling in
-`src/index.css`, `src/GlobalStyle.tsx` and `src/assets/styles`. Read [the publication policy](../../.github/bootstrap-policy.json)
+`src/assets/styles/index.css` and `src/GlobalStyle.tsx`. Read [the publication policy](../../.github/bootstrap-policy.json)
 for admitted entry/build sources and `applicationReady`, and [the manifest](../validation.json)
 for required checks. While readiness is false, a component change cannot establish
 application activation. Introducing an entry point requires its genuine application checks.

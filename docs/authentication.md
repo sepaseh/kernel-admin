@@ -24,11 +24,11 @@ Use the [settings fixture](../e2e/fixtures.ts), [application HTTP fixtures](../e
 
 ## Transport contract
 
-The shared client configures Axios with credentials and explicit cancellation, without a general request timeout. Refresh alone has a 15-second bound per attempt. [`config.ts`](../src/shared/api/config.ts) reads the public `VITE_API_BASE_URL`, falling back to the browser origin when that value is absent. See [usage](usage.md) for configuration.
+The shared client configures Axios with credentials and explicit cancellation, without a general request timeout. Refresh has a 15-second bound per attempt. The settings API owner also bounds `fetchSettings` reads to 15 seconds while preserving caller cancellation, so initial loading can reach the error and Retry state. Language reads, settings writes and uploads do not inherit that settings-read timeout. [`config.ts`](../src/shared/api/config.ts) reads the public `VITE_API_BASE_URL`, falling back to the browser origin when that value is absent. See [usage](usage.md) for configuration.
 
 Feature adapters pass IDs through the shared [path validator](../src/shared/api/path.ts) before constructing a request URL. It rejects empty IDs and the exact IDs `.` and `..`, which URL normalization would treat as dot segments, with a translated validation error before transport. Other IDs remain opaque and are encoded as one path segment; ordinary dots and literal percent sequences are preserved as identifier data.
 
-JSON request keys become snake case and response keys become camel case. FormData and binary payloads keep their identity. Key conversion does not validate a generic DTO. Authentication access tokens receive explicit runtime validation; settings currently receive TypeScript typing without runtime envelope validation.
+JSON request keys become snake case and response keys become camel case. FormData and binary payloads keep their identity. Key conversion returns `unknown`; it does not validate a generic DTO. Authentication access tokens receive explicit runtime validation; settings use TypeScript models without runtime envelope validation.
 
 `AdminApiError` preserves the HTTP status, a nonempty API message and its structured cause when supplied. Other failures use translated timeout, network or unexpected-error text. Only bounded safe request IDs are retained. Cancellation remains an Axios cancellation. Keep credentials and request payloads out of diagnostics.
 
@@ -48,7 +48,7 @@ Bearer credentials stay in memory. A session AbortSignal identifies the authenti
 
 A protected operation captures its generation synchronously when called. The queued interceptor checks it before dispatch, and the client checks again after fulfillment before returning data. A stale generation is cancelled before it can return data or expire a newer login.
 
-Concurrent attributed protected 401s share one refresh per session. Each eligible request can replay once after successful same-session refresh if it has not been cancelled. A cancelled waiter does not cancel another waiter's shared refresh. Refresh retries network/5xx failures once; a terminal refresh failure or current retried 401 expires the current session once.
+Concurrent attributed protected 401s share one refresh per generation. Each eligible request can replay once after successful same-generation refresh if it has not been cancelled. A cancelled waiter does not cancel another waiter's shared refresh. Refresh retries a network or server failure once after its existing one-second retry interval. Exhausted network, timeout and server failures preserve the current session and propagate an error for a later manual retry without replaying the failed operation. Other refresh failures, including definitive 401/403 rejection or an invalid access-token response, and a current retried 401 expire the current session once.
 
 Public or unattributed failures cannot refresh or clear a login. Network failures, timeouts, 429s and 5xx responses do not automatically replay mutations. The eligible 401 replay is separate from an ordinary network retry.
 
@@ -68,7 +68,7 @@ To connect a feature read:
 
 Guard permission-dependent reads before starting them. Keep independent list and lookup resources separate so an optional lookup failure does not erase a usable list. When implementing refresh recovery, preserve accepted data after a failed refresh.
 
-## Mutation guards and privileged screens
+## Mutation guards
 
 The shared [`useLock`](../src/shared/hooks/useLock.ts) supplies synchronous duplicate-submit protection alongside local submitting state. Form submissions also use [`useAbortController`](../src/shared/hooks/useAbortController.ts) and forward their signal through the feature write service. Check cancellation after each awaited step before applying notifications, form changes or navigation, and ignore cancelled errors. The client retains session cancellation and stale-session guards.
 
@@ -88,7 +88,9 @@ The default layout checks the account before rendering protected children and ex
 
 ## Settings and troubleshooting
 
-The [settings adapter](../src/features/settings/api.ts) returns typed palettes, optional logos, language metadata and image settings without runtime envelope validation. Core loads public settings on mount, offers retry after an initial failure and cancels a pending read when a save supplies accepted settings. See [localization](localization.md) for language metadata behavior.
+The settings adapter returns typed API responses without runtime envelope validation. Core preserves accepted settings across refresh failures and replaces older reads when a save succeeds. [Settings adapter](../src/features/settings/api.ts) and [localization](localization.md).
+
+The settings form tracks light and dark logo operations independently through the image control's `onLoadingChange` callback. Decoding, cropping and uploading keep Submit and Reset unavailable, and the submit handler checks pending logo work before acquiring its save lock. Crop confirmation and cancellation remain available. Saving resumes after both controls finish and uses their accepted logo identifiers.
 
 | Symptom                                               | First check                                                                                                                            |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |

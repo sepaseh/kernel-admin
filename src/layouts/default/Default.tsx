@@ -33,11 +33,9 @@ import { isCancel } from "axios";
 import { logout } from "@/features/auth";
 import { clearAccessToken, setUnauthorizedHandler } from "@/shared/api";
 
-import { useAbortController, useLock } from "@/shared/hooks";
-import { RequestError } from "@/shared/ui/request-error";
-import { Breadcrumbs } from "./components/breadcrumbs";
-import { Navigation } from "./components/navigation";
 import type { DefaultLayoutContext } from "./types";
+
+const { useBreakpoint } = Grid;
 
 export const DefaultLayout = () => {
   const { t } = useTranslation();
@@ -272,7 +270,18 @@ export const DefaultLayout = () => {
             } satisfies DefaultLayoutContext
           }
         />
-      </Layout.Content>
+        <Outlet
+          context={
+            {
+              clearSession,
+              currentUser: user,
+              fetchCurrentUser: async () => {
+                await session.reload();
+              },
+            } satisfies DefaultLayoutContext
+          }
+        />
+      </main>
       <Drawer
         closeIcon={false}
         onClose={() => setOpen(false)}

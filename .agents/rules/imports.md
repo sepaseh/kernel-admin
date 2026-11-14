@@ -14,14 +14,19 @@ stay in framework-free `src/shared/contracts`. Permission contracts belong to
 two files use it.
 
 Keep feature dependencies inside their owner by default. A feature cannot import
-another feature's page, form, component or private helper. Use reviewed API, hook
-or type exports through the owning module's public `index.ts`; owners do not
-cycle through their own barrel. These are not blanket access to another feature.
-Import and re-export edges follow the same module
-rules. Type-only imports must use their declared erased contract edges.
+another feature's page, form, component or private helper. The checker permits
+only the declared source-file-to-module edges for the existing authentication
+API/OTP capabilities and roles API/type vocabulary. These exceptions are defined
+in `scripts/check-boundaries.mjs`; they are not blanket access to either feature.
+Import the approved API, hook or type leaf directly. Cross-feature `index.ts`
+targets require an explicit named capability: Settings may use the files upload
+service and its erased `FileContext`/`StoredFile` models. Other feature barrels
+remain rejected. Import and re-export edges follow the same exact module rules.
+Type-only imports must use their declared erased contract edges.
 
-Feature screens may use the app hook, route configuration, access-policy and
-public layout-context modules. Other app internals, providers, route shells
+Feature screens may use only the app hook, route configuration and access-policy
+modules declared by the checker. Settings and Files may also import the erased
+`DefaultLayoutContext` through the default layout's public index. Other app internals, providers, route shells
 and entry points are outside the feature dependency interface. Keep application
 composition in `app` and route shells in `layouts`.
 

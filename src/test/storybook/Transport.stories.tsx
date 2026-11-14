@@ -9,6 +9,11 @@ import {
   resetRequestGuard,
 } from "../../../.storybook/request-guard";
 
+import { apiClient } from "@/shared/api";
+import { fetchUser, fetchUsers, updateUserRoles } from "@/features/users/api";
+import { fetchSettings, updateSettings } from "@/features/settings/api";
+import { uploadFile } from "@/features/files/api";
+
 const meta = {
   title: "Verification/Transport",
   render: () => <h1>Synthetic API isolation</h1>,
@@ -19,31 +24,34 @@ type Story = StoryObj<typeof meta>;
 export const UnexpectedRequest: Story = {
   play: async () => {
     await expect(assertNoUnexpectedRequests).not.toThrow();
-    try {
-      for (const [method, request] of [
-        ["GET", apiClient.get],
-        ["POST", apiClient.post],
-        ["PUT", apiClient.put],
-        ["PATCH", apiClient.patch],
-        ["DELETE", apiClient.del],
-      ] as const) {
-        await expect(
-          request("/__unexpected_storybook_probe__"),
-        ).rejects.toThrow(`Unexpected synthetic API request: ${method}`);
-      }
-      await expect(
-        apiClient.upload("/__unexpected_storybook_probe__", {
-          file: new File(["synthetic"], "probe.png"),
-          context: "logo",
-        }),
-      ).rejects.toThrow("Unexpected synthetic API request: UPLOAD");
-      await expect(assertNoUnexpectedRequests).toThrow(
-        "UPLOAD /__unexpected_storybook_probe__",
+    const requests = [
+      [apiClient.get, "GET"],
+      [apiClient.post, "POST"],
+      [apiClient.put, "PUT"],
+      [apiClient.patch, "PATCH"],
+      [apiClient.del, "DELETE"],
+    ] as const;
+    for (const [request, method] of requests) {
+      await expect(request("/__unexpected_storybook_probe__")).rejects.toThrow(
+        `Unexpected synthetic API request: ${method}`,
       );
     } finally {
       // This is the intentional negative probe; other stories never clear failures.
       resetRequestGuard();
     }
+    await expect(
+      apiClient.upload("/__unexpected_storybook_probe__", {}),
+    ).rejects.toThrow("Unexpected synthetic API request: UPLOAD");
+    await expect(mocked(apiClient.upload)).toHaveBeenCalledOnce();
+    await expect(assertNoUnexpectedRequests).toThrow(
+      "UPLOAD /__unexpected_storybook_probe__",
+    );
+    await expect(assertNoUnexpectedRequests).toThrow(
+      "DELETE /__unexpected_storybook_probe__",
+    );
+    // This story deliberately exercises the failure boundary; ordinary stories never reset it.
+    resetRequestGuard();
+    await expect(assertNoUnexpectedRequests).not.toThrow();
   },
 };
 
@@ -68,31 +76,40 @@ export const SavedUploadedLogos: Story = {
   play: async () => {
     const original = await fetchSettings();
     const darkLogo = await uploadFile(
-      new File(["dark synthetic logo"], "dark.png", { type: "image/png" }),
+      new File(["dark synthetic logo"], "dark.svg", { type: "image/svg+xml" }),
       "logo",
     );
     const lightLogo = await uploadFile(
-      new File(["light synthetic logo"], "light.png", { type: "image/png" }),
+      new File(["light synthetic logo"], "light.svg", {
+        type: "image/svg+xml",
+      }),
       "logo",
     );
-    const values = {
-      darkTheme: original.darkTheme,
-      lightTheme: original.lightTheme,
-      imageSettings: original.imageSettings,
-    };
     const accepted = await updateSettings({
-      ...values,
       darkLogoId: darkLogo.id,
       lightLogoId: lightLogo.id,
+      lightTheme: original.lightTheme,
+      imageSettings: original.imageSettings,
     });
-    await expect(accepted.darkLogo?.id).toBe(darkLogo.id);
-    await expect(accepted.lightLogo?.id).toBe(lightLogo.id);
+    await expect(accepted).toMatchObject({
+      darkLogo: { id: darkLogo.id, url: "/logo.svg" },
+      language: original.language,
+      lightLogo: { id: lightLogo.id, url: "/logo.svg" },
+    });
     await expect(fetchSettings()).resolves.toEqual(accepted);
-    if (!accepted.darkLogo)
-      throw new Error("The fixture did not retain its accepted logo");
-    accepted.darkLogo.url = "/changed-outside-fixture.png";
+    accepted.darkLogo!.url = "/changed-outside-fixture.svg";
     await expect(fetchSettings()).resolves.toMatchObject({
-      darkLogo: { id: darkLogo.id, url: darkLogo.url },
+      darkLogo: { id: darkLogo.id, url: "/logo.svg" },
+    });
+    await updateSettings({
+      darkTheme: original.darkTheme,
+      imageSettings: original.imageSettings,
+      lightTheme: original.lightTheme,
+    });
+    await expect(fetchSettings()).resolves.toMatchObject({
+      darkLogo: undefined,
+      language: original.language,
+      lightLogo: undefined,
     });
     await updateSettings(values);
     const cleared = await fetchSettings();

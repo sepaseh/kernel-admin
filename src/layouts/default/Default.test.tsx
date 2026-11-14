@@ -1,32 +1,58 @@
-import "@/test/browser";
+// @vitest-environment jsdom
+import { waitFor, within } from "@testing-library/react";
+import type * as ReactI18next from "react-i18next";
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useOutletContext,
+} from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import type * as AntdStyle from "antd-style";
-import { MemoryRouter, Route, Routes, useOutletContext } from "react-router";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-import { fetchCurrentUser } from "@/features/account";
-import { logout } from "@/features/auth";
-import type * as SharedApi from "@/shared/api";
-import { clearAccessToken, setUnauthorizedHandler } from "@/shared/api";
-import { i18n } from "@/shared/i18n";
+  AdminApiError,
+  clearAccessToken,
+  setUnauthorizedHandler,
+} from "@/shared/api";
+import { render, screen } from "@/test/render";
 import { deferred } from "@/test/deferred";
 
 import { DefaultLayout } from "./Default";
 import type { DefaultLayoutContext } from "./types";
 
-const { messages, setTheme, setCompact, responsive } = vi.hoisted(() => ({
-  messages: { error: vi.fn(), success: vi.fn() },
-  setTheme: vi.fn(),
-  setCompact: vi.fn(),
-  responsive: { lg: true },
+const mocks = vi.hoisted(() => {
+  const account: Account = {
+    email: "ada@example.com",
+    firstName: "Ada",
+    id: "user-1",
+    isSystemAdmin: false,
+    lastName: "Lovelace",
+    mobile: "09120000000",
+    permissions: ["users.read"],
+    status: "active",
+    username: "ada",
+  };
+
+  return {
+    account,
+    reloadFinished: vi.fn(),
+    core: {
+      compact: false,
+      currentRoute: "root",
+      logos: { dark: "/dark-logo.svg", light: "/light-logo.svg" },
+      setCompact: vi.fn(),
+      setTheme: vi.fn(),
+      setUser: vi.fn(),
+      theme: "light",
+      user: account as typeof account | undefined,
+    },
+  };
+});
+
+vi.mock("@/features/account/api.ts", () => ({
+  getAccount: vi.fn(),
 }));
 vi.mock("@/features/account", () => ({ fetchCurrentUser: vi.fn() }));
 vi.mock("@/features/auth", () => ({ logout: vi.fn() }));
@@ -77,12 +103,38 @@ const Consumer = () => {
   const context = useOutletContext<DefaultLayoutContext>();
   return <h1>{context.currentUser.firstName}'s dashboard</h1>;
 };
-const renderLayout = () =>
+
+const ContextConsumer = () => {
+  const { clearSession, currentUser, fetchCurrentUser } =
+    useOutletContext<DefaultLayoutContext>();
+
+  return (
+    <>
+      <output aria-label="account identity">{currentUser.id}</output>
+      <button
+        onClick={async () => {
+          await fetchCurrentUser();
+          mocks.reloadFinished();
+        }}
+        type="button"
+      >
+        Refresh account
+      </button>
+      <button onClick={clearSession} type="button">
+        Clear session
+      </button>
+    </>
+  );
+};
+
+const renderLayout = (content = <h1>Dashboard content</h1>) =>
   render(
     <MemoryRouter>
       <Routes>
-        <Route path="/" element={<DefaultLayout />}>
-          <Route index element={<Consumer />} />
+        <Route element={<DefaultLayout />} path="/">
+          <Route index element={content} />
+          <Route element={<AccountPage />} path="account" />
+          <Route element={<h1>Users content</h1>} path="users" />
         </Route>
         <Route path="/auth" element={<h1>Authentication</h1>} />
       </Routes>
@@ -98,8 +150,160 @@ beforeEach(async () => {
 });
 afterEach(cleanup);
 
-describe("default layout session lifecycle", () => {
-  it("loads the current user and supplies it to route children", async () => {
+describe("DefaultLayout", () => {
+  it("exposes the accepted account, awaited reload and session cleanup to its children", async () => {
+    const response = deferred<Account>();
+    const updated = { ...mocks.account, lastName: "Updated" };
+    vi.mocked(getAccount)
+      .mockResolvedValueOnce(mocks.account)
+      .mockReturnValueOnce(response.promise);
+    const { user } = renderLayout(<ContextConsumer />);
+
+    expect(await screen.findByLabelText("account identity")).toHaveTextContent(
+      mocks.account.id,
+    );
+    await user.click(screen.getByRole("button", { name: "Refresh account" }));
+    expect(getAccount).toHaveBeenCalledTimes(2);
+    expect(mocks.reloadFinished).not.toHaveBeenCalled();
+
+    response.resolve(updated);
+    await waitFor(() =>
+      expect(mocks.core.setUser).toHaveBeenCalledWith(updated),
+    );
+    await waitFor(() => expect(mocks.reloadFinished).toHaveBeenCalledOnce());
+
+    await user.click(screen.getByRole("button", { name: "Clear session" }));
+    expect(clearAccessToken).toHaveBeenCalledOnce();
+    expect(mocks.core.setUser).toHaveBeenCalledWith();
+    await screen.findByRole("heading", { name: "Authentication" });
+  });
+
+  it.each(["pointer", "keyboard"])(
+    "closes the mobile drawer after %s navigation without remounting the layout",
+    async (interaction) => {
+      const { user } = await renderLoadedLayout();
+      await user.click(screen.getByRole("button", { name: "menu" }));
+      const drawer = await screen.findByRole("dialog");
+      await user.click(within(drawer).getByText("userManagement"));
+      const link = within(drawer).getByRole("link", { name: "users" });
+
+      if (interaction === "keyboard") {
+        link.focus();
+        await user.keyboard("{Enter}");
+      } else {
+        await user.click(link);
+      }
+
+      expect(
+        await screen.findByRole("heading", { name: "Users content" }),
+      ).toBeVisible();
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+      expect(getAccount).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("closes the mobile drawer when selecting the current route", async () => {
+    const { user } = await renderLoadedLayout();
+    await user.click(screen.getByRole("button", { name: "menu" }));
+    const drawer = await screen.findByRole("dialog");
+
+    await user.click(within(drawer).getByRole("link", { name: "dashboard" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Dashboard content" }),
+    ).toBeVisible();
+    expect(getAccount).toHaveBeenCalledOnce();
+  });
+
+  it("constrains the header and page content to the shared container", async () => {
+    const { container } = await renderLoadedLayout();
+    const headerContent = container.querySelector("header")?.firstElementChild;
+    const main = container.querySelector("main");
+
+    expect(headerContent).toHaveStyle({
+      marginInline: "auto",
+      maxWidth: "1920px",
+    });
+    expect(main).toHaveStyle({
+      backgroundColor: "#f5f5f5",
+      marginInline: "auto",
+      maxWidth: "1920px",
+    });
+  });
+
+  it("shows the active page hierarchy in a breadcrumb", async () => {
+    mocks.core.currentRoute = "users";
+
+    await renderLoadedLayout();
+
+    const breadcrumb = screen.getByRole("navigation", { name: "breadcrumb" });
+    expect(breadcrumb).toHaveTextContent("dashboard/userManagement/users");
+    expect(
+      within(breadcrumb).getByRole("link", { name: "dashboard" }),
+    ).toHaveAttribute("href", "/");
+  });
+
+  it("loads the account, registers session handling, and logs out", async () => {
+    const { unmount, user } = await renderLoadedLayout();
+
+    expect(
+      screen.getByRole("heading", { name: "Dashboard content" }),
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "logo" })).toBeVisible();
+    expect(screen.getByRole("img", { name: "logo" })).toHaveAttribute(
+      "src",
+      "/light-logo.svg",
+    );
+    await waitFor(() => expect(getAccount).toHaveBeenCalledOnce());
+    expect(mocks.core.setUser).toHaveBeenCalledWith(mocks.account);
+    expect(setUnauthorizedHandler).toHaveBeenCalledWith(expect.any(Function));
+
+    await user.click(screen.getByRole("button", { name: "account" }));
+    await user.click(await screen.findByText("logout"));
+
+    await waitFor(() => expect(logout).toHaveBeenCalledOnce());
+    expect(clearAccessToken).toHaveBeenCalledOnce();
+    expect(mocks.core.setUser).toHaveBeenLastCalledWith();
+    await waitFor(() =>
+      expect(screen.getByLabelText("location")).toHaveTextContent("/auth"),
+    );
+
+    unmount();
+    expect(setUnauthorizedHandler).toHaveBeenLastCalledWith(null);
+  });
+
+  it("returns to the previous page after opening the account menu item", async () => {
+    const { user } = await renderLoadedLayout();
+
+    await user.click(screen.getByRole("button", { name: "account" }));
+    await user.click(await screen.findByRole("menuitem", { name: "account" }));
+    await user.click(await screen.findByRole("button", { name: "Back" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Dashboard content" }),
+    ).toBeVisible();
+  });
+
+  it("shows the account name beside the user icon as a tooltip", async () => {
+    const { user } = await renderLoadedLayout();
+
+    await user.hover(screen.getByRole("button", { name: "account" }));
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Ada Lovelace",
+    );
+  });
+
+  it("clears the session for a rejected authentication check", async () => {
+    vi.mocked(getAccount).mockRejectedValueOnce(
+      new AdminApiError("Unauthorized", 401),
+    );
+
     renderLayout();
 
     await screen.findByRole("heading", { name: "Ada's dashboard" });

@@ -216,7 +216,7 @@ test("features reject another feature's UI, private helpers and barrels in every
   for (const target of [
     "src/features/settings/Settings.tsx",
     "src/features/settings/api.ts",
-    "src/features/roles/components/role-form/RoleForm.tsx",
+    "src/features/roles/constants.ts",
     "src/features/roles/index.ts",
     "src/features/register/Register.tsx",
   ]) {
@@ -402,6 +402,134 @@ test("public feature capabilities retain only their approved consumer, export an
         /(?:exact erased|Features may import another feature only through their exact approved)/,
       );
   }
+});
+
+test("settings receives only the named file upload and erased file vocabulary", () => {
+  const resolved = path.join(root, "src/features/files/index.ts");
+  const inspect = (syntax, owner) => {
+    const [edge] = inspectImports(syntax);
+    return check(
+      edge.specifier,
+      resolved,
+      path.join(root, owner),
+      edge.typeOnly,
+      undefined,
+      edge.bindings,
+    );
+  };
+  for (const syntax of [
+    'import { uploadFile } from "@/features/files";',
+    'import { uploadFile as upload } from "@/features/files";',
+    'export { uploadFile } from "@/features/files";',
+  ])
+    assert.equal(
+      inspect(syntax, "src/features/settings/Settings.tsx"),
+      undefined,
+    );
+  for (const syntax of [
+    'import type { FileContext, StoredFile } from "@/features/files";',
+    'import type { StoredFile as Logo } from "@/features/files";',
+    'export type { StoredFile } from "@/features/files";',
+    'type Logo = import("@/features/files").StoredFile;',
+  ])
+    assert.equal(inspect(syntax, "src/features/settings/types.ts"), undefined);
+  for (const [syntax, owner] of [
+    [
+      'import { uploadFile, deleteFile } from "@/features/files";',
+      "Settings.tsx",
+    ],
+    ['import type { uploadFile } from "@/features/files";', "Settings.tsx"],
+    ['import { StoredFile } from "@/features/files";', "types.ts"],
+    ['import type { FilesPage } from "@/features/files";', "types.ts"],
+    ['import type * as Files from "@/features/files";', "types.ts"],
+    ['import type Files from "@/features/files";', "types.ts"],
+    ['export type * from "@/features/files";', "types.ts"],
+    ['type Files = typeof import("@/features/files");', "types.ts"],
+    ['import * as files from "@/features/files";', "Settings.tsx"],
+    ['import files from "@/features/files";', "Settings.tsx"],
+    ['import "@/features/files";', "Settings.tsx"],
+    ['const files = import("@/features/files");', "Settings.tsx"],
+    ['const files = require("@/features/files");', "Settings.tsx"],
+    ['import files = require("@/features/files");', "Settings.tsx"],
+  ])
+    assert.match(
+      inspect(syntax, "src/features/settings/" + owner),
+      /(?:exact erased|exact approved)/,
+      syntax,
+    );
+  assert.match(
+    inspect(
+      'import { uploadFile } from "@/features/files";',
+      "src/features/users/Users.tsx",
+    ),
+    /exact approved/,
+  );
+  assert.match(
+    check(
+      "@/features/files/api",
+      path.join(root, "src/features/files/api.ts"),
+      path.join(root, "src/features/settings/Settings.tsx"),
+      false,
+      undefined,
+      [{ name: "uploadFile", typeOnly: false }],
+    ),
+    /exact approved/,
+  );
+});
+
+test("migrated screens receive only the erased Default layout context contract", () => {
+  const resolved = path.join(root, "src/layouts/default/index.ts");
+  const inspect = (syntax, source = "src/features/settings/Settings.tsx") => {
+    const [edge] = inspectImports(syntax);
+    return check(
+      edge.specifier,
+      resolved,
+      path.join(root, source),
+      edge.typeOnly,
+      undefined,
+      edge.bindings,
+    );
+  };
+  for (const source of [
+    "src/features/files/Files.tsx",
+    "src/features/settings/Settings.tsx",
+  ])
+    for (const syntax of [
+      'import type { DefaultLayoutContext } from "@/layouts/default";',
+      'import { type DefaultLayoutContext as Context } from "@/layouts/default";',
+      'type Context = import("@/layouts/default").DefaultLayoutContext;',
+    ])
+      assert.equal(inspect(syntax, source), undefined, syntax);
+  for (const syntax of [
+    'import { DefaultLayoutContext } from "@/layouts/default";',
+    'import type { DefaultLayoutContext, DefaultLayout } from "@/layouts/default";',
+    'import type { DefaultLayout } from "@/layouts/default";',
+    'import type Context from "@/layouts/default";',
+    'import type * as Context from "@/layouts/default";',
+    'export type * from "@/layouts/default";',
+    'type Context = typeof import("@/layouts/default");',
+    'const layout = import("@/layouts/default");',
+    'import "@/layouts/default";',
+  ])
+    assert.match(inspect(syntax), /only the approved app hooks/, syntax);
+  assert.match(
+    inspect(
+      'import type { DefaultLayoutContext } from "@/layouts/default";',
+      "src/features/users/Users.tsx",
+    ),
+    /only the approved app hooks/,
+  );
+  assert.match(
+    check(
+      "@/layouts/default/types",
+      path.join(root, "src/layouts/default/types.ts"),
+      path.join(root, "src/features/settings/Settings.tsx"),
+      true,
+      undefined,
+      [{ name: "DefaultLayoutContext", typeOnly: true }],
+    ),
+    /only the approved app hooks/,
+  );
 });
 
 test("local feature ownership, shared reuse and application composition remain valid", () => {
@@ -870,7 +998,10 @@ test("the published phase retains every admitted production module", async () =>
       !file.endsWith(".stories.tsx") &&
       !/\.(?:test|spec)\./.test(file),
   );
-  assert.equal(result.files, production.length);
+  assert.equal(
+    result.files,
+    publication.applicationReady ? 134 : production.length,
+  );
   assert.deepEqual(result.violations, []);
 });
 
@@ -1198,6 +1329,12 @@ test("HTTP package ownership, type erasure and package identity fail closed", ()
   const client = path.join(root, "src/shared/api/client.ts");
   const axios = path.join(root, "node_modules/axios/index.d.ts");
   const settings = path.join(root, "src/features/settings/api.ts");
+  const transportTypes = path.join(root, "src/shared/api/types.ts");
+  assert.equal(check("axios", axios, transportTypes, true, "axios"), undefined);
+  assert.match(
+    check("axios", axios, transportTypes, false, "axios"),
+    /not allowed/,
+  );
   assert.equal(check("axios", axios, client, true, "axios"), undefined);
   assert.match(check("axios", axios, settings, true, "axios"), /not allowed/);
   assert.match(

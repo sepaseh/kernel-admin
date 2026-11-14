@@ -16,6 +16,7 @@ export const pt = {
   calendarUpdated: "Calendário atualizado com sucesso.",
   calendarYear: "Ano do calendário",
   cancel: "Cancelar",
+  category: "Categoria",
   changePassword: "Alterar palavra-passe",
   category: "Categoria",
   codeRequested: "Código de verificação solicitado.",
@@ -60,6 +61,8 @@ export const pt = {
   editorRedo: "Refazer",
   editorUnderline: "Sublinhado",
   editorUndo: "Desfazer",
+  email: "E-mail",
+  emailVerified: "O seu endereço de e-mail foi verificado.",
   excerpt: "Resumo",
   faqs: "Perguntas frequentes",
   files: "Arquivos",
@@ -68,6 +71,8 @@ export const pt = {
   fileUsed: "Em uso",
   firstName: "Nome próprio",
   forgotPassword: "Esqueceu-se da palavra-passe?",
+  home: "Página inicial",
+  identifier: "Nome de utilizador, e-mail ou telemóvel",
   imageHeight: "Altura da imagem (pixels)",
   imageInvalid: "Escolha uma imagem JPEG ou PNG válida.",
   imageMaxBytes: "Tamanho máximo da imagem (bytes)",
@@ -89,6 +94,8 @@ export const pt = {
   logout: "Terminar sessão",
   menu: "Menu",
   mobile: "Número de telemóvel",
+  mobileInvalid:
+    "Introduza um número de telemóvel de 11 algarismos começado por 09.",
   moveDown: "Mover para baixo",
   moveUp: "Mover para cima",
   name: "Nome",
@@ -124,6 +131,7 @@ export const pt = {
   roleUpdated: "Função atualizada com sucesso.",
   row: "#",
   saveProfile: "Guardar perfil",
+  saveUsername: "Guardar nome de utilizador",
   search: "Pesquisar",
   sendCode: "Enviar código",
   settings: "Definições",
@@ -147,12 +155,15 @@ export const pt = {
   userDeletionInProgress:
     "A eliminação de um utilizador está em curso. Aguarde.",
   userManagement: "Gestão de utilizadores",
+  username: "Nome de utilizador",
+  usernameUpdated: "Nome de utilizador atualizado com sucesso.",
   userPasswordUpdateInProgress:
     "A palavra-passe do utilizador está a ser alterada. Aguarde.",
   users: "Utilizadores",
   userSystemAdminUpdateInProgress:
     "O acesso de administrador do sistema está a ser alterado. Aguarde.",
   userUpdated: "Utilizador atualizado com sucesso.",
+  verifyEmail: "Verificar e-mail",
   viewDetails: "Ver detalhes",
   yes: "Sim",
 } as const satisfies TranslationCatalog;

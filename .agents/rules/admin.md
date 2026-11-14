@@ -10,10 +10,9 @@ own API/types/components; `shared` must not import app/features/layouts. Cross-f
 imports use reviewed API, hook or erased type exports through public `index.ts`
 in [the import policy](imports.md); do not import feature screens or private helpers.
 HTTP types and paths stay with their feature;
-transport contracts stay in `src/shared/api` and appearance contracts in
-`src/shared/contracts`. Filters/password tools belong to shared hooks/lib,
-image uploads to shared UI with file services in files, and permission contracts
-to roles. Frontends never import backend
+transport contracts stay in `src/shared/api` and cross-feature profile limits in
+`src/shared/contracts`. User filters/password tools belong to users, image uploads
+to shared UI with file services in files, and permission contracts to roles. Frontends never import backend
 API/database/auth/storage modules.
 These alias conventions apply to `src`; pure catalog data references local
 data modules within `src/shared/i18n`.

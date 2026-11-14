@@ -14,9 +14,15 @@ import {
   vi,
 } from "vitest";
 
+import { i18n } from "@/shared/i18n";
 import { deferred } from "@/test/deferred";
 
-import { clearAccessToken, getAccessToken, setAccessToken } from "./token";
+import {
+  clearAccessToken,
+  getAccessToken,
+  getSessionSignal,
+  setAccessToken,
+} from "./token";
 
 const adapter = vi.fn<AxiosAdapter>();
 const originalAdapter = axios.defaults.adapter;
@@ -52,6 +58,10 @@ beforeEach(() => {
 afterEach(() => {
   clearAccessToken();
   setUnauthorizedHandler(null);
+  vi.useRealTimers();
+});
+afterAll(() => {
+  axios.defaults.adapter = originalAdapter;
 });
 afterAll(() => {
   axios.defaults.adapter = originalAdapter;
@@ -138,17 +148,130 @@ describe("HTTP boundary", () => {
     ).toHaveLength(1);
   });
 
-  it("clears the session when the refresh cookie is rejected without replaying the write", async () => {
+  it.each(["503", "network", "timeout"] as const)(
+    "preserves the session after exhausted %s refresh failures and allows a later retry",
+    async (failure) => {
+      vi.useFakeTimers();
+      const expired = vi.fn();
+      setUnauthorizedHandler(expired);
+      setAccessToken("synthetic-expired-token");
+      const session = getSessionSignal();
+      let refreshCalls = 0;
+      adapter.mockImplementation(async (config) => {
+        if (config.url === "/auth/refresh-token") {
+          refreshCalls += 1;
+          expect(config.timeout).toBe(15_000);
+          if (refreshCalls > 2)
+            return response(config, {
+              access_token: "synthetic-current-token",
+            });
+          if (failure === "503")
+            throw new AxiosError(
+              "unavailable",
+              AxiosError.ERR_BAD_RESPONSE,
+              config,
+              undefined,
+              response(
+                config,
+                { message: "Synthetic service unavailable" },
+                503,
+              ),
+            );
+          throw new AxiosError(
+            "unavailable",
+            failure === "network"
+              ? AxiosError.ERR_NETWORK
+              : AxiosError.ETIMEDOUT,
+            config,
+            {},
+          );
+        }
+        if (
+          config.headers.get("Authorization") ===
+          "Bearer synthetic-expired-token"
+        )
+          throw unauthorized(config);
+        return response(config, { first_name: "Test" });
+      });
+      const rejected = expect(
+        apiClient.patch("/users/synthetic-user", { firstName: "Test" }),
+      ).rejects.toMatchObject({
+        name: "AdminApiError",
+        message:
+          failure === "503"
+            ? "Synthetic service unavailable"
+            : i18n.t(failure === "network" ? "networkError" : "requestTimeout"),
+      });
+
+      await vi.advanceTimersByTimeAsync(1_000);
+      await rejected;
+
+      expect(adapter.mock.calls.map(([config]) => config.url)).toEqual([
+        "/users/synthetic-user",
+        "/auth/refresh-token",
+        "/auth/refresh-token",
+      ]);
+      expect(expired).not.toHaveBeenCalled();
+      expect(getAccessToken()).toBe("synthetic-expired-token");
+      expect(getSessionSignal()).toBe(session);
+      expect(session.aborted).toBe(false);
+
+      await expect(
+        apiClient.patch("/users/synthetic-user", { firstName: "Test" }),
+      ).resolves.toEqual({ firstName: "Test" });
+      expect(adapter.mock.calls.map(([config]) => config.url)).toEqual([
+        "/users/synthetic-user",
+        "/auth/refresh-token",
+        "/auth/refresh-token",
+        "/users/synthetic-user",
+        "/auth/refresh-token",
+        "/users/synthetic-user",
+      ]);
+      expect(getAccessToken()).toBe("synthetic-current-token");
+      expect(getSessionSignal()).toBe(session);
+      expect(expired).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([401, 403])(
+    "clears the session after refresh %s without replaying the write",
+    async (status) => {
+      const expired = vi.fn();
+      setUnauthorizedHandler(expired);
+      setAccessToken("synthetic-expired-token");
+      adapter.mockImplementation(async (config) => {
+        throw unauthorized(
+          config,
+          config.url === "/auth/refresh-token" ? status : 401,
+        );
+      });
+
+      await expect(
+        apiClient.patch("/users/synthetic-user", { firstName: "Test" }),
+      ).rejects.toMatchObject({ status, message: "Access denied" });
+
+      expect(adapter.mock.calls.map(([config]) => config.url)).toEqual([
+        "/users/synthetic-user",
+        "/auth/refresh-token",
+      ]);
+      expect(expired).toHaveBeenCalledTimes(1);
+      expect(getAccessToken()).toBeNull();
+    },
+  );
+
+  it("expires an invalid refresh token without replaying the write", async () => {
     const expired = vi.fn();
     setUnauthorizedHandler(expired);
     setAccessToken("synthetic-expired-token");
     adapter.mockImplementation(async (config) => {
+      if (config.url === "/auth/refresh-token")
+        return response(config, { access_token: "" });
       throw unauthorized(config);
     });
 
     await expect(
       apiClient.patch("/users/synthetic-user", { firstName: "Test" }),
-    ).rejects.toMatchObject({ status: 401, message: "Access denied" });
+    ).rejects.toBeInstanceOf(AdminApiError);
 
     expect(adapter.mock.calls.map(([config]) => config.url)).toEqual([
       "/users/synthetic-user",

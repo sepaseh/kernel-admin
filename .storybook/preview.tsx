@@ -7,6 +7,11 @@ import { sb } from "storybook/test";
 import { PreviewFrame } from "./PreviewFrame";
 import { resetStoryMocks } from "./mocks";
 
+sb.mock(import("../src/features/account/api.ts"));
+sb.mock(import("../src/features/auth/api.ts"));
+sb.mock(import("../src/features/calendar/api.ts"));
+sb.mock(import("../src/features/roles/api.ts"));
+sb.mock(import("../src/features/users/api.ts"));
 sb.mock(import("../src/shared/api/client.ts"));
 
 const preview: Preview = {

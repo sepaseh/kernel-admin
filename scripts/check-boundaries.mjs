@@ -7,7 +7,9 @@ import ts from "typescript";
 
 const repository = fileURLToPath(new URL("../", import.meta.url));
 const productionPaths = [
-  "src/GlobalStyle.tsx",
+  "src/shared/storage/hooks/index.ts",
+  "src/shared/ui/error-boundary/ErrorFallback.tsx",
+  "src/main.tsx",
   "src/app/App.tsx",
   "src/app/Routes.tsx",
   "src/app/config/index.ts",
@@ -23,7 +25,6 @@ const productionPaths = [
   "src/app/providers/antd/Antd.tsx",
   "src/app/providers/antd/index.ts",
   "src/app/providers/core/Core.tsx",
-  "src/app/providers/core/index.ts",
   "src/app/providers/index.ts",
   "src/features/account/Account.tsx",
   "src/features/account/api.ts",
@@ -83,7 +84,6 @@ const productionPaths = [
   "src/layouts/default/components/navigation/index.ts",
   "src/layouts/default/index.ts",
   "src/layouts/default/types.ts",
-  "src/main.tsx",
   "src/shared/api/client.ts",
   "src/shared/api/config.ts",
   "src/shared/api/index.ts",
@@ -147,9 +147,38 @@ const productionPaths = [
   "src/shared/ui/request-error/index.ts",
   "src/shared/ui/route-loading/RouteLoading.tsx",
   "src/shared/ui/route-loading/index.ts",
+  "src/GlobalStyle.tsx",
+  "src/app/providers/antd/index.ts",
+  "src/app/providers/core/index.ts",
+  "src/shared/api/refresh.ts",
+  "src/shared/hooks/useAbortController.ts",
+  "src/shared/hooks/useLock.ts",
+  "src/shared/ui/image-upload/ImageUpload.tsx",
+  "src/shared/ui/image-upload/image.ts",
+  "src/shared/ui/image-upload/index.ts",
 ];
 const runtimeImports = {
   "src/GlobalStyle.tsx": ["antd-style"],
+  "src/features/files/Files.tsx": [
+    "antd",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/shared/api/refresh.ts": ["axios"],
+  "src/shared/hooks/useAbortController.ts": ["react"],
+  "src/shared/hooks/useLock.ts": ["react"],
+  "src/shared/ui/image-upload/ImageUpload.tsx": [
+    "antd",
+    "antd-img-crop",
+    "antd-style",
+    "lucide-react",
+    "react",
+    "react-i18next",
+  ],
+  "src/shared/ui/error-boundary/ErrorFallback.tsx": ["antd", "react-i18next"],
+  "src/main.tsx": ["react", "react-dom/client"],
   "src/app/App.tsx": ["react", "react-i18next"],
   "src/app/Routes.tsx": ["react", "react-router", "react-router/dom"],
   "src/app/contexts/Core.ts": ["react"],
@@ -170,33 +199,11 @@ const runtimeImports = {
     "react",
   ],
   "src/app/providers/core/Core.tsx": [
+    "antd",
     "dayjs",
     "react",
-    "antd",
     "react-i18next",
   ],
-  "src/features/account/Account.tsx": [
-    "antd",
-    "antd-style",
-    "react",
-    "react-i18next",
-    "react-router",
-  ],
-  "src/features/account/components/password-form/PasswordForm.tsx": [
-    "antd",
-    "axios",
-    "react",
-    "react-i18next",
-    "react-router",
-  ],
-  "src/features/account/components/profile-form/ProfileForm.tsx": [
-    "antd",
-    "axios",
-    "react",
-    "react-i18next",
-    "react-router",
-  ],
-  "src/features/auth/api.ts": ["axios"],
   "src/features/auth/useOtpRequest.ts": ["axios", "react"],
   "src/features/calendar/Calendar.tsx": [
     "antd",
@@ -356,8 +363,91 @@ const runtimeImports = {
   "src/shared/ui/password-fields/PasswordFields.tsx": ["antd", "react-i18next"],
   "src/shared/ui/request-error/RequestError.tsx": ["antd", "react-i18next"],
   "src/shared/ui/route-loading/RouteLoading.tsx": ["antd", "react-i18next"],
+  "src/features/auth/api.ts": ["axios"],
+  "src/shared/api/client.ts": ["axios"],
+  "src/shared/hooks/useReadRequest.ts": ["axios", "react"],
+  "src/shared/hooks/useReadResource.ts": ["react"],
+  "src/shared/i18n/index.ts": ["i18next", "react-i18next"],
+  "src/shared/i18n/date.ts": [
+    "dayjs",
+    "jalaliday",
+    "dayjs/plugin/calendar",
+    ...["ar", "de", "en-gb", "es", "fr", "it", "pt", "ru", "tr"].map(
+      (code) => "dayjs/locale/" + code,
+    ),
+  ],
+  "src/features/account/Account.tsx": [
+    "antd",
+    "antd-style",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/account/index.ts": [],
+  "src/features/calendar/Calendar.tsx": [
+    "antd",
+    "dayjs",
+    "lucide-react",
+    "react",
+    "react-i18next",
+  ],
+  "src/features/calendar/index.ts": [],
+  "src/features/calendar/styles.ts": ["antd-style"],
+  "src/features/dashboard/Dashboard.tsx": ["antd-style"],
+  "src/features/dashboard/index.ts": [],
+  "src/features/roles/Roles.tsx": [
+    "antd",
+    "antd-style",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/roles/components/role-form/RoleForm.tsx": [
+    "antd",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/roles/constants.ts": [],
+  "src/features/roles/index.ts": [],
+  "src/features/settings/Settings.tsx": [
+    "antd",
+    "axios",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/settings/index.ts": [],
+  "src/features/users/Users.tsx": [
+    "antd",
+    "antd-style",
+    "lucide-react",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/users/components/user-form/UserForm.tsx": [
+    "antd",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/users/components/user-role-form/UserRoleForm.tsx": [
+    "antd",
+    "react",
+    "react-i18next",
+    "react-router",
+  ],
+  "src/features/users/constants.ts": [],
+  "src/features/users/hooks/useDebouncedFilters.ts": ["react"],
+  "src/features/users/hooks/useFilterParams.ts": ["react", "react-router"],
+  "src/features/users/index.ts": [],
+  "src/features/users/tools/password.ts": [],
+  "src/shared/hooks/useMutationRequest.ts": ["axios", "react"],
 };
 const typeImports = {
+  "src/shared/api/types.ts": ["axios"],
   "src/app/App.tsx": ["react"],
   "src/app/Routes.tsx": ["react", "react-router"],
   "src/app/config/routes.ts": ["i18next"],
@@ -382,6 +472,29 @@ const typeImports = {
   "src/shared/ui/digits-input/DigitsInput.tsx": ["antd"],
   "src/shared/ui/form-drawer/FormDrawer.tsx": ["react"],
   "src/shared/ui/otp-input/OtpInput.tsx": ["react"],
+  "src/shared/api/client.ts": ["axios"],
+  "src/features/account/Account.tsx": [],
+  "src/features/account/index.ts": [],
+  "src/features/calendar/Calendar.tsx": ["antd", "react"],
+  "src/features/calendar/index.ts": [],
+  "src/features/calendar/styles.ts": [],
+  "src/features/dashboard/Dashboard.tsx": [],
+  "src/features/dashboard/index.ts": [],
+  "src/features/roles/Roles.tsx": ["antd"],
+  "src/features/roles/components/role-form/RoleForm.tsx": [],
+  "src/features/roles/constants.ts": [],
+  "src/features/roles/index.ts": [],
+  "src/features/settings/Settings.tsx": ["antd"],
+  "src/features/settings/index.ts": [],
+  "src/features/users/Users.tsx": ["antd"],
+  "src/features/users/components/user-form/UserForm.tsx": [],
+  "src/features/users/components/user-role-form/UserRoleForm.tsx": [],
+  "src/features/users/constants.ts": [],
+  "src/features/users/hooks/useDebouncedFilters.ts": [],
+  "src/features/users/hooks/useFilterParams.ts": [],
+  "src/features/users/index.ts": [],
+  "src/features/users/tools/password.ts": [],
+  "src/shared/hooks/useMutationRequest.ts": [],
 };
 const wireImports = {
   "src/features/account/types.ts": [
@@ -391,15 +504,12 @@ const wireImports = {
   "src/features/auth/types.ts": [],
   "src/features/files/types.ts": [],
   "src/features/roles/types.ts": [],
+  "src/features/files/types.ts": [],
+  "src/features/users/types.ts": ["src/features/roles/types.ts"],
   "src/features/settings/types.ts": [
     "src/features/files/index.ts",
     "src/shared/contracts/index.ts",
     "src/shared/i18n/index.ts",
-  ],
-  "src/features/users/types.ts": [
-    "src/features/roles/index.ts",
-    "src/shared/api/index.ts",
-    "src/features/users/constants.ts",
   ],
 };
 const crossFeatureImports = {
@@ -459,7 +569,24 @@ const featureAppImports = new Set([
   "src/app/hooks/index.ts",
   "src/app/lib/index.ts",
 ]);
+const namedCrossFeatureImports = {
+  runtime: {
+    "src/features/settings/Settings.tsx": {
+      "src/features/files/index.ts": ["uploadFile"],
+    },
+  },
+  type: {
+    "src/features/settings/types.ts": {
+      "src/features/files/index.ts": ["FileContext", "StoredFile"],
+    },
+  },
+};
+const layoutContextConsumers = new Set([
+  "src/features/files/Files.tsx",
+  "src/features/settings/Settings.tsx",
+]);
 const runtimeDependencies = new Set([
+  "antd-img-crop",
   "antd-style",
   "lucide-react",
   "antd",
@@ -602,8 +729,8 @@ const localSourceViolation = ({
   const sourceFeature = /^src\/features\/([^/]+)\//.exec(relativeFile)?.[1];
   const targetFeature = /^src\/features\/([^/]+)\//.exec(target)?.[1];
   const layoutContext =
+    layoutContextConsumers.has(relativeFile) &&
     target === "src/layouts/default/index.ts" &&
-    typeOnly &&
     bindings.length === 1 &&
     bindings[0].typeOnly &&
     bindings[0].name === "DefaultLayoutContext";
@@ -619,9 +746,12 @@ const localSourceViolation = ({
     sourceFeature &&
     targetFeature &&
     sourceFeature !== targetFeature &&
+    !crossFeatureImports[typeOnly ? "type" : "runtime"][relativeFile]?.includes(
+      target,
+    ) &&
     (!bindings.length ||
       !bindings.every((binding) =>
-        crossFeatureImports[binding.typeOnly ? "type" : "runtime"][
+        namedCrossFeatureImports[binding.typeOnly ? "type" : "runtime"][
           relativeFile
         ]?.[target]?.includes(binding.name),
       ))

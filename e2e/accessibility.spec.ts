@@ -1,17 +1,15 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page, TestInfo } from "@playwright/test";
 
+import { profileNameMaxLength } from "@/shared/contracts";
+
 import { expect, test } from "./shared/admin-fixtures";
 import { setupAdminFixture } from "./shared/admin-fixtures";
 
 const expectNoAxeViolations = async (page: Page, testInfo: TestInfo) => {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   const { violations, incomplete } = await new AxeBuilder({ page })
-    .disableRules([
-      "color-contrast",
-      "page-has-heading-one",
-      "scrollable-region-focusable",
-    ])
+    .disableRules(["color-contrast"])
     .analyze();
   await testInfo.attach(`axe-${testInfo.attachments.length}`, {
     body: JSON.stringify({ violations, incomplete }, null, 2),
@@ -87,7 +85,7 @@ for (const language of ["en", "fa"] as const) {
         expect(unexpectedRequests).toEqual([]);
       });
 
-      test("user and role tables retain accessible content and actions", async ({
+      test("user and role tables support keyboard scrolling and accessible content", async ({
         page,
         baseURL,
       }, testInfo) => {
@@ -99,6 +97,34 @@ for (const language of ["en", "fa"] as const) {
         await page.goto("/users");
         await expect(
           page.getByRole("row", { name: /Ada Lovelace/ }),
+        ).toBeVisible();
+        const usersRegion = page.getByRole("region", {
+          name: messages.users,
+          exact: true,
+        });
+        await expect(usersRegion).toHaveAttribute("tabindex", "0");
+        const overflow = await usersRegion.evaluate(
+          (element) => element.scrollWidth > element.clientWidth,
+        );
+        if (testInfo.project.name === "mobile-chromium")
+          expect(overflow).toBe(true);
+        if (overflow) {
+          await usersRegion.focus();
+          await expect(usersRegion).toBeFocused();
+          const before = await usersRegion.evaluate(
+            (element) => element.scrollLeft,
+          );
+          await page.keyboard.press(
+            language === "fa" ? "ArrowLeft" : "ArrowRight",
+          );
+          await expect
+            .poll(() => usersRegion.evaluate((element) => element.scrollLeft))
+            .not.toBe(before);
+        }
+        await expect(
+          page
+            .getByRole("row", { name: /Ada Lovelace/ })
+            .getByRole("img", { name: messages.active, exact: true }),
         ).toBeVisible();
         await expectNoAxeViolations(page, testInfo);
         await page.goto("/roles");
@@ -161,7 +187,7 @@ for (const language of ["en", "fa"] as const) {
         expect(unexpectedRequests).toEqual([]);
       });
 
-      test("destructive confirmation closes with Escape without submitting and restores its trigger", async ({
+      test("destructive confirmation supports keyboard actions without submitting and restores its trigger", async ({
         page,
         baseURL,
       }, testInfo) => {
@@ -187,8 +213,14 @@ for (const language of ["en", "fa"] as const) {
           name: messages.yes,
           exact: true,
         });
-        // Observe AntD's actual initial focus before dismissing the dialog.
+        // Wait for AntD's deferred default-button autofocus before tabbing;
+        // manually focusing early can race the primitive's own focus effect.
         await expect(last).toBeFocused();
+        await first.focus();
+        await page.keyboard.press("Tab");
+        await expect(last).toBeFocused();
+        await page.keyboard.press("Shift+Tab");
+        await expect(first).toBeFocused();
         await expectNoAxeViolations(page, testInfo);
         await page.keyboard.press("Escape");
         await expect(dialog).toBeHidden();
