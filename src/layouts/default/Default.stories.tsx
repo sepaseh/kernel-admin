@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ComponentProps } from "react";
 import { useEffect } from "react";
-import { Route, Routes } from "react-router";
+import type { RouteObject } from "react-router";
 import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
 
 import type { RouteKey } from "@/app/config";
@@ -37,22 +37,26 @@ const LayoutContent = ({ route, title }: LayoutContentProps) => {
   return <h2>{title}</h2>;
 };
 
+const layoutRoutes: RouteObject[] = [
+  {
+    path: "/",
+    element: <DefaultLayout />,
+    children: [
+      {
+        index: true,
+        element: <LayoutContent route="root" title="Dashboard content" />,
+      },
+      {
+        path: "users",
+        element: <LayoutContent route="users" title="Users destination" />,
+      },
+    ],
+  },
+  { path: "/auth", element: <h1>Signed out destination</h1> },
+];
+
 const DefaultLayoutStory = (props: DefaultLayoutStoryProps) => (
-  <StoryShell initialUser={account} {...props}>
-    <Routes>
-      <Route element={<DefaultLayout />} path="/">
-        <Route
-          index
-          element={<LayoutContent route="root" title="Dashboard content" />}
-        />
-        <Route
-          element={<LayoutContent route="users" title="Users destination" />}
-          path="users"
-        />
-      </Route>
-      <Route element={<h1>Signed out destination</h1>} path="/auth" />
-    </Routes>
-  </StoryShell>
+  <StoryShell initialUser={account} routes={layoutRoutes} {...props} />
 );
 
 const meta = {

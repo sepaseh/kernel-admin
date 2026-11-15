@@ -2,9 +2,17 @@ import "@/shared/i18n/date";
 
 import { ConfigProvider, theme as antdTheme } from "antd";
 import dayjs from "dayjs";
-import type { ReactNode } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { useContext, useEffect, useState } from "react";
-import { MemoryRouter, Outlet, Route, Routes } from "react-router";
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  Outlet,
+  Route,
+  type RouteObject,
+  Routes,
+} from "react-router";
+import { RouterProvider } from "react-router/dom";
 
 import type { RouteKey } from "@/app/config/routes";
 import { CoreContext, type CoreContextValue } from "@/app/contexts";
@@ -20,14 +28,14 @@ import { dayjsLocaleName, i18n } from "@/shared/i18n";
 import { sampleAccount, sampleLanguages, sampleSettings } from "./fixtures";
 import { StoryAppearanceContext } from "./StoryAppearance";
 
-type StoryShellProps = {
-  children: ReactNode;
+type StoryShellProps = PropsWithChildren<{
   initialEntries?: string[];
   initialLanguage?: ApplicationLanguage;
   initialTheme?: Theme;
   initialUser?: CurrentUser;
+  routes?: RouteObject[];
   withUser?: boolean;
-};
+}>;
 
 type StorySurfaceProps = {
   children: ReactNode;
@@ -65,6 +73,7 @@ export const StoryShell = ({
   initialLanguage = sampleLanguages.en,
   initialTheme = "light",
   initialUser = sampleAccount,
+  routes,
   withUser = true,
 }: StoryShellProps) => {
   const appearance = useContext(StoryAppearanceContext);
@@ -79,6 +88,9 @@ export const StoryShell = ({
   const [toolbarTheme, setToolbarTheme] = useState(appearance?.theme);
   const [user, setUser] = useState<CurrentUser | undefined>(
     withUser ? initialUser : undefined,
+  );
+  const [router] = useState(() =>
+    routes ? createMemoryRouter(routes, { initialEntries }) : undefined,
   );
   if (toolbarLanguage !== appearance?.language) {
     setToolbarLanguage(appearance?.language);
@@ -115,39 +127,49 @@ export const StoryShell = ({
     dayjs.locale(dayjsLocaleName(language.code));
   }, [language.calendar, language.code]);
 
+  useEffect(() => () => router?.dispose(), [router]);
+
   return (
     <CoreContext.Provider value={value}>
       <ConfigProvider theme={{ inherit: false }}>
         <AntdProvider>
           <StorySurface language={language}>
-            <MemoryRouter initialEntries={initialEntries}>
-              <Routes>
-                <Route
-                  element={
-                    <Outlet
-                      context={
-                        user
-                          ? ({
-                              currentUser: user,
-                              fetchCurrentUser: async () => {
-                                setUser(await fetchCurrentUser());
-                              },
-                              clearSession: () => setUser(undefined),
-                            } satisfies DefaultLayoutContext)
-                          : undefined
-                      }
-                    />
-                  }
-                >
+            {router ? (
+              <RouterProvider router={router} />
+            ) : (
+              <MemoryRouter initialEntries={initialEntries}>
+                <Routes>
                   <Route
                     element={
-                      withUser && !user ? <div>Session cleared</div> : children
+                      <Outlet
+                        context={
+                          user
+                            ? ({
+                                currentUser: user,
+                                fetchCurrentUser: async () => {
+                                  setUser(await fetchCurrentUser());
+                                },
+                                clearSession: () => setUser(undefined),
+                              } satisfies DefaultLayoutContext)
+                            : undefined
+                        }
+                      />
                     }
-                    path="*"
-                  />
-                </Route>
-              </Routes>
-            </MemoryRouter>
+                  >
+                    <Route
+                      element={
+                        withUser && !user ? (
+                          <div>Session cleared</div>
+                        ) : (
+                          children
+                        )
+                      }
+                      path="*"
+                    />
+                  </Route>
+                </Routes>
+              </MemoryRouter>
+            )}
           </StorySurface>
         </AntdProvider>
       </ConfigProvider>
