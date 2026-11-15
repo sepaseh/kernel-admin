@@ -40,7 +40,7 @@ export const fetchUser = async (
 };
 
 export const fetchUsers = async (
-  { page = "1", size = String(defaultPageSize), ...params }: UserQuery = {},
+  { page = "1", ...params }: UserQuery = {},
   signal?: AbortSignal,
 ): Promise<{
   items: User[];
@@ -50,7 +50,7 @@ export const fetchUsers = async (
     items: User[];
     total: number;
   }>(basePath, {
-    params: toSnakeCase({ ...params, page, size }),
+    params: toSnakeCase({ ...params, page, size: String(defaultPageSize) }),
     signal,
   });
 };

@@ -24,7 +24,7 @@
         "A shared refresh must survive one reader cancelling, while original request/session generation remains bound across awaits, retry dispatch and terminal 401 handling.",
         "Old operations must not replay a mutation as a newly logged-in account or clear that account after a delayed refresh failure/retried 401; identify source guards or report an actual missing branch. Public settings reads may survive a session change, but a public-read exemption must not exempt protected writes to the same path.",
         "Logout completion and duplicate requests need generation/mounted-owner protection beyond the shared client's generation checks; examine the helper finally and layout continuation separately.",
-        "Ordinary requests/uploads have no general timeout. Refresh has a 15-second bound and one network/5xx retry; terminal refresh failure expires client state. Cancellation is not a user error.",
+        "Ordinary requests/uploads have no general timeout. Refresh has a 15-second bound per attempt and one network/5xx retry. Exhausted network, timeout and server failures preserve the session for a later manual retry without replaying the failed operation. Other refresh failures, including definitive 401/403 rejection or an invalid access-token response, and a current retried 401 expire the session once. Cancellation is not a user error.",
         "Transient read retry is manual and has no attempt budget; the protected-401 one-replay rule after a successful same-generation refresh is independent."
       ],
       "mustNot": [
@@ -83,7 +83,7 @@
       "mustExplain": [
         "Bearer credentials remain in memory.",
         "Single-flight refresh and originating request generation protect new logins.",
-        "Terminal refresh failure clears client state; server revocation is an API responsibility.",
+        "Exhausted network, timeout and server refresh failures preserve the session for a later manual retry without replaying the failed operation. Other refresh failures, including definitive 401/403 rejection or an invalid access-token response, and a current retried 401 clear client state once; server revocation is an API responsibility.",
         "Login submits mobile and password through the named auth public service. Login and registration validate access tokens before installing credentials and check caller cancellation plus session identity after fulfillment.",
         "OTP response validation and mobile-change cancellation prevent stale codes and cooldowns. Account forms use the default layout current-user context; profile updates and password changes retain their declared HTTP contracts."
       ],

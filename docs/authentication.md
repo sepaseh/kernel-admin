@@ -23,7 +23,7 @@ Developers choose a compatible backend through `VITE_API_BASE_URL`. The local fe
 
 Use the [synthetic HTTP handlers](../src/test/mocks/handlers.ts), [settings fixture](../e2e/fixtures.ts), [application HTTP fixtures](../e2e/shared/admin-fixtures.ts) and [consumer contracts](../contract/api.contract.test.ts) for request and response examples. Startup requires a valid `/settings` response before routes render. Authenticated features require compatible login, refresh and permission behavior. Builds and synthetic tests need no running backend. Verify the chosen service separately when real integration testing is authorized.
 
-Login accepts `mobile` and `password`. Authentication screens import only their named services, OTP hook and erased request models from the [authentication public index](../src/features/auth/index.ts). Registration and password recovery request an OTP for the current mobile number. The response must contain finite numeric `expiresIn` and nonnegative `remainingSeconds` values. The account API exposes current-user loading and profile updates. Its separate profile and password forms consume the default layout Outlet context; password changes retain their authentication endpoint and request model.
+The [users list adapter](../src/features/users/api.ts) accepts a page number and user filters. It always sends the fixed `defaultPageSize` from [shared configuration](../src/shared/config/constants.ts), matching the table's pagination. Page size is not a caller-controlled input; an extra `size` URL parameter cannot override it.
 
 ## Transport contract
 

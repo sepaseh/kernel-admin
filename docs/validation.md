@@ -107,6 +107,43 @@ build only after their own required typecheck succeeds on unchanged source. The
 builder verifies that fingerprint before compiling, avoiding a second typecheck.
 Standalone production and verification builds still perform their own typecheck.
 
+## Configure SonarQube Cloud
+
+Copy/paste detection (CPD) is intentionally disabled for all source files through
+the versioned [scanner configuration](../sonar-project.properties):
+
+```properties
+sonar.cpd.exclusions=**/*
+```
+
+The project does not collect a measured duplication report. An empty or zero
+provider value must not be described as zero actual duplication or as measured
+duplication that is merely advisory. This exception applies only to CPD. Preserve
+source and test analysis, enabled bug and security rules, coverage inputs,
+scanner execution and the remaining quality-gate conditions. Do not broaden
+source, test or coverage exclusions to obtain a passing result.
+
+After importing, moving or recreating the repository, organization or Sonar
+project:
+
+1. Restore the versioned scanner configuration and configure the destination's
+   organization and project identifiers. Confirm that CI reads this file and
+   that scanner arguments do not override its CPD exclusion. Scanner
+   configuration on the CI/CD host takes precedence over the same UI setting;
+   a UI-only exclusion does not replace the versioned property.
+2. Run an authorized fresh analysis of the current revision. Verify that the
+   all-source CPD exclusion is effective and that the analyzed project and
+   revision match the intended source.
+3. Check scanner completion and the resulting provider quality gate separately.
+   This opt-out does not provision or assign a custom quality gate; keep the
+   existing gate and its other conditions unchanged.
+4. If configuration drift restores duplication detection, restore the versioned
+   CPD property, resolve any conflicting scanner override and analyze again.
+   Do not compensate by excluding files from source or coverage analysis.
+
+See [duplication exclusions](https://docs.sonarsource.com/sonarqube-cloud/managing-your-projects/project-analysis/setting-analysis-scope/exclude-from-coverage-duplication)
+and [matching patterns](https://docs.sonarsource.com/sonarqube-cloud/appendices/defining-matching-patterns).
+
 ## Hosted checks and review
 
 Local success does not establish hosted CI, scanner execution, the asynchronous Sonar quality gate or review approval. Before an authorized review request or merge:

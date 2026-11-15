@@ -127,11 +127,15 @@ for (const language of ["en", "fa"] as const) {
     await expect(
       drawer.getByLabel(messages.firstName, { exact: true }),
     ).toHaveValue(userRecord.first_name);
+    const panel = drawer.locator("..");
+    await expect(panel).toHaveClass(/ant-drawer-content-wrapper/);
+    await expect(panel).not.toHaveClass(/ant-drawer-panel-motion-/);
     await drawer.getByLabel(messages.status, { exact: true }).click();
     await page
       .locator(".ant-select-dropdown:visible")
       .getByText(messages.inactive, { exact: true })
       .click();
+    await expect(initialFailure).toHaveCount(0);
     const failedReload = page.waitForResponse(
       (response) =>
         response.request().method() === "GET" &&
@@ -142,9 +146,9 @@ for (const language of ["en", "fa"] as const) {
       .getByRole("button", { name: messages.submit, exact: true })
       .click();
     await failedReload;
-    const refreshFailure = page
-      .getByText(messages.networkError, { exact: true })
-      .last();
+    const refreshFailure = page.getByText(messages.networkError, {
+      exact: true,
+    });
     await expect(refreshFailure).toBeVisible();
     await expect(row).toBeVisible();
     await expect(

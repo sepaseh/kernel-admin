@@ -129,7 +129,9 @@ export const StoryShell = ({
                         user
                           ? ({
                               currentUser: user,
-                              fetchCurrentUser: async () => undefined,
+                              fetchCurrentUser: async () => {
+                                setUser(await fetchCurrentUser());
+                              },
                               clearSession: () => setUser(undefined),
                             } satisfies DefaultLayoutContext)
                           : undefined
@@ -137,7 +139,12 @@ export const StoryShell = ({
                     />
                   }
                 >
-                  <Route path="*" element={children} />
+                  <Route
+                    element={
+                      withUser && !user ? <div>Session cleared</div> : children
+                    }
+                    path="*"
+                  />
                 </Route>
               </Routes>
             </MemoryRouter>
