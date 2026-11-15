@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 
 describe("users HTTP contract", () => {
-  it("uses page/size defaults without converting page into an offset", async () => {
+  it("uses the default page and fixed size without converting page into an offset", async () => {
     client.get.mockResolvedValue({ items: [], total: 0 });
 
     await fetchUsers();
@@ -40,13 +40,25 @@ describe("users HTTP contract", () => {
     client.get.mockResolvedValue({ items: [], total: 0 });
 
     await fetchUsers(
-      { page: "3", size: "12", firstName: "Test", status: "active" },
+      { page: "3", firstName: "Test", status: "active" },
       controller.signal,
     );
 
     expect(client.get).toHaveBeenCalledWith("/users", {
-      params: { page: "3", size: "12", first_name: "Test", status: "active" },
+      params: { page: "3", size: "24", first_name: "Test", status: "active" },
       signal: controller.signal,
+    });
+  });
+
+  it("keeps the fixed page size when URL parameters contain a different size", async () => {
+    const query = Object.fromEntries(new URLSearchParams("page=2&size=12"));
+    client.get.mockResolvedValue({ items: [], total: 0 });
+
+    await fetchUsers(query);
+
+    expect(client.get).toHaveBeenCalledWith("/users", {
+      params: { page: "2", size: "24" },
+      signal: undefined,
     });
   });
 
