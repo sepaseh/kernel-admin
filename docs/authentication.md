@@ -22,6 +22,8 @@ Developers choose a compatible backend through `VITE_API_BASE_URL`. The local fe
 
 Use the [synthetic HTTP handlers](../src/test/mocks/handlers.ts), [settings fixture](../e2e/fixtures.ts), [application HTTP fixtures](../e2e/shared/admin-fixtures.ts) and [consumer contracts](../contract/api.contract.test.ts) for request and response examples. Startup requires a valid `/settings` response before routes render. Authenticated features require compatible login, refresh and permission behavior. Builds and synthetic tests need no running backend. Verify the chosen service separately when real integration testing is authorized.
 
+The [users list adapter](../src/features/users/api.ts) accepts a page number and user filters. It always sends the fixed `defaultPageSize` from [shared configuration](../src/shared/config/constants.ts), matching the table's pagination. Page size is not a caller-controlled input; an extra `size` URL parameter cannot override it.
+
 ## Transport contract
 
 The shared client configures Axios with credentials and explicit cancellation, without a general request timeout. Refresh has a 15-second bound per attempt. The settings API owner also bounds `fetchSettings` reads to 15 seconds while preserving caller cancellation, so initial loading can reach the error and Retry state. Language reads, settings writes and uploads do not inherit that settings-read timeout. [`config.ts`](../src/shared/api/config.ts) reads the public `VITE_API_BASE_URL`, falling back to the browser origin when that value is absent. See [usage](usage.md) for configuration.

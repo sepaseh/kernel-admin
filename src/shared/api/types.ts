@@ -8,4 +8,4 @@ export type UploadProgressHandler = NonNullable<
   AxiosRequestConfig["onUploadProgress"]
 >;
 
-export type PaginationQuery = { page?: string; size?: string };
+export type PaginationQuery = { page?: string };
