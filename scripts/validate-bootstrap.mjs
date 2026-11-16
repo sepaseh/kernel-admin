@@ -324,7 +324,9 @@ const guidanceFiles = new Set([
   "scripts/check-guidance.mjs",
   "scripts/check-guidance.test.mjs",
 ]);
-const guidanceDependencies = new Map([
+const sourceDependencies = new Map([
+  ["scripts/package-release.mjs", ["scripts/build-directory.mjs"]],
+  ["scripts/stamp-admin-build.mjs", ["scripts/build-directory.mjs"]],
   [".agents/hooks/block-dangerous.sh", [".agents/hooks/block-dangerous.mjs"]],
   [
     "scripts/block-dangerous.test.mjs",
@@ -360,6 +362,7 @@ const guidanceDependencies = new Map([
   ],
 ]);
 const operationsPrerequisiteFiles = new Set([
+  "scripts/build-directory.mjs",
   "deploy/docker/admin-entrypoint.sh",
   "deploy/docker/admin-healthcheck.sh",
   "scripts/check-guidance.integration.test.mjs",
@@ -767,7 +770,7 @@ export const validateBootstrapPolicy = (policy) => {
           ...preparedFiles,
         ]
       : requiredFilesForPhase(policy.phase)),
-    ...[...guidanceDependencies].flatMap(([file, dependencies]) =>
+    ...[...sourceDependencies].flatMap(([file, dependencies]) =>
       files.has(file) ? dependencies : [],
     ),
   ];

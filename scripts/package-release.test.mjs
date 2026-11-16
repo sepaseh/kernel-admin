@@ -186,15 +186,14 @@ test("refuses a linked metadata directory before opening build metadata", async 
 });
 
 test("rejects metadata replaced before descriptor validation and closes the handle", async (context) => {
-  const { root, build } = await fixture();
-  const filename = path.join(build, "_kernel/build.json");
+  const { root } = await fixture();
   const openFile = fs.promises.open;
   let read = false;
   let closed = false;
   try {
     context.mock.method(fs.promises, "open", async (file, flags) => {
       const handle = await openFile(file, flags);
-      if (file !== filename) return handle;
+      if (!file.endsWith(path.join("_kernel", "build.json"))) return handle;
 
       return {
         async stat(options) {
@@ -228,6 +227,264 @@ test("rejects metadata replaced before descriptor validation and closes the hand
   }
 });
 
+test("rejects an asset parent replaced before opening without reading its replacement", async (context) => {
+  const { root } = await fixture();
+  const outside = path.join(root, "outside");
+  const openFile = fs.promises.open;
+  let streamed = false;
+  let closed = false;
+  try {
+    await mkdir(outside);
+    await writeFile(
+      path.join(outside, "app-hash.js"),
+      "synthetic unrelated bytes",
+    );
+    context.mock.method(fs.promises, "open", async (file, flags) => {
+      if (!file.endsWith(path.join("assets", "app-hash.js")))
+        return openFile(file, flags);
+
+      const assets = path.dirname(file);
+      await rename(assets, path.join(root, "original-assets"));
+      await symlink(
+        outside,
+        assets,
+        process.platform === "win32" ? "junction" : "dir",
+      );
+      const handle = await openFile(file, flags);
+      return {
+        stat: (options) => handle.stat(options),
+        createReadStream() {
+          streamed = true;
+          return handle.createReadStream({ autoClose: false });
+        },
+        async close() {
+          closed = true;
+          await handle.close();
+        },
+      };
+    });
+    syncBuiltinESMExports();
+    await assert.rejects(
+      packageRelease({ repositoryRoot: root, releaseId: "synthetic-v1" }),
+      /asset identity changed/,
+    );
+    assert.equal(streamed, false);
+    assert.equal(closed, true);
+    await assert.rejects(
+      readFile(
+        path.join(root, "releases/synthetic-v1/public/assets/app-hash.js"),
+      ),
+      { code: "ENOENT" },
+    );
+    assert.equal(
+      await readFile(path.join(outside, "app-hash.js"), "utf8"),
+      "synthetic unrelated bytes",
+    );
+  } finally {
+    context.mock.restoreAll();
+    syncBuiltinESMExports();
+    await cleanup(root);
+  }
+});
+
+test("copies assets from their validated handles after a pathname replacement", async (context) => {
+  const { root, build } = await fixture();
+  const openFile = fs.promises.open;
+  let closed = false;
+  try {
+    context.mock.method(fs.promises, "open", async (file, flags) => {
+      const handle = await openFile(file, flags);
+      if (!file.endsWith(path.join("assets", "app-hash.js"))) return handle;
+
+      return {
+        stat: (options) => handle.stat(options),
+        async close() {
+          closed = true;
+          await handle.close();
+        },
+        createReadStream(options) {
+          fs.renameSync(file, `${file}.original`);
+          fs.writeFileSync(file, "synthetic replacement");
+          return handle.createReadStream(options);
+        },
+      };
+    });
+    syncBuiltinESMExports();
+    const output = await packageRelease({
+      repositoryRoot: root,
+      releaseId: "synthetic-v1",
+    });
+    assert.equal(closed, true);
+    assert.equal(
+      await readFile(
+        path.join(output.directory, "public/assets/app-hash.js"),
+        "utf8",
+      ),
+      "export default 1;",
+    );
+    assert.equal(
+      await readFile(path.join(build, "assets/app-hash.js"), "utf8"),
+      "synthetic replacement",
+    );
+  } finally {
+    context.mock.restoreAll();
+    syncBuiltinESMExports();
+    await cleanup(root);
+  }
+});
+
+test("preserves asset read and close failures and restores the build", async (context) => {
+  const { root, build } = await fixture();
+  const openFile = fs.promises.open;
+  const readFailure = new Error("Synthetic asset read failure");
+  const closeFailure = new Error("Synthetic asset close failure");
+  try {
+    context.mock.method(fs.promises, "open", async (file, flags) => {
+      const handle = await openFile(file, flags);
+      if (!file.endsWith(path.join("assets", "app-hash.js"))) return handle;
+
+      return {
+        stat: (options) => handle.stat(options),
+        createReadStream(options) {
+          const stream = handle.createReadStream(options);
+          queueMicrotask(() => stream.destroy(readFailure));
+          return stream;
+        },
+        async close() {
+          await handle.close();
+          throw closeFailure;
+        },
+      };
+    });
+    syncBuiltinESMExports();
+    await assert.rejects(
+      packageRelease({ repositoryRoot: root, releaseId: "synthetic-v1" }),
+      (error) => {
+        assert.deepEqual(error.errors, [readFailure, closeFailure]);
+        assert.equal(error.cause, readFailure);
+        return true;
+      },
+    );
+    assert.equal(
+      await readFile(path.join(build, "assets/app-hash.js"), "utf8"),
+      "export default 1;",
+    );
+    assert.equal(
+      (await readdir(root)).some((entry) =>
+        entry.startsWith(".kernel-release-"),
+      ),
+      false,
+    );
+  } finally {
+    context.mock.restoreAll();
+    syncBuiltinESMExports();
+    await cleanup(root);
+  }
+});
+
+test("bounds open source handles while packaging multiple assets", async (context) => {
+  const { root, build } = await fixture();
+  const openFile = fs.promises.open;
+  let active = 0;
+  let peak = 0;
+  try {
+    for (let index = 0; index < 8; index++)
+      await writeFile(
+        path.join(build, "assets", `chunk-${index}.js`),
+        `export default ${index};`,
+      );
+
+    context.mock.method(fs.promises, "open", async (file, flags) => {
+      const handle = await openFile(file, flags);
+      if (path.basename(path.dirname(file)) !== "assets") return handle;
+
+      peak = Math.max(peak, ++active);
+      return {
+        stat: (options) => handle.stat(options),
+        createReadStream: (options) => handle.createReadStream(options),
+        async close() {
+          try {
+            await handle.close();
+          } finally {
+            active--;
+          }
+        },
+      };
+    });
+    syncBuiltinESMExports();
+    const output = await packageRelease({
+      repositoryRoot: root,
+      releaseId: "synthetic-v1",
+    });
+    assert.equal(peak, 1);
+    assert.equal(active, 0);
+    assert.equal(
+      (await readdir(path.join(output.directory, "public/assets"))).length,
+      9,
+    );
+    assert.equal(
+      await readFile(
+        path.join(output.directory, "public/assets/chunk-7.js"),
+        "utf8",
+      ),
+      "export default 7;",
+    );
+  } finally {
+    context.mock.restoreAll();
+    syncBuiltinESMExports();
+    await cleanup(root);
+  }
+});
+
+test("rejects a replaced build root before reading any build files", async (context) => {
+  const { root, build } = await fixture();
+  const outside = path.join(root, "outside");
+  const renameEntry = fs.promises.rename;
+  const reads = [];
+  try {
+    await mkdir(outside);
+    await writeFile(
+      path.join(outside, "marker"),
+      "synthetic unrelated directory",
+    );
+    context.mock.method(fs.promises, "rename", async (source, target) => {
+      if (source === build) {
+        await renameEntry(build, path.join(root, "original-build"));
+        await symlink(
+          outside,
+          build,
+          process.platform === "win32" ? "junction" : "dir",
+        );
+      }
+      return renameEntry(source, target);
+    });
+    context.mock.method(fs.promises, "open", async (file) => {
+      reads.push(file);
+      throw new Error("Unexpected build read");
+    });
+    syncBuiltinESMExports();
+    await assert.rejects(
+      packageRelease({ repositoryRoot: root, releaseId: "synthetic-v1" }),
+      /changed while acquiring/,
+    );
+    assert.deepEqual(reads, []);
+    assert.deepEqual(await readdir(outside), ["marker"]);
+    assert.equal(
+      JSON.parse(
+        await readFile(
+          path.join(root, "original-build/_kernel/build.json"),
+          "utf8",
+        ),
+      ).releaseId,
+      "synthetic-v1",
+    );
+  } finally {
+    context.mock.restoreAll();
+    syncBuiltinESMExports();
+    await cleanup(root);
+  }
+});
+
 test("packages the validated metadata bytes after a pathname replacement", async (context) => {
   const { root, build } = await fixture("/console/");
   const filename = path.join(build, "_kernel/build.json");
@@ -238,7 +495,7 @@ test("packages the validated metadata bytes after a pathname replacement", async
   try {
     context.mock.method(fs.promises, "open", async (file, flags) => {
       const handle = await openFile(file, flags);
-      if (file !== filename) return handle;
+      if (!file.endsWith(path.join("_kernel", "build.json"))) return handle;
 
       return {
         stat: (options) => handle.stat(options),

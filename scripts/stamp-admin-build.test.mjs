@@ -129,7 +129,14 @@ describe("validated build metadata", () => {
         },
         publishDirectory: async (source, target) => {
           expect(source).toBe(path.dirname(temporary));
-          expect(target).toBe(path.dirname(output));
+          expect(path.basename(target)).toBe("_kernel");
+          expect(path.dirname(path.dirname(target))).toBe(path.dirname(source));
+          expect(
+            await readFile(
+              path.join(path.dirname(target), "index.html"),
+              "utf8",
+            ),
+          ).toContain("synthetic completed build");
           expect(events).toEqual(["write", "close"]);
           expect(
             JSON.parse(await readFile(path.join(source, "build.json"), "utf8")),
@@ -564,7 +571,6 @@ describe("validated build metadata", () => {
 
   it("rejects a replaced HTML entry before reading and closes its handle", async () => {
     const fixture = await buildFixture();
-    const index = path.join(fixture.build, "index.html");
     const replacement = path.join(fixture.root, "replacement.html");
     const readEntry = vi.fn();
     const closeEntry = vi.fn();
@@ -581,8 +587,8 @@ describe("validated build metadata", () => {
             return {
               stat: async (options) => {
                 const info = await handle.stat(options);
-                await rename(index, path.join(fixture.root, "original.html"));
-                await rename(replacement, index);
+                await rename(entry, path.join(fixture.root, "original.html"));
+                await rename(replacement, entry);
                 return info;
               },
               readFile: readEntry,
@@ -596,6 +602,88 @@ describe("validated build metadata", () => {
       await expect(
         readFile(path.join(fixture.build, "_kernel/build.json")),
       ).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("rejects a build root replaced before identity publication without writing through it", async () => {
+    const fixture = await buildFixture();
+    const outside = path.join(fixture.root, "outside");
+    const original = path.join(fixture.root, "original-build");
+    const readEntry = vi.fn();
+    await mkdir(outside);
+    try {
+      await expect(
+        stampAdminBuild({
+          environment: publicBuildEnvironment,
+          buildDirectory: fixture.build,
+          openEntry: readEntry,
+          openFile: async (file, flags) => {
+            const handle = await open(file, flags);
+            return {
+              writeFile: (...arguments_) => handle.writeFile(...arguments_),
+              close: async () => {
+                await handle.close();
+                await rename(fixture.build, original);
+                await symlink(
+                  outside,
+                  fixture.build,
+                  process.platform === "win32" ? "junction" : "dir",
+                );
+              },
+            };
+          },
+        }),
+      ).rejects.toThrow(/changed while acquiring/);
+      expect(readEntry).not.toHaveBeenCalled();
+      expect(await readdir(outside)).toEqual([]);
+      expect(
+        await readFile(path.join(original, "index.html"), "utf8"),
+      ).toContain("synthetic completed build");
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("preserves the owned build and a competing public path when restoration cannot complete", async () => {
+    const fixture = await buildFixture();
+    const outside = path.join(fixture.root, "outside");
+    let recoveryDirectory;
+    await mkdir(outside);
+    try {
+      await expect(
+        stampAdminBuild({
+          environment: publicBuildEnvironment,
+          buildDirectory: fixture.build,
+          publishDirectory: async (source, target) => {
+            await symlink(
+              outside,
+              fixture.build,
+              process.platform === "win32" ? "junction" : "dir",
+            );
+            await rename(source, target);
+          },
+        }),
+      ).rejects.toSatisfy((error) => {
+        recoveryDirectory = error.recoveryDirectory;
+        return (
+          error.code === "EEXIST" &&
+          path.dirname(path.dirname(recoveryDirectory)) === fixture.root
+        );
+      });
+      expect(await readdir(outside)).toEqual([]);
+      expect(
+        JSON.parse(
+          await readFile(
+            path.join(recoveryDirectory, "_kernel/build.json"),
+            "utf8",
+          ),
+        ),
+      ).toMatchObject({ releaseId: publicBuildEnvironment.VITE_RELEASE_ID });
+      expect(
+        await readFile(path.join(recoveryDirectory, "index.html"), "utf8"),
+      ).toContain("synthetic completed build");
     } finally {
       await fixture.cleanup();
     }
