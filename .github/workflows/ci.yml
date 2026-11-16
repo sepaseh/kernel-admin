@@ -24,7 +24,6 @@ on:
           - complete
 permissions:
   contents: read
-  actions: read
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.ref }}-${{ github.event.inputs.verification || 'default' }}
   cancel-in-progress: false
@@ -55,6 +54,9 @@ jobs:
   check:
     needs: scope
     if: always()
+    permissions:
+      contents: read
+      actions: read
     runs-on: windows-2025
     timeout-minutes: 45
     outputs:
@@ -74,7 +76,7 @@ jobs:
         run: if ($env:SCOPE_RESULT -ne "success") { throw "Source scope selection failed; verification cannot be established." }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ needs.scope.outputs.commit }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
@@ -176,6 +178,9 @@ jobs:
           include-hidden-files: false
   analysis:
     name: SonarQube Cloud analysis
+    permissions:
+      contents: read
+      actions: read
     needs:
       - scope
       - check
@@ -193,7 +198,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ needs.scope.outputs.commit }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
