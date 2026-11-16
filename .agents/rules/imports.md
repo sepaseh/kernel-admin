@@ -1,0 +1,66 @@
+# Import paths and ownership
+
+[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
+
+Use `./` within the same source directory and `@/` across frontend source
+directories. `@/` resolves to this checkout's `src/`. Pure catalog and calendar
+data may use only their permitted local erased type edges; follow
+[localization](localization.md).
+
+Local source dependencies of the shared layer must stay within `src/shared`.
+This excludes app, features, layouts and application entry points. Features own
+their HTTP types, endpoint paths, local helpers and hooks. Shared transport stays in
+`src/shared/api`; shared appearance contracts and constraints such as `profileNameMaxLength`
+stay in framework-free `src/shared/contracts`. Permission contracts belong to
+`src/features/roles`. Do not move a feature-only helper into shared merely because
+two files use it.
+
+Keep feature dependencies inside their owner by default. A feature cannot import
+another feature's page, form, component or private helper. The checker permits
+only the declared source-file-to-module edges for the existing authentication
+API/OTP capabilities and roles API/type vocabulary. These exceptions are defined
+in `scripts/check-boundaries.mjs`; they are not blanket access to either feature.
+Import each capability through its declared module. Cross-feature `index.ts`
+targets require explicit named capabilities: Login, Register and Forgot Password
+may use their declared authentication services, OTP hook and erased request models.
+The account password form may use only `changePassword` and the erased
+`ChangePasswordParams` through the authentication public index. Account models may
+use only erased `PermissionKey` and `User` from their owning public indexes.
+Settings may use the files upload service and its erased `FileContext`/`StoredFile`
+models. Users may use its declared roles list service and erased `Role` model.
+The contents list may use only `fetchContentCategories` and erased `ContentCategory` through the category public index. The content form may use only the files `uploadFile` service and erased `ContentCategory`; content HTTP models may use only erased `ContentCategory` and `StoredFile` through their owning public indexes. Other feature barrels remain rejected. Import and re-export edges follow the same exact module rules.
+Type-only imports must use their declared erased contract edges.
+
+Feature screens may use only the app hook, route configuration and access-policy
+modules declared by the checker. Account, Settings, Files, Calendar, Roles, Users, FAQ, category and content screens
+and their declared forms may also import the erased `DefaultLayoutContext`
+through the default layout's public index. Other app internals, providers, route shells
+and entry points are outside the feature dependency interface. Keep application
+composition in `app` and route shells in `layouts`.
+
+The current enforcement owner is the TypeScript AST boundary checker,
+[`scripts/check-boundaries.mjs`](../../scripts/check-boundaries.mjs), invoked by
+`npm run check:boundaries`. It resolves static imports, erased types, re-exports,
+dynamic imports and require edges against the published production inventory.
+It confines local shared dependencies to shared production modules, restricts
+feature-facing app interfaces and rejects undeclared cross-feature edges, in
+addition to enforcing pure wire/catalog contracts and declared package
+dependencies. The resolved module controls ownership, including imports through
+aliases. Extend an ownership policy only for a reviewed requirement and add
+positive and negative regressions for the intended capability and forbidden
+internal access.
+
+Root ESLint enforces its configured type-only imports and reports advisory import/export sorting.
+The boundary checker owns source dependency enforcement; ESLint does not replace
+that check or enforce style-property ordering. Keep source independent of
+external project sources, backend/database/auth/storage implementation, local
+package links, npm workspaces and retired multi-project directories.
+
+## Type-only edges
+
+Use `import type` or `export type` for declarations used only as types. Mixed
+imports/re-exports combine values and inline `type` specifiers from the same module. Runtime components,
+schemas, enum values and classes still require value imports. An erased edge must
+obey the same ownership boundary; it does not bypass the published dependency
+policy. Leaf catalogs and calendar data accept only the exact erased local types
+allowed by the current boundary checker.
