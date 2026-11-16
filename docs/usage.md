@@ -63,7 +63,7 @@ Stop the server with `Ctrl+C`. Restart it after changing configuration.
 | `VITE_RELEASE_ID`        | Public build identifier. Production releases use a new immutable identifier.    |
 | `VITE_OBSERVABILITY_URL` | Optional public reporting receiver; blank disables default network delivery.    |
 
-The example and Vite configuration (`vite.config.ts`) define public values. See [deployment](deployment.md) for the public input contract and release prerequisites.
+The example and [Vite configuration](../vite.config.ts) define public values. See [deployment](deployment.md) for the public input contract and release prerequisites.
 
 The [optional reporter](../src/shared/lib/observability.ts) sends sanitized error and performance events to the selected receiver. Leave the URL blank when no receiver is configured, or supply a custom transport through `setObservabilityTransport`. This frontend does not include or provision a receiving service.
 

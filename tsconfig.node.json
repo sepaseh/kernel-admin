@@ -1,0 +1,38 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./coverage/types/tsconfig.node.tsbuildinfo",
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "types": ["node"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": [
+    "contract/**/*.ts",
+    "e2e/**/*.ts",
+    "playwright.config.ts",
+    "playwright.visual.config.ts",
+    "smoke/**/*.ts",
+    "smoke.config.ts",
+    "src/vite-env.d.ts",
+    "staging/**/*.ts",
+    "staging.config.ts",
+    "tooling/**/*.ts",
+    "vite.config.ts",
+    "vitest.contract.config.ts",
+    "vitest.config.ts",
+    "src/shared/i18n/catalogs.test.ts"
+  ]
+}
