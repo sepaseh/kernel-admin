@@ -744,6 +744,34 @@ test("variable-listing builtins are blocked while assignments and shell options 
     assert.equal(inspectSafetyPayload({ command }), null, command);
 });
 
+test("Zsh pattern declarations cannot print matching parameters without a print flag", () => {
+  for (const command of [
+    'typeset -m "*TOKEN*"',
+    'typeset +m "*TOKEN*"',
+    'declare -gm "*TOKEN*"',
+    'typeset -m TEST_MODE=synthetic "*TOKEN*"',
+    'builtin typeset -m "*TOKEN*"',
+    "zsh -c 'typeset -m \"*TOKEN*\"'",
+    "zsh -c 'setopt TYPESET_SILENT; typeset -m \"*TOKEN*\"'",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Environment variable exposure/,
+      command,
+    );
+
+  for (const command of [
+    "typeset -m TEST_MODE=synthetic",
+    "typeset +m TEST_MODE=synthetic",
+    "declare -gm TEST_MODE=synthetic OTHER_MODE=synthetic",
+    "zsh -c 'typeset -m TEST_MODE=synthetic'",
+    "printf '%s' 'typeset -m'",
+    "typeset TEST_MODE=synthetic-m",
+    "typeset -- TEST_MODE=-m",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
 test("inline Git configuration permits only explicit literal color settings", () => {
   for (const configuration of [
     "core.pager=git push --force origin feature",

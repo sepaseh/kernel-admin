@@ -322,11 +322,13 @@ const secretVariable = (token) =>
   );
 const declarationOutput = (words) => {
   const args = words.slice(1);
+  const flags = args.filter((word) => /^[+-][A-Za-z]+$/.test(word.value));
+
   return (
     args.every((word) => /^[+-]/.test(word.value)) ||
-    args.some(
-      (word) => /^[+-][A-Za-z]+$/.test(word.value) && word.value.includes("p"),
-    )
+    flags.some((word) => word.value.includes("p")) ||
+    (flags.some((word) => word.value.includes("m")) &&
+      args.some((word) => !/^[+-]/.test(word.value) && !assignment(word)))
   );
 };
 const exposesEnvironment = (name, words) =>
