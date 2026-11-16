@@ -67,6 +67,14 @@ const phaseManifest = (phase, count) => {
 };
 const manifest = () => phaseManifest("release-prerequisites", 12);
 const phaseWorkflow = () => stringify(workflow());
+const workshopWorkflow = () => {
+  const value = workflow();
+  value.jobs.check.steps.find(
+    (step) => step.id === "coverage-upload",
+  ).with.path =
+    "coverage/unit/lcov.info\ncoverage/governance/lcov.info\ncoverage/storybook/lcov.info\ncoverage/governance/powershell.xml\ncoverage/verification-coverage.json\n";
+  return value;
+};
 const changedWorkflow = (change) => {
   const value = workflow();
   change(value);
@@ -100,10 +108,14 @@ test("source preparation retains the complete module gate and adds the workshop 
         applicationReady: false,
       }),
     );
-    assert.deepEqual(inspectCi(phaseWorkflow(), selected), {
+    const source =
+      publicationStage === "workshop"
+        ? stringify(workshopWorkflow())
+        : phaseWorkflow();
+    assert.deepEqual(inspectCi(source, selected), {
       requiredChecks: count,
     });
-    assert.deepEqual(inspectSonarWorkflow(phaseWorkflow(), selected), {
+    assert.deepEqual(inspectSonarWorkflow(source, selected), {
       requiredChecks: count,
     });
     assert.throws(
@@ -121,6 +133,35 @@ test("source preparation retains the complete module gate and adds the workshop 
         }),
       /known publication stage/,
     );
+});
+
+test("workshop publication requires its measured Storybook report in the immutable coverage artifact", () => {
+  const selected = {
+    ...phaseManifest("release-prerequisites", 12),
+    phase: "source-preparation",
+    publicationStage: "workshop",
+  };
+  assert.throws(
+    () => inspectCi(phaseWorkflow(), selected),
+    /coverage must be recorded/,
+  );
+  for (const path of [
+    "coverage/unit/lcov.info\ncoverage/storybook/lcov.info\ncoverage/governance/powershell.xml\ncoverage/verification-coverage.json",
+    "coverage/unit/lcov.info\ncoverage/governance/lcov.info\ncoverage/storybook/stale.info\ncoverage/governance/powershell.xml\ncoverage/verification-coverage.json",
+  ]) {
+    const value = workshopWorkflow();
+    value.jobs.check.steps.find(
+      (step) => step.id === "coverage-upload",
+    ).with.path = path;
+    assert.throws(
+      () => inspectCi(stringify(value), selected),
+      /coverage must be recorded/,
+    );
+  }
+  assert.throws(
+    () => inspectCi(stringify(workshopWorkflow()), manifest()),
+    /coverage must be recorded/,
+  );
 });
 
 const splitWorkflow = () => parse(read("scripts/ci-split-suites.test.yml"));
@@ -1851,13 +1892,21 @@ const currentRun = () => ({
   path: ".github/workflows/ci.yml",
 });
 const powershellFile = "coverage/governance/powershell.xml";
-const contents = (applicationReady = false) => ({
+const storybookFile = "coverage/storybook/lcov.info";
+const contents = (applicationReady = false, storybook = false) => ({
   "coverage/unit/lcov.info": Buffer.from(
     "SF:src/value.ts\nDA:1,1\nend_of_record\n",
   ),
   "coverage/governance/lcov.info": Buffer.from(
     "SF:scripts/check.mjs\nDA:1,1\nend_of_record\n",
   ),
+  ...(storybook
+    ? {
+        [storybookFile]: Buffer.from(
+          "SF:src/StoryFixture.tsx\nDA:1,1\nend_of_record\n",
+        ),
+      }
+    : {}),
   ...(applicationReady
     ? {
         [powershellFile]: Buffer.from(
@@ -1951,6 +2000,65 @@ test("coverage provenance accepts only exact, finite public producer identities"
       () => validateCoverageIdentity({ ...identity(), [key]: value }),
       /Coverage identity/,
     );
+});
+
+test("workshop coverage binds its Storybook report, phase flag and exact producer alongside both inherited reports", () => {
+  const measured = contents(false, true);
+  const report = coverageManifest(identity(), measured, { storybook: true });
+  assert.equal(report.verification.storybook, true);
+  assert.deepEqual(
+    report.files.map(({ path }) => path),
+    ["coverage/unit/lcov.info", "coverage/governance/lcov.info", storybookFile],
+  );
+  assert.equal(
+    verifyCoverageManifest(report, identity(), measured, {
+      applicationReady: false,
+      storybook: true,
+    }),
+    true,
+  );
+  for (const changed of [
+    {
+      ...measured,
+      [storybookFile]: Buffer.from("unmeasured Storybook output"),
+    },
+    {
+      ...measured,
+      [storybookFile]: Buffer.from(
+        "SF:src/StoryFixture.tsx\nDA:1,0\nend_of_record\n",
+      ),
+    },
+    contents(),
+  ])
+    assert.throws(() =>
+      verifyCoverageManifest(report, identity(), changed, { storybook: true }),
+    );
+  for (const storybook of [undefined, false, "true"])
+    assert.throws(() =>
+      verifyCoverageManifest(
+        {
+          ...report,
+          verification: { ...report.verification, storybook },
+        },
+        identity(),
+        measured,
+        { storybook: true },
+      ),
+    );
+  for (const expected of [
+    { ...identity(), head: base },
+    { ...identity(), tree: commit },
+    { ...identity(), runId: "124" },
+    { ...identity(), runAttempt: "3" },
+  ])
+    assert.throws(() =>
+      verifyCoverageManifest(report, expected, measured, { storybook: true }),
+    );
+  assert.throws(() =>
+    verifyCoverageManifest(report, identity(), contents(), {
+      storybook: false,
+    }),
+  );
 });
 
 test("application coverage binds genuine-format PowerShell hits and misses alongside both LCOV reports", () => {
@@ -2485,7 +2593,11 @@ test("Sonar preserves source, fixture and coverage scope with duplication measur
         return [line.slice(0, separator), line.slice(separator + 1)];
       }),
   );
-  const application = actualManifest().applicationReady === true;
+  const manifest = actualManifest();
+  const application = manifest.applicationReady === true;
+  const storybook = manifest.checks.some(
+    (check) => check.id === "storybook-browser" && check.kind === "required",
+  );
   const published = JSON.parse(
     read(".github/bootstrap-policy.json"),
   ).allowedFiles;
@@ -2500,24 +2612,15 @@ test("Sonar preserves source, fixture and coverage scope with duplication measur
       ".agents/hooks",
       "deploy",
       "tooling",
-      ...(application
-        ? [
-            "vite.config.ts",
-            "playwright.config.ts",
-            "playwright.visual.config.ts",
-            "vitest.contract.config.ts",
-          ]
-        : []),
+      "vite.config.ts",
+      "playwright.config.ts",
+      "playwright.visual.config.ts",
+      "vitest.contract.config.ts",
     ].filter(admitted),
   );
   assert.deepEqual(
     properties["sonar.tests"].split(","),
-    [
-      "src",
-      "scripts",
-      ".storybook",
-      ...(application ? ["e2e", "contract"] : []),
-    ].filter(admitted),
+    ["src", "scripts", ".storybook", "e2e", "contract"].filter(admitted),
   );
   const fixtures = [
     ...(admitted("src")
@@ -2528,7 +2631,8 @@ test("Sonar preserves source, fixture and coverage scope with duplication measur
     "scripts/*.test-support.mjs",
     ...(admitted("src") ? ["src/**/*.stories.tsx"] : []),
     ...(admitted(".storybook") ? [".storybook/**"] : []),
-    ...(application ? ["e2e/**", "contract/**"] : []),
+    ...(admitted("e2e") ? ["e2e/**"] : []),
+    ...(admitted("contract") ? ["contract/**"] : []),
   ];
   assert.deepEqual(properties["sonar.test.inclusions"].split(","), fixtures);
   assert.deepEqual(properties["sonar.exclusions"].split(","), fixtures);
@@ -2542,14 +2646,17 @@ test("Sonar preserves source, fixture and coverage scope with duplication measur
   assert.deepEqual(properties["sonar.javascript.lcov.reportPaths"].split(","), [
     "coverage/unit/lcov.info",
     "coverage/governance/lcov.info",
-    ...(application ? ["coverage/storybook/lcov.info"] : []),
+    ...(storybook ? [storybookFile] : []),
   ]);
   assert.equal(
     properties["sonar.coverageReportPaths"],
     application ? powershellFile : undefined,
   );
 });
-const evidenceFixture = async (context, { applicationReady = false } = {}) => {
+const evidenceFixture = async (
+  context,
+  { applicationReady = false, storybook = false } = {},
+) => {
   const directory = await realpath(
     await mkdtemp(path.join(tmpdir(), "kernel-ci-evidence-")),
   );
@@ -2594,15 +2701,28 @@ const evidenceFixture = async (context, { applicationReady = false } = {}) => {
     updated_at: "2026-10-31T01:00:00Z",
   };
   const artifact = { name: "verification-122-2", expired: false };
-  const report = coverageManifest(producer, contents(applicationReady), {
-    applicationReady,
-  });
+  const report = coverageManifest(
+    producer,
+    contents(applicationReady, storybook),
+    {
+      applicationReady,
+      storybook,
+    },
+  );
   const put = async (file, data) => {
     const filename = path.join(directory, file);
     await mkdir(path.dirname(filename), { recursive: true });
     await writeFile(filename, data);
   };
-  await put(".agents/validation.json", JSON.stringify({ applicationReady }));
+  await put(
+    ".agents/validation.json",
+    JSON.stringify({
+      applicationReady,
+      ...(storybook
+        ? { phase: "source-preparation", publicationStage: "workshop" }
+        : {}),
+    }),
+  );
   await put(
     "event.json",
     JSON.stringify({
@@ -2614,7 +2734,9 @@ const evidenceFixture = async (context, { applicationReady = false } = {}) => {
       },
     }),
   );
-  for (const [file, data] of Object.entries(contents(applicationReady)))
+  for (const [file, data] of Object.entries(
+    contents(applicationReady, storybook),
+  ))
     await put(file, data);
   await put("coverage/verification-coverage.json", JSON.stringify(report));
   const requests = [];
@@ -2760,6 +2882,79 @@ test("non-application scanner input disables unverified extra PowerShell XML ins
   await fixture.resetOutput();
   await execute("--verify-coverage");
   assert.deepEqual(await fixture.outputs(), { powershell_report: "" });
+});
+
+test("workshop publication and scanner require manifest-bound measured Storybook bytes and reject stale or missing artifacts", async (context) => {
+  const fixture = await evidenceFixture(context, { storybook: true });
+  const execute = fixture.runner();
+  await execute("--record-coverage");
+  const recorded = JSON.parse(
+    await readFile(
+      path.join(fixture.directory, "coverage/verification-coverage.json"),
+      "utf8",
+    ),
+  );
+  assert.equal(recorded.verification.applicationReady, false);
+  assert.equal(recorded.verification.storybook, true);
+  assert.deepEqual(
+    recorded.files,
+    coverageManifest(fixture.expected, contents(false, true), {
+      storybook: true,
+    }).files,
+  );
+  await execute("--verify-coverage");
+  assert.equal((await fixture.outputs()).powershell_report, "");
+
+  fixture.enableReuse();
+  await fixture.put(
+    "coverage/verification-coverage.json",
+    JSON.stringify(fixture.report),
+  );
+  await execute("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "true");
+  const measured = contents(false, true)[storybookFile];
+  await fixture.put(
+    storybookFile,
+    measured.toString().replace("DA:1,1", "DA:1,0"),
+  );
+  await execute("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "false");
+  fixture.environment.VERIFICATION_COVERAGE_RUN_ID = fixture.producer.runId;
+  fixture.environment.VERIFICATION_COVERAGE_ATTEMPT =
+    fixture.producer.runAttempt;
+  await fixture.resetOutput();
+  await assert.rejects(execute("--verify-coverage"), /exact tested source/);
+  assert.deepEqual(await fixture.outputs(), {});
+
+  await rm(path.join(fixture.directory, storybookFile));
+  await execute("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "false");
+  await assert.rejects(execute("--verify-coverage"), /ENOENT/);
+  await assert.rejects(execute("--record-coverage"), /ENOENT/);
+  await fixture.put(storybookFile, measured);
+  await fixture.put(
+    "coverage/verification-coverage.json",
+    JSON.stringify(coverageManifest(fixture.producer, contents())),
+  );
+  await execute("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "false");
+  await assert.rejects(execute("--verify-coverage"), /coverage scope/);
+
+  await fixture.put(
+    "coverage/verification-coverage.json",
+    JSON.stringify(fixture.report),
+  );
+  await fixture.put(
+    ".agents/validation.json",
+    JSON.stringify({
+      applicationReady: false,
+      phase: "source-preparation",
+      publicationStage: "core",
+    }),
+  );
+  await execute("--accept-reuse");
+  assert.equal((await fixture.outputs()).reused, "false");
+  await assert.rejects(execute("--verify-coverage"), /coverage scope/);
 });
 
 test("application publication and scanner bind measured PowerShell bytes while reuse rejects tampering and missing reports", async (context) => {

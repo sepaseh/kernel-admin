@@ -128,6 +128,7 @@ test("the current full gate executes every published required check in declared 
   const required = manifest.checks.filter((check) => check.kind === "required");
   assert.equal(manifest.phase, publication.phase);
   assert.equal(manifest.applicationReady, publication.applicationReady);
+  assert.equal(manifest.publicationStage, publication.publicationStage);
   const expected = requiredCheckCommands(manifest);
   const count = expected.length;
   const application = manifest.phase === "application-verification";

@@ -74,6 +74,20 @@
       "scopes": ["source-preparation"]
     },
     {
+      "id": "storybook-build",
+      "command": "npm run build-storybook",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["source-preparation"]
+    },
+    {
+      "id": "storybook-browser",
+      "command": "npm run test:storybook",
+      "kind": "required",
+      "ciJobs": ["check"],
+      "scopes": ["source-preparation"]
+    },
+    {
       "id": "guidance-tests",
       "command": "npm run test:guidance",
       "kind": "advisory",
@@ -92,7 +106,9 @@
       "lint",
       "format",
       "unit-coverage",
-      "governance-coverage"
+      "governance-coverage",
+      "storybook-build",
+      "storybook-browser"
     ],
     "guidance": ["guidance", "guidance-tests"],
     "complete": [
@@ -105,7 +121,9 @@
       "lint",
       "format",
       "unit-coverage",
-      "governance-coverage"
+      "governance-coverage",
+      "storybook-build",
+      "storybook-browser"
     ]
   },
   "externalWorkflows": [
@@ -119,5 +137,5 @@
     }
   ],
   "verificationModel": "single-pass-v1",
-  "publicationStage": "features"
+  "publicationStage": "workshop"
 }
