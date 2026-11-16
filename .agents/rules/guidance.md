@@ -1,0 +1,65 @@
+# Guidance and documentation
+
+[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
+
+Use [AGENTS](../../AGENTS.md), the [settings index](../settings.json) and
+[task map](../navigation.json) for progressive reading.
+Read the owner source and tests; index entries and static links do not prove
+behavior or successful execution.
+
+Keep assistant instructions and maintained documentation English, current and
+organized by reader task. Use the existing architecture (`docs/architecture.md`),
+[development guide](../../docs/development.md) and task map to select the owner.
+Update that owner alongside behavior, configuration, test or workflow changes.
+Procedures state prerequisites, actions, expected results and relevant recovery;
+references define contracts; explanations describe
+ownership and reasoning. Verify changed claims against source and nearby tests.
+Maintained guides describe current behavior only. Do not add PR numbers, commit
+hashes, CI-run results, past owner decisions, dated QA reports, decision logs,
+archives, ADRs, translated companion guides or bilingual navigation. Keep task
+investigations, proposals and execution evidence in the current chat or authorized
+PR materials. Application localization remains a separate concern.
+
+Organize user-facing navigation around installation, capabilities, source work
+and deployment using existing guides; do not force a new taxonomy, folder
+structure or replacement index.
+
+Use repository-relative machine paths and document-relative Markdown links.
+Link maintained current files, not future or deleted paths. Register only
+published owners, tests, rules, skills and actual check IDs. The publication
+inventory owns admitted paths; generated output and private runtime state are
+never documentation fixtures. Keep human guides flat and task-oriented.
+
+The [manifest](../validation.json) owns commands and profiles; settings project
+that inventory. Do not duplicate an independent complete gate or fixed count.
+Optional host adapters and hooks need actual integration; they do not grant
+authorization, install themselves automatically or replace the full gate.
+
+Report execution outcomes and evidence limits in the current task or terminal.
+Do not commit execution reports. Create a local report only when explicitly
+requested, under ignored `test-results/`; required coverage stays in its configured
+location. Keep repository-specific scratch exports, validation evidence and
+recovery files inside ignored repository-local directories.
+
+Static checks establish paths, indexes and command consistency. They do not prove
+that a host loaded instructions, that an assistant understood them, that a
+provider completed analysis or review, or that an application ran. Record actual
+host-reported loading where available and otherwise mark discovery unknown.
+Keep evaluation prompts separate from oracle answers. Use only synthetic
+fixtures; never inspect secrets or owner data to answer evaluation questions.
+Do not claim portability or improved performance without measured evidence.
+
+Preserve all ten UI catalogs, Persian calendar data, server-owned language,
+direction and calendar metadata, and required visual-baseline runtime, source,
+hash and human-review provenance as technical metadata. Clearly identified
+localized product strings, date examples and synthetic UI fixtures may retain
+their language; surrounding prose stays English.
+The guidance check rejects Persian Markdown companion filenames recursively and
+non-Latin prose in admitted Markdown. Put localized product examples in inline
+code or fenced/indented code blocks. Review Latin-script prose for English;
+static checks cannot classify its language.
+
+Follow the [documentation workflow](../../CONTRIBUTING.md#documentation).
+Use the optional [read-only comprehension evaluation](../../docs/comprehension-evaluation.md)
+only when requested. An index, procedure or blank template does not establish
+execution.

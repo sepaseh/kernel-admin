@@ -1,0 +1,13 @@
+dist
+dist-ssr
+node_modules
+*.local
+.vitest-cache
+.vitest
+.stryker-tmp
+
+**/coverage/
+**/storybook-static/
+**/test-results/
+**/playwright-report/
+releases/

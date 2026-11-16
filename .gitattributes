@@ -1,0 +1,17 @@
+* text=auto
+
+*.css text eol=lf
+*.html text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+*.svg text eol=lf
+
+# Keep the licensed font text byte-stable for asset-integrity checks on Windows.
+src/assets/fonts/vazirmatn/OFL.txt text eol=lf
