@@ -59,6 +59,6 @@
       "limitations": "Static inventory/link checks do not prove automatic host loading or improved assistant comprehension; optional Bash host prerequisites must be reported."
     }
   ],
-  "phase": "repository-foundation",
+  "phase": "source-preparation",
   "applicationReady": false
 }

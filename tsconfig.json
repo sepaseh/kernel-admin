@@ -16,5 +16,5 @@
     "target": "ES2023",
     "types": ["node"]
   },
-  "include": ["vitest.config.ts"]
+  "include": ["tooling/**/*.ts", "vitest.config.ts"]
 }
