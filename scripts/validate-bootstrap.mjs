@@ -13,6 +13,7 @@ const coreFiles = [
   policyPath,
   "scripts/validate-bootstrap.mjs",
   "scripts/validate-bootstrap.test.mjs",
+  "scripts/publication-stages.mjs",
 ];
 const foundationFiles = [
   ".agents/validation.json",
@@ -345,7 +346,14 @@ const guidanceDependencies = new Map([
     "scripts/check-guidance.test.mjs",
     ["scripts/check-guidance.mjs", "scripts/check-guidance.test-support.mjs"],
   ],
-  ["scripts/check-guidance.test-support.mjs", ["scripts/check-guidance.mjs"]],
+  [
+    "scripts/check-guidance.test-support.mjs",
+    [
+      "scripts/check-guidance.mjs",
+      "scripts/ci-single-pass.test.yml",
+      "scripts/ci-application-single-pass.test.yml",
+    ],
+  ],
   [
     "scripts/check-guidance.integration.test.mjs",
     ["scripts/check-guidance.mjs", "scripts/check-guidance.test-support.mjs"],
@@ -756,7 +764,6 @@ export const validateBootstrapPolicy = (policy) => {
           ...coreFiles,
           ...foundationFiles.filter((file) => !file.startsWith("src/")),
           ".github/workflows/codeql.yml",
-          "scripts/publication-stages.mjs",
           ...preparedFiles,
         ]
       : requiredFilesForPhase(policy.phase)),
