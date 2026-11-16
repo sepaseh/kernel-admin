@@ -1,0 +1,185 @@
+import type { ParseKeys } from "i18next";
+
+import type { PermissionKey } from "@/features/roles";
+
+export type AccessRule = "authenticated" | "public" | PermissionKey;
+export type RouteLayout = "auth" | "default" | "standalone";
+
+type RoutePermissions = {
+  access: AccessRule;
+  actions: Record<string, PermissionKey>;
+};
+
+type RouteConfig = {
+  index?: boolean;
+  label?: ParseKeys;
+  layout: RouteLayout;
+  link?: (...args: never[]) => string;
+  path: string;
+  permissions: RoutePermissions;
+};
+
+export const routeTree = {
+  account: {
+    label: "account",
+    layout: "default",
+    path: "/account",
+    permissions: { access: "authenticated", actions: {} },
+  },
+  auth: {
+    index: true,
+    layout: "auth",
+    path: "/auth",
+    permissions: { access: "public", actions: {} },
+  },
+  calendar: {
+    label: "calendar",
+    layout: "default",
+    path: "/calendar",
+    permissions: {
+      access: "calendar.read",
+      actions: { canUpdate: "calendar.update" },
+    },
+  },
+  contentCategories: {
+    label: "contentCategories",
+    layout: "default",
+    path: "/content-categories",
+    permissions: {
+      access: "content-categories.read",
+      actions: {
+        canCreate: "content-categories.create",
+        canDelete: "content-categories.delete",
+        canUpdate: "content-categories.update",
+      },
+    },
+  },
+  faqs: {
+    label: "faqs",
+    layout: "default",
+    path: "/faqs",
+    permissions: {
+      access: "faqs.read",
+      actions: {
+        canCreate: "faqs.create",
+        canUpdate: "faqs.update",
+        canDelete: "faqs.delete",
+      },
+    },
+  },
+  files: {
+    label: "files",
+    layout: "default",
+    path: "/files",
+    permissions: {
+      access: "files.read",
+      actions: { canDelete: "files.delete" },
+    },
+  },
+  forgotPassword: {
+    layout: "auth",
+    path: "/auth/forgot-password",
+    permissions: { access: "public", actions: {} },
+  },
+  contents: {
+    label: "contents",
+    layout: "default",
+    path: "/contents",
+    permissions: {
+      access: "contents.read",
+      actions: {
+        canCreate: "contents.create",
+        canDelete: "contents.delete",
+        canUpdate: "contents.update",
+      },
+    },
+  },
+  notFound: {
+    layout: "standalone",
+    path: "*",
+    permissions: { access: "public", actions: {} },
+  },
+  register: {
+    layout: "auth",
+    path: "/auth/register",
+    permissions: { access: "public", actions: {} },
+  },
+  roles: {
+    label: "roles",
+    layout: "default",
+    path: "/roles",
+    permissions: {
+      access: "roles.read",
+      actions: {
+        canCreate: "roles.create",
+        canDelete: "roles.delete",
+        canUpdate: "roles.update",
+      },
+    },
+  },
+  root: {
+    index: true,
+    label: "dashboard",
+    layout: "default",
+    path: "/",
+    permissions: { access: "authenticated", actions: {} },
+  },
+  settings: {
+    label: "settings",
+    layout: "default",
+    path: "/settings",
+    permissions: {
+      access: "settings.update",
+      actions: { canUpdate: "settings.update" },
+    },
+  },
+  users: {
+    label: "users",
+    layout: "default",
+    path: "/users",
+    permissions: {
+      access: "users.read",
+      actions: {
+        canCreate: "users.create",
+        canDelete: "users.delete",
+        canUpdate: "users.update",
+      },
+    },
+  },
+} satisfies Record<string, RouteConfig>;
+
+export type RouteKey = keyof typeof routeTree;
+
+type NavigationRouteKey = {
+  [Key in RouteKey]: (typeof routeTree)[Key] extends { label: ParseKeys }
+    ? Key
+    : never;
+}[RouteKey];
+
+export type NavigationItem =
+  | { readonly route: NavigationRouteKey }
+  | {
+      readonly children: readonly NavigationItem[];
+      readonly key: string;
+      readonly label: ParseKeys;
+    };
+
+export const navigationTree: readonly NavigationItem[] = [
+  { route: "root" },
+  {
+    children: [{ route: "users" }, { route: "roles" }],
+    key: "userManagement",
+    label: "userManagement",
+  },
+  {
+    children: [{ route: "contents" }, { route: "contentCategories" }],
+    key: "content",
+    label: "content",
+  },
+  { route: "calendar" },
+  { route: "faqs" },
+  { route: "files" },
+  { route: "settings" },
+];
+
+export const baseUrl: string = import.meta.env.VITE_APP_BASE_URL ?? "";
