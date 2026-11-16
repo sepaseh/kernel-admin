@@ -1,7 +1,5 @@
 # Authentication and request lifecycles
 
-The publication policy defines current source admission and readiness. Application procedures below require their owning source and commands to be admitted; source preparation does not establish a runnable application, successful verification or deployment.
-
 Use this reference when changing an HTTP adapter, session transition or asynchronous screen. Start with the relevant owner and its tests:
 
 The application composes transport, feature HTTP adapters, settings metadata, guarded requests, providers and authentication forms. Local tests use synthetic responses. Live backend integration requires separate verification.

@@ -5,8 +5,6 @@ description: Design or refine published Kernel Admin components and stories with
 
 # Design UI
 
-[The publication policy](../../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Read [AGENTS](../../../AGENTS.md), [DESIGN](../../../DESIGN.md) and the closest source
 recipe. Follow canonical styling, React and localization guidance, plus Storybook
 guidance when admitted, rather than copying product rules into another design guide.

@@ -1,15 +1,15 @@
 # Assistant guidance
 
-Start with [AGENTS](../AGENTS.md), the canonical rules in [settings](settings.json) and the current [task map](navigation.json). Read source and nearby tests before changing an owner, and preserve unrelated work.
+Start with [AGENTS](../AGENTS.md) and the rules indexed in [settings](settings.json). Use the existing [architecture](../docs/architecture.md), [development guide](../docs/development.md) and [task map](navigation.json) to locate current owners. Read current source before changing it and preserve unrelated user work.
 
-[The publication policy](../.github/bootstrap-policy.json) owns exact source admission and readiness. Application conventions and plain code paths in guidance describe requirements for their owners when admitted. They do not establish application availability, successful execution or automatic host instruction loading.
+The [validation manifest](validation.json) owns commands and profiles. Start with a focused check, then run its full profile on the exact isolated proposed source before an authorized commit, push or handoff. Use [validation](../docs/validation.md) and honest current-revision results; optional hooks and host adapters are not substitutes.
 
-The [validation manifest](validation.json) owns commands and profiles. Start focused, then run its complete `full` profile on an exact, isolated verification-only export before an authorized commit, push or handoff. Follow [validation](../docs/validation.md). Optional hooks and adapters do not install themselves, grant permissions or replace required checks.
+Ordinary local and PR verification uses Chromium. The complete profile substitutes the full browser matrix and adds approved-runtime image comparison; numerical metrics are advisory under [code quality](rules/code-quality.md). Preserve these manifest responsibilities and source-bound measured reports when reorganizing checks.
 
-Git and remote work starts with [Git workflow](rules/git.md). Use [development](../docs/development.md) for the current root toolchain and contribution process. Interface work follows [DESIGN](../DESIGN.md) and [design-ui](skills/design-ui/SKILL.md) only for admitted components or an explicitly requested concept. React, Ant Design, React Router, Axios, complete local catalogs and API-owned language metadata remain application constraints.
+Application CI exposes its actual suites independently. The manifest's CI profiles partition every required check once, and `check` aggregates their results. Reuse the verified build across browser, visual and performance jobs and the measured producer reports for Sonar. Follow [validation](../docs/validation.md) when changing source identity, artifacts or producer attempts.
 
-Current human documentation and active assistant instructions are English. Use [the documentation map](../docs/README.md) and update the existing task owner. Keep investigations and actual results in the chat or authorized PR materials, without adding maintained decision logs or historical execution reports.
+Interface work starts with [DESIGN](../DESIGN.md) and [design-ui](skills/design-ui/SKILL.md). Git/remote work starts with [Git workflow](rules/git.md). Current human docs and active assistant instructions are English. Keep application translations and API-owned language metadata intact.
 
-Never read real environment files, credentials, keys, certificates, databases, uploads or browser state as test fixtures. Preserve private local settings and operator state unread. Only reviewed synthetic public examples may be fixtures when explicitly admitted by the publication policy.
+Never use real environments, credentials, certificates, databases, uploads or browser state as fixtures. Existing authorization persists within scope; source preparation does not authorize real operations or publication.
 
-Existing authorization persists within its scope. Source preparation does not authorize publication, provider review, deployment or real operations. The [working-checkout rule](rules/branches.md#working-checkout) requires the existing checkout and keeps disposable validation exports verification-only.
+Read [deployment](../docs/deployment.md) before invoking helpers that may write files, start resources or contact targets. Only reviewed synthetic public examples at `.env.example`, `deploy/docker/compose.env.example` and `deploy/native/nginx.env.example` are source exceptions; private counterparts remain unread.

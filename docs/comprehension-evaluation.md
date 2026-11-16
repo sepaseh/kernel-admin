@@ -1,7 +1,5 @@
 # Evaluate instruction discovery
 
-[The publication policy](../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Use this optional procedure when an instruction-discovery evaluation is requested. It checks whether an assistant can locate and explain the current source. It produces an assessment of that answer; runtime behavior still requires [validation](validation.md).
 
 ## Prepare the assessment

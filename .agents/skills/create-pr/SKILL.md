@@ -5,8 +5,6 @@ description: Prepare or create a focused Kernel pull request with exact-snapshot
 
 # Create a pull request
 
-[The publication policy](../../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Read [Git workflow](../../rules/git.md), [pull requests](../../rules/pull-requests.md),
 [branches](../../rules/branches.md), [commits](../../rules/commits.md) and
 [safety](../../rules/safety.md). Use [validate-change](../validate-change/SKILL.md)

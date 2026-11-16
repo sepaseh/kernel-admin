@@ -1,7 +1,5 @@
 # Contract fixture quality
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Parse changed JSON and inspect the affected local HTTP DTOs, normalization,
 synthetic fixtures and consumer documentation together. Search for obsolete fields
 after a rename. Do not scan ignored operator state, generated output or

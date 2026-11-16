@@ -1,7 +1,5 @@
 # Build and run the Docker service
 
-The publication policy defines current source admission and readiness. Application procedures below require their owning source and commands to be admitted; source preparation does not establish a runnable application, successful verification or deployment.
-
 Use this procedure to build an immutable frontend image and start it on an authorized local Linux Docker engine. Developers configure a compatible HTTP backend separately from this static frontend image. [Deployment](../../docs/deployment.md) owns public configuration, release identity and target verification.
 
 ## Prerequisites

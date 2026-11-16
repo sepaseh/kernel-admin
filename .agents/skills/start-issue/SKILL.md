@@ -5,8 +5,6 @@ description: Begin implementation of an existing Kernel issue when asked to work
 
 # Start an issue
 
-[The publication policy](../../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Use this workflow for a request to begin the issue's implementation, not a mere
 issue mention or read-only discussion. Read [Git workflow](../../rules/git.md),
 [issues](../../rules/issues.md), [branches](../../rules/branches.md) and
@@ -17,7 +15,7 @@ issue mention or read-only discussion. Read [Git workflow](../../rules/git.md),
    labels, comments or dependencies when access is unavailable.
 2. Separate observed facts, assumptions and unknowns. Verify the issue against
    current source, locate owners through the existing [task map](../../navigation.json),
-   architecture (`docs/architecture.md`) and [development guide](../../../docs/development.md),
+   [architecture](../../../docs/architecture.md) and [development guide](../../../docs/development.md),
    and identify objective acceptance criteria and a proportionate plan.
 3. Clarify only missing decisions that materially change implementation. A
    duplicate or already-resolved issue is evidence to report, not permission to

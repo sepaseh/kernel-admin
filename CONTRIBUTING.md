@@ -1,8 +1,6 @@
 # Contributing
 
-[The publication policy](.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
-Use the existing checkout and start with [development](docs/development.md), architecture (`docs/architecture.md`), the [publication policy](.github/bootstrap-policy.json) and relevant [Git rules](.agents/rules/git.md). Preserve unrelated work.
+Use the existing checkout and start with [development](docs/development.md), [architecture](docs/architecture.md), the [publication policy](.github/bootstrap-policy.json) and relevant [Git rules](.agents/rules/git.md). Preserve unrelated work.
 
 ## Pull requests
 

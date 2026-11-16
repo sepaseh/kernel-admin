@@ -1,7 +1,5 @@
 # Build, package and deploy
 
-The publication policy defines current source admission and readiness. Application procedures below require their owning source and commands to be admitted; source preparation does not establish a runnable application, successful verification or deployment.
-
 Use this guide to prepare an immutable frontend release and verify an authorized deployment. Build and package from verified application source. The configured backend owns authentication, authorization, data and storage.
 
 ## Before you start
@@ -102,4 +100,4 @@ node scripts/healthcheck.mjs https://admin.example.invalid/console/ release-demo
 
 Keep the prior verified package and configuration until the new release passes its target checks. To roll back, select that prior package/configuration and repeat verification with its original release ID and base path. Do not rebuild an old identifier with new contents. Preserve operator TLS/configuration privately and exercise restore procedures on an authorized isolated target.
 
-Mutation and release workflows require source admission and separate authorization to dispatch. Consult their inputs and target validators before an authorized operation. Report the actual revision, target, result and first failure. Deployment and provider compatibility require evidence from the authorized target.
+The admitted mutation and release workflows require separate authorization to dispatch. Consult their inputs and target validators before an authorized operation. Report the actual revision, target, result and first failure. Deployment and provider compatibility require evidence from the authorized target.

@@ -1,0 +1,68 @@
+name: Deployment smoke tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      application_url:
+        description: Deployed application base URL
+        required: true
+        type: string
+      api_health_url:
+        description: Public API health endpoint
+        required: true
+        type: string
+      deployment_id:
+        description: Immutable identifier of the deployed release
+        required: true
+        type: string
+
+concurrency:
+  cancel-in-progress: true
+  group: deployment-smoke-${{ inputs.application_url }}
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SMOKE_ALLOWED_API_HOST: ${{ vars.SMOKE_ALLOWED_API_HOST }}
+      SMOKE_ALLOWED_APP_HOST: ${{ vars.SMOKE_ALLOWED_APP_HOST }}
+      SMOKE_API_HEALTH_URL: ${{ inputs.api_health_url }}
+      SMOKE_BASE_URL: ${{ inputs.application_url }}
+      SMOKE_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+      SMOKE_EXPECTED_DEPLOYMENT_ID: ${{ vars.SMOKE_EXPECTED_DEPLOYMENT_ID }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          cache: npm
+          node-version-file: .nvmrc
+
+      - name: Validate smoke-test targets
+        run: node scripts/validate-workflow-targets.mjs smoke
+
+      - run: npm ci --strict-peer-deps --no-audit --no-fund
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run test:smoke
+
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: deployment-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            coverage/smoke/report
+            coverage/smoke/results
+          retention-days: 14
+          if-no-files-found: warn
+          overwrite: false
+          include-hidden-files: false

@@ -1,7 +1,5 @@
 # Styling
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Use Ant Design and antd-style with the source recipes in
 [DESIGN](../../DESIGN.md) and [UI foundation](../../docs/development.md).
 

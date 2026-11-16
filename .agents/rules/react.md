@@ -1,10 +1,9 @@
 # React
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 These Ant Design, i18next, icon and React Router conventions apply to this standalone admin. Keep components, hooks and accessibility consistent with the existing source.
 
-Application admission requires the shared controls, hooks, core providers, authentication screens, route composition and feature screens, together with their genuine verification.
+The admitted application includes shared controls, hooks, core providers,
+authentication screens, route composition and feature screens.
 
 ## Components
 
@@ -51,7 +50,7 @@ export const UserCard = ({ name }: UserCardProps) => <div>{name}</div>;
 ## Request lifecycle
 
 For admin reads, cancellation, stale-result guards, timeouts and session-bound
-refresh/logout, follow request reliability (`docs/authentication.md`).
+refresh/logout, follow [request reliability](../../docs/authentication.md).
 Use direct async/await and local request state in the owning page or provider,
 with the existing `useAbortController` and `useLock` helpers. Preserve request identity
 through retries; a new login must not inherit an old mutation or logout completion.

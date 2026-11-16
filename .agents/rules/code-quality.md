@@ -1,7 +1,5 @@
 # Code Quality
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 ## Validate code changes
 
 Run the smallest check that covers the files you changed, then broaden before handoff when practical.

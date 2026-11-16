@@ -1,0 +1,50 @@
+name: Mutation testing
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+concurrency:
+  cancel-in-progress: true
+  group: mutation-${{ github.ref }}
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      KERNEL_SYNTHETIC_ENV: "1"
+      VITE_API_BASE_URL: http://localhost
+      VITE_APP_BASE_URL: /
+      VITE_OBSERVABILITY_URL: ""
+      VITE_RELEASE_ID: mutation-verification
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          cache: npm
+          node-version-file: .nvmrc
+
+      - name: Install locked mutation dependencies
+        run: npm ci --strict-peer-deps --no-audit --no-fund
+
+      - name: Run every owner test for each mutant
+        run: npm run test:mutation
+
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutation-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: coverage/mutation
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: false
+          include-hidden-files: false

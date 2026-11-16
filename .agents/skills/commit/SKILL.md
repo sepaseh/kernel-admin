@@ -5,8 +5,6 @@ description: Prepare a coherent Kernel commit or create it when explicitly reque
 
 # Commit changes
 
-[The publication policy](../../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Honor explicit authorization and preferences already provided in the conversation;
 a commit request includes staging its reviewed scope, without another confirmation.
 Read [Git workflow](../../rules/git.md), [commits](../../rules/commits.md) and

@@ -1,23 +1,22 @@
 # Design conventions
 
-[The publication policy](.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Use this guide when designing or reviewing an administration screen. The existing stack is React/Vite, Ant Design/antd-style, React Router and Axios. Read the closest admitted component and feature contract before choosing a new abstraction or styling approach, plus stories when available. [Development](docs/development.md) describes the implementation workflow.
 
-Apply these conventions to shared controls, theme and preference helpers, local assets, core providers, authentication and feature screens when admitted.
+The admitted application includes shared controls, theme and preference helpers,
+local assets, core providers, authentication and feature screens, and their tests.
 
 ## Reuse current owners
 
-| Design concern                                        | Existing owner                                                                           |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Light/dark/compact algorithms and semantic colors     | Antd provider (`src/app/providers/antd/Antd.tsx`), using the selected API palette        |
-| Typography, visible keyboard focus and reduced motion | `src/assets/styles` and the licensed local Vazirmatn font                                |
-| Reusable controls and form containers                 | `src/shared/ui`; feature-specific forms stay with their feature                          |
-| Route vocabulary and presentation permissions         | Route metadata (`src/app/config/routes.ts`) and access helpers (`src/app/lib/access.ts`) |
+| Design concern                                        | Existing owner                                                                         |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Light/dark/compact algorithms and semantic colors     | [Antd provider](src/app/providers/antd/Antd.tsx), using the selected API palette       |
+| Typography, visible keyboard focus and reduced motion | [`src/assets/styles`](src/assets/styles) and the licensed local Vazirmatn font         |
+| Reusable controls and form containers                 | [`src/shared/ui`](src/shared/ui); feature-specific forms stay with their feature       |
+| Route vocabulary and presentation permissions         | [Route metadata](src/app/config/routes.ts) and [access helpers](src/app/lib/access.ts) |
 
 Prefer Ant Design props and tokens. Use antd-style for owned custom styles, logical spacing for RTL/LTR and direct named Lucide icons with explicit size/currentColor. Decorative icons use `aria-hidden`; controls need translated accessible names. Use component-specific props types directly on the props parameter, without `FC`; follow the [React rules](.agents/rules/react.md).
 
-The API chooses language, direction, calendar and palettes. A browser preference selects theme/compact presentation. Keep the complete local catalogs and use localization (`docs/localization.md`) for language and date behavior. The API authorizes operations independently of the visible menu or control state.
+The API chooses language, direction, calendar and palettes. A browser preference selects theme/compact presentation. Keep the complete local catalogs and use [localization](docs/localization.md) for language and date behavior. The API authorizes operations independently of the visible menu or control state.
 
 ## Review the interaction
 
