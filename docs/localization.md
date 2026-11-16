@@ -8,18 +8,18 @@ Application admission requires complete catalogs, i18next initialization, date a
 
 ## Find the owner
 
-| Responsibility                                | Source                                                                                                                               |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Supported product codes and complete catalogs | `locales.ts` (`src/shared/i18n/locales.ts`), `catalogs.ts` (`src/shared/i18n/catalogs.ts`) and `locales` (`src/shared/i18n/locales`) |
-| Fixed bootstrap language                      | `index.ts` (`src/shared/i18n/index.ts`)                                                                                              |
-| Server metadata types and HTTP boundary       | Settings API (`src/features/settings/api.ts`)                                                                                        |
-| Applying accepted language and calendar       | Core (`src/app/providers/core/Core.tsx`)                                                                                             |
-| Ant Design locale and document `lang`/`dir`   | Antd provider (`src/app/providers/antd/Antd.tsx`)                                                                                    |
-| Date locales and calendar adapters            | `date.ts` (`src/shared/i18n/date.ts`) and Persian date data (`src/shared/i18n/dayjs/fa.ts`)                                          |
+| Responsibility                                | Source                                                                                                                                     |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Supported product codes and complete catalogs | [`locales.ts`](../src/shared/i18n/locales.ts), [`catalogs.ts`](../src/shared/i18n/catalogs.ts) and [`locales`](../src/shared/i18n/locales) |
+| Fixed bootstrap language                      | [`index.ts`](../src/shared/i18n/index.ts)                                                                                                  |
+| Server metadata types and HTTP boundary       | Settings API (`src/features/settings/api.ts`)                                                                                              |
+| Applying accepted language and calendar       | Core (`src/app/providers/core/Core.tsx`)                                                                                                   |
+| Ant Design locale and document `lang`/`dir`   | Antd provider (`src/app/providers/antd/Antd.tsx`)                                                                                          |
+| Date locales and calendar adapters            | [`date.ts`](../src/shared/i18n/date.ts) and [Persian date data](../src/shared/i18n/dayjs/fa.ts)                                            |
 
 ## Catalog ownership
 
-`src/shared/i18n/locales.ts` (`src/shared/i18n/locales.ts`) registers `ar`, `de`, `en`, `es`, `fa`, `fr`, `it`, `pt`, `ru` and `tr`. Each code has one complete flat catalog in `locales/<code>.ts`. Preserve matching keys, nonempty genuine translations and i18next interpolation names. Reuse an existing semantic key before adding another label; do not add English spreads, aliases, nested common objects or per-language directories.
+[`src/shared/i18n/locales.ts`](../src/shared/i18n/locales.ts) registers `ar`, `de`, `en`, `es`, `fa`, `fr`, `it`, `pt`, `ru` and `tr`. Each code has one complete flat catalog in `locales/<code>.ts`. Preserve matching keys, nonempty genuine translations and i18next interpolation names. Reuse an existing semantic key before adding another label; do not add English spreads, aliases, nested common objects or per-language directories.
 
 `catalogs.ts` loads those exact objects. Individual catalog files, the code list and Persian date data remain pure modules; any type imports are fully erased local types. They do not initialize React, i18next, Day.js or runtime adapters. The English catalog owns the erased key shape. English-only repository documentation does not remove Persian or other product translations.
 
@@ -33,7 +33,7 @@ For a new supported code, update the registered catalogs, supported-code types a
 
 ## Runtime metadata
 
-`index.ts` (`src/shared/i18n/index.ts`) initializes i18next/react-i18next with the local catalogs and fixed English bootstrap/fallback. Module loading awaits initialization and reports initialization rejection. Missing keys retain their identity and produce a diagnostic; fallback does not excuse an incomplete catalog.
+[`index.ts`](../src/shared/i18n/index.ts) initializes i18next/react-i18next with the local catalogs and fixed English bootstrap/fallback. Module loading awaits initialization and reports initialization rejection. Missing keys retain their identity and produce a diagnostic; fallback does not excuse an incomplete catalog.
 
 The settings HTTP adapter returns typed language metadata without runtime code
 normalization or validation. The contract includes a supported code, explicit
@@ -51,4 +51,4 @@ The calendar screen (`src/features/calendar/Calendar.tsx`) formats HTTP keys as 
 
 Storybook controls must select complete synthetic language metadata, independently exercising direction and theme without creating production preferences. Their preview, Core fixture, document, Ant Design, i18next and Day.js must stay synchronized. All production catalogs remain complete.
 
-If text, direction or dates disagree, inspect the accepted settings metadata before changing a catalog or vendor adapter. The settings tests (`src/features/settings/api.test.ts`), Core tests (`src/app/providers/core/Core.test.tsx`) and date tests (`src/shared/i18n/date.test.ts`) cover these boundaries separately. Preserve key/interpolation parity, pure-data imports and catalog registration through their owning tests and review. See [validation](validation.md) for the applicable commands and required gate.
+If text, direction or dates disagree, inspect the accepted settings metadata before changing a catalog or vendor adapter. The settings tests (`src/features/settings/api.test.ts`), Core tests (`src/app/providers/core/Core.test.tsx`) and [date tests](../src/shared/i18n/date.test.ts) cover these boundaries separately. Preserve key/interpolation parity, pure-data imports and catalog registration through their owning tests and review. See [validation](validation.md) for the applicable commands and required gate.

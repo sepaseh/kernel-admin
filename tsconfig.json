@@ -2,7 +2,11 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
-    "lib": ["ES2023"],
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "moduleDetection": "force",
     "moduleResolution": "bundler",
@@ -16,5 +20,12 @@
     "target": "ES2023",
     "types": ["node"]
   },
-  "include": ["tooling/**/*.ts", "vitest.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "vitest.config.ts",
+    ".storybook/**/*.ts",
+    ".storybook/**/*.tsx",
+    "vitest.storybook.config.ts"
+  ]
 }

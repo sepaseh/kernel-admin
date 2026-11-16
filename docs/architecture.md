@@ -21,10 +21,10 @@ The default layout (`src/layouts/default/Default.tsx`) loads the current user be
 | ------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | Accepted settings and appearance preferences      | Core (`src/app/providers/core/Core.tsx`)                   | Server settings remain authoritative; the browser persists theme and compact mode.        |
 | Paths, wire types and HTTP adapters for a feature | `src/features/<feature>/api.ts` and `types.ts`             | Keep the contract with its feature.                                                       |
-| Credentials and HTTP behavior                     | `src/shared/api` (`src/shared/api`)                        | Memory-only tokens, generation checks, bounded refresh, conversion and normalized errors. |
+| Credentials and HTTP behavior                     | [`src/shared/api`](../src/shared/api)                      | Memory-only tokens, generation checks, bounded refresh, conversion and normalized errors. |
 | Read and mutation state                           | Owning feature and `src/shared/hooks` (`src/shared/hooks`) | Direct request cancellation, submission locks and session-generation guards.              |
-| Shared product vocabulary                         | `src/shared/contracts` (`src/shared/contracts`)            | Reuse the profile-name limit and appearance contracts across features.                    |
-| Catalog data and runtime adapters                 | `src/shared/i18n` (`src/shared/i18n`)                      | Keep pure catalog/calendar data separate from UI and vendor initialization.               |
+| Shared product vocabulary                         | [`src/shared/contracts`](../src/shared/contracts)          | Reuse the profile-name limit and appearance contracts across features.                    |
+| Catalog data and runtime adapters                 | [`src/shared/i18n`](../src/shared/i18n)                    | Keep pure catalog/calendar data separate from UI and vendor initialization.               |
 
 The API selects language, text direction, calendar, logos and palettes. A browser theme choice selects which accepted palette to display; it does not change the global settings contract. See [localization](localization.md) and [authentication and requests](authentication.md) for the detailed lifecycles.
 

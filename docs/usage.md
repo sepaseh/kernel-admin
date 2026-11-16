@@ -65,7 +65,7 @@ Stop the server with `Ctrl+C`. Restart it after changing configuration.
 
 The example and Vite configuration (`vite.config.ts`) define public values. See [deployment](deployment.md) for the public input contract and release prerequisites.
 
-The optional reporter (`src/shared/lib/observability.ts`) sends sanitized error and performance events to the selected receiver. Leave the URL blank when no receiver is configured, or supply a custom transport through `setObservabilityTransport`. This frontend does not include or provision a receiving service.
+The [optional reporter](../src/shared/lib/observability.ts) sends sanitized error and performance events to the selected receiver. Leave the URL blank when no receiver is configured, or supply a custom transport through `setObservabilityTransport`. This frontend does not include or provision a receiving service.
 
 The default transport sends one event object per `POST`, serialized as JSON with `Content-Type: application/json` and `keepalive` enabled. Every event includes `name`, `release` and an ISO timestamp in `timestamp`. Error events have `name: "error"`, `message`, and optional `stack` and `context`. Performance events have `name: "performance"`, `metric` and `value`: long tasks use `metric: "long-task"`; Web Vitals use `CLS`, `FCP`, `INP`, `LCP` or `TTFB` and also include `delta`, `rating` and `unit` (`score` for CLS, otherwise `milliseconds`).
 
