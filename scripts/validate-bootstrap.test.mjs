@@ -193,6 +193,7 @@ const completeApplicationFiles = [
   "public/logo.svg",
   "release-please-config.json",
   "scripts/block-dangerous.test.mjs",
+  "scripts/build-directory.mjs",
   "scripts/check-boundaries.mjs",
   "scripts/check-boundaries.test.mjs",
   "scripts/check-bundle-size.mjs",
@@ -716,6 +717,7 @@ const isGuidancePhaseFile = (file) =>
   );
 
 const operationsPrerequisiteFiles = [
+  "scripts/build-directory.mjs",
   "deploy/docker/admin-entrypoint.sh",
   "deploy/docker/admin-healthcheck.sh",
   "scripts/check-guidance.integration.test.mjs",
@@ -1923,7 +1925,7 @@ test("canonical guidance can be admitted incrementally without admitting unrelat
 
 test("release and quality prerequisites require their independent finite closure before application admission", async () => {
   const current = await historicalReleasePolicy();
-  assert.equal(operationsPrerequisiteFiles.length, 62);
+  assert.equal(operationsPrerequisiteFiles.length, 63);
   for (const missing of operationsPrerequisiteFiles.filter(
     (file) => !deferredApplicationPrerequisites.includes(file),
   ))

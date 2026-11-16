@@ -1,0 +1,15 @@
+# Temporary HTTP-only ACME bootstrap; install certificates before enabling TLS.
+server {
+    listen 80 default_server;
+    server_name _;
+    return 444;
+}
+server {
+    listen 80;
+    server_name ${ADMIN_HOST};
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+        try_files $uri =404;
+    }
+    location / { return 503; }
+}
