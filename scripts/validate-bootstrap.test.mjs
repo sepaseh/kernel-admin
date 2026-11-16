@@ -26,6 +26,7 @@ const coreFiles = [
   ".github/workflows/bootstrap.yml",
   "scripts/validate-bootstrap.mjs",
   "scripts/validate-bootstrap.test.mjs",
+  "scripts/publication-stages.mjs",
 ];
 const policy = (overrides = {}) => ({
   allowedFiles: coreFiles,
@@ -192,6 +193,7 @@ const completeApplicationFiles = [
   "public/logo.svg",
   "release-please-config.json",
   "scripts/block-dangerous.test.mjs",
+  "scripts/build-directory.mjs",
   "scripts/check-boundaries.mjs",
   "scripts/check-boundaries.test.mjs",
   "scripts/check-bundle-size.mjs",
@@ -202,6 +204,8 @@ const completeApplicationFiles = [
   "scripts/check-guidance.mjs",
   "scripts/check-guidance.test-support.mjs",
   "scripts/check-guidance.test.mjs",
+  "scripts/ci-single-pass.test.yml",
+  "scripts/ci-application-single-pass.test.yml",
   "scripts/dependency-compatibility.test.mjs",
   "scripts/deploy-runtime.test.mjs",
   "scripts/deployment.integration.test.mjs",
@@ -218,6 +222,7 @@ const completeApplicationFiles = [
   "scripts/package-release.mjs",
   "scripts/package-release.test.mjs",
   "scripts/post-edit-format.test.mjs",
+  "scripts/publication-stages.mjs",
   "scripts/quality-gate.test.mjs",
   "scripts/render-deployment.integration.test.mjs",
   "scripts/render-deployment.mjs",
@@ -712,6 +717,7 @@ const isGuidancePhaseFile = (file) =>
   );
 
 const operationsPrerequisiteFiles = [
+  "scripts/build-directory.mjs",
   "deploy/docker/admin-entrypoint.sh",
   "deploy/docker/admin-healthcheck.sh",
   "scripts/check-guidance.integration.test.mjs",
@@ -962,7 +968,6 @@ const preparationPolicy = (publicationStage, overrides = {}) =>
     publicationStage,
     allowedFiles: [
       ...repositoryFoundationFiles,
-      "scripts/publication-stages.mjs",
       ...sourceFilesForStage(publicationStage),
     ],
     ...overrides,
@@ -996,6 +1001,25 @@ test("source preparation admits only complete cumulative finite stages with fals
       );
   }
   assert.deepEqual(sourceFilesForStage("tooling"), []);
+});
+
+test("every source preparation stage rejects root application entry pages", () => {
+  for (const stage of publicationStages) {
+    const current = preparationPolicy(stage);
+    assert.equal(
+      validateBootstrapPolicy(current).size,
+      current.allowedFiles.length,
+    );
+    for (const file of ["index.html", "INDEX.HTML", "Index.Html"])
+      assert.throws(
+        () =>
+          validateBootstrapPolicy({
+            ...current,
+            allowedFiles: [...current.allowedFiles, file],
+          }),
+        /unique, exact/,
+      );
+  }
 });
 
 test("source preparation rejects unknown stages, future modules and runnable composition", () => {
@@ -1123,6 +1147,30 @@ test("accepts only the declared governance phase and publication schema", () => 
     { allowedFiles: coreFiles.slice(1) },
   ])
     assert.throws(() => validateBootstrapPolicy(policy(overrides)));
+});
+
+test("every snapshot requires the validator's imported stage inventory", () => {
+  for (const current of [
+    policy(),
+    foundationPolicy({
+      phase: "repository-foundation",
+      allowedFiles: repositoryFoundationFiles,
+    }),
+    preparationPolicy("tooling"),
+  ]) {
+    validateBootstrapPolicy(current);
+
+    assert.throws(
+      () =>
+        validateBootstrapPolicy({
+          ...current,
+          allowedFiles: current.allowedFiles.filter(
+            (file) => file !== "scripts/publication-stages.mjs",
+          ),
+        }),
+      /mandatory guard files/,
+    );
+  }
 });
 
 test("rejects wildcard, escaping, private, duplicate and application import paths", () => {
@@ -1284,6 +1332,8 @@ test("repository foundation requires its verification toolchain and canonical Gi
     "scripts/check-guidance.mjs",
     "scripts/check-guidance.test.mjs",
     "scripts/check-guidance.test-support.mjs",
+    "scripts/ci-single-pass.test.yml",
+    "scripts/ci-application-single-pass.test.yml",
   ];
   const current = foundationPolicy({
     phase: "repository-foundation",
@@ -1293,7 +1343,7 @@ test("repository foundation requires its verification toolchain and canonical Gi
     validateBootstrapPolicy(current).size,
     current.allowedFiles.length,
   );
-  assert.equal(repositoryFoundationFiles.length, 13);
+  assert.equal(repositoryFoundationFiles.length, 14);
   assert.ok(current.allowedFiles.every((file) => !file.startsWith("src/")));
   for (const missing of repositoryFoundationFiles)
     assert.throws(
@@ -1374,9 +1424,21 @@ test("incremental guidance retains the imported helpers and executed hook owners
     ],
     [
       "scripts/check-guidance.test.mjs",
-      ["scripts/check-guidance.mjs", "scripts/check-guidance.test-support.mjs"],
+      [
+        "scripts/check-guidance.mjs",
+        "scripts/check-guidance.test-support.mjs",
+        "scripts/ci-single-pass.test.yml",
+        "scripts/ci-application-single-pass.test.yml",
+      ],
     ],
-    ["scripts/check-guidance.test-support.mjs", ["scripts/check-guidance.mjs"]],
+    [
+      "scripts/check-guidance.test-support.mjs",
+      [
+        "scripts/check-guidance.mjs",
+        "scripts/ci-single-pass.test.yml",
+        "scripts/ci-application-single-pass.test.yml",
+      ],
+    ],
   ]) {
     const current = foundationPolicy({
       phase: "repository-foundation",
@@ -1882,7 +1944,7 @@ test("canonical guidance can be admitted incrementally without admitting unrelat
 
 test("release and quality prerequisites require their independent finite closure before application admission", async () => {
   const current = await historicalReleasePolicy();
-  assert.equal(operationsPrerequisiteFiles.length, 62);
+  assert.equal(operationsPrerequisiteFiles.length, 63);
   for (const missing of operationsPrerequisiteFiles.filter(
     (file) => !deferredApplicationPrerequisites.includes(file),
   ))

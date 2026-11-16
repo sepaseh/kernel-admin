@@ -34,6 +34,12 @@ Read the actual result and diagnostics. Numerical coverage, duplication and anal
 
 When application modules are admitted, keep feature APIs, wire types, forms and tests with their feature. Preserve memory-only tokens, session generations, bounded shared refresh, cancellation, stale-result guards, all ten catalogs and Persian calendar data. API metadata owns language, direction and calendar; browser preferences own theme and compact mode.
 
+## Own build artifacts during publication
+
+Run build stamping and release packaging after the builder has stopped. The invoking account must exclusively control the canonical build parent and the helpers' newly created workspace; do not run another builder or publisher against those paths concurrently. These helpers isolate the build entry in a private sibling directory, validate opened file identities, and restore the build after the operation. They are not a sandbox for other processes running with the same account or holding existing write handles.
+
+If restoration cannot complete because the public build path is occupied, keep the reported recovery directory. Inspect the occupied path and recover the retained build deliberately; the helpers do not recursively delete build contents to force restoration. After an interrupted process, inspect `.kernel-build-*/build` or `.kernel-release-*/build` beside the original build path. Restore the retained directory only after confirming the original path is free and its publisher has stopped.
+
 ## Update the owning guide
 
 Update the existing guide with behavior or procedure changes. Keep prose English and task-oriented. [Contributing](../CONTRIBUTING.md) owns publication and review boundaries. Keep scratch exports, generated evidence and recovery files in ignored repository-local directories; never use them as implementation checkouts.
