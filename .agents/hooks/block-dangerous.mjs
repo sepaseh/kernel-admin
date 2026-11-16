@@ -27,15 +27,17 @@ const commandName = (value) =>
   path.posix.basename(value.replaceAll("\\", "/")).toLowerCase();
 const protectedRef = (value) => /(?:^|:|\/)(?:main|master)$/.test(value);
 const shortFlags = (value) => /^-[A-Za-z]+$/.test(value);
+const longOptionPrefix = (value, option) => {
+  const name = value.split("=", 1)[0];
+  return name.startsWith("--") && name.length > 2 && option.startsWith(name);
+};
 const forceOption = (value) =>
-  value === "--force" ||
-  value.startsWith("--force=") ||
-  value === "--force-with-lease" ||
-  value.startsWith("--force-with-lease=") ||
+  longOptionPrefix(value, "--force") ||
+  longOptionPrefix(value, "--force-with-lease") ||
   (shortFlags(value) && /[fF]/.test(value));
 const branchDeletionOption = (value) =>
-  value === "--delete" ||
-  value.startsWith("--delete=") ||
+  longOptionPrefix(value, "--delete") ||
+  longOptionPrefix(value, "--delete-merged") ||
   (shortFlags(value) && /[dD]/.test(value));
 
 const escapedPiece = (command, index, doubleQuoted = false) => {
@@ -78,24 +80,38 @@ const wordPiece = (command, index) => {
     return {
       value: command.slice(index + 1, closing),
       expansion: "",
+      quoted: true,
       next: closing + 1,
     };
   }
-  if (character === '"') return doubleQuotedPiece(command, index);
-  if (character === "\\") return escapedPiece(command, index);
+  if (character === '"')
+    return { ...doubleQuotedPiece(command, index), quoted: true };
+  if (character === "\\")
+    return { ...escapedPiece(command, index), quoted: true };
   if (character === "(" || character === ")") return rejectShell();
   return ordinaryPiece(command, index);
 };
 const shellWord = (command, start) => {
   let cursor = start;
   let value = "",
-    expansion = "";
+    expansion = "",
+    unquoted = "";
   while (cursor < command.length && !/[ \t\r\n;&|<>]/.test(command[cursor])) {
     const piece = wordPiece(command, cursor);
     value += piece.value;
     expansion += piece.expansion;
+    unquoted += piece.quoted ? "\0" : piece.value;
     cursor = piece.next;
   }
+  const opening = unquoted.indexOf("{"),
+    closing = unquoted.lastIndexOf("}");
+  if (
+    opening !== -1 &&
+    closing > opening &&
+    /,|\.\./.test(unquoted.slice(opening + 1, closing))
+  )
+    return rejectShell();
+
   return { kind: "word", value, expansion, start, end: cursor };
 };
 const shellToken = (command, start) => {
@@ -243,19 +259,26 @@ const inspectPush = (args) => {
   if (args.some((value) => forceOption(value) || value.startsWith("+")))
     return dangerousGit;
   const operands = pushOperands(args);
+  if (operands?.slice(1).some(protectedRef))
+    return "Direct push to main/master blocked. Ask the user first.";
   if (
     !operands ||
     operands.length < 2 ||
-    operands.slice(1).some((value) => value === "HEAD" || value === ":")
+    operands.slice(1).some((value) => {
+      const refs = value.split(":");
+      return refs.length !== 2 || refs.some((ref) => !ref || ref.includes("*"));
+    })
   )
-    return "Implicit or unsupported push destination blocked. Use an explicit remote and refspec.";
-  if (operands.slice(1).some(protectedRef))
-    return "Direct push to main/master blocked. Ask the user first.";
+    return "Implicit or unsupported push destination blocked. Use an explicit remote and literal source:destination refspec.";
   return null;
 };
 const inspectGitAction = (action, args) => {
   if (action === "push") return inspectPush(args);
-  if (action === "reset" && args.includes("--hard")) return dangerousGit;
+  if (
+    action === "reset" &&
+    args.some((value) => longOptionPrefix(value, "--hard"))
+  )
+    return dangerousGit;
   if (action === "clean" && args.some(forceOption)) return dangerousGit;
   if (action === "branch" && args.some(branchDeletionOption))
     return dangerousGit;
@@ -286,21 +309,6 @@ const executableWords = (words) => {
   return words.slice(index);
 };
 const outputNames = new Set(["echo", "printf"]);
-const secretVariable = (token) =>
-  [...token.expansion.matchAll(/\$\{?([A-Za-z_]\w*)/g)].some((match) =>
-    /TOKEN|API_KEY|ACCESS_KEY|SECRET|PASSWORD|CREDENTIAL/i.test(match[1]),
-  );
-const exportOutput = (words) => {
-  const args = words.slice(1);
-  return (
-    args.every((word) => word.value.startsWith("-")) ||
-    args.some((word) => shortFlags(word.value) && word.value.includes("p"))
-  );
-};
-const exposesEnvironment = (name, words) =>
-  name === "printenv" ||
-  (name === "export" && exportOutput(words)) ||
-  (outputNames.has(name) && words.some(secretVariable));
 const variableSetterNames = new Set([
   "export",
   "declare",
@@ -308,6 +316,24 @@ const variableSetterNames = new Set([
   "readonly",
   "local",
 ]);
+const secretVariable = (token) =>
+  [...token.expansion.matchAll(/\$\{?([A-Za-z_]\w*)/g)].some((match) =>
+    /TOKEN|API_KEY|ACCESS_KEY|SECRET|PASSWORD|CREDENTIAL/i.test(match[1]),
+  );
+const declarationOutput = (words) => {
+  const args = words.slice(1);
+  return (
+    args.every((word) => /^[+-]/.test(word.value)) ||
+    args.some(
+      (word) => /^[+-][A-Za-z]+$/.test(word.value) && word.value.includes("p"),
+    )
+  );
+};
+const exposesEnvironment = (name, words) =>
+  name === "printenv" ||
+  (name === "set" && words.length === 1) ||
+  (variableSetterNames.has(name) && declarationOutput(words)) ||
+  (outputNames.has(name) && words.some(secretVariable));
 const inspectVariableSetter = (words) =>
   words
     .slice(1)
@@ -376,6 +402,8 @@ const unsupportedShellNames = new Set([
   "function",
   "xargs",
   "xargs.exe",
+  "!",
+  "time",
 ]);
 const shellPayload = (words) => {
   let index = 1;
@@ -416,7 +444,10 @@ const inspectExecutable = (name, segment, words, depth) => {
 const productionHostOperand = ({ value }) => {
   const hostname =
     URL.parse(value)?.hostname || URL.parse("https://" + value)?.hostname;
-  return hostname?.includes(".") && /production|mainnet/i.test(hostname);
+  return (
+    hostname?.includes(".") &&
+    (/production|mainnet/i.test(hostname) || hostname === "api.etherscan.io")
+  );
 };
 const inspectSegment = (segment, depth) => {
   if (depth > 4) return shellError;
