@@ -13,7 +13,7 @@ The application composes transport, feature HTTP adapters, settings metadata, gu
 | Login, registration or logout                 | [Authentication API](../src/features/auth/api.ts)                                  | [Logout lifecycle](../src/features/auth/logout.test.ts)                                       |
 | OTP cancellation and cooldown                 | [OTP request hook](../src/features/auth/useOtpRequest.ts)                          | [OTP lifecycle](../src/features/auth/useOtpRequest.test.tsx)                                  |
 | Account loading and logout in protected UI    | [Default layout](../src/layouts/default/Default.tsx)                               | [Layout lifecycle](../src/layouts/default/Default.test.tsx)                                   |
-| Read cancellation and replacement             | Calendar screen (`src/features/calendar/Calendar.tsx`)                             | Calendar lifecycles (`src/features/calendar/Calendar.test.tsx`)                               |
+| Read cancellation and replacement             | [Calendar screen](../src/features/calendar/Calendar.tsx)                           | [Calendar lifecycles](../src/features/calendar/Calendar.test.tsx)                             |
 | Profile mutation and refresh                  | [Profile form](../src/features/account/components/profile-form/ProfileForm.tsx)    | [Profile lifecycles](../src/features/account/components/profile-form/ProfileForm.test.tsx)    |
 | Password mutation and session cleanup         | [Password form](../src/features/account/components/password-form/PasswordForm.tsx) | [Password lifecycles](../src/features/account/components/password-form/PasswordForm.test.tsx) |
 

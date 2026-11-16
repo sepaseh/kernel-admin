@@ -9,7 +9,7 @@ Kernel Admin is one independent React/Vite TypeScript application. Developers se
 ## Follow startup
 
 1. The entry point (`src/main.tsx`) initializes observability and mounts App (`src/app/App.tsx`) through the root and application public exports. The application and Storybook share [root CSS](../src/index.css), which loads the existing reset, focus, reduced-motion and font styles.
-2. `CoreProvider` (`src/app/providers/core/Core.tsx`) loads public settings with an owned cancellation signal. It displays loading or an inline retry before exposing accepted settings to its children. The settings API uses typed response models without runtime envelope validation.
+2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings with an owned cancellation signal. It displays loading or an inline retry before exposing accepted settings to its children. The settings API uses typed response models without runtime envelope validation.
 3. `App` composes the Ant Design provider, shared global styles and lazy routes after settings are available. Ant Design applies the API-owned palette, language and direction, together with browser theme and compact preferences.
 4. Routes (`src/app/Routes.tsx`) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.
 
@@ -19,7 +19,7 @@ The [default layout](../src/layouts/default/Default.tsx) loads the current user 
 
 | Responsibility                                    | Owner                                                        | Contract                                                                                  |
 | ------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Accepted settings and appearance preferences      | Core (`src/app/providers/core/Core.tsx`)                     | Server settings remain authoritative; the browser persists theme and compact mode.        |
+| Accepted settings and appearance preferences      | [Core](../src/app/providers/core/Core.tsx)                   | Server settings remain authoritative; the browser persists theme and compact mode.        |
 | Paths, wire types and HTTP adapters for a feature | `src/features/<feature>/api.ts` and `types.ts`               | Keep the contract with its feature.                                                       |
 | Credentials and HTTP behavior                     | [`src/shared/api`](../src/shared/api)                        | Memory-only tokens, generation checks, bounded refresh, conversion and normalized errors. |
 | Read and mutation state                           | Owning feature and [`src/shared/hooks`](../src/shared/hooks) | Direct request cancellation, submission locks and session-generation guards.              |
@@ -38,6 +38,6 @@ Content forms use the shared lazy rich-text editor for headings, emphasis, block
 
 ## Trace a change
 
-Start with the responsibility above and read its implementation and nearby tests. Route tests (`src/app/Routes.test.tsx`) exercise startup and lazy-route behavior. Core tests (`src/app/providers/core/Core.test.tsx`) exercise settings acceptance. Feature behavior stays with its tests and stories.
+Start with the responsibility above and read its implementation and nearby tests. Route tests (`src/app/Routes.test.tsx`) exercise startup and lazy-route behavior. [Core tests](../src/app/providers/core/Core.test.tsx) exercise settings acceptance. Feature behavior stays with its tests and stories.
 
 [Testing](testing.md) explains what each kind of evidence establishes. Component, consumer-contract and application-browser results cover different boundaries; provider compatibility and deployed behavior require their own results.
