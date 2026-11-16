@@ -322,7 +322,7 @@ const secretVariable = (token) =>
   );
 const declarationOutput = (words) => {
   const args = words.slice(1);
-  const flags = args.filter((word) => /^[+-][A-Za-z]+$/.test(word.value));
+  const flags = args.filter((word) => /^[+-]/.test(word.value));
 
   return (
     args.every((word) => /^[+-]/.test(word.value)) ||
