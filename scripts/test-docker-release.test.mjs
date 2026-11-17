@@ -88,7 +88,7 @@ const orchestrationFixture = async (options = {}) => {
           }
           if (pathname === "/console/_kernel/release")
             return {
-              status: 200,
+              status: options.metadataStatus ?? 200,
               headers: {
                 ...headers,
                 "content-security-policy":
@@ -219,6 +219,16 @@ test("Docker smoke verifies the CSP on the release metadata response too", async
   await fixtureValue.cleaned();
 });
 
+test("Docker smoke rejects unavailable release metadata even when its body and security headers match", async () => {
+  const fixtureValue = await orchestrationFixture({ metadataStatus: 503 });
+  await assert.rejects(fixtureValue.run(), /503/);
+  assert.equal(
+    fixtureValue.requests.some(({ pathname }) => pathname.endsWith(".js")),
+    false,
+  );
+  await fixtureValue.cleaned();
+});
+
 test("Docker smoke rejects a missing asset response cached as immutable", async () => {
   const fixtureValue = await orchestrationFixture({
     missingAssetCache: "public, max-age=31536000, immutable",
@@ -334,20 +344,29 @@ const childFixture = () => {
   return child;
 };
 
-const readinessFixture = ({ holdClose = false } = {}) => {
+const readinessFixture = ({ holdClose = false, inspectPoll } = {}) => {
   const controller = new AbortController();
   const started = Promise.withResolvers();
   const stopped = Promise.withResolvers();
+  const polled = Promise.withResolvers();
   const output = Promise.withResolvers();
+  const state = {
+    Running: true,
+    StartedAt: "2026-01-01T00:00:00Z",
+    Health: { Status: "starting" },
+  };
   let receive;
+  let inspections = 0;
   const identity = "kernel-admin-smoke-readiness-test";
   const docker = async (args, { signal, onStdout } = {}) => {
-    if (args[0] === "inspect")
-      return JSON.stringify({
-        Running: true,
-        StartedAt: "2026-01-01T00:00:00Z",
-        Health: { Status: "starting" },
-      });
+    if (args[0] === "inspect") {
+      inspections += 1;
+      if (inspections > 1) {
+        polled.resolve(signal);
+        if (inspectPoll) return inspectPoll(signal);
+      }
+      return JSON.stringify(state);
+    }
     assert.equal(args[0], "events");
     assert.equal(args[2], "2026-01-01T00:00:00Z");
     receive = onStdout;
@@ -365,8 +384,11 @@ const readinessFixture = ({ holdClose = false } = {}) => {
   };
   return {
     controller,
+    state,
+    inspections: () => inspections,
     started: started.promise,
     stopped: stopped.promise,
+    polled: polled.promise,
     close: () => output.resolve(""),
     fail: (error) => output.reject(error),
     emit: (action) => {
@@ -387,6 +409,28 @@ const readinessFixture = ({ holdClose = false } = {}) => {
   };
 };
 
+test("Docker readiness preserves cancellation between a healthy inspection and its caller", async () => {
+  const controller = new AbortController();
+  const reason = new Error("Synthetic post-inspection cancellation");
+  const docker = async (args) => {
+    assert.equal(args[0], "inspect");
+    queueMicrotask(() => queueMicrotask(() => controller.abort(reason)));
+    return JSON.stringify({
+      Running: true,
+      Health: { Status: "healthy" },
+    });
+  };
+
+  await assert.rejects(
+    smoke.waitForContainerHealth({
+      docker,
+      identity: "kernel-admin-smoke-readiness-test",
+      signal: controller.signal,
+    }),
+    (error) => error === reason,
+  );
+});
+
 test("Docker readiness waits for fragmented health events and actual observer closure", async () => {
   const fixtureValue = readinessFixture({ holdClose: true });
   let finished = false;
@@ -400,6 +444,164 @@ test("Docker readiness waits for fragmented health events and actual observer cl
   fixtureValue.close();
   await pending;
   assert.equal(finished, true);
+});
+
+test("Docker readiness recovers a healthy state whose event was lost and still awaits observer closure", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const fixtureValue = readinessFixture({ holdClose: true });
+  let finished = false;
+  const pending = fixtureValue.run().then(() => {
+    finished = true;
+  });
+  await fixtureValue.started;
+  fixtureValue.state.Health.Status = "healthy";
+  context.mock.timers.tick(1_000);
+  await fixtureValue.stopped;
+  assert.equal(fixtureValue.inspections(), 2);
+  assert.equal(finished, false);
+  fixtureValue.close();
+  await pending;
+  assert.equal(finished, true);
+});
+
+for (const [change, expected] of [
+  [(state) => (state.Health.Status = "unhealthy"), /not healthy: unhealthy/],
+  [(state) => (state.Running = false), /exited before readiness/],
+  [(state) => (state.Restarting = true), /exited before readiness/],
+])
+  test(`Docker readiness rejects a lost transition identified by state inspection: ${expected}`, async (context) => {
+    context.mock.timers.enable({ apis: ["setTimeout"] });
+    const fixtureValue = readinessFixture();
+    const rejected = assert.rejects(fixtureValue.run(), expected);
+    await fixtureValue.started;
+    change(fixtureValue.state);
+    context.mock.timers.tick(1_000);
+    await rejected;
+    await fixtureValue.stopped;
+  });
+
+test("Docker readiness preserves a failed state inspection and closes the event observer", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const reason = new Error("Synthetic current-state inspection failure");
+  const fixtureValue = readinessFixture({
+    inspectPoll: () => Promise.reject(reason),
+  });
+  const rejected = assert.rejects(
+    fixtureValue.run(),
+    (error) => error === reason,
+  );
+  await fixtureValue.started;
+  context.mock.timers.tick(1_000);
+  await rejected;
+  await fixtureValue.stopped;
+});
+
+test("Docker readiness preserves a real inspector failure while closing after a healthy event", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const inspection = Promise.withResolvers();
+  const reason = new Error("Synthetic inspector closure failure");
+  const fixtureValue = readinessFixture({
+    inspectPoll: () => inspection.promise,
+  });
+  const rejected = assert.rejects(
+    fixtureValue.run(),
+    (error) => error === reason,
+  );
+  await fixtureValue.started;
+  context.mock.timers.tick(1_000);
+  await fixtureValue.polled;
+  fixtureValue.emit("health_status: healthy");
+  await fixtureValue.stopped;
+  inspection.reject(reason);
+  await rejected;
+});
+
+for (const completion of ["health event", "cancellation"])
+  test(`Docker readiness aborts and awaits an active state inspection after ${completion}`, async (context) => {
+    context.mock.timers.enable({ apis: ["setTimeout"] });
+    const cancelled = Promise.withResolvers();
+    const inspection = Promise.withResolvers();
+    const reason = new Error("Synthetic readiness cancellation");
+    let inspectionSignal;
+    const fixtureValue = readinessFixture({
+      inspectPoll: (signal) => {
+        inspectionSignal = signal;
+        signal.addEventListener("abort", () => cancelled.resolve(), {
+          once: true,
+        });
+        return inspection.promise;
+      },
+    });
+    let finished = false;
+    const pending = fixtureValue.run().finally(() => {
+      finished = true;
+    });
+    const result =
+      completion === "cancellation"
+        ? assert.rejects(pending, (error) => error === reason)
+        : pending;
+    await fixtureValue.started;
+    context.mock.timers.tick(1_000);
+    await fixtureValue.polled;
+    if (completion === "cancellation") fixtureValue.controller.abort(reason);
+    else fixtureValue.emit("health_status: healthy");
+    await cancelled.promise;
+    assert.equal(finished, false);
+    inspection.reject(inspectionSignal.reason);
+    await result;
+    await fixtureValue.stopped;
+    assert.equal(finished, true);
+  });
+
+for (const primary of ["stream failure", "cancellation"])
+  test(`Docker readiness retains ${primary} and distinct close failures without duplicate error objects`, async (context) => {
+    context.mock.timers.enable({ apis: ["setTimeout"] });
+    const inspection = Promise.withResolvers();
+    const inspectionStopped = Promise.withResolvers();
+    const reason = new Error(`Synthetic primary ${primary}`);
+    const closeFailure = new Error("Synthetic shared observer close failure");
+    const fixtureValue = readinessFixture({
+      holdClose: true,
+      inspectPoll: (signal) => {
+        signal.addEventListener("abort", () => inspectionStopped.resolve(), {
+          once: true,
+        });
+        return inspection.promise;
+      },
+    });
+    const rejected = assert.rejects(fixtureValue.run(), (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.equal(error.errors.length, 2);
+      assert.equal(error.errors[0], reason);
+      assert.equal(error.errors[1], closeFailure);
+      return true;
+    });
+
+    await fixtureValue.started;
+    context.mock.timers.tick(1_000);
+    await fixtureValue.polled;
+    if (primary === "cancellation") fixtureValue.controller.abort(reason);
+    else fixtureValue.fail(reason);
+    await inspectionStopped.promise;
+    if (primary === "cancellation") fixtureValue.fail(closeFailure);
+    inspection.reject(closeFailure);
+    await rejected;
+  });
+
+test("Docker readiness preserves cancellation while awaiting observer closure after readiness", async () => {
+  const fixtureValue = readinessFixture({ holdClose: true });
+  const reason = new Error("Synthetic observer-closure cancellation");
+  const rejected = assert.rejects(
+    fixtureValue.run(),
+    (error) => error === reason,
+  );
+
+  await fixtureValue.started;
+  fixtureValue.emit("health_status: healthy");
+  await fixtureValue.stopped;
+  fixtureValue.controller.abort(reason);
+  fixtureValue.close();
+  await rejected;
 });
 
 for (const [action, expected] of [

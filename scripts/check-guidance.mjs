@@ -472,6 +472,17 @@ const isExcludedDocumentationDirectory = (filename) => {
     (normalized.startsWith("deploy/") && normalized.split("/").includes("tls"))
   );
 };
+const isMaintainedMarkdown = (filename) => {
+  if (!isSafeGuidancePath(filename) || !isMarkdownFilename(filename))
+    return false;
+
+  let directory = path.posix.dirname(filename.replaceAll("\\", "/"));
+  while (directory !== ".") {
+    if (isExcludedDocumentationDirectory(directory)) return false;
+    directory = path.posix.dirname(directory);
+  }
+  return true;
+};
 const documentationAdmission = async (root) => {
   try {
     const policy = JSON.parse(
@@ -485,12 +496,7 @@ const documentationAdmission = async (root) => {
         ],
       };
     return {
-      files: new Set(
-        policy.allowedFiles.filter(
-          (filename) =>
-            isSafeGuidancePath(filename) && isMarkdownFilename(filename),
-        ),
-      ),
+      files: new Set(policy.allowedFiles.filter(isMaintainedMarkdown)),
       errors: [],
     };
   } catch (error) {
@@ -1277,6 +1283,11 @@ export const markdownLinks = (markdown) => {
 const inspectMarkdown = async (root, filename) => {
   let content;
   try {
+    let directory = path.posix.dirname(filename.replaceAll("\\", "/"));
+    while (directory !== ".") {
+      await checkedPath(root, directory);
+      directory = path.posix.dirname(directory);
+    }
     content = await readSource(root, filename);
   } catch (error) {
     return [
@@ -1358,9 +1369,7 @@ export const checkGuidance = async (directory = repository) => {
     markdownInventory(root),
     inspectDocumentationLanguage(root, admission.files),
   ]);
-  const publicMarkdown = markdown.files.filter((filename) =>
-    admission.files.has(filename),
-  );
+  const publicMarkdown = [...admission.files].sort();
   const inspected = await Promise.all(
     publicMarkdown.map((filename) => inspectMarkdown(root, filename)),
   );

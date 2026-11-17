@@ -13,6 +13,7 @@ const coreFiles = [
   policyPath,
   "scripts/validate-bootstrap.mjs",
   "scripts/validate-bootstrap.test.mjs",
+  "scripts/publication-stages.mjs",
 ];
 const foundationFiles = [
   ".agents/validation.json",
@@ -323,7 +324,9 @@ const guidanceFiles = new Set([
   "scripts/check-guidance.mjs",
   "scripts/check-guidance.test.mjs",
 ]);
-const guidanceDependencies = new Map([
+const sourceDependencies = new Map([
+  ["scripts/package-release.mjs", ["scripts/build-directory.mjs"]],
+  ["scripts/stamp-admin-build.mjs", ["scripts/build-directory.mjs"]],
   [".agents/hooks/block-dangerous.sh", [".agents/hooks/block-dangerous.mjs"]],
   [
     "scripts/block-dangerous.test.mjs",
@@ -345,13 +348,21 @@ const guidanceDependencies = new Map([
     "scripts/check-guidance.test.mjs",
     ["scripts/check-guidance.mjs", "scripts/check-guidance.test-support.mjs"],
   ],
-  ["scripts/check-guidance.test-support.mjs", ["scripts/check-guidance.mjs"]],
+  [
+    "scripts/check-guidance.test-support.mjs",
+    [
+      "scripts/check-guidance.mjs",
+      "scripts/ci-single-pass.test.yml",
+      "scripts/ci-application-single-pass.test.yml",
+    ],
+  ],
   [
     "scripts/check-guidance.integration.test.mjs",
     ["scripts/check-guidance.mjs", "scripts/check-guidance.test-support.mjs"],
   ],
 ]);
 const operationsPrerequisiteFiles = new Set([
+  "scripts/build-directory.mjs",
   "deploy/docker/admin-entrypoint.sh",
   "deploy/docker/admin-healthcheck.sh",
   "scripts/check-guidance.integration.test.mjs",
@@ -756,11 +767,10 @@ export const validateBootstrapPolicy = (policy) => {
           ...coreFiles,
           ...foundationFiles.filter((file) => !file.startsWith("src/")),
           ".github/workflows/codeql.yml",
-          "scripts/publication-stages.mjs",
           ...preparedFiles,
         ]
       : requiredFilesForPhase(policy.phase)),
-    ...[...guidanceDependencies].flatMap(([file, dependencies]) =>
+    ...[...sourceDependencies].flatMap(([file, dependencies]) =>
       files.has(file) ? dependencies : [],
     ),
   ];

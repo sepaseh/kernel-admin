@@ -90,6 +90,7 @@
     "release-please-config.json",
     "scripts/application-validation.test.json",
     "scripts/block-dangerous.test.mjs",
+    "scripts/build-directory.mjs",
     "scripts/check-boundaries.mjs",
     "scripts/check-boundaries.test.mjs",
     "scripts/check-bundle-size.mjs",

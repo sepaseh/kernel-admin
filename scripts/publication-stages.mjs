@@ -315,7 +315,7 @@ const stageFiles = {
 };
 
 export const isPreparationSource = (file) =>
-  /^(?:src|\.storybook|public)(?:\/|$)/i.test(file);
+  /^(?:(?:src|\.storybook|public)(?:\/|$)|index\.html$)/i.test(file);
 
 export const sourceFilesForStage = (stage) => {
   const position = publicationStages.indexOf(stage);

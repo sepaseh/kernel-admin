@@ -363,14 +363,64 @@ test("documentation language checks exclude private and generated state", async 
       "collection/environments/private.md",
       "deploy/docker/tls/private.md",
       ".env.local/private.md",
-      "external-docs/private.md",
       "../outside/private.md",
     ],
   });
   assert.deepEqual((await checkGuidance(root)).errors, []);
 
-  await write("future/guide.md", "[unchecked link](missing.md)\n");
+  await write("future/guide.md", "[Guide](../docs/development.md)\n");
   assert.deepEqual((await checkGuidance(root)).errors, []);
+});
+
+test("admitted maintained guides check local links in every source directory", async (context) => {
+  const { root, write } = await createFixture(context);
+  for (const filename of [
+    ".github/PULL_REQUEST_TEMPLATE.md",
+    ".github/guides/handbook.mdx",
+    "src/features/new-feature/guide.md",
+    "future/handbook/nested/guide.MARKDOWN",
+  ]) {
+    const prefix = "../".repeat(filename.split("/").length - 1);
+    const valid = `[Guide](${prefix}AGENTS.md)\n`;
+    await write(filename, valid);
+    assert.deepEqual((await checkGuidance(root)).errors, [], filename);
+    await write(filename, "[Missing guide](missing.md)\n");
+    assert.deepEqual((await checkGuidance(root)).errors, [
+      `Missing or unsafe guide link: ${filename}: missing.md`,
+    ]);
+    await write(filename, `[Unsafe guide](${prefix}.env.local)\n`);
+    assert.deepEqual((await checkGuidance(root)).errors, [
+      `Unsafe guide link: ${filename}: ${prefix}.env.local`,
+    ]);
+    await write(filename, valid);
+  }
+});
+
+test("admitted Markdown never follows symbolic source directories", async (context) => {
+  const { root, container, json } = await createFixture(context);
+  const outside = path.join(container, "outside");
+  await mkdir(outside);
+  await writeFile(
+    path.join(outside, "guide.md"),
+    "# Private synthetic sentinel\n[unread](never-read.md)\n",
+  );
+  const aliases = ["future/alias", ".github/guides/alias", "src/alias"];
+  for (const alias of aliases) {
+    await mkdir(path.dirname(path.join(root, alias)), { recursive: true });
+    await symlink(outside, path.join(root, alias), "junction");
+  }
+  await json(".github/bootstrap-policy.json", {
+    allowedFiles: aliases.map((alias) => `${alias}/guide.md`),
+  });
+  const errors = (await checkGuidance(root)).errors.join("\n");
+  for (const alias of aliases)
+    assert.ok(
+      errors.includes(
+        `Missing or unsafe maintained guide: ${alias}/guide.md: Symbolic guidance path: ${alias}`,
+      ),
+      alias,
+    );
+  assert.ok(!errors.includes("never-read.md"));
 });
 
 test("unadmitted operator Markdown remains unread while filename checks stay recursive", async (context) => {
