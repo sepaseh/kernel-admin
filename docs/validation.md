@@ -30,7 +30,6 @@ Implement in the existing checkout under [the working-checkout rule](../.agents/
    $env:STORYBOOK_DISABLE_TELEMETRY = "1"
    $env:VITE_API_BASE_URL = "https://api.example.com"
    $env:VITE_APP_BASE_URL = "/"
-   $env:VITE_OBSERVABILITY_URL = ""
    $env:VITE_RELEASE_ID = "application-verification"
    ```
 

@@ -13,6 +13,7 @@ const coreFiles = [
   policyPath,
   "scripts/validate-bootstrap.mjs",
   "scripts/validate-bootstrap.test.mjs",
+  "scripts/publication-stages.mjs",
 ];
 const foundationFiles = [
   ".agents/validation.json",
@@ -110,9 +111,6 @@ const uiFiles = [
   "src/shared/hooks/useGoBack.test.tsx",
   "src/shared/hooks/useGoBack.ts",
   "src/shared/lib/index.ts",
-  "src/shared/lib/observability.test.ts",
-  "src/shared/lib/observability.ts",
-  "src/shared/lib/observability.vitals.test.ts",
   "src/shared/storage/compact.ts",
   "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
   "src/shared/storage/hooks/useLocalStorageWatcher.ts",
@@ -323,7 +321,9 @@ const guidanceFiles = new Set([
   "scripts/check-guidance.mjs",
   "scripts/check-guidance.test.mjs",
 ]);
-const guidanceDependencies = new Map([
+const sourceDependencies = new Map([
+  ["scripts/package-release.mjs", ["scripts/build-directory.mjs"]],
+  ["scripts/stamp-admin-build.mjs", ["scripts/build-directory.mjs"]],
   [".agents/hooks/block-dangerous.sh", [".agents/hooks/block-dangerous.mjs"]],
   [
     "scripts/block-dangerous.test.mjs",
@@ -345,13 +345,21 @@ const guidanceDependencies = new Map([
     "scripts/check-guidance.test.mjs",
     ["scripts/check-guidance.mjs", "scripts/check-guidance.test-support.mjs"],
   ],
-  ["scripts/check-guidance.test-support.mjs", ["scripts/check-guidance.mjs"]],
+  [
+    "scripts/check-guidance.test-support.mjs",
+    [
+      "scripts/check-guidance.mjs",
+      "scripts/ci-single-pass.test.yml",
+      "scripts/ci-application-single-pass.test.yml",
+    ],
+  ],
   [
     "scripts/check-guidance.integration.test.mjs",
     ["scripts/check-guidance.mjs", "scripts/check-guidance.test-support.mjs"],
   ],
 ]);
 const operationsPrerequisiteFiles = new Set([
+  "scripts/build-directory.mjs",
   "deploy/docker/admin-entrypoint.sh",
   "deploy/docker/admin-healthcheck.sh",
   "scripts/check-guidance.integration.test.mjs",
@@ -756,11 +764,10 @@ export const validateBootstrapPolicy = (policy) => {
           ...coreFiles,
           ...foundationFiles.filter((file) => !file.startsWith("src/")),
           ".github/workflows/codeql.yml",
-          "scripts/publication-stages.mjs",
           ...preparedFiles,
         ]
       : requiredFilesForPhase(policy.phase)),
-    ...[...guidanceDependencies].flatMap(([file, dependencies]) =>
+    ...[...sourceDependencies].flatMap(([file, dependencies]) =>
       files.has(file) ? dependencies : [],
     ),
   ];
@@ -867,7 +874,7 @@ export const inspectBootstrap = async (root) => {
     "core-auth":
       "Published Core and Ant Design providers, typed access/navigation metadata, authentication forms and layouts with synthetic lifecycle tests; no application entry point, route composition, production build, browser journey or visual gate is published.",
     "ui-foundation":
-      "Published Ant Design widgets, theme/preferences/observability foundations, real font/vector asset validation and synthetic HTTP/React tests; application composition, production build, browser journeys and visual validation remain unpublished.",
+      "Published Ant Design widgets, theme/preferences foundations, real font/vector asset validation and synthetic HTTP/React tests; application composition, production build, browser journeys and visual validation remain unpublished.",
     "http-lifecycle":
       "Published admin HTTP transport, feature wire adapters, complete server-owned settings metadata and request lifecycle hooks, with synthetic HTTP and real hook tests; the runnable panel, production build and browser journeys are not published or validated.",
     "runtime-localization":

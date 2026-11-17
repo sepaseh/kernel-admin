@@ -5,6 +5,9 @@ import { test } from "node:test";
 
 import { parse } from "yaml";
 
+import { environment } from "./deployment.test-support.mjs";
+import { renderDeploymentTemplate } from "./render-deployment.mjs";
+
 const read = (file) => readFile(new URL(`../${file}`, import.meta.url), "utf8");
 const availableShell = () =>
   (process.platform === "win32"
@@ -202,6 +205,42 @@ ${script}`,
   const invalidConfig = run({ FIXTURE_NGINX_STATUS: "1" });
   assert.equal(invalidConfig.status, 1);
   assert.doesNotMatch(invalidConfig.stderr, /curl/);
+});
+
+test("rendered TLS configuration keeps directory redirects on the public origin", async () => {
+  const template = await read("deploy/native/nginx/admin.conf.template");
+  const dockerfile = await read("deploy/docker/Dockerfile");
+  const rewrites = [
+    ...dockerfile.matchAll(/\.replaceAll\("([^"]+)", "([^"]+)"\)/g),
+  ];
+  assert.deepEqual(
+    rewrites.map(([, source, target]) => [source, target]),
+    [
+      ["listen 80", "listen 8080"],
+      ["listen 443", "listen 8443"],
+    ],
+  );
+
+  for (const HTTPS_PORT of ["443", "9443"]) {
+    let rendered = renderDeploymentTemplate(template, {
+      ...environment,
+      HTTPS_PORT,
+      ADMIN_ROOT: "/usr/share/nginx/html",
+    });
+    for (const [, source, target] of rewrites)
+      rendered = rendered.replaceAll(source, target);
+    const httpsServer = rendered
+      .split(/\bserver\s*\{/)
+      .find((server) => /\blisten 8443 ssl;/.test(server));
+    assert.ok(httpsServer, "The container application TLS server must exist.");
+
+    const serverDirectives = httpsServer.split(/\blocation\s/)[0];
+    assert.match(serverDirectives, /\babsolute_redirect off;/);
+    assert.ok(
+      rendered.includes(`return 308 https://$host:${HTTPS_PORT}$request_uri;`),
+      "HTTP upgrade redirects must retain the explicitly configured public port.",
+    );
+  }
 });
 
 test("Compose bounds logs and refuses to create a missing TLS bind directory", async () => {

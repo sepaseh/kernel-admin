@@ -26,7 +26,7 @@ test("renders root/subpath TLS SPA, immutable assets, explicit API CSP and unmod
       "ssl_protocols TLSv1.2 TLSv1.3",
       "frame-ancestors 'none'",
       "object-src 'none'",
-      "https://api.example.com",
+      "connect-src 'self' https://api.example.com;",
       "X-Content-Type-Options",
       "max-age=31536000, immutable",
     ])
@@ -46,14 +46,6 @@ test("renders root/subpath TLS SPA, immutable assets, explicit API CSP and unmod
   assert.throws(
     () => renderDeploymentTemplate("${BETTER_AUTH_SECRET}", environment),
     /Unknown/,
-  );
-  assert.ok(
-    renderDeploymentTemplate(template, {
-      ...environment,
-      VITE_OBSERVABILITY_URL: "https://observe.example.com/events",
-    }).includes(
-      "connect-src 'self' https://api.example.com https://observe.example.com;",
-    ),
   );
 });
 
