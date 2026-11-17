@@ -8,7 +8,7 @@ import axios, {
 import { i18n } from "@/shared/i18n";
 import { toCamelCase, toSnakeCase } from "@/shared/lib";
 import { apiUrl } from "./config.ts";
-import { refreshAccessToken } from "./refresh";
+import { getPendingRefresh, refreshAccessToken } from "./refresh";
 import { clearAccessToken, getAccessToken, getSessionSignal } from "./token.ts";
 import type { AccessTokenProps } from "./types.ts";
 
@@ -141,14 +141,20 @@ const retryUnauthorizedRequest = async (
 
   try {
     const currentToken = getAccessToken();
-    if (
+    const pendingRefresh = getPendingRefresh(sessionSignal);
+
+    if (pendingRefresh) {
+      await waitForRefresh(pendingRefresh, requestConfig.signal);
+    } else if (
       !currentToken ||
       requestConfig.headers.get("Authorization") === `Bearer ${currentToken}`
-    )
+    ) {
       await waitForRefresh(
         refreshAccessToken(sessionSignal),
         requestConfig.signal,
       );
+    }
+
     if (sessionSignal.aborted) throw new axios.CanceledError();
     if (requestConfig.signal?.aborted) throw new axios.CanceledError();
     return api.request(requestConfig);
