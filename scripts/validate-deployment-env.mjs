@@ -45,12 +45,6 @@ export function validateDeploymentEnv(environment = process.env) {
   validateOrigin(environment.VITE_API_BASE_URL);
   validateBasePath(environment.VITE_APP_BASE_URL);
   validateReleaseId(environment.VITE_RELEASE_ID);
-  if (environment.VITE_OBSERVABILITY_URL) {
-    const endpoint = new URL(environment.VITE_OBSERVABILITY_URL);
-    validateOrigin(endpoint.origin);
-    if (endpoint.username || endpoint.password || endpoint.hash)
-      throw new Error("Invalid public observability URL.");
-  }
   return {
     apiOrigin: environment.VITE_API_BASE_URL,
     basePath: environment.VITE_APP_BASE_URL,

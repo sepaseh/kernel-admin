@@ -1551,7 +1551,6 @@ const inspectApplicationCi = (workflow, manifest) => {
       STORYBOOK_DISABLE_TELEMETRY: "1",
       VITE_API_BASE_URL: "https://api.example.com",
       VITE_APP_BASE_URL: "/",
-      VITE_OBSERVABILITY_URL: "",
       VITE_RELEASE_ID: "application-verification",
     },
     "Application CI retains its synthetic public environment",

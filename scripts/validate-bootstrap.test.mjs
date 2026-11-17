@@ -397,9 +397,6 @@ const completeApplicationFiles = [
   "src/shared/lib/error.test.ts",
   "src/shared/lib/error.ts",
   "src/shared/lib/index.ts",
-  "src/shared/lib/observability.test.ts",
-  "src/shared/lib/observability.ts",
-  "src/shared/lib/observability.vitals.test.ts",
   "src/shared/lib/transform.test.ts",
   "src/shared/lib/transform.ts",
   "src/shared/storage/compact.ts",
@@ -1658,7 +1655,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 79);
+  assert.equal(required.length, 76);
   for (const missing of required)
     assert.throws(
       () =>
