@@ -119,6 +119,62 @@ describe("HTTP boundary", () => {
     expect(getAccessToken()).toBe("synthetic-current-token");
   });
 
+  it.each([200, 401])(
+    "reuses the current token for a delayed old-token 401 (replay status %s)",
+    async (replayStatus) => {
+      setAccessToken("synthetic-expired-token");
+      const expired = vi.fn();
+      setUnauthorizedHandler(expired);
+      const refreshStarted = deferred<void>();
+      const refreshResponse = deferred<{ access_token: string }>();
+      const delayedStarted = deferred<void>();
+      const delayedResponse = deferred<void>();
+      const delayedTokens: unknown[] = [];
+      let refreshCalls = 0;
+      adapter.mockImplementation(async (config) => {
+        if (config.url === "/auth/refresh-token") {
+          refreshCalls += 1;
+          refreshStarted.resolve();
+          return response(config, await refreshResponse.promise);
+        }
+        const authorization = config.headers.get("Authorization");
+        if (config.url === "/roles") delayedTokens.push(authorization);
+        if (authorization === "Bearer synthetic-expired-token") {
+          if (config.url === "/roles") {
+            delayedStarted.resolve();
+            await delayedResponse.promise;
+          }
+          throw unauthorized(config);
+        }
+        if (config.url === "/roles" && replayStatus === 401)
+          throw unauthorized(config);
+        return response(config, { authenticated: true });
+      });
+      const first = apiClient.get("/users");
+      const delayed = apiClient.get("/roles");
+      await Promise.all([refreshStarted.promise, delayedStarted.promise]);
+      refreshResponse.resolve({ access_token: "synthetic-current-token" });
+      await expect(first).resolves.toEqual({ authenticated: true });
+      expect(getAccessToken()).toBe("synthetic-current-token");
+      const replay =
+        replayStatus === 401
+          ? expect(delayed).rejects.toMatchObject({ status: 401 })
+          : expect(delayed).resolves.toEqual({ authenticated: true });
+      delayedResponse.resolve();
+      await replay;
+
+      expect(refreshCalls).toBe(1);
+      expect(delayedTokens).toEqual([
+        "Bearer synthetic-expired-token",
+        "Bearer synthetic-current-token",
+      ]);
+      expect(expired).toHaveBeenCalledTimes(replayStatus === 401 ? 1 : 0);
+      expect(getAccessToken()).toBe(
+        replayStatus === 401 ? null : "synthetic-current-token",
+      );
+    },
+  );
+
   it("stops replay after one refresh and expires the rejected session once", async () => {
     const expired = vi.fn();
     setUnauthorizedHandler(expired);
