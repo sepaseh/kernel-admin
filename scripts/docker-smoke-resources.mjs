@@ -69,6 +69,25 @@ export async function withSmokeResources(
     failed = true;
     failure = error;
   } finally {
+    const cleanupDocker = async (args) => {
+      const cleanupController = new AbortController();
+      const timeout = setTimeout(
+        () =>
+          cleanupController.abort(
+            new Error(`Docker smoke cleanup timed out: ${args.join(" ")}.`),
+          ),
+        30_000,
+      );
+      try {
+        return await docker(args, { signal: cleanupController.signal });
+      } catch (error) {
+        throw cleanupController.signal.aborted
+          ? cleanupController.signal.reason
+          : error;
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
     const attempt = async (action) => {
       try {
         await action();
@@ -78,19 +97,21 @@ export async function withSmokeResources(
     };
     if (claimed) {
       await attempt(async () => {
-        const ids = (await docker(containers))
+        const ids = (await cleanupDocker(containers))
           .trim()
           .split(/\s+/)
           .filter(Boolean);
         assert.ok(ids.every((id) => /^[a-f0-9]{12,64}$/.test(id)));
-        if (ids.length) await docker(["container", "rm", "--force", ...ids]);
+        if (ids.length)
+          await cleanupDocker(["container", "rm", "--force", ...ids]);
       });
       await attempt(async () => {
-        if (await builderExists(docker))
-          await docker(["buildx", "rm", "--force", builder]);
+        if (await builderExists(cleanupDocker))
+          await cleanupDocker(["buildx", "rm", "--force", builder]);
       });
       await attempt(async () => {
-        if ((await docker(images)).trim()) await docker(["image", "rm", image]);
+        if ((await cleanupDocker(images)).trim())
+          await cleanupDocker(["image", "rm", image]);
       });
     }
     await attempt(() => rm(directory, { recursive: true, force: true }));

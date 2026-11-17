@@ -46,14 +46,6 @@ export function renderDeploymentTemplate(template, environment) {
     )
       throw new Error(`Invalid ${name} path.`);
   values.PUBLIC_ASSET_ORIGIN ||= values.VITE_API_BASE_URL;
-  values.CONNECT_SOURCES = values.VITE_API_BASE_URL;
-  if (values.VITE_OBSERVABILITY_URL) {
-    const endpoint = new URL(values.VITE_OBSERVABILITY_URL);
-    validateOrigin(endpoint.origin);
-    if (endpoint.username || endpoint.password || endpoint.hash)
-      throw new Error("Invalid observability endpoint.");
-    values.CONNECT_SOURCES += ` ${endpoint.origin}`;
-  }
   values.ASSET_PREFIX = values.VITE_APP_BASE_URL;
   const allowed = new Set([
     "ADMIN_HOST",
@@ -66,7 +58,6 @@ export function renderDeploymentTemplate(template, environment) {
     "VITE_RELEASE_ID",
     "PUBLIC_ASSET_ORIGIN",
     "ASSET_PREFIX",
-    "CONNECT_SOURCES",
   ]);
   return template.replace(/\$\{([A-Z][A-Z0-9_]*)\}/g, (_, name) => {
     if (!allowed.has(name) || !values[name])

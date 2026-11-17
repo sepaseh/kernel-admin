@@ -14,10 +14,4 @@ test("public configuration rejects malformed origins, paths and release identifi
     { VITE_RELEASE_ID: "../release" },
   ])
     assert.throws(() => validateDeploymentEnv({ ...environment, ...patch }));
-  assert.doesNotThrow(() =>
-    validateDeploymentEnv({
-      ...environment,
-      VITE_OBSERVABILITY_URL: "https://observe.example.com/events",
-    }),
-  );
 });

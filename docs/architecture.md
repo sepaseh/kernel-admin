@@ -8,7 +8,7 @@ Kernel Admin is one independent React/Vite TypeScript application. Developers se
 
 ## Follow startup
 
-1. The entry point (`src/main.tsx`) initializes observability and mounts App (`src/app/App.tsx`) through the root and application public exports. The application and Storybook share [root CSS](../src/index.css), which loads the existing reset, focus, reduced-motion and font styles.
+1. The entry point (`src/main.tsx`) mounts App (`src/app/App.tsx`) through the root and application public exports. The application and Storybook share [root CSS](../src/index.css), which loads the existing reset and font styles.
 2. `CoreProvider` (`src/app/providers/core/Core.tsx`) loads public settings with an owned cancellation signal. It displays loading or an inline retry before exposing accepted settings to its children. The settings API uses typed response models without runtime envelope validation.
 3. `App` composes the Ant Design provider, shared global styles and lazy routes after settings are available. Ant Design applies the API-owned palette, language and direction, together with browser theme and compact preferences.
 4. Routes (`src/app/Routes.tsx`) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.

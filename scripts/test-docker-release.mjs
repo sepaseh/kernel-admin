@@ -169,6 +169,7 @@ const verifyFixtureResponses = async ({ request, identity, signal }) => {
     /unrecognized name|ECONNRESET|socket hang up/i.test(error.message),
   );
   const metadata = await request("/console/_kernel/release");
+  assert.equal(metadata.status, 200);
   for (const response of [document, metadata]) {
     assert.equal(response.headers["x-frame-options"], "DENY");
     assert.equal(response.headers["x-content-type-options"], "nosniff");
@@ -193,22 +194,27 @@ const verifyFixtureResponses = async ({ request, identity, signal }) => {
 };
 
 export const waitForContainerHealth = async ({ docker, identity, signal }) => {
-  signal.throwIfAborted();
-  const state = JSON.parse(
-    await docker(["inspect", "--format", "{{json .State}}", identity], {
-      signal,
-    }),
-  );
-  signal.throwIfAborted();
-  if (state.Running !== true || state.Restarting === true)
-    throw new Error(
-      `Docker container exited before readiness (${state.ExitCode}).`,
+  const inspect = async (inspectionSignal) => {
+    inspectionSignal.throwIfAborted();
+    const state = JSON.parse(
+      await docker(["inspect", "--format", "{{json .State}}", identity], {
+        signal: inspectionSignal,
+      }),
     );
+    inspectionSignal.throwIfAborted();
+    if (state.Running !== true || state.Restarting === true)
+      throw new Error(
+        `Docker container exited before readiness (${state.ExitCode}).`,
+      );
+    if (!["healthy", "starting"].includes(state.Health?.Status))
+      throw new Error(
+        `Docker container is not healthy: ${state.Health?.Status}.`,
+      );
+    return state;
+  };
+  const state = await inspect(signal);
+  signal.throwIfAborted();
   if (state.Health?.Status === "healthy") return;
-  if (state.Health?.Status !== "starting")
-    throw new Error(
-      `Docker container is not healthy: ${state.Health?.Status}.`,
-    );
   if (
     typeof state.StartedAt !== "string" ||
     !Number.isFinite(Date.parse(state.StartedAt))
@@ -223,6 +229,10 @@ export const waitForContainerHealth = async ({ docker, identity, signal }) => {
   let buffered = "";
   let streamFailed = false;
   let streamFailure;
+  let inspectionFailed = false;
+  let inspectionFailure;
+  let readinessFailed = false;
+  let readinessFailure;
   const decide = (...failures) => {
     if (decided) return;
     decided = true;
@@ -297,15 +307,53 @@ export const waitForContainerHealth = async ({ docker, identity, signal }) => {
         }
       },
     );
+  let polling = Promise.resolve();
+  let pollTimer;
+  const poll = () => {
+    polling = inspect(observing)
+      .then((current) => {
+        if (current.Health.Status === "healthy") decide();
+      })
+      .catch((error) => {
+        if (!(
+          observer.signal.aborted &&
+          (error?.name === "AbortError" || error === observer.signal.reason)
+        )) {
+          inspectionFailed = true;
+          inspectionFailure = error;
+          decide(signal.aborted ? signal.reason : error);
+        }
+      })
+      .finally(() => {
+        if (!decided) pollTimer = setTimeout(poll, 1_000);
+      });
+  };
+  pollTimer = setTimeout(poll, 1_000);
   try {
     await ready.promise;
     signal.throwIfAborted();
+  } catch (error) {
+    readinessFailed = true;
+    readinessFailure = error;
   } finally {
+    clearTimeout(pollTimer);
     observer.abort(new Error("Docker readiness observation completed."));
-    await events;
+    await Promise.all([events, polling]);
     signal.removeEventListener("abort", abort);
   }
-  if (streamFailed) throw streamFailure;
+  const failures = [
+    ...(readinessFailed ? [readinessFailure] : []),
+    ...(signal.aborted ? [signal.reason] : []),
+    ...(streamFailed ? [streamFailure] : []),
+    ...(inspectionFailed ? [inspectionFailure] : []),
+  ];
+  const uniqueFailures = [...new Set(failures)];
+  if (uniqueFailures.length > 1)
+    throw new AggregateError(
+      uniqueFailures,
+      "Docker readiness failed while closing its observers.",
+    );
+  if (uniqueFailures.length) throw uniqueFailures[0];
 };
 
 export async function runDockerSmoke({
