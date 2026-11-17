@@ -9,7 +9,6 @@ export default defineConfig({
     clearMocks: true,
     env: {
       VITE_API_BASE_URL: "http://localhost",
-      VITE_OBSERVABILITY_URL: "",
       VITE_RELEASE_ID: "synthetic-storybook-verification",
     },
     environmentOptions: { jsdom: { url: "http://localhost/" } },
@@ -150,7 +149,6 @@ export default defineConfig({
         "src/shared/i18n/locales/tr.ts",
         "src/shared/lib/error.ts",
         "src/shared/lib/index.ts",
-        "src/shared/lib/observability.ts",
         "src/shared/lib/transform.ts",
         "src/shared/storage/compact.ts",
         "src/shared/storage/hooks/useLocalStorageWatcher.ts",

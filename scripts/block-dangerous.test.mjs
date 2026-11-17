@@ -113,6 +113,63 @@ test("literal quoted Git option values retain dangerous-action checks", () => {
     assert.match(inspectSafetyPayload({ command }), /Dangerous git/);
 });
 
+test("unmodeled brace expansion fails closed while quoted and escaped literals remain usable", () => {
+  for (const command of [
+    "git {push,--force} origin feature",
+    "git {pu'sh',--force} origin feature",
+    "git push origin feature:refs/heads/{main,feature}",
+    "git push origin feature:refs/heads/release{1..3}",
+    "bash -c 'git {push,--force} origin feature'",
+    "printf '%s' {one,{two,three}}",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Unsupported or ambiguous shell/,
+      command,
+    );
+
+  for (const command of [
+    "printf '%s' '{push,--force}'",
+    'printf "%s" "{push,--force}"',
+    "printf '%s' \\{push,--force\\}",
+    "printf '%s' \\{push,--force}",
+    "printf '%s' {push,--force\\}",
+    "printf '%s' {push\\,--force}",
+    "printf '%s' '{'push,--force'}'",
+    "printf '%s' 'git {push,--force} origin feature'",
+    "printf '%s' {literal}",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("destructive Git long-option prefixes cannot evade action checks", () => {
+  for (const command of [
+    "git reset --har HEAD",
+    "git reset --ha HEAD",
+    "git clean --for -d",
+    "git clean --fo -d",
+    "git branch --del feature",
+    "git branch --delet feature",
+    "git branch --delete-merged 'origin/*'",
+    "git branch --delete-mer 'origin/*'",
+    "git push --for origin HEAD:refs/heads/feature",
+    "git push --force-w origin HEAD:refs/heads/feature",
+    "command git reset --har HEAD",
+    "bash -c 'git clean --for -d'",
+  ])
+    assert.match(inspectSafetyPayload({ command }), /Dangerous git/, command);
+
+  for (const command of [
+    "git reset --soft HEAD~1",
+    "git reset --mixed HEAD",
+    "git clean --dry-run -d",
+    "git branch --list",
+    "git branch --contains HEAD",
+    "printf '%s' 'git reset --har HEAD'",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
 test("portable safety policy protects secret paths, environment output and production inputs", () => {
   for (const file_path of [
     ".env.local",
@@ -187,6 +244,11 @@ test("quoted hostname fragments retain endpoint protection for absolute URLs", (
     'curl WSS://RPC.MAIN"NET".EXAMPLE.COM:443/status',
     'curl prod"uction".example.com:443/status',
     "bash -c 'curl https://prod\"uction\".example.com'",
+    'curl https://api.ether"scan".io',
+    "curl http://api.ether'scan'.io/status",
+    'curl API.ETHER"SCAN".IO',
+    "curl https://api.ether\\scan.io",
+    "bash -c 'curl https://api.ether\"scan\".io'",
   ])
     assert.match(
       inspectSafetyPayload({ command }),
@@ -289,7 +351,7 @@ test("force clusters, forced refspecs and implicit push destinations are rejecte
     assert.notEqual(inspectSafetyPayload({ command }), null, command);
 
   for (const command of [
-    "git push -u origin feature",
+    "git push -u origin feature:refs/heads/feature",
     "git push --dry-run origin HEAD:feature",
   ])
     assert.equal(inspectSafetyPayload({ command }), null, command);
@@ -299,20 +361,20 @@ test("Git arguments end at shell boundaries while later commands remain inspecte
   for (const separator of ["&&", ";", "|", "\n"]) {
     assert.equal(
       inspectSafetyPayload({
-        command: `git push origin feature ${separator} echo main`,
+        command: `git push origin feature:refs/heads/feature ${separator} echo main`,
       }),
       null,
     );
     assert.notEqual(
       inspectSafetyPayload({
-        command: `git push origin feature ${separator} git push --force origin feature`,
+        command: `git push origin feature:refs/heads/feature ${separator} git push --force origin feature`,
       }),
       null,
     );
   }
   assert.equal(
     inspectSafetyPayload({
-      command: "git push origin feature && cat docs/main",
+      command: "git push origin feature:refs/heads/feature && cat docs/main",
     }),
     null,
   );
@@ -417,6 +479,30 @@ test("uncertain shell syntax and excessive literal shell nesting fail closed", (
   assert.notEqual(inspectSafetyPayload({ command }), null);
 });
 
+test("reserved pipeline prefixes fail closed without hiding the command they execute", () => {
+  for (const command of [
+    "! git push --force origin feature",
+    "time git push --force origin feature",
+    "time -p git push --force origin feature",
+    "time ! git push --force origin feature",
+    "! declare -p",
+    "bash -c '! git push --force origin feature'",
+    "bash -c 'time git push --force origin feature'",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Unsupported or ambiguous shell/,
+      command,
+    );
+
+  for (const command of [
+    "printf '%s' '! git push --force origin feature'",
+    "printf '%s' 'time git push --force origin feature'",
+    "printf '%s' time",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
 test("non-IFS whitespace cannot stall literal command scanning", () => {
   for (const whitespace of ["\f", "\v", "\u00a0", "\u2003"]) {
     const result = run({ command: "synthetic" + whitespace + "argument" });
@@ -447,20 +533,31 @@ test("extensionless credential paths are protected without reading any files", (
     assert.equal(inspectSafetyPayload({ file_path }), null);
 });
 
-test("pushes require an explicit destination for HEAD and matching refspecs", () => {
+test("pushes require literal source and destination refs independent of remote configuration", () => {
   for (const command of [
     "git push origin HEAD",
     "git push -u origin HEAD",
     "git push origin :",
     "git push --porcelain origin feature :",
+    "git push origin feature",
+    "git push origin refs/heads/feature",
+    "git push origin HEAD:refs/heads/feature other",
+    "git push origin feature:",
+    "git push origin :refs/heads/feature",
+    "git push origin feature:refs/heads/feature:other",
+    "git push origin 'refs/heads/*:refs/heads/*'",
+    "git push origin 'feature:refs/heads/*'",
+    "git push origin 'refs/heads/*:refs/heads/feature'",
   ])
     assert.notEqual(inspectSafetyPayload({ command }), null, command);
 
   for (const command of [
     "git push origin HEAD:feature",
     "git push origin HEAD:refs/heads/feature",
-    "git push origin refs/heads/feature",
-    "git push origin feature",
+    "git push origin refs/heads/feature:refs/heads/feature",
+    "git push origin feature:feature",
+    "git push origin main:refs/heads/feature",
+    "git push origin HEAD:refs/heads/feature other:refs/heads/other",
   ])
     assert.equal(inspectSafetyPayload({ command }), null, command);
 });
@@ -599,6 +696,95 @@ test("bare export and listing options are blocked while explicit declarations re
     "export TEST_MODE",
     "export -n TEST_MODE",
     "export -- TEST_MODE=synthetic",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("variable-listing builtins are blocked while assignments and shell options remain usable", () => {
+  for (const command of [
+    "declare",
+    "declare -p",
+    "declare -xp",
+    "declare +p",
+    "declare +x",
+    "declare +xp",
+    "typeset",
+    "typeset -p TEST_MODE",
+    "typeset -p1 API_TOKEN",
+    "typeset -xp1 API_TOKEN",
+    "typeset --p1 API_TOKEN",
+    "typeset --p API_TOKEN",
+    "typeset +-p1 API_TOKEN",
+    "typeset -L4p1 API_TOKEN",
+    "typeset +p1 API_TOKEN",
+    "declare -p1 API_TOKEN",
+    "typeset +x",
+    "typeset +p TEST_MODE",
+    "readonly -p",
+    "local -p",
+    "set",
+    "set > variables.txt",
+    "builtin declare -p",
+    "builtin declare +x",
+    "command typeset -p",
+    "builtin typeset -p1 API_TOKEN",
+    "zsh -c 'typeset -p1 API_TOKEN'",
+    "zsh -c 'typeset --p1 API_TOKEN'",
+    "zsh -c 'typeset +-p1 API_TOKEN'",
+    "zsh -c 'typeset -xp1 API_TOKEN'",
+    "bash -c 'declare -p'",
+    "env TEST_MODE=synthetic bash -c 'set'",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Environment variable exposure/,
+      command,
+    );
+
+  for (const command of [
+    "declare TEST_MODE=synthetic",
+    "declare +x TEST_MODE",
+    "typeset -x TEST_MODE=synthetic",
+    "typeset +x TEST_MODE",
+    "typeset -i16 TEST_COUNT=42",
+    "typeset -L8 TEST_MODE=synthetic",
+    "typeset -- TEST_MODE=-p1",
+    "readonly TEST_MODE=synthetic",
+    "local TEST_MODE=synthetic",
+    "set -e",
+    "set -eu",
+    "set -o pipefail",
+    "set -- synthetic",
+    "printf '%s' 'declare -p'",
+    "printf '%s' 'typeset -p1 API_TOKEN'",
+  ])
+    assert.equal(inspectSafetyPayload({ command }), null, command);
+});
+
+test("Zsh pattern declarations cannot print matching parameters without a print flag", () => {
+  for (const command of [
+    'typeset -m "*TOKEN*"',
+    'typeset +m "*TOKEN*"',
+    'declare -gm "*TOKEN*"',
+    'typeset -m TEST_MODE=synthetic "*TOKEN*"',
+    'builtin typeset -m "*TOKEN*"',
+    "zsh -c 'typeset -m \"*TOKEN*\"'",
+    "zsh -c 'setopt TYPESET_SILENT; typeset -m \"*TOKEN*\"'",
+  ])
+    assert.match(
+      inspectSafetyPayload({ command }),
+      /Environment variable exposure/,
+      command,
+    );
+
+  for (const command of [
+    "typeset -m TEST_MODE=synthetic",
+    "typeset +m TEST_MODE=synthetic",
+    "declare -gm TEST_MODE=synthetic OTHER_MODE=synthetic",
+    "zsh -c 'typeset -m TEST_MODE=synthetic'",
+    "printf '%s' 'typeset -m'",
+    "typeset TEST_MODE=synthetic-m",
+    "typeset -- TEST_MODE=-m",
   ])
     assert.equal(inspectSafetyPayload({ command }), null, command);
 });
@@ -885,6 +1071,22 @@ for (const [name, payload] of [
     { command: "git -c color.ui=false reset --hard HEAD~1" },
   ],
   ["direct main push", { command: "git push origin main" }],
+  [
+    "brace-expanded force push",
+    { command: "git {push,--force} origin feature" },
+  ],
+  ["source-only push refspec", { command: "git push origin feature" }],
+  [
+    "wildcard push refspec",
+    { command: "git push origin 'refs/heads/*:refs/heads/*'" },
+  ],
+  ["abbreviated hard reset", { command: "git reset --har HEAD~1" }],
+  ["variable listing", { command: "declare -p" }],
+  ["negated force push", { command: "! git push --force origin feature" }],
+  [
+    "normalized protected hostname",
+    { command: 'curl https://api.ether"scan".io' },
+  ],
   ["secret edit", { file_path: ".env.production" }],
   ["environment dump", { command: "printenv" }],
   ["production endpoint", { command: "curl http://production.example.com" }],

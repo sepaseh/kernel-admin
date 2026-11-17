@@ -8,12 +8,12 @@ Apply these conventions to shared controls, theme and preference helpers, local 
 
 ## Reuse current owners
 
-| Design concern                                        | Existing owner                                                                           |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Light/dark/compact algorithms and semantic colors     | Antd provider (`src/app/providers/antd/Antd.tsx`), using the selected API palette        |
-| Typography, visible keyboard focus and reduced motion | `src/assets/styles` and the licensed local Vazirmatn font                                |
-| Reusable controls and form containers                 | `src/shared/ui`; feature-specific forms stay with their feature                          |
-| Route vocabulary and presentation permissions         | Route metadata (`src/app/config/routes.ts`) and access helpers (`src/app/lib/access.ts`) |
+| Design concern                                    | Existing owner                                                                           |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Light/dark/compact algorithms and semantic colors | Antd provider (`src/app/providers/antd/Antd.tsx`), using the selected API palette        |
+| Typography and local assets                       | `src/assets/styles` and the licensed local Vazirmatn font                                |
+| Reusable controls and form containers             | `src/shared/ui`; feature-specific forms stay with their feature                          |
+| Route vocabulary and presentation permissions     | Route metadata (`src/app/config/routes.ts`) and access helpers (`src/app/lib/access.ts`) |
 
 Prefer Ant Design props and tokens. Use antd-style for owned custom styles, logical spacing for RTL/LTR and direct named Lucide icons with explicit size/currentColor. Decorative icons use `aria-hidden`; controls need translated accessible names. Use component-specific props types directly on the props parameter, without `FC`; follow the [React rules](.agents/rules/react.md).
 

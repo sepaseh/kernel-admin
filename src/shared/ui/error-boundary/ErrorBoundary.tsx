@@ -1,11 +1,4 @@
-import {
-  Component,
-  type ErrorInfo,
-  type PropsWithChildren,
-  type ReactElement,
-} from "react";
-
-import { reportError } from "@/shared/lib";
+import { Component, type PropsWithChildren, type ReactElement } from "react";
 
 import { ErrorFallback } from "./ErrorFallback";
 
@@ -18,13 +11,6 @@ export class ErrorBoundary extends Component<PropsWithChildren, State> {
 
   public static getDerivedStateFromError(): State {
     return { hasError: true };
-  }
-
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    reportError(error, {
-      componentStack: errorInfo.componentStack,
-      source: "react.error-boundary",
-    });
   }
 
   public render(): ReactElement {

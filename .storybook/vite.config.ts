@@ -8,7 +8,6 @@ export default defineConfig({
   publicDir: false,
   define: {
     "import.meta.env.VITE_API_BASE_URL": JSON.stringify("/__storybook_api__"),
-    "import.meta.env.VITE_OBSERVABILITY_URL": JSON.stringify(""),
     "import.meta.env.VITE_RELEASE_ID": JSON.stringify("synthetic-storybook"),
   },
   resolve: {

@@ -1578,7 +1578,6 @@ const inspectApplicationCi = (workflow, manifest) => {
       STORYBOOK_DISABLE_TELEMETRY: "1",
       VITE_API_BASE_URL: "https://api.example.com",
       VITE_APP_BASE_URL: "/",
-      VITE_OBSERVABILITY_URL: "",
       VITE_RELEASE_ID: "application-verification",
     },
     "Application CI retains its synthetic public environment",
@@ -1660,13 +1659,18 @@ const job = (workflow, name) => {
     !Array.isArray(value.steps) ||
     value["runs-on"] !== "windows-2025" ||
     value["timeout-minutes"] !== { scope: 5, check: 45, analysis: 15 }[name] ||
-    Object.hasOwn(value, "permissions") ||
+    (name === "scope"
+      ? Object.hasOwn(value, "permissions")
+      : !isDeepStrictEqual(value.permissions, {
+          contents: "read",
+          actions: "read",
+        })) ||
     Object.hasOwn(value, "strategy") ||
     (value["continue-on-error"] !== undefined &&
       value["continue-on-error"] !== false)
   )
     throw new Error(
-      "CI needs a blocking Windows job with its declared execution scope: " +
+      "CI needs a blocking Windows job with its declared execution scope and permissions: " +
         name,
     );
   rootExecution(workflow.defaults?.run);
@@ -1827,7 +1831,7 @@ const inspectCheckSource = (workflow) => {
     throw new Error(
       "The required check must fail when scope selection is not successful",
     );
-  const checkSetup = setup(check, { ref: "${{ needs.scope.outputs.commit }}" });
+  const checkSetup = setup(check, { ref: "${{ github.sha }}" });
   if (
     check.env?.KERNEL_REUSE_VERIFICATION_BUILD !== "1" ||
     ["HEAD", "BASE", "COMMIT", "TREE"].some(
@@ -2032,11 +2036,7 @@ export const inspectCi = (content, manifest) => {
   triggerPolicy(workflow);
   const requiredChecks = manifestPolicy(manifest);
   if (
-    workflow.permissions?.contents !== "read" ||
-    workflow.permissions?.actions !== "read" ||
-    Object.keys(workflow.permissions ?? {}).some(
-      (key) => !["contents", "actions"].includes(key),
-    ) ||
+    !isDeepStrictEqual(workflow.permissions, { contents: "read" }) ||
     workflow.concurrency?.group !== concurrencyGroup ||
     workflow.concurrency?.["cancel-in-progress"] !== false ||
     ![undefined, "single"].includes(workflow.concurrency?.queue)
@@ -2111,7 +2111,7 @@ export const inspectSonarWorkflow = (content, manifest) => {
     throw new Error(
       "The native scanner must consume the successful check from this exact source scope and retain its fork condition",
     );
-  const ready = setup(analysis, { ref: "${{ needs.scope.outputs.commit }}" });
+  const ready = setup(analysis, { ref: "${{ github.sha }}" });
   if (
     ["HEAD", "BASE", "COMMIT", "TREE"].some(
       (key) =>
