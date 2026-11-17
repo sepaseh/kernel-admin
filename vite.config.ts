@@ -7,14 +7,8 @@ import { srcPath } from "./tooling/paths.ts";
 
 const repositoryRoot = fileURLToPath(new URL("./", import.meta.url));
 
-const securityHeaders = (
-  apiOrigin: string,
-  assetOrigin: string,
-  observabilityOrigin: string,
-) => {
-  const connectSources = ["'self'", apiOrigin, observabilityOrigin]
-    .filter(Boolean)
-    .join(" ");
+const securityHeaders = (apiOrigin: string, assetOrigin: string) => {
+  const connectSources = ["'self'", apiOrigin].filter(Boolean).join(" ");
   const imageSources = [
     "'self'",
     "data:",
@@ -45,16 +39,12 @@ export default defineConfig(({ mode }) => {
   const publicEnvironmentNames = [
     "VITE_API_BASE_URL",
     "VITE_APP_BASE_URL",
-    "VITE_OBSERVABILITY_URL",
     "VITE_RELEASE_ID",
   ];
   const apiOrigin = new URL(env.VITE_API_BASE_URL || "http://localhost").origin;
   const assetOrigin = env.PUBLIC_ASSET_ORIGIN
     ? new URL(env.PUBLIC_ASSET_ORIGIN).origin
     : apiOrigin;
-  const observabilityOrigin = env.VITE_OBSERVABILITY_URL
-    ? new URL(env.VITE_OBSERVABILITY_URL).origin
-    : "";
 
   return {
     base: env.VITE_APP_BASE_URL,
@@ -98,7 +88,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     preview: {
-      headers: securityHeaders(apiOrigin, assetOrigin, observabilityOrigin),
+      headers: securityHeaders(apiOrigin, assetOrigin),
       host: "127.0.0.1",
       strictPort: true,
     },

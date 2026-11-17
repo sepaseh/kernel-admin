@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { withSmokeResources } from "./docker-smoke-resources.mjs";
 import { fixture } from "./docker-smoke-resources.test-support.mjs";
 
 test("successful Docker fixtures remove only their container, image, builder cache and temporary directory", async () => {
@@ -69,6 +70,70 @@ test("one cleanup failure does not suppress the test failure or stop remaining c
     image: false,
     container: true,
   });
+  await fixtureValue.cleaned();
+});
+
+test("each Docker cleanup command has its own budget after interruption and remaining cleanup still runs", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const fixtureValue = await fixture();
+  const blocked = [
+    { command: "container ls", started: Promise.withResolvers() },
+    { command: "buildx inspect", started: Promise.withResolvers() },
+    { command: "image ls", started: Promise.withResolvers() },
+  ];
+  let cleaning = false;
+  let testSignal;
+  const docker = (args, options) => {
+    const operation = blocked.find(
+      ({ command }) => command === args.slice(0, 2).join(" "),
+    );
+    if (cleaning && operation)
+      return new Promise((_, reject) => {
+        const signal = options.signal;
+        signal.addEventListener("abort", () => reject(signal.reason), {
+          once: true,
+        });
+        operation.started.resolve(signal);
+      });
+    return fixtureValue.docker(args, options);
+  };
+  const rejected = assert.rejects(
+    withSmokeResources(
+      {
+        ...fixtureValue,
+        image: `${fixtureValue.identity}:local`,
+        docker,
+      },
+      async ({ signal }) => {
+        testSignal = signal;
+        cleaning = true;
+        fixtureValue.signals.emit("SIGINT");
+        signal.throwIfAborted();
+      },
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.match(error.errors[0].message, /interrupted by SIGINT/);
+      assert.equal(error.errors.length, 4);
+      for (const [index, { command }] of blocked.entries())
+        assert.match(
+          error.errors[index + 1].message,
+          new RegExp(`cleanup timed out: ${command}`),
+        );
+      return true;
+    },
+  );
+  const signals = [];
+  for (const operation of blocked) {
+    const signal = await operation.started.promise;
+    assert.notEqual(signal, testSignal);
+    assert.equal(signal.aborted, false);
+    assert.equal(signals.includes(signal), false);
+    signals.push(signal);
+    context.mock.timers.tick(30_000);
+    assert.equal(signal.aborted, true);
+  }
+  await rejected;
   await fixtureValue.cleaned();
 });
 

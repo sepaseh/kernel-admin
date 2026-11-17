@@ -89,7 +89,6 @@ const withBuildFixture = async (run) => {
     KERNEL_SYNTHETIC_ENV: "1",
     VITE_API_BASE_URL: "https://api.example.com",
     VITE_APP_BASE_URL: "/",
-    VITE_OBSERVABILITY_URL: "",
     VITE_RELEASE_ID: "application-verification",
   };
   const files = [
@@ -811,8 +810,15 @@ test(
   },
 );
 
-test("the visual CLI binds a pending capture to its public sources and synthetic child", async () => {
+test("the visual CLI rejects incomplete source or binds a pending capture to its public sources and synthetic child", async () => {
   const repository = fileURLToPath(new URL("../", import.meta.url));
+  const policy = JSON.parse(
+    await readFile(
+      path.join(repository, ".github/bootstrap-policy.json"),
+      "utf8",
+    ),
+  );
+  const applicationReady = policy.applicationReady === true;
   const script = fileURLToPath(new URL("./run-visual.mjs", import.meta.url));
   const baseline = path.join(
     repository,
@@ -895,9 +901,14 @@ test("the visual CLI binds a pending capture to its public sources and synthetic
       new URL("./run-visual.mjs?synthetic-cli-wiring", import.meta.url)
     );
 
-    assert.deepEqual(errors, []);
-    assert.equal(process.exitCode, 0);
-    assert.equal(fixture.children.length, 1);
+    assert.deepEqual(
+      errors,
+      applicationReady
+        ? []
+        : ["Visual source inventory is missing index.html."],
+    );
+    assert.equal(process.exitCode, applicationReady ? 0 : 1);
+    assert.equal(fixture.children.length, applicationReady ? 1 : 0);
     assert.equal(fixture.browsers.length, 1);
     assert.equal(fixture.browsers[0].closed, true);
     assert.equal(
@@ -905,6 +916,15 @@ test("the visual CLI binds a pending capture to its public sources and synthetic
       fixture.executable,
     );
     assert.equal(fixture.browsers[0].options.headless, true);
+    if (!applicationReady) {
+      assert.equal(policy.allowedFiles.includes("index.html"), false);
+      assert.deepEqual(await readFile(baseline), baselineBefore);
+      const release = await acquireVisualLock(
+        path.join(repository, "coverage/visual"),
+      );
+      await release();
+      return;
+    }
     const child = fixture.children[0];
     assert.equal(child.command, process.execPath);
     assert.equal(child.options.cwd, repository);

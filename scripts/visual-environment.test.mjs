@@ -154,7 +154,6 @@ test("visual child environment rejects inherited services, credentials and build
     DATABASE_URL: "owner-db",
     BETTER_AUTH_SECRET: "owner-secret",
     VITE_API_BASE_URL: "https://owner.invalid",
-    VITE_OBSERVABILITY_URL: "https://owner.invalid",
     WEBSITE_SKIP_BUILD: "1",
     NODE_OPTIONS: "--inspect",
     DOCKER_HOST: "tcp://owner.invalid",
@@ -169,7 +168,6 @@ test("visual child environment rejects inherited services, credentials and build
     "API_BASE_URL",
     "DATABASE_URL",
     "BETTER_AUTH_SECRET",
-    "VITE_OBSERVABILITY_URL",
     "NODE_OPTIONS",
     "DOCKER_HOST",
   ])

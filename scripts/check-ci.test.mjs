@@ -1453,6 +1453,43 @@ test("all checkout and Node actions must be pinned, blocking, ordered and use th
   }
 });
 
+test("single-pass verification and analysis check out the immutable event revision independently of scope outputs", () => {
+  for (const [content, selected] of [
+    [phaseWorkflow(), manifest()],
+    [
+      historicalApplicationWorkflow(),
+      phaseManifest("application-verification", 18),
+    ],
+  ]) {
+    const source = parse(content);
+    for (const name of ["check", "analysis"]) {
+      const checkout = source.jobs[name].steps.find((step) =>
+        step.uses?.startsWith("actions/checkout@"),
+      );
+      assert.equal(checkout.with.ref, "${{ github.sha }}");
+      for (const ref of [
+        "${{ needs.scope.outputs.commit }}",
+        "${{ github.event.pull_request.head.sha }}",
+        undefined,
+      ]) {
+        const value = structuredClone(source);
+        value.jobs[name].steps.find((step) =>
+          step.uses?.startsWith("actions/checkout@"),
+        ).with.ref = ref;
+        assert.throws(
+          () => inspectCi(stringify(value), selected),
+          /exact tested revision/,
+        );
+        if (name === "analysis")
+          assert.throws(
+            () => inspectSonarWorkflow(stringify(value), selected),
+            /exact tested revision/,
+          );
+      }
+    }
+  }
+});
+
 test("the visual step has only the conservative scope condition and is not an advisory pass", () => {
   for (const change of [
     (value) => {
@@ -3558,7 +3595,6 @@ test("pending events coalesce separately by event, ref and manual profile while 
 test("each CI stage retains its declared execution budget and cannot expand token permissions", () => {
   assert.deepEqual(workflow().permissions, {
     contents: "read",
-    actions: "read",
   });
   for (const [name, budget] of Object.entries({
     scope: 5,
@@ -3566,6 +3602,10 @@ test("each CI stage retains its declared execution budget and cannot expand toke
     analysis: 15,
   })) {
     assert.equal(workflow().jobs[name]["timeout-minutes"], budget);
+    assert.deepEqual(
+      workflow().jobs[name].permissions,
+      name === "scope" ? undefined : { contents: "read", actions: "read" },
+    );
     for (const timeout of [undefined, 0, budget + 1]) {
       const value = workflow();
       value.jobs[name]["timeout-minutes"] = timeout;
@@ -3574,19 +3614,48 @@ test("each CI stage retains its declared execution budget and cannot expand toke
         /blocking Windows/,
       );
     }
+    const invalidPermissions =
+      name === "scope"
+        ? [{}, { contents: "read" }, { contents: "read", actions: "read" }]
+        : [undefined, {}, { contents: "read" }, { actions: "read" }];
+    invalidPermissions.push(
+      { contents: "write" },
+      { contents: "write", actions: "read" },
+      { contents: "read", actions: "write" },
+      { contents: "read", actions: "read", "pull-requests": "read" },
+      "read-all",
+      "write-all",
+    );
+    for (const permissions of invalidPermissions) {
+      const value = workflow();
+      value.jobs[name].permissions = permissions;
+      assert.throws(
+        () => inspectCi(stringify(value), manifest()),
+        /blocking Windows/,
+      );
+      if (name === "analysis")
+        assert.throws(
+          () => inspectSonarWorkflow(stringify(value), manifest()),
+          /blocking Windows/,
+        );
+    }
+  }
+  for (const permissions of [
+    undefined,
+    {},
+    { contents: "write" },
+    { contents: "read", actions: "read" },
+    { contents: "read", "pull-requests": "read" },
+    "read-all",
+    "write-all",
+  ]) {
     const value = workflow();
-    value.jobs[name].permissions = { contents: "write" };
+    value.permissions = permissions;
     assert.throws(
       () => inspectCi(stringify(value), manifest()),
-      /blocking Windows/,
+      /read-only evidence/,
     );
   }
-  const privileged = workflow();
-  privileged.permissions["pull-requests"] = "read";
-  assert.throws(
-    () => inspectCi(stringify(privileged), manifest()),
-    /read-only evidence/,
-  );
 });
 
 test("mandatory coverage and best-effort diagnostics have separate immutable artifacts", () => {

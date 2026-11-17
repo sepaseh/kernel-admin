@@ -22,6 +22,8 @@ Measured unit and governance coverage belongs in `coverage/unit/lcov.info` and `
 
 Use uniquely owned synthetic fixtures. Never read real environment files, credentials, databases, uploads or browser state. Synchronize asynchronous fixtures on actual state or process completion and preserve cleanup failures. Keep meaningful regressions and declared product-test deadlines intact.
 
+Where admitted, error-recovery tests retain the fallback, reload and route-access assertions. Performance checks run through the independent browser and Lighthouse tooling.
+
 ## Review appearance
 
 Component, browser, accessibility and visual checks require their owners and genuine execution after admission. Storybook fixtures remain synthetic. Component results cannot replace application journeys, deployed-provider evidence or manual assistive-technology review.
