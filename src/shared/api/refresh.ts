@@ -67,6 +67,9 @@ const refreshWithRetry = async (
   return result;
 };
 
+export const getPendingRefresh = (sessionSignal: AbortSignal) =>
+  pendingRefreshes.get(sessionSignal);
+
 export const refreshAccessToken = async (
   sessionSignal: AbortSignal,
 ): Promise<AccessTokenProps> => {
