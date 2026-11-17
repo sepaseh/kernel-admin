@@ -14,11 +14,13 @@ The profile checks guidance consistency and its synthetic regressions. It does n
 
 ## Read the evidence
 
-The current unit command measures admitted tooling cases. Governance tests exercise publication policy, CI identity and coverage rules, guidance, boundaries and optional safety hooks with owned fixtures. Read [package.json](../package.json) and the manifest for selected owners. Configured commands alone do not prove execution.
+The current unit command measures the admitted tooling and application modules. Governance tests exercise publication policy, CI identity and coverage rules, guidance, boundaries and optional safety hooks with owned fixtures. Read [package.json](../package.json) and the manifest for selected owners. Configured commands alone do not prove execution.
 
 Measured unit and governance coverage belongs in `coverage/unit/lcov.info` and `coverage/governance/lcov.info`. Import reports only for the same checked source. Numerical coverage and analyzer metrics are advisory; assertion failures, invalid reports, type/lint failures and security failures remain required evidence.
 
 Use uniquely owned synthetic fixtures. Never read real environment files, credentials, databases, uploads or browser state. Synchronize asynchronous fixtures on actual state or process completion and preserve cleanup failures. Keep meaningful regressions and declared product-test deadlines intact.
+
+Where admitted, error-recovery tests retain the fallback, reload and route-access assertions. Performance checks run through the independent browser and Lighthouse tooling.
 
 ## Review appearance
 

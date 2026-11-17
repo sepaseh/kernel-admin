@@ -397,9 +397,6 @@ const completeApplicationFiles = [
   "src/shared/lib/error.test.ts",
   "src/shared/lib/error.ts",
   "src/shared/lib/index.ts",
-  "src/shared/lib/observability.test.ts",
-  "src/shared/lib/observability.ts",
-  "src/shared/lib/observability.vitals.test.ts",
   "src/shared/lib/transform.test.ts",
   "src/shared/lib/transform.ts",
   "src/shared/storage/compact.ts",
@@ -1001,6 +998,25 @@ test("source preparation admits only complete cumulative finite stages with fals
       );
   }
   assert.deepEqual(sourceFilesForStage("tooling"), []);
+});
+
+test("every source preparation stage rejects root application entry pages", () => {
+  for (const stage of publicationStages) {
+    const current = preparationPolicy(stage);
+    assert.equal(
+      validateBootstrapPolicy(current).size,
+      current.allowedFiles.length,
+    );
+    for (const file of ["index.html", "INDEX.HTML", "Index.Html"])
+      assert.throws(
+        () =>
+          validateBootstrapPolicy({
+            ...current,
+            allowedFiles: [...current.allowedFiles, file],
+          }),
+        /unique, exact/,
+      );
+  }
 });
 
 test("source preparation rejects unknown stages, future modules and runnable composition", () => {
@@ -1639,7 +1655,7 @@ test("UI foundation requires the complete previous HTTP closure and forbids appl
       /^docs\/(?:authentication|development)\.md$/.test(file) ||
       file.startsWith("public/"),
   );
-  assert.equal(required.length, 79);
+  assert.equal(required.length, 76);
   for (const missing of required)
     assert.throws(
       () =>
