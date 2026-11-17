@@ -140,10 +140,15 @@ const retryUnauthorizedRequest = async (
   requestConfig._retried = true;
 
   try {
-    await waitForRefresh(
-      refreshAccessToken(sessionSignal),
-      requestConfig.signal,
-    );
+    const currentToken = getAccessToken();
+    if (
+      !currentToken ||
+      requestConfig.headers.get("Authorization") === `Bearer ${currentToken}`
+    )
+      await waitForRefresh(
+        refreshAccessToken(sessionSignal),
+        requestConfig.signal,
+      );
     if (sessionSignal.aborted) throw new axios.CanceledError();
     if (requestConfig.signal?.aborted) throw new axios.CanceledError();
     return api.request(requestConfig);

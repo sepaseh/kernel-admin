@@ -1,16 +1,19 @@
-import { constants } from "node:fs";
+import { constants, createWriteStream } from "node:fs";
 import {
-  copyFile,
   lstat,
   mkdir,
+  mkdtemp,
   open,
   readdir,
   realpath,
+  rmdir,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
+import { withOwnedBuildDirectory } from "./build-directory.mjs";
 import {
   validateBasePath,
   validateOrigin,
@@ -31,10 +34,54 @@ const excluded = (name) =>
   /\.(?:pem|key|p12|pfx|sqlite|db)(?:-.*)?$/i.test(name) ||
   /^(?:credentials|secrets)(?:\.|$)/i.test(name);
 
-async function copyAssets(source, target, metadataFile) {
-  const information = await lstat(source);
+async function copyAssetFile(source, target, build, information) {
+  const handle = await open(
+    source,
+    constants.O_RDONLY |
+      (constants.O_NOFOLLOW ?? 0) |
+      (constants.O_NONBLOCK ?? 0),
+  );
+  const failures = [];
+  try {
+    const opened = await handle.stat({ bigint: true });
+    const current = await lstat(source, { bigint: true });
+    if (
+      !opened.isFile() ||
+      !current.isFile() ||
+      opened.dev !== information.dev ||
+      opened.ino !== information.ino ||
+      opened.dev !== current.dev ||
+      opened.ino !== current.ino ||
+      !inside(build, await realpath(source))
+    )
+      throw new Error("Release asset identity changed before reading.");
+
+    await pipeline(
+      handle.createReadStream({ autoClose: false }),
+      createWriteStream(target, { flags: "wx" }),
+    );
+  } catch (error) {
+    failures.push(error);
+  }
+  try {
+    await handle.close();
+  } catch (error) {
+    failures.push(error);
+  }
+  if (failures.length > 1)
+    throw new AggregateError(failures, "Asset copy and handle close failed.", {
+      cause: failures[0],
+    });
+
+  if (failures.length) throw failures[0];
+}
+
+async function copyAssets(source, target, metadataFile, build) {
+  const information = await lstat(source, { bigint: true });
   if (information.isSymbolicLink())
     throw new Error("Release assets cannot contain symbolic links.");
+  if (!inside(build, await realpath(source)))
+    throw new Error("Release assets must remain inside the owned build.");
   if (information.isDirectory()) {
     await mkdir(target, { recursive: true });
     const entries = (await readdir(source))
@@ -43,19 +90,15 @@ async function copyAssets(source, target, metadataFile) {
           !excluded(entry) && path.join(source, entry) !== metadataFile,
       )
       .sort((left, right) => left.localeCompare(right, "en"));
-    const results = await Promise.allSettled(
-      entries.map((entry) =>
-        copyAssets(
-          path.join(source, entry),
-          path.join(target, entry),
-          metadataFile,
-        ),
-      ),
-    );
-    const failure = results.find((result) => result.status === "rejected");
-    if (failure) throw failure.reason;
+    for (const entry of entries)
+      await copyAssets(
+        path.join(source, entry),
+        path.join(target, entry),
+        metadataFile,
+        build,
+      );
   } else if (information.isFile())
-    await copyFile(source, target, constants.COPYFILE_EXCL);
+    await copyAssetFile(source, target, build, information);
   else throw new Error("Unsupported release asset.");
 }
 
@@ -88,18 +131,7 @@ async function readBuildMetadata(build, filename) {
   }
 }
 
-export async function packageRelease({
-  repositoryRoot = defaultRepository,
-  releaseId,
-}) {
-  validateReleaseId(releaseId);
-  const repository = await realpath(repositoryRoot);
-  const build = path.join(repository, "dist");
-  if (
-    (await lstat(build)).isSymbolicLink() ||
-    !inside(repository, await realpath(build))
-  )
-    throw new Error("Build output must remain inside the repository.");
+async function packageBuild(repository, build, releaseId) {
   const metadataFile = path.join(build, "_kernel/build.json");
   const metadataBytes = await readBuildMetadata(build, metadataFile);
   const metadata = JSON.parse(metadataBytes.toString("utf8"));
@@ -129,7 +161,7 @@ export async function packageRelease({
   await mkdir(output);
   const publicRoot = path.join(output, "public");
   const applicationRoot = path.join(publicRoot, metadata.basePath.slice(1));
-  await copyAssets(build, applicationRoot, metadataFile);
+  await copyAssets(build, applicationRoot, metadataFile, build);
   await writeFile(
     path.join(applicationRoot, "_kernel/build.json"),
     metadataBytes,
@@ -159,6 +191,49 @@ export async function packageRelease({
   return { directory: output, release };
 }
 
+export async function packageRelease({
+  repositoryRoot = defaultRepository,
+  releaseId,
+}) {
+  validateReleaseId(releaseId);
+  const repository = await realpath(repositoryRoot);
+  const build = path.join(repository, "dist");
+  const information = await lstat(build, { bigint: true });
+  if (!information.isDirectory() || !inside(repository, await realpath(build)))
+    throw new Error("Build output must remain inside the repository.");
+
+  const workspace = await mkdtemp(path.join(repository, ".kernel-release-"));
+  const failures = [];
+  let result;
+  try {
+    result = await withOwnedBuildDirectory({
+      build,
+      workspace,
+      information,
+      run: (owned) => packageBuild(repository, owned, releaseId),
+    });
+  } catch (error) {
+    failures.push(error);
+  }
+  if (!failures.some((error) => error.recoveryDirectory)) {
+    try {
+      await rmdir(workspace);
+    } catch (error) {
+      failures.push(error);
+    }
+  }
+  if (failures.length > 1)
+    throw new AggregateError(
+      failures,
+      "Release packaging or owned cleanup failed.",
+      { cause: failures[0] },
+    );
+
+  if (failures.length) throw failures[0];
+
+  return result;
+}
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     const arguments_ = process.argv.slice(2);
@@ -168,6 +243,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.info(`Packaged ${result.release.releaseId}: ${result.directory}`);
   } catch (error) {
     console.error(error.message);
+    if (error.recoveryDirectory)
+      console.error(`Preserved build: ${error.recoveryDirectory}`);
     process.exitCode = 1;
   }
 }

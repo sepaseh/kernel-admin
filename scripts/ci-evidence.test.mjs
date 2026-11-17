@@ -121,7 +121,6 @@ const syntheticEnvironment = {
   KERNEL_SYNTHETIC_ENV: "1",
   VITE_API_BASE_URL: "https://api.example.com",
   VITE_APP_BASE_URL: "/",
-  VITE_OBSERVABILITY_URL: "",
   VITE_RELEASE_ID: "application-verification",
 };
 const putBuildRecord = (root, record) =>

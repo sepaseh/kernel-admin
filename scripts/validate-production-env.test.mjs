@@ -63,13 +63,8 @@ describe("production environment validation", () => {
     }
   });
 
-  it("accepts valid required and optional URLs", () => {
-    expect(() =>
-      validateProductionEnv({
-        ...valid,
-        VITE_OBSERVABILITY_URL: "http://events.example.com/collect",
-      }),
-    ).not.toThrow();
+  it("accepts valid required URLs", () => {
+    expect(() => validateProductionEnv(valid)).not.toThrow();
   });
 
   it.each([
@@ -78,23 +73,20 @@ describe("production environment validation", () => {
     [{ ...valid, VITE_APP_BASE_URL: "app/" }, "must start and end with /"],
     [{ ...valid, VITE_APP_BASE_URL: "" }, "must start and end with /"],
     [{ ...valid, VITE_APP_BASE_URL: "/app" }, "must start and end with /"],
-    [
-      { ...valid, VITE_OBSERVABILITY_URL: "invalid" },
-      "OBSERVABILITY_URL must be a valid",
-    ],
   ])("rejects invalid configuration", (env, message) => {
     expect(() => validateProductionEnv(env)).toThrow(message);
   });
 
-  for (const name of ["VITE_API_BASE_URL", "VITE_OBSERVABILITY_URL"])
-    it.each([
-      "ftp://example.com",
-      "file:///synthetic",
-      "javascript:alert(1)",
-      "https://user:pass@example.com",
-    ])(`rejects unsafe ${name} %s`, (url) =>
-      expect(() => validateProductionEnv({ ...valid, [name]: url })).toThrow(),
-    );
+  it.each([
+    "ftp://example.com",
+    "file:///synthetic",
+    "javascript:alert(1)",
+    "https://user:pass@example.com",
+  ])("rejects unsafe VITE_API_BASE_URL %s", (url) =>
+    expect(() =>
+      validateProductionEnv({ ...valid, VITE_API_BASE_URL: url }),
+    ).toThrow(),
+  );
 
   it.each(["//outside.example/", "/\\outside.example/"])(
     "rejects an escaping application base path %s",

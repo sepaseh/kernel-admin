@@ -407,7 +407,7 @@
     },
     {
       "id": "ui-foundation",
-      "when": "Change admitted shared UI controls, themes, browser preferences, cancellation and lock hooks, observability or local assets.",
+      "when": "Change admitted shared UI controls, themes, browser preferences, cancellation and lock hooks or local assets.",
       "owners": [
         "src/app/providers/antd/Antd.tsx",
         "src/shared/storage/state.ts",
@@ -415,7 +415,6 @@
         "src/shared/storage/compact.ts",
         "src/shared/storage/hooks/useLocalStorageWatcher.ts",
         "src/shared/hooks/useGoBack.ts",
-        "src/shared/lib/observability.ts",
         "src/shared/ui/digits-input/DigitsInput.tsx",
         "src/shared/ui/otp-input/OtpInput.tsx",
         "src/shared/ui/password-fields/PasswordFields.tsx",
@@ -454,8 +453,6 @@
         "src/shared/storage/preferences.test.ts",
         "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
         "src/shared/hooks/useGoBack.test.tsx",
-        "src/shared/lib/observability.test.ts",
-        "src/shared/lib/observability.vitals.test.ts",
         "src/shared/ui/digits-input/DigitsInput.test.tsx",
         "src/shared/ui/otp-input/OtpInput.test.tsx",
         "src/shared/ui/password-fields/PasswordFields.test.tsx",

@@ -9,7 +9,6 @@ import { parseTarget } from "./validate-workflow-targets.mjs";
 export const validateProductionEnv = (env) => {
   const apiUrl = env.VITE_API_BASE_URL;
   const appBaseUrl = env.VITE_APP_BASE_URL;
-  const observabilityUrl = env.VITE_OBSERVABILITY_URL;
   if (!apiUrl) {
     throw new Error("VITE_API_BASE_URL is required for production builds");
   }
@@ -23,10 +22,6 @@ export const validateProductionEnv = (env) => {
       "VITE_APP_BASE_URL must start and end with / and use canonical URL segments in production",
       { cause: error },
     );
-  }
-
-  if (observabilityUrl) {
-    parseTarget("VITE_OBSERVABILITY_URL", observabilityUrl);
   }
 };
 

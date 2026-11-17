@@ -11,7 +11,6 @@ import {
   createBrowserRouter,
   Navigate,
   useOutletContext,
-  useRouteError,
 } from "react-router";
 import { RouterProvider } from "react-router/dom";
 
@@ -24,7 +23,6 @@ import {
 import { useCore } from "@/app/hooks";
 import { hasRouteAccess } from "@/app/lib";
 import type { DefaultLayoutContext } from "@/layouts/default";
-import { reportError } from "@/shared/lib";
 import { ErrorFallback } from "@/shared/ui/error-boundary";
 import { RouteLoading } from "@/shared/ui/route-loading";
 
@@ -112,16 +110,6 @@ const createLayoutRoutes = (layout: RouteLayout): RouteObject[] =>
     .filter((route) => routeTree[route].layout === layout)
     .map(createPageRoute);
 
-const RouteErrorBoundary = () => {
-  const error = useRouteError();
-
-  useEffect(() => {
-    reportError(error, { source: "react-router.error-boundary" });
-  }, [error]);
-
-  return <ErrorFallback />;
-};
-
 const router = createBrowserRouter(
   [
     {
@@ -142,7 +130,7 @@ const router = createBrowserRouter(
         },
         ...createLayoutRoutes("standalone"),
       ],
-      errorElement: <RouteErrorBoundary />,
+      errorElement: <ErrorFallback />,
       HydrateFallback: RouteLoading,
     },
   ],

@@ -1,5 +1,7 @@
 # Assistant entry point
 
+[The publication policy](.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
+
 Read [assistant guidance](.agents/README.md), its [settings index](.agents/settings.json) and the relevant canonical rules before changing source. Use the existing [architecture](docs/architecture.md), [development guide](docs/development.md) and [task map](.agents/navigation.json) to locate current owners. Follow [Contributing](CONTRIBUTING.md).
 
 ## Scope and safety

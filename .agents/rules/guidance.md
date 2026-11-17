@@ -1,5 +1,7 @@
 # Guidance and documentation
 
+[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
+
 Use [AGENTS](../../AGENTS.md), the [settings index](../settings.json) and
 [task map](../navigation.json) for progressive reading.
 Read the owner source and tests; index entries and static links do not prove

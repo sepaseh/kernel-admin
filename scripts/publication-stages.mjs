@@ -50,9 +50,6 @@ const stageFiles = {
     "src/shared/lib/error.test.ts",
     "src/shared/lib/error.ts",
     "src/shared/lib/index.ts",
-    "src/shared/lib/observability.test.ts",
-    "src/shared/lib/observability.ts",
-    "src/shared/lib/observability.vitals.test.ts",
     "src/shared/lib/pagination.ts",
     "src/shared/lib/password.test.ts",
     "src/shared/lib/password.ts",
@@ -315,7 +312,7 @@ const stageFiles = {
 };
 
 export const isPreparationSource = (file) =>
-  /^(?:src|\.storybook|public)(?:\/|$)/i.test(file);
+  /^(?:(?:src|\.storybook|public)(?:\/|$)|index\.html$)/i.test(file);
 
 export const sourceFilesForStage = (stage) => {
   const position = publicationStages.indexOf(stage);

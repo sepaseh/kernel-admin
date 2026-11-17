@@ -5,9 +5,6 @@ import "./index.css";
 
 import { App } from "@/index";
 import "@/shared/i18n";
-import { initializeObservability } from "@/shared/lib";
-
-initializeObservability();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -238,61 +238,36 @@ describe("application routes", () => {
     }
   });
 
-  it("reports a protected page import failure when the route is allowed", async () => {
+  it("renders the fallback for a protected page import failure when the route is allowed", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     routeState.usersLoadError = new Error("synthetic unavailable users chunk");
     window.history.replaceState({}, "", "/users");
     const { Routes } = await import("./Routes");
-    const { setObservabilityTransport } = await import("@/shared/lib");
-    const send = vi.fn();
-    setObservabilityTransport(send);
     render(<Routes />);
 
     expect(await screen.findByText("500")).toBeVisible();
     expect(routeState.usersInitialized).toHaveBeenCalledTimes(1);
     expect(routeState.usersRendered).not.toHaveBeenCalled();
-    expect(send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        context: expect.objectContaining({
-          source: "react-router.error-boundary",
-        }),
-        name: "error",
-      }),
-    );
   });
 
-  it("renders and reports the application fallback when a route module fails to load", async () => {
+  it("renders the application fallback when a route module fails to load", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const send = vi.fn();
     routeState.loginLoadError = new Error("synthetic login module failure");
     window.history.replaceState({}, "", "/auth");
     const { Routes } = await import("./Routes");
-    const { setObservabilityTransport } = await import("@/shared/lib");
-    setObservabilityTransport(send);
     render(<Routes />);
 
     expect(await screen.findByText("500")).toBeVisible();
     expect(
       screen.getByRole("button", { name: /Reload|بارگذاری دوباره/ }),
     ).toBeVisible();
-    expect(send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        context: expect.objectContaining({
-          source: "react-router.error-boundary",
-        }),
-        name: "error",
-      }),
-    );
   });
 
-  it("renders and reports the application fallback when a route fails", async () => {
+  it("renders the application fallback when a route fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const send = vi.fn();
     routeState.dashboardError = true;
     window.history.replaceState({}, "", "/");
     const { Routes } = await import("./Routes");
-    const { setObservabilityTransport } = await import("@/shared/lib");
-    setObservabilityTransport(send);
 
     render(<Routes />);
 
@@ -303,14 +278,5 @@ describe("application routes", () => {
     expect(
       screen.getByRole("button", { name: /Reload|بارگذاری دوباره/ }),
     ).toBeVisible();
-    expect(send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        context: expect.objectContaining({
-          source: "react-router.error-boundary",
-        }),
-        message: "dashboard failed",
-        name: "error",
-      }),
-    );
   });
 });

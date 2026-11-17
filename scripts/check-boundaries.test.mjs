@@ -1815,7 +1815,10 @@ test("application stylesheet resolution rejects missing, directory and linked as
     path.join(directory, "src/index.css"),
     "file",
   );
-  assert.match(await failures(), /exact contained/);
+  await assert.rejects(
+    failures(),
+    /Published source must not contain symbolic links/,
+  );
 });
 
 test("contents receive only their declared category and file capabilities", () => {

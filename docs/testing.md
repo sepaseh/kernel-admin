@@ -66,6 +66,8 @@ Ordinary local and PR verification uses Chromium. Complete verification substitu
 
 [Pact consumer tests](../vitest.contract.config.ts) call the real adapters against an owned local mock provider. They verify consumer expectations; a developer's chosen backend needs its own authorized integration verification. Browser journeys and consumer contracts supply different evidence.
 
+Where admitted, error-recovery tests retain the fallback, reload and route-access assertions. Performance checks run through the independent browser and Lighthouse tooling.
+
 ## Review appearance
 
 For an affected screen, exercise translated names/errors, keyboard submission, invalid-field error associations, modal semantics, Escape and protection against accidental destructive submission. Preserve reduced motion and logical RTL/LTR layout across light/dark/compact variants. Static font tests inspect licensed WOFF2 data and CSS; the font journey separately checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.

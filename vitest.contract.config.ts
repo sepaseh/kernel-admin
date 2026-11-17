@@ -12,7 +12,6 @@ export default defineConfig({
   test: {
     env: {
       VITE_API_BASE_URL: "https://api.example.com",
-      VITE_OBSERVABILITY_URL: "",
       VITE_RELEASE_ID: "synthetic-consumer-contract",
     },
     environment: "jsdom",

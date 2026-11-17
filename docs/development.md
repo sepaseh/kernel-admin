@@ -44,8 +44,14 @@ Run `npm run check:boundaries` after changing imports or ownership. When extendi
 
 Use the current type, lint and broader check commands from [the manifest](../.agents/validation.json). Follow [validation](validation.md) for the complete required gate before an authorized commit, push or handoff. A focused run does not replace that gate.
 
+## Own build artifacts during publication
+
+Run build stamping and release packaging after the builder has stopped. The invoking account must exclusively control the canonical build parent and the helpers' newly created workspace; do not run another builder or publisher against those paths concurrently. These helpers isolate the build entry in a private sibling directory, validate opened file identities, and restore the build after the operation. They are not a sandbox for other processes running with the same account or holding existing write handles.
+
+If restoration cannot complete because the public build path is occupied, keep the reported recovery directory. Inspect the occupied path and recover the retained build deliberately; the helpers do not recursively delete build contents to force restoration. After an interrupted process, inspect `.kernel-build-*/build` or `.kernel-release-*/build` beside the original build path. Restore the retained directory only after confirming the original path is free and its publisher has stopped.
+
 ## 5. Update the guide that owns the change
 
 Update the existing usage, contract, testing or deployment guide when its instructions or behavior change. Link to configuration and command owners instead of copying another complete inventory. Keep documentation in English and product catalogs complete.
 
-Keep scratch exports, generated evidence and recovery files in ignored directories inside this repository. Keep real local configuration out of source fixtures and commits. Use [Contributing](../CONTRIBUTING.md) for review and publication; preparing or testing a change does not grant permission to publish it.
+Keep scratch exports, generated evidence and recovery files in ignored directories inside this repository; validation exports are verification-only and must never become implementation checkouts. Keep real local configuration out of source fixtures and commits. Use [Contributing](../CONTRIBUTING.md) for review and publication; preparing or testing a change does not grant permission to publish it.
