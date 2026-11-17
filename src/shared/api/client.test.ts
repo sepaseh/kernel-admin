@@ -175,6 +175,118 @@ describe("HTTP boundary", () => {
     },
   );
 
+  it.each([false, true])(
+    "joins an active refresh for a delayed old-token 401 (cancel waiter: %s)",
+    async (cancelWaiter) => {
+      setAccessToken("synthetic-old-token");
+      const session = getSessionSignal();
+      const expired = vi.fn();
+      setUnauthorizedHandler(expired);
+      const controller = new AbortController();
+      const delayedStarted = deferred<void>();
+      const delayedResponse = deferred<void>();
+      const delayedWaiting = deferred<void>();
+      const refreshStarted = deferred<void>();
+      const refreshResponse = deferred<{ access_token: string }>();
+      const delayedTokens: unknown[] = [];
+      let refreshCalls = 0;
+      adapter.mockImplementation(async (config) => {
+        if (config.url === "/auth/refresh-token") {
+          refreshCalls += 1;
+          if (refreshCalls === 1)
+            return response(config, {
+              access_token: "synthetic-current-token",
+            });
+          refreshStarted.resolve();
+          return response(config, await refreshResponse.promise);
+        }
+        const authorization = config.headers.get("Authorization");
+        if (config.url === "/roles") {
+          delayedTokens.push(authorization);
+          if (authorization === "Bearer synthetic-old-token") {
+            const signal = config.signal as AbortSignal;
+            const addEventListener = signal.addEventListener.bind(signal);
+            vi.spyOn(signal, "addEventListener").mockImplementation(
+              (type, listener, options) => {
+                addEventListener(type, listener, options);
+                if (type === "abort") delayedWaiting.resolve();
+              },
+            );
+            delayedStarted.resolve();
+            await delayedResponse.promise;
+            throw unauthorized(config);
+          }
+        }
+        if (
+          authorization === "Bearer synthetic-old-token" ||
+          (config.url !== "/users" &&
+            authorization === "Bearer synthetic-current-token")
+        )
+          throw unauthorized(config);
+        return response(config, { authenticated: true });
+      });
+      const delayed = apiClient
+        .get("/roles", { signal: controller.signal })
+        .then(
+          (value) => ({ value }),
+          (error: unknown) => ({ error }),
+        );
+      await delayedStarted.promise;
+      await expect(apiClient.get("/users")).resolves.toEqual({
+        authenticated: true,
+      });
+      const continuing = apiClient.get("/permissions").then(
+        (value) => ({ value }),
+        (error: unknown) => ({ error }),
+      );
+      await refreshStarted.promise;
+      delayedResponse.resolve();
+      const delayedState = await Promise.race([
+        delayedWaiting.promise.then(() => "waiting"),
+        delayed.then(() => "settled"),
+      ]);
+      if (cancelWaiter) {
+        controller.abort();
+        await delayed;
+      }
+      const waitingSession = {
+        aborted: session.aborted,
+        token: getAccessToken(),
+        expired: expired.mock.calls.length,
+      };
+      refreshResponse.resolve({ access_token: "synthetic-next-token" });
+      const [delayedResult, continuingResult] = await Promise.all([
+        delayed,
+        continuing,
+      ]);
+
+      expect(delayedState).toBe("waiting");
+      expect(waitingSession).toEqual({
+        aborted: false,
+        token: "synthetic-current-token",
+        expired: 0,
+      });
+      if (cancelWaiter) {
+        expect(
+          "error" in delayedResult && axios.isCancel(delayedResult.error),
+        ).toBe(true);
+        expect(delayedTokens).toEqual(["Bearer synthetic-old-token"]);
+      } else {
+        expect(delayedResult).toEqual({ value: { authenticated: true } });
+        expect(delayedTokens).toEqual([
+          "Bearer synthetic-old-token",
+          "Bearer synthetic-next-token",
+        ]);
+      }
+      expect(continuingResult).toEqual({ value: { authenticated: true } });
+      expect(refreshCalls).toBe(2);
+      expect(expired).not.toHaveBeenCalled();
+      expect(getAccessToken()).toBe("synthetic-next-token");
+      expect(getSessionSignal()).toBe(session);
+      expect(session.aborted).toBe(false);
+    },
+  );
+
   it("stops replay after one refresh and expires the rejected session once", async () => {
     const expired = vi.fn();
     setUnauthorizedHandler(expired);
