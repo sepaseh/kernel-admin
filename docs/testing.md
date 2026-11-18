@@ -1,5 +1,7 @@
 # Test the admitted source
 
+Storybook browser files run sequentially so animation, visibility and focus assertions remain reliable under their existing deadlines. All stories, behavioral assertions and browser coverage remain enabled.
+
 [The publication policy](../.github/bootstrap-policy.json) defines the exact source under test. [The manifest](../.agents/validation.json) owns commands and required profiles. A repository-only snapshot cannot establish an assembled application, production build, browser behavior or compatibility with a deployed backend.
 
 ## Run focused checks

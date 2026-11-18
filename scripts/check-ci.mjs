@@ -202,9 +202,14 @@ export const selectPerformanceScope = (now = new Date()) => {
 };
 
 const lcovFiles = ["coverage/unit/lcov.info", "coverage/governance/lcov.info"];
+const storybookCoverage = "coverage/storybook/lcov.info";
 const powershellCoverage = "coverage/governance/powershell.xml";
-const coverageFiles = (applicationReady) => [
+const requiresWorkshopCoverage = (manifest) =>
+  manifest.phase === "source-preparation" &&
+  manifest.publicationStage === "workshop";
+const coverageFiles = (applicationReady, storybook = false) => [
   ...lcovFiles,
+  ...(storybook ? [storybookCoverage] : []),
   ...(applicationReady ? [powershellCoverage] : []),
 ];
 const measuredPowershell = (text) => {
@@ -254,7 +259,10 @@ export const validateCoverageIdentity = (identity) => {
 };
 export const coverageManifest = (identity, contents, verification = {}) => {
   validateCoverageIdentity(identity);
-  const files = coverageFiles(verification.applicationReady === true);
+  const files = coverageFiles(
+    verification.applicationReady === true,
+    verification.storybook === true,
+  );
   if (!isRecord(contents) || Object.keys(contents).length !== files.length)
     throw new Error(
       "Exactly the phase's measured LCOV and applicable PowerShell reports are required",
@@ -264,6 +272,7 @@ export const coverageManifest = (identity, contents, verification = {}) => {
     identity,
     verification: {
       applicationReady: verification.applicationReady === true,
+      ...(verification.storybook === true ? { storybook: true } : {}),
       performanceAdvisory: verification.performanceAdvisory === true,
       performanceOutcome: verification.performanceOutcome ?? "not-applicable",
       recordedAt: verification.recordedAt ?? new Date().toISOString(),
@@ -286,14 +295,22 @@ export const verifyCoverageManifest = (
   manifest,
   expected,
   contents,
-  { applicationReady = manifest?.verification?.applicationReady } = {},
+  {
+    applicationReady = manifest?.verification?.applicationReady,
+    storybook = manifest?.verification?.storybook === true,
+  } = {},
 ) => {
   validateCoverageIdentity(expected);
-  const actual = coverageManifest(expected, contents, { applicationReady });
+  const actual = coverageManifest(expected, contents, {
+    applicationReady,
+    storybook,
+  });
   if (
     manifest?.schemaVersion !== 1 ||
     typeof applicationReady !== "boolean" ||
     manifest.verification?.applicationReady !== applicationReady ||
+    typeof storybook !== "boolean" ||
+    (manifest.verification?.storybook ?? false) !== storybook ||
     !isRecord(manifest.identity) ||
     Object.keys(expected).some(
       (key) => manifest.identity[key] !== expected[key],
@@ -401,7 +418,7 @@ export const verifyReusedCoverage = (
   candidate,
   run,
   contents,
-  { applicationReady, now = new Date(), currentRun } = {},
+  { applicationReady, storybook, now = new Date(), currentRun } = {},
 ) => {
   if (
     applicationReady !== undefined &&
@@ -409,6 +426,13 @@ export const verifyReusedCoverage = (
   )
     throw new Error(
       "Previous verification belongs to a different application phase",
+    );
+  if (
+    storybook !== undefined &&
+    (report?.verification?.storybook ?? false) !== storybook
+  )
+    throw new Error(
+      "Previous verification belongs to a different Storybook coverage scope",
     );
   if (
     applicationReady === true &&
@@ -440,7 +464,10 @@ export const verifyReusedCoverage = (
     runId: candidate.runId,
     runAttempt: candidate.runAttempt,
   };
-  verifyCoverageManifest(report, producer, contents, { applicationReady });
+  verifyCoverageManifest(report, producer, contents, {
+    applicationReady,
+    storybook,
+  });
   return producer;
 };
 
@@ -1924,7 +1951,13 @@ const inspectHostedChecks = (check, full, appFresh) => {
   return { visual, performance: check.steps.indexOf(performance[0]) };
 };
 
-const inspectCoveragePublication = (check, visual, performance, fresh) => {
+const inspectCoveragePublication = (
+  check,
+  visual,
+  performance,
+  fresh,
+  storybook = false,
+) => {
   const record = commandStep(
     check,
     "node scripts/check-ci.mjs --record-coverage",
@@ -1964,7 +1997,12 @@ const inspectCoveragePublication = (check, visual, performance, fresh) => {
     upload.step.with?.name !==
       "verification-${{ github.run_id }}-${{ github.run_attempt }}" ||
     upload.step.with?.path?.trim() !==
-      "coverage/unit/lcov.info\ncoverage/governance/lcov.info\ncoverage/governance/powershell.xml\ncoverage/verification-coverage.json" ||
+      [
+        ...lcovFiles,
+        ...(storybook ? [storybookCoverage] : []),
+        powershellCoverage,
+        "coverage/verification-coverage.json",
+      ].join("\n") ||
     upload.step.with?.["if-no-files-found"] !== "error" ||
     upload.step.with?.overwrite !== false ||
     upload.step.with?.["include-hidden-files"] !== false ||
@@ -2033,7 +2071,13 @@ export const inspectCi = (content, manifest) => {
   const appFresh = fresh ? appCondition + " && " + fresh : appCondition;
   const full = inspectCoreCommands(check, ready, fresh);
   const { visual, performance } = inspectHostedChecks(check, full, appFresh);
-  inspectCoveragePublication(check, visual, performance, fresh);
+  inspectCoveragePublication(
+    check,
+    visual,
+    performance,
+    fresh,
+    requiresWorkshopCoverage(manifest),
+  );
   inspectSonarWorkflow(content, manifest);
   return { requiredChecks };
 };
@@ -2250,18 +2294,21 @@ export const createEvidenceRunner = ({
       ),
     );
   };
-  const reusePolicy = async () => ({
-    applicationReady:
-      JSON.parse(
-        await readFile(path.join(directory, ".agents/validation.json"), "utf8"),
-      ).applicationReady === true,
-    now: now(),
-  });
+  const reusePolicy = async () => {
+    const manifest = JSON.parse(
+      await readFile(path.join(directory, ".agents/validation.json"), "utf8"),
+    );
+    return {
+      applicationReady: manifest.applicationReady === true,
+      storybook: requiresWorkshopCoverage(manifest),
+      now: now(),
+    };
+  };
   const readCoverage = async () => {
-    const { applicationReady } = await reusePolicy();
+    const { applicationReady, storybook } = await reusePolicy();
     return Object.fromEntries(
       await Promise.all(
-        coverageFiles(applicationReady).map(async (file) => {
+        coverageFiles(applicationReady, storybook).map(async (file) => {
           const filename = path.join(directory, file);
           return [
             file,
@@ -2430,6 +2477,7 @@ export const createEvidenceRunner = ({
       JSON.stringify(
         coverageManifest(identity, contents, {
           applicationReady: environment.VERIFICATION_APPLICATION === "true",
+          storybook: (await reusePolicy()).storybook,
           performanceAdvisory:
             environment.VERIFICATION_PERFORMANCE_ADVISORY === "true",
           performanceOutcome:
