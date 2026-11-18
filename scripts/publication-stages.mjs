@@ -160,6 +160,7 @@ const stageFiles = {
     "src/features/auth/types.ts",
     "src/features/auth/useOtpRequest.test.tsx",
     "src/features/auth/useOtpRequest.ts",
+    "src/features/files/Files.test.tsx",
     "src/features/files/Files.tsx",
     "src/features/files/api.test.ts",
     "src/features/files/api.ts",
