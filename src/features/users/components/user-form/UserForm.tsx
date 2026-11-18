@@ -9,7 +9,7 @@ import { getRoutePermissions } from "@/app/lib";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { getSessionSignal } from "@/shared/api";
 import { modalKeys } from "@/shared/config";
-import { useAbortController, useGoBack, useLock } from "@/shared/hooks";
+import { useAbortController, useLock } from "@/shared/hooks";
 import { generatePassword } from "@/shared/lib";
 import { DigitsInput } from "@/shared/ui/digits-input";
 import { FormDrawer } from "@/shared/ui/form-drawer";
@@ -20,12 +20,13 @@ import type { User, UserRequest } from "../../types";
 
 type UserFormProps = {
   id?: User["id"];
+  onClose: () => void;
   onFinish: () => void;
 };
 
 const initialFocusField = "firstName" satisfies keyof UserRequest;
 
-export const UserForm = ({ id, onFinish }: UserFormProps) => {
+export const UserForm = ({ id, onClose, onFinish }: UserFormProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm<UserRequest>();
   const [loadedId, setLoadedId] = useState<User["id"]>();
@@ -33,7 +34,6 @@ export const UserForm = ({ id, onFinish }: UserFormProps) => {
   const [submitting, setSubmitting] = useState(false);
   const { cancel, start } = useAbortController();
   const { messageAPI, notificationAPI } = useAntd();
-  const goBack = useGoBack();
   const { hash } = useLocation();
   const { lock, unlock } = useLock();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
@@ -44,7 +44,7 @@ export const UserForm = ({ id, onFinish }: UserFormProps) => {
 
   const handleClose = () => {
     cancel();
-    goBack();
+    onClose();
   };
 
   const handleSubmit: FormProps<UserRequest>["onFinish"] = async (values) => {
@@ -88,7 +88,6 @@ export const UserForm = ({ id, onFinish }: UserFormProps) => {
       }
 
       onFinish();
-      handleClose();
     } catch (error) {
       if (signal.aborted || sessionSignal.aborted || isCancel(error)) return;
 
@@ -101,7 +100,10 @@ export const UserForm = ({ id, onFinish }: UserFormProps) => {
     }
   };
 
-  useLayoutEffect(() => cancel, [cancel, goBack, id, isCreate, isUpdate, open]);
+  useLayoutEffect(
+    () => cancel,
+    [cancel, id, isCreate, isUpdate, onClose, open],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -111,7 +113,7 @@ export const UserForm = ({ id, onFinish }: UserFormProps) => {
       unlock();
 
       if (!open) {
-        if (isCreate || isUpdate) goBack();
+        if (isCreate || isUpdate) onClose();
 
         return;
       }
@@ -119,7 +121,7 @@ export const UserForm = ({ id, onFinish }: UserFormProps) => {
       if (!isUpdate) return;
 
       if (id === undefined) {
-        goBack();
+        onClose();
         return;
       }
 
@@ -141,7 +143,7 @@ export const UserForm = ({ id, onFinish }: UserFormProps) => {
         if (signal.aborted) return;
 
         if (error instanceof Error) void messageAPI.error(error.message);
-        goBack();
+        onClose();
       } finally {
         if (!signal.aborted) setLoading(false);
       }
@@ -151,11 +153,11 @@ export const UserForm = ({ id, onFinish }: UserFormProps) => {
   }, [
     cancel,
     form,
-    goBack,
     id,
     isCreate,
     isUpdate,
     messageAPI,
+    onClose,
     open,
     start,
     unlock,

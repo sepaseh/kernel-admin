@@ -9,11 +9,11 @@ import {
 import ImgCrop from "antd-img-crop";
 import { createStyles } from "antd-style";
 import { Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { UploadProgressHandler } from "@/shared/api";
-import { useLock } from "@/shared/hooks";
+import { useAbortController, useLock } from "@/shared/hooks";
 
 import { readImageSize } from "./image";
 
@@ -34,7 +34,11 @@ type ImageUploadProps<T> = {
   onChange?: (image: T) => void;
   onError: (error: Error) => void;
   settings: { height: number; size: number; width: number };
-  upload: (file: File, onUploadProgress?: UploadProgressHandler) => Promise<T>;
+  upload: (
+    file: File,
+    onUploadProgress: UploadProgressHandler,
+    signal: AbortSignal,
+  ) => Promise<T>;
   value?: T;
 };
 
@@ -51,6 +55,7 @@ export const ImageUpload = <T extends { id: string; url: string }>({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [percent, setPercent] = useState<number>();
+  const { cancel, start } = useAbortController();
   const { lock, unlock } = useLock();
   const container = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
@@ -121,38 +126,53 @@ export const ImageUpload = <T extends { id: string; url: string }>({
     onProgress,
     onError: reject,
   }) => {
+    if (!mounted.current) return;
+
+    const signal = start();
+
     try {
       if (!(selected instanceof File)) throw new Error(t("imageInvalid"));
       setPercent(0);
-      const result = await upload(selected, (event) => {
-        if (!mounted.current || event.progress === undefined) return;
-        const progress = Math.min(
-          100,
-          Math.max(0, Math.round(event.progress * 100)),
-        );
-        setPercent(progress);
-        onProgress?.({ percent: progress });
-      });
-      if (!mounted.current) return;
+      const result = await upload(
+        selected,
+        (event) => {
+          if (
+            signal.aborted ||
+            !mounted.current ||
+            event.progress === undefined
+          )
+            return;
+
+          const progress = Math.min(
+            100,
+            Math.max(0, Math.round(event.progress * 100)),
+          );
+          setPercent(progress);
+          onProgress?.({ percent: progress });
+        },
+        signal,
+      );
+      if (signal.aborted || !mounted.current) return;
 
       onChange?.(result);
       onSuccess?.(result);
     } catch (error) {
-      if (mounted.current && error instanceof Error) {
+      if (!signal.aborted && mounted.current && error instanceof Error) {
         onError(error);
         reject?.(error);
       }
     } finally {
-      finish();
+      if (!signal.aborted) finish();
     }
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
+      cancel();
     };
-  }, []);
+  }, [cancel]);
 
   return (
     <Flex gap={8} ref={container} vertical>

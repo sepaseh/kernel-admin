@@ -30,9 +30,11 @@ import { fetchRoles, type Role } from "@/features/roles";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { defaultPageSize, modalKeys } from "@/shared/config";
 import {
+  getDrawerId,
   useAbortController,
   useDebouncedFilters,
   useFilterParams,
+  useGoBack,
   useLock,
 } from "@/shared/hooks";
 import { generatePassword, getAllowedValue, getPage } from "@/shared/lib";
@@ -54,7 +56,6 @@ export const UsersPage = () => {
   const [form] = Form.useForm<UserQuery>();
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [selectedId, setSelectedId] = useState<User["id"]>();
   const [submitting, setSubmitting] = useState(false);
   const [total, setTotal] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
@@ -62,7 +63,8 @@ export const UsersPage = () => {
   const { messageAPI, modalAPI, notificationAPI, token } = useAntd();
   const { filters, setFilters } = useFilterParams<UserQuery>();
   const debouncedHandleFilter = useDebouncedFilters(setFilters);
-  const { pathname, search } = useLocation();
+  const goBack = useGoBack();
+  const { pathname, search, state } = useLocation();
   const { lock, unlock } = useLock();
   const navigate = useNavigate();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
@@ -71,6 +73,7 @@ export const UsersPage = () => {
     currentUser,
   );
   const current = getPage(filters.page);
+  const selectedId = getDrawerId(state);
 
   const fetchData = useCallback(async () => {
     const signal = start();
@@ -96,6 +99,11 @@ export const UsersPage = () => {
       if (!signal.aborted) setLoading(false);
     }
   }, [filters, messageAPI, start]);
+
+  const handleFormFinish = () => {
+    void fetchData();
+    goBack();
+  };
 
   const handleDelete = async (id: User["id"]) => {
     if (!lock()) return;
@@ -209,8 +217,7 @@ export const UsersPage = () => {
   ) => {
     if (!canUpdate || submitting) return;
 
-    setSelectedId(id);
-    void navigate({ hash: drawer, pathname, search }, { state: true });
+    void navigate({ hash: drawer, pathname, search }, { state: { id } });
   };
 
   const tableColumns: TableProps<User>["columns"] = [
@@ -487,8 +494,13 @@ export const UsersPage = () => {
           type="primary"
         />
       )}
-      <UserForm id={selectedId} onFinish={fetchData} />
-      <UserRoleForm id={selectedId} onFinish={fetchData} options={{ roles }} />
+      <UserForm id={selectedId} onClose={goBack} onFinish={handleFormFinish} />
+      <UserRoleForm
+        id={selectedId}
+        onClose={goBack}
+        onFinish={handleFormFinish}
+        options={{ roles }}
+      />
     </>
   );
 };

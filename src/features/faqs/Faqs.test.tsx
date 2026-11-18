@@ -1,5 +1,12 @@
 import { act, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Outlet, Route, Routes, useLocation } from "react-router";
+import {
+  MemoryRouter,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CurrentUser } from "@/features/account";
@@ -50,8 +57,23 @@ const LocationPreview = () => {
   return <output aria-label="FAQ location">{pathname + search + hash}</output>;
 };
 
+const HistoryControls = () => {
+  const { pathname, search } = useLocation();
+  const navigate = useNavigate();
+  return (
+    <>
+      <button onClick={() => void navigate({ pathname, search })}>
+        Open FAQ list
+      </button>
+      <button onClick={() => void navigate(-2)}>Back to earlier FAQ</button>
+      <button onClick={() => void navigate(2)}>Forward to later FAQ</button>
+    </>
+  );
+};
+
 const renderPage = (
   permissions: CurrentUser["permissions"] = ["faqs.read"],
+  historyControls = false,
 ) => {
   const currentUser: CurrentUser = {
     firstName: "Ada",
@@ -65,6 +87,7 @@ const renderPage = (
   return render(
     <MemoryRouter initialEntries={["/faqs?from=admin"]}>
       <LocationPreview />
+      {historyControls && <HistoryControls />}
       <Routes>
         <Route element={<Outlet context={{ currentUser }} />}>
           <Route path="/faqs" element={<FaqsPage />} />
@@ -196,6 +219,60 @@ describe("FAQ listing", () => {
       second.id,
       expect.any(AbortSignal),
     );
+  });
+
+  it("saves the restored FAQ and closes the drawer while refreshing the list", async () => {
+    const { user } = renderPage(["faqs.read", "faqs.update"], true);
+    const openFaq = async (faq: Faq) => {
+      const cell = await screen.findByRole("cell", { name: faq.question });
+      const row = cell.closest("tr");
+      if (!row) throw new Error("Expected an FAQ row");
+
+      await user.click(
+        within(row).getByRole("button", { name: i18n.t("update") }),
+      );
+    };
+
+    await openFaq(first);
+    const drawer = await screen.findByRole("dialog");
+    await within(drawer).findByDisplayValue(first.question);
+    await user.click(screen.getByText("Open FAQ list"));
+    await waitFor(() => expect(drawer).not.toBeVisible());
+    await openFaq(second);
+    await within(drawer).findByDisplayValue(second.question);
+
+    await user.click(screen.getByText("Back to earlier FAQ"));
+    await within(drawer).findByDisplayValue(first.question);
+    await user.click(screen.getByText("Forward to later FAQ"));
+    await within(drawer).findByDisplayValue(second.question);
+
+    await user.click(screen.getByText("Back to earlier FAQ"));
+    await within(drawer).findByDisplayValue(first.question);
+
+    const refreshed = { ...first, question: "Where are my uploaded files?" };
+    const pendingRefresh = deferred<Faq[]>();
+    vi.mocked(fetchFaqs).mockReturnValueOnce(pendingRefresh.promise);
+    await user.click(
+      within(drawer).getByRole("button", { name: i18n.t("submit") }),
+    );
+
+    await waitFor(() =>
+      expect(updateFaq).toHaveBeenCalledExactlyOnceWith(
+        first.id,
+        { question: first.question, answer: first.answer },
+        expect.any(AbortSignal),
+      ),
+    );
+    await waitFor(() => expect(drawer).not.toBeVisible());
+    expect(screen.getByLabelText("FAQ location")).toHaveTextContent(
+      /^\/faqs\?from=admin$/,
+    );
+    expect(fetchFaqs).toHaveBeenCalledTimes(2);
+
+    await act(async () => pendingRefresh.resolve([refreshed, second]));
+    expect(
+      screen.getByRole("cell", { name: refreshed.question }),
+    ).toBeVisible();
   });
 
   it("waits for a confirmed deletion before refreshing the list", async () => {

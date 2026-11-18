@@ -12,6 +12,7 @@ import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CurrentUser } from "@/features/account";
+import { useGoBack } from "@/shared/hooks";
 import { i18n } from "@/shared/i18n";
 import { deferred } from "@/test/deferred";
 
@@ -48,21 +49,27 @@ const roles = [
   { id: "role-1", name: "Readers", permissions: [] },
   { id: "role-2", name: "Editors", permissions: [] },
 ];
+const UserRoleFormFixture = () => {
+  const onClose = useGoBack();
+  const handleFormFinish = () => {
+    onFinish();
+    onClose();
+  };
+  return (
+    <UserRoleForm
+      id={user.id}
+      onClose={onClose}
+      onFinish={handleFormFinish}
+      options={{ roles }}
+    />
+  );
+};
 const renderForm = (entry = "/users#roles") =>
   render(
     <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route element={<Outlet context={{ currentUser }} />}>
-          <Route
-            path="/users"
-            element={
-              <UserRoleForm
-                id="user-1"
-                onFinish={onFinish}
-                options={{ roles }}
-              />
-            }
-          />
+          <Route path="/users" element={<UserRoleFormFixture />} />
         </Route>
       </Routes>
     </MemoryRouter>,

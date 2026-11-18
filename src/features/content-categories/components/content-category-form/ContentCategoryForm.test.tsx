@@ -11,6 +11,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CurrentUser } from "@/features/account";
+import { useGoBack } from "@/shared/hooks";
 import { i18n } from "@/shared/i18n";
 import { deferred } from "@/test/deferred";
 import { render, screen } from "@/test/render";
@@ -52,6 +53,25 @@ const CategoryNavigation = () => {
   );
 };
 
+const RoutedCategoryForm = ({
+  id,
+  onFinish,
+}: {
+  id?: ContentCategory["id"];
+  onFinish: () => void;
+}) => {
+  const goBack = useGoBack();
+
+  const handleFinish = () => {
+    onFinish();
+    goBack();
+  };
+
+  return (
+    <ContentCategoryForm id={id} onClose={goBack} onFinish={handleFinish} />
+  );
+};
+
 const renderForm = ({
   hash = "#create",
   id,
@@ -80,7 +100,7 @@ const renderForm = ({
           <Route element={<Outlet context={{ currentUser }} />}>
             <Route
               path="/content-categories"
-              element={<ContentCategoryForm id={id} onFinish={onFinish} />}
+              element={<RoutedCategoryForm id={id} onFinish={onFinish} />}
             />
           </Route>
         </Routes>

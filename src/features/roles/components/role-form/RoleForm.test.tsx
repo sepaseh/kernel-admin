@@ -20,6 +20,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CurrentUser } from "@/features/account";
+import { useGoBack } from "@/shared/hooks";
 import { i18n } from "@/shared/i18n";
 import type * as FormDrawerModule from "@/shared/ui/form-drawer";
 import { deferred } from "@/test/deferred";
@@ -86,18 +87,28 @@ const FormNavigation = () => {
     </>
   );
 };
+const RoleFormFixture = ({ id }: { id?: string }) => {
+  const onClose = useGoBack();
+  const handleFormFinish = () => {
+    onFinish();
+    onClose();
+  };
+  return (
+    <RoleForm
+      id={id}
+      onClose={onClose}
+      onFinish={handleFormFinish}
+      options={{ permissions }}
+    />
+  );
+};
 const renderForm = (entry = "/roles#create", id?: string, navigation = false) =>
   render(
     <MemoryRouter initialEntries={[entry]}>
       {navigation && <FormNavigation />}
       <Routes>
         <Route element={<Outlet context={{ currentUser }} />}>
-          <Route
-            path="/roles"
-            element={
-              <RoleForm id={id} onFinish={onFinish} options={{ permissions }} />
-            }
-          />
+          <Route path="/roles" element={<RoleFormFixture id={id} />} />
         </Route>
       </Routes>
     </MemoryRouter>,

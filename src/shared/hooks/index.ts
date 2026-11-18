@@ -1,4 +1,4 @@
-export { useGoBack } from "./useGoBack";
+export { getDrawerId, useGoBack } from "./useGoBack";
 
 export { useAbortController } from "./useAbortController";
 export { useLock } from "./useLock";

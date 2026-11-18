@@ -10,6 +10,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CurrentUser } from "@/features/account";
+import { useGoBack } from "@/shared/hooks";
 import { i18n } from "@/shared/i18n";
 import { deferred } from "@/test/deferred";
 import { render, screen } from "@/test/render";
@@ -56,6 +57,17 @@ type RenderFormOptions = {
   permissions?: CurrentUser["permissions"];
 };
 
+const RoutedFaqForm = ({ id }: { id?: Faq["id"] }) => {
+  const goBack = useGoBack();
+
+  const handleFinish = () => {
+    onFinish();
+    goBack();
+  };
+
+  return <FaqForm id={id} onClose={goBack} onFinish={handleFinish} />;
+};
+
 const renderForm = ({
   hash = "#create",
   id,
@@ -76,10 +88,7 @@ const renderForm = ({
       <FormNavigation />
       <Routes>
         <Route element={<Outlet context={{ currentUser }} />}>
-          <Route
-            path="/faqs"
-            element={<FaqForm id={id} onFinish={onFinish} />}
-          />
+          <Route path="/faqs" element={<RoutedFaqForm id={id} />} />
         </Route>
       </Routes>
     </MemoryRouter>,

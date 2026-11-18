@@ -23,6 +23,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CurrentUser } from "@/features/account";
 import { type StoredFile, uploadFile } from "@/features/files";
+import { useGoBack } from "@/shared/hooks";
 import { i18n } from "@/shared/i18n";
 import { readImageSize } from "@/shared/ui/image-upload/image";
 import { deferred } from "@/test/deferred";
@@ -117,8 +118,30 @@ const FormNavigation = () => {
       <button onClick={() => void navigate("/contents#other")}>
         Leave content form
       </button>
+      <button onClick={() => void navigate("/contents#create")}>
+        Open content form
+      </button>
+      <button onClick={() => void navigate(-1)}>Browser Back</button>
       <output aria-label="Content form hash">{hash}</output>
     </>
+  );
+};
+
+const RoutedContentForm = ({ id }: { id?: Content["id"] }) => {
+  const goBack = useGoBack();
+
+  const handleFinish = () => {
+    onFinish();
+    goBack();
+  };
+
+  return (
+    <ContentForm
+      id={id}
+      onClose={goBack}
+      onFinish={handleFinish}
+      options={{ categories: [category] }}
+    />
   );
 };
 
@@ -129,16 +152,7 @@ const renderForm = (hash: string, id?: Content["id"], currentUser = editor) =>
         <FormNavigation />
         <Routes>
           <Route element={<Outlet context={{ currentUser }} />}>
-            <Route
-              path="/contents"
-              element={
-                <ContentForm
-                  id={id}
-                  onFinish={onFinish}
-                  options={{ categories: [category] }}
-                />
-              }
-            />
+            <Route path="/contents" element={<RoutedContentForm id={id} />} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -205,6 +219,7 @@ describe("content form", () => {
         expect.objectContaining({ name: "cover.png", type: "image/png" }),
         "contents",
         expect.any(Function),
+        expect.any(AbortSignal),
       ),
     );
     expect(submit).toBeDisabled();
@@ -242,6 +257,34 @@ describe("content form", () => {
     expect(onFinish).toHaveBeenCalledOnce();
     await waitFor(() => expect(formHash()).toBe(""));
     expect(updateContent).not.toHaveBeenCalled();
+  });
+
+  it("aborts the cover upload on Back and keeps the reopened form clean", async () => {
+    const pendingUpload = deferred<StoredFile>();
+    vi.mocked(uploadFile).mockReturnValueOnce(pendingUpload.promise);
+    renderForm("");
+    const openForm = screen.getByRole("button", { name: "Open content form" });
+
+    fireEvent.click(openForm);
+    await screen.findByRole("dialog");
+    selectCover("abandoned-cover.png");
+    await waitFor(() => expect(uploadFile).toHaveBeenCalledOnce());
+    const signal = vi.mocked(uploadFile).mock.calls[0][3];
+    expect(signal?.aborted).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Browser Back" }));
+    expect(formHash()).toBe("");
+    expect(signal?.aborted).toBe(true);
+
+    fireEvent.click(openForm);
+    await screen.findByRole("dialog");
+    await act(async () => pendingUpload.resolve(uploadedCover));
+
+    expect(submitButton()).toBeEnabled();
+    expect(
+      screen.queryByRole("img", { name: i18n.t("coverImage") }),
+    ).not.toBeInTheDocument();
+    expect(messages.error).not.toHaveBeenCalled();
   });
 
   it("waits for edit details and retains the draft for retry after a rejected save", async () => {
