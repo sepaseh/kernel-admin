@@ -1,0 +1,46 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: currentColor;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+img {
+  border: none;
+}
+
+input {
+  font-family: inherit;
+}
+
+li {
+  list-style-type: none;
+}
+
+html {
+  font-family: Vazirmatn, system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+html:lang(fa) {
+  font-feature-settings: "ss01";
+}
+
+select,
+textarea {
+  font-family: inherit;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
