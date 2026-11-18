@@ -4,7 +4,7 @@ import type { PropsWithChildren } from "react";
 import { MemoryRouter, useLocation, useNavigate } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { useGoBack } from "./useGoBack";
+import { getDrawerId, useGoBack } from "./useGoBack";
 
 afterEach(cleanup);
 
@@ -94,7 +94,7 @@ describe("drawer return navigation", () => {
                 pathname: "/roles",
                 search: "?keep=drawer-list",
                 hash: "#update",
-                state: true,
+                state: { id: "role-1" },
               },
             ]}
             initialIndex={1}
@@ -121,8 +121,9 @@ describe("drawer return navigation", () => {
       pathname: "/roles",
       search: "?keep=drawer-list",
       hash: "#update",
-      state: true,
+      state: { id: "role-1" },
     });
+    expect(getDrawerId(result.current.location.state)).toBe("role-1");
   });
 
   it("honors an explicit fallback destination and its navigation options", () => {

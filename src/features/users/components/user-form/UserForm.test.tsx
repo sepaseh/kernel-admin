@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CurrentUser } from "@/features/account";
 import { clearAccessToken, setAccessToken } from "@/shared/api/token";
+import { useGoBack } from "@/shared/hooks";
 import { i18n } from "@/shared/i18n";
 import type * as FormDrawerModule from "@/shared/ui/form-drawer";
 import { deferred } from "@/test/deferred";
@@ -75,16 +76,21 @@ const FormLocation = () => {
   const { hash } = useLocation();
   return <output aria-label="User form hash">{hash}</output>;
 };
+const UserFormFixture = ({ id }: { id?: string }) => {
+  const onClose = useGoBack();
+  const handleFormFinish = () => {
+    onFinish();
+    onClose();
+  };
+  return <UserForm id={id} onClose={onClose} onFinish={handleFormFinish} />;
+};
 const renderForm = (entry = "/users#create", id?: string) =>
   render(
     <MemoryRouter initialEntries={[entry]}>
       <FormLocation />
       <Routes>
         <Route element={<Outlet context={{ currentUser }} />}>
-          <Route
-            path="/users"
-            element={<UserForm id={id} onFinish={onFinish} />}
-          />
+          <Route path="/users" element={<UserFormFixture id={id} />} />
         </Route>
       </Routes>
     </MemoryRouter>,

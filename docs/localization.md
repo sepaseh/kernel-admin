@@ -13,8 +13,8 @@ Application admission requires complete catalogs, i18next initialization, date a
 | Supported product codes and complete catalogs | [`locales.ts`](../src/shared/i18n/locales.ts), [`catalogs.ts`](../src/shared/i18n/catalogs.ts) and [`locales`](../src/shared/i18n/locales) |
 | Fixed bootstrap language                      | [`index.ts`](../src/shared/i18n/index.ts)                                                                                                  |
 | Server metadata types and HTTP boundary       | [Settings API](../src/features/settings/api.ts)                                                                                            |
-| Applying accepted language and calendar       | Core (`src/app/providers/core/Core.tsx`)                                                                                                   |
-| Ant Design locale and document `lang`/`dir`   | Antd provider (`src/app/providers/antd/Antd.tsx`)                                                                                          |
+| Applying accepted language and calendar       | [Core](../src/app/providers/core/Core.tsx)                                                                                                 |
+| Ant Design locale and document `lang`/`dir`   | [Antd provider](../src/app/providers/antd/Antd.tsx)                                                                                        |
 | Date locales and calendar adapters            | [`date.ts`](../src/shared/i18n/date.ts) and [Persian date data](../src/shared/i18n/dayjs/fa.ts)                                            |
 
 ## Catalog ownership
@@ -45,10 +45,10 @@ Core fetches settings on mount, offers inline retry after an initial failure and
 
 `date.ts` registers the matching Day.js locales and Jalaliday. Callers pass the supported product code through `dayjsLocaleName(code)` before selecting a Day.js locale; English `en` resolves to the vendor name `en-gb`. Gregorian Persian month names and Jalali month names remain distinct. Callers explicitly select the API-provided calendar, resetting retained date instances when it changes.
 
-The calendar screen (`src/features/calendar/Calendar.tsx`) formats HTTP keys as Gregorian `YYYY-MM-DD` even when the displayed calendar is Jalali. Keep this wire format separate from localized display formatting.
+The [calendar screen](../src/features/calendar/Calendar.tsx) formats HTTP keys as Gregorian `YYYY-MM-DD` even when the displayed calendar is Jalali. Keep this wire format separate from localized display formatting.
 
 ## Fixtures and checks
 
 Storybook controls must select complete synthetic language metadata, independently exercising direction and theme without creating production preferences. Their preview, Core fixture, document, Ant Design, i18next and Day.js must stay synchronized. All production catalogs remain complete.
 
-If text, direction or dates disagree, inspect the accepted settings metadata before changing a catalog or vendor adapter. The [settings tests](../src/features/settings/api.test.ts), Core tests (`src/app/providers/core/Core.test.tsx`) and [date tests](../src/shared/i18n/date.test.ts) cover these boundaries separately. Preserve key/interpolation parity, pure-data imports and catalog registration through their owning tests and review. See [validation](validation.md) for the applicable commands and required gate.
+If text, direction or dates disagree, inspect the accepted settings metadata before changing a catalog or vendor adapter. The [settings tests](../src/features/settings/api.test.ts), [Core tests](../src/app/providers/core/Core.test.tsx) and [date tests](../src/shared/i18n/date.test.ts) cover these boundaries separately. Preserve key/interpolation parity, pure-data imports and catalog registration through their owning tests and review. See [validation](validation.md) for the applicable commands and required gate.

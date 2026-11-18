@@ -8,7 +8,7 @@ import { useAntd } from "@/app/hooks";
 import { getRoutePermissions } from "@/app/lib";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { modalKeys } from "@/shared/config";
-import { useAbortController, useGoBack, useLock } from "@/shared/hooks";
+import { useAbortController, useLock } from "@/shared/hooks";
 import { FormDrawer } from "@/shared/ui/form-drawer";
 
 import { createRole, fetchRole, updateRole } from "../../api";
@@ -21,6 +21,7 @@ import type {
 
 type RoleFormProps = {
   id?: Role["id"];
+  onClose: () => void;
   onFinish: () => void;
   options: { permissions: PermissionGroup[] };
 };
@@ -29,6 +30,7 @@ const initialFocusField = "name" satisfies keyof RoleRequest;
 
 export const RoleForm = ({
   id,
+  onClose,
   onFinish,
   options: { permissions },
 }: RoleFormProps) => {
@@ -39,7 +41,6 @@ export const RoleForm = ({
   const [submitting, setSubmitting] = useState(false);
   const { cancel, start } = useAbortController();
   const { messageAPI } = useAntd();
-  const goBack = useGoBack();
   const { hash } = useLocation();
   const { lock, unlock } = useLock();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
@@ -50,7 +51,7 @@ export const RoleForm = ({
 
   const handleClose = () => {
     cancel();
-    goBack();
+    onClose();
   };
 
   const handleGroupToggle = (
@@ -96,7 +97,6 @@ export const RoleForm = ({
       }
 
       onFinish();
-      handleClose();
     } catch (error) {
       if (signal.aborted || isCancel(error)) return;
 
@@ -109,7 +109,10 @@ export const RoleForm = ({
     }
   };
 
-  useLayoutEffect(() => cancel, [cancel, goBack, id, isCreate, isUpdate, open]);
+  useLayoutEffect(
+    () => cancel,
+    [cancel, id, isCreate, isUpdate, onClose, open],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -119,7 +122,7 @@ export const RoleForm = ({
       unlock();
 
       if (!open) {
-        if (isCreate || isUpdate) goBack();
+        if (isCreate || isUpdate) onClose();
 
         return;
       }
@@ -127,7 +130,7 @@ export const RoleForm = ({
       if (!isUpdate) return;
 
       if (id === undefined) {
-        goBack();
+        onClose();
         return;
       }
 
@@ -144,7 +147,7 @@ export const RoleForm = ({
         if (signal.aborted) return;
 
         if (error instanceof Error) void messageAPI.error(error.message);
-        goBack();
+        onClose();
       } finally {
         if (!signal.aborted) setLoading(false);
       }
@@ -154,11 +157,11 @@ export const RoleForm = ({
   }, [
     cancel,
     form,
-    goBack,
     id,
     isCreate,
     isUpdate,
     messageAPI,
+    onClose,
     open,
     start,
     unlock,

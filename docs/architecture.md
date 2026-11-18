@@ -9,7 +9,7 @@ Kernel Admin is one independent React/Vite TypeScript application. Developers se
 ## Follow startup
 
 1. The entry point (`src/main.tsx`) mounts App (`src/app/App.tsx`) through the root and application public exports. The application and Storybook share [root CSS](../src/index.css), which loads the existing reset and font styles.
-2. `CoreProvider` (`src/app/providers/core/Core.tsx`) loads public settings with an owned cancellation signal. It displays loading or an inline retry before exposing accepted settings to its children. The settings API uses typed response models without runtime envelope validation.
+2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings with an owned cancellation signal. It displays loading or an inline retry before exposing accepted settings to its children. The settings API uses typed response models without runtime envelope validation.
 3. `App` composes the Ant Design provider, shared global styles and lazy routes after settings are available. Ant Design applies the API-owned palette, language and direction, together with browser theme and compact preferences.
 4. Routes (`src/app/Routes.tsx`) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.
 
@@ -19,7 +19,7 @@ The [default layout](../src/layouts/default/Default.tsx) loads the current user 
 
 | Responsibility                                    | Owner                                                        | Contract                                                                                  |
 | ------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Accepted settings and appearance preferences      | Core (`src/app/providers/core/Core.tsx`)                     | Server settings remain authoritative; the browser persists theme and compact mode.        |
+| Accepted settings and appearance preferences      | [Core](../src/app/providers/core/Core.tsx)                   | Server settings remain authoritative; the browser persists theme and compact mode.        |
 | Paths, wire types and HTTP adapters for a feature | `src/features/<feature>/api.ts` and `types.ts`               | Keep the contract with its feature.                                                       |
 | Credentials and HTTP behavior                     | [`src/shared/api`](../src/shared/api)                        | Memory-only tokens, generation checks, bounded refresh, conversion and normalized errors. |
 | Read and mutation state                           | Owning feature and [`src/shared/hooks`](../src/shared/hooks) | Direct request cancellation, submission locks and session-generation guards.              |
@@ -34,10 +34,12 @@ Keep screens, APIs, request/response types, forms, hooks and tools with their ow
 
 Features use only the exact authentication API/OTP, roles API/type, settings-to-files and contents-to-categories/files capabilities declared by [the boundary checker](../scripts/check-boundaries.mjs). Settings imports the reviewed file upload service and erased file models through the files public exports. Users imports only its declared roles list service and erased role model. The contents list imports only `fetchContentCategories` and erased `ContentCategory` through the category public index. The content form imports the files `uploadFile` service and erased `ContentCategory`; its HTTP models import only erased `ContentCategory` and `StoredFile` through their owning public indexes. Account, Settings, Files, Calendar, Roles, Users, FAQ, category and content screens and their declared forms may import the erased `DefaultLayoutContext` from the default layout; layout components and other internals remain private. The [import rules](../.agents/rules/imports.md) describe enforcement and how to review a new dependency.
 
-Content forms use the shared lazy rich-text editor for headings, emphasis, block quotes and ordered or unordered lists. Loaded and pasted links become ordinary text while those basic formats remain available. After a successful deletion, the contents list returns to its first page while retaining the active filters. Closing the content form resets its transient upload state together with its fields.
+Content forms use the shared lazy rich-text editor for headings, emphasis, block quotes and ordered or unordered lists. Loaded and pasted links become ordinary text while those basic formats remain available. After a successful deletion, the contents list returns to its first page while retaining the active filters. Closing the content form removes its cover field and resets the form. The image uploader cancels its active request when it unmounts.
+
+Each page owns opening and closing its drawers. The page stores the selected record ID in the edit history entry so Back and Forward restore the corresponding record. Forms keep their permission and request guards and call `onClose` on cancellation or failure to open. After a successful save the form calls `onFinish`, and the page starts refreshing the list and closes the drawer without waiting for the refresh.
 
 ## Trace a change
 
-Start with the responsibility above and read its implementation and nearby tests. Route tests (`src/app/Routes.test.tsx`) exercise startup and lazy-route behavior. Core tests (`src/app/providers/core/Core.test.tsx`) exercise settings acceptance. Feature behavior stays with its tests and stories.
+Start with the responsibility above and read its implementation and nearby tests. Route tests (`src/app/Routes.test.tsx`) exercise startup and lazy-route behavior. [Core tests](../src/app/providers/core/Core.test.tsx) exercise settings acceptance. Feature behavior stays with its tests and stories.
 
 [Testing](testing.md) explains what each kind of evidence establishes. Component, consumer-contract and application-browser results cover different boundaries; provider compatibility and deployed behavior require their own results.

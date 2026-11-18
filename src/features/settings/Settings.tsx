@@ -199,8 +199,8 @@ export const SettingsPage = () => {
                         void messageAPI.error(error.message);
                       }}
                       settings={settings.imageSettings.logo}
-                      upload={(file, onProgress) =>
-                        uploadFile(file, "logo", onProgress)
+                      upload={(file, onProgress, signal) =>
+                        uploadFile(file, "logo", onProgress, signal)
                       }
                     />
                   </Form.Item>
