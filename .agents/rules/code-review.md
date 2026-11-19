@@ -1,7 +1,5 @@
 # Code review
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Review the pull-request description, complete diff, and relevant tests before
 judging a change. Passing automation is evidence, not proof.
 

@@ -1,29 +1,31 @@
 # Documentation
 
-Commands run from the repository root unless a guide explicitly says otherwise. [The publication policy](../.github/bootstrap-policy.json) defines current source admission and readiness; referring to source does not admit it.
+Commands run from the repository root unless a guide explicitly says otherwise.
 
-## 1. Prepare the toolchain
+## 1. Install and run
 
-Follow [Development](development.md) to install the pinned runtime and locked dependencies in the existing checkout.
+Follow [Run Kernel Admin](usage.md) for prerequisites, locked dependency installation, public configuration, local startup and recovery.
 
-## 2. Understand the current scope
+## 2. Explore the application
 
-Read [the application scope](../README.md#application-scope). Installation, features and deployment require their source and commands to be admitted first. Design and application rules define constraints for that work without implying a runnable application.
+Read the [included capabilities](../README.md#included-capabilities) for the available screens and features. The [architecture](architecture.md) explains startup, providers, routes and feature boundaries.
 
 ## 3. Work with the source
 
-| Task                                              | Guide                                                   |
-| ------------------------------------------------- | ------------------------------------------------------- |
-| Make a source or guidance change                  | [Development](development.md)                           |
-| Understand synthetic test evidence                | [Testing](testing.md)                                   |
-| Validate an exact proposed snapshot               | [Validation](validation.md)                             |
-| Design an admitted interface or requested concept | [Design conventions](../DESIGN.md)                      |
-| Prepare a contribution                            | [Contributing](../CONTRIBUTING.md)                      |
-| Evaluate instruction discovery when requested     | [Comprehension evaluation](comprehension-evaluation.md) |
-| Report a vulnerability                            | [Security policy](../SECURITY.md)                       |
+Start with [Develop a feature](development.md) to find the owning implementation, change its contract and interaction, and select focused checks.
 
-Assistants start with [AGENTS](../AGENTS.md). Keep documentation English, current and organized by task. Follow the [documentation workflow](../CONTRIBUTING.md#documentation).
+| Task                                       | Guide                                                      |
+| ------------------------------------------ | ---------------------------------------------------------- |
+| Change sessions, requests or stale results | [Authentication and request lifecycles](authentication.md) |
+| Change language, direction or calendar     | [Localization](localization.md)                            |
+| Add behavioral tests                       | [Testing](testing.md)                                      |
+| Verify proposed source                     | [Validate a change](validation.md)                         |
+| Change an interface                        | [Design conventions](../DESIGN.md)                         |
+| Prepare a contribution                     | [Contributing](../CONTRIBUTING.md)                         |
+| Report a vulnerability                     | [Security policy](../SECURITY.md)                          |
+
+Follow the [documentation workflow](../CONTRIBUTING.md#documentation) alongside behavior, configuration or verification changes. Update the existing guide and link to configuration and command owners.
 
 ## 4. Package and deploy
 
-Deployment requires admitted build and hosting owners, successful verification and explicit target authorization. Guidance, dependency installation and optional hooks do not establish deployment or authorize an operational environment.
+Follow [Build, package and deploy](deployment.md) for immutable release artifacts, hosting configuration, authorized target checks and rollback.

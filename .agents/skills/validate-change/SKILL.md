@@ -5,8 +5,6 @@ description: Select Kernel checks for the actual change and run the complete can
 
 # Validate a change
 
-[The publication policy](../../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Read the affected source, rules, [validation policy](../../../docs/validation.md)
 and [canonical manifest](../../validation.json). Inspect status/diffs when working
 in Git; an isolated export has no Git history and must retain its recorded source

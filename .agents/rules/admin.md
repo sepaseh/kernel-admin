@@ -1,7 +1,5 @@
 # Admin conventions
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Keep Ant Design and antd-style as the UI/theme foundation, React Router for
 routes, Axios for HTTP and app-owned i18next for runtime translation. Use direct
 named `lucide-react` imports with explicit sizes, `currentColor` and decorative
@@ -23,7 +21,7 @@ data modules within `src/shared/i18n`.
 Use named `type` shapes and existing component/hook conventions. Prefer derived
 state and accessible controls. Use the owning screen's direct request lifecycle with `useAbortController` and `useLock`, preserving cancellation and submission locks. Preserve request
 identity across retries and authentication changes. See
-request reliability (`docs/authentication.md`).
+[request reliability](../../docs/authentication.md).
 Use root ESLint for configured import/type rules and the AST boundary checker for
 published ownership. Style-property conventions still require direct review;
 unimplemented local ESLint rules are not running. Keep behavior tests

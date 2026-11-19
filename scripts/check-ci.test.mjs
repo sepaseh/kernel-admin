@@ -2673,11 +2673,27 @@ test("Sonar preserves source, fixture and coverage scope with duplication measur
   ];
   assert.deepEqual(properties["sonar.test.inclusions"].split(","), fixtures);
   assert.deepEqual(properties["sonar.exclusions"].split(","), fixtures);
+  const deploymentTests = [
+    "smoke.config.ts",
+    "smoke/deployment.spec.ts",
+    "smoke/setup.ts",
+    "staging.config.ts",
+    "staging/setup.ts",
+    "staging/staging.spec.ts",
+  ].filter(admitted);
+  assert.deepEqual(
+    properties["sonar.coverage.exclusions"]?.split(",") ?? [],
+    deploymentTests,
+  );
   assert.deepEqual(
     Object.keys(properties)
       .filter((key) => key.endsWith("exclusions"))
       .sort(),
-    ["sonar.cpd.exclusions", "sonar.exclusions"],
+    [
+      ...(deploymentTests.length ? ["sonar.coverage.exclusions"] : []),
+      "sonar.cpd.exclusions",
+      "sonar.exclusions",
+    ],
   );
   assert.equal(properties["sonar.cpd.exclusions"], "**/*");
   assert.deepEqual(properties["sonar.javascript.lcov.reportPaths"].split(","), [

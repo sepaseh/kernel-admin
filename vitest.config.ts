@@ -42,6 +42,7 @@ export default defineConfig({
             "scripts/stamp-admin-build.test.mjs",
             "scripts/validate-production-env.test.mjs",
             "scripts/validate-workflow-targets.test.mjs",
+            "scripts/check-operational-workflows.test.mjs",
           ],
         },
       },

@@ -1,7 +1,5 @@
 # Pull requests
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 A pull request explains why a change is needed, what changed, and how to verify
 it. Use the repository's pull-request conventions in `CONTRIBUTING.md`.
 

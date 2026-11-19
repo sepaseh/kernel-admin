@@ -1,7 +1,5 @@
 # HTTP contract evidence
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 This frontend owns feature API modules/types, transport normalization, synthetic
 Axios/MSW fixtures and local HTTP contracts. The consuming developer chooses a
 backend implementing those local HTTP contracts. Frontend work requires no

@@ -1,7 +1,5 @@
 # TypeScript
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 ## Object shapes
 
 Use `type` for object shapes.

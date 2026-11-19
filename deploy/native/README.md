@@ -1,7 +1,5 @@
 # Configure native Nginx hosting
 
-The publication policy defines current source admission and readiness. Application procedures below require their owning source and commands to be admitted; source preparation does not establish a runnable application, successful verification or deployment.
-
 Render the public Nginx configuration locally and install it on an authorized host with an [immutable application package](../../docs/deployment.md#build-an-immutable-package). The developer's configured backend remains responsible for authentication and data.
 
 ## Prerequisites

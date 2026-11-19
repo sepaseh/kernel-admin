@@ -1,10 +1,9 @@
 # Language, direction and calendar
 
-The publication policy defines current source admission and readiness. Application procedures below require their owning source and commands to be admitted; source preparation does not establish a runnable application, successful verification or deployment.
-
 Use this reference when changing translated text, language settings or displayed dates. The API owns the active language, direction, calendar and public/native language names. Only a system super-admin changes the global language. There is no visitor language selector, browser-language inference or stored language preference. Theme and compact mode are separate browser preferences.
 
-Application admission requires complete catalogs, i18next initialization, date adapters, settings HTTP types, shared controls, Core/Ant Design providers and route composition, together with their genuine verification.
+The admitted application includes catalogs, i18next initialization, date adapters,
+settings HTTP types, shared controls, Core/Ant Design providers and route composition.
 
 ## Find the owner
 

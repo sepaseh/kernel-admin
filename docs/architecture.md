@@ -1,17 +1,15 @@
 # Application architecture
 
-The publication policy defines current source admission and readiness. Application procedures below require their owning source and commands to be admitted; source preparation does not establish a runnable application, successful verification or deployment.
-
 Use this overview to locate an application responsibility before changing its implementation. For setup, follow [usage](usage.md); for an implementation workflow, follow [development](development.md).
 
 Kernel Admin is one independent React/Vite TypeScript application. Developers select a compatible backend through `VITE_API_BASE_URL`. That service owns authentication execution, authorization, database access and storage; this repository owns the panel, local catalogs and [HTTP contracts and examples](authentication.md#backend-integration). No particular backend repository or other checkout is required.
 
 ## Follow startup
 
-1. The entry point (`src/main.tsx`) mounts App (`src/app/App.tsx`) through the root and application public exports. The application and Storybook share [root CSS](../src/index.css), which loads the existing reset and font styles.
+1. [The entry point](../src/main.tsx) mounts [App](../src/app/App.tsx) through the root and application public exports. The application and Storybook share [root CSS](../src/index.css), which loads the existing reset and font styles.
 2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings with an owned cancellation signal. It displays loading or an inline retry before exposing accepted settings to its children. The settings API uses typed response models without runtime envelope validation.
 3. `App` composes the Ant Design provider, shared global styles and lazy routes after settings are available. Ant Design applies the API-owned palette, language and direction, together with browser theme and compact preferences.
-4. Routes (`src/app/Routes.tsx`) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.
+4. [Routes](../src/app/Routes.tsx) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.
 
 The [default layout](../src/layouts/default/Default.tsx) loads the current user before rendering protected children. It retains accepted data and keeps the Outlet mounted during a refresh or refresh failure. It exposes the current user, awaited reload and session cleanup through its typed Outlet context. Menu and route checks describe what the client presents; the API authorizes each request independently.
 
@@ -40,6 +38,6 @@ Each page owns opening and closing its drawers. The page stores the selected rec
 
 ## Trace a change
 
-Start with the responsibility above and read its implementation and nearby tests. Route tests (`src/app/Routes.test.tsx`) exercise startup and lazy-route behavior. [Core tests](../src/app/providers/core/Core.test.tsx) exercise settings acceptance. Feature behavior stays with its tests and stories.
+Start with the responsibility above and read its implementation and nearby tests. [Route tests](../src/app/Routes.test.tsx) exercise startup and lazy-route behavior. [Core tests](../src/app/providers/core/Core.test.tsx) exercise settings acceptance. Feature behavior stays with its tests and stories.
 
 [Testing](testing.md) explains what each kind of evidence establishes. Component, consumer-contract and application-browser results cover different boundaries; provider compatibility and deployed behavior require their own results.

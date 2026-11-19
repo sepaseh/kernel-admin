@@ -1,7 +1,5 @@
 # Issues
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 An issue is a durable handoff, not a transcript.
 
 - Use a bug report when observed behavior contradicts expected behavior; use a

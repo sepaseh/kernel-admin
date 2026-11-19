@@ -5,8 +5,6 @@ description: Draft or publish an actionable Kernel GitHub issue.
 
 # Create an issue
 
-[The publication policy](../../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Read [issues](../../rules/issues.md), [Git workflow](../../rules/git.md) and
 [safety](../../rules/safety.md). An issue is a durable handoff, not a transcript.
 

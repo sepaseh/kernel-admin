@@ -5,8 +5,6 @@ description: Review a Kernel pull request for actionable defects using the compl
 
 # Review a pull request
 
-[The publication policy](../../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Read [Git workflow](../../rules/git.md), [code review](../../rules/code-review.md),
 [pull requests](../../rules/pull-requests.md) and [safety](../../rules/safety.md).
 

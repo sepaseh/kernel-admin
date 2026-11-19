@@ -1,7 +1,5 @@
 # Run Kernel Admin
 
-The publication policy defines current source admission and readiness. Application procedures below require their owning source and commands to be admitted; source preparation does not establish a runnable application, successful verification or deployment.
-
 Use this guide to configure the panel and sign in locally. Choose a compatible backend you are authorized to use. Kernel Admin's local HTTP contract lets that service supply authentication, settings and application data without requiring a particular backend repository or tooling.
 
 ## Before you start

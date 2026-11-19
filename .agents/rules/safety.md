@@ -1,7 +1,5 @@
 # Safety
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Read this guidance before shell commands, sensitive-file access, Git changes or
 remote actions. Keep work within the authorized repository and preserve unrelated
 tracked, staged and untracked files.

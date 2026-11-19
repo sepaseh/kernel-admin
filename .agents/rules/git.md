@@ -1,7 +1,5 @@
 # Git Workflow
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Use this router for issue startup, branch, commit, pull-request, review and history
 tasks. Read [safety](safety.md) before changing Git state or a remote system.
 

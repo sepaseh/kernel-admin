@@ -1,7 +1,5 @@
 # Import paths and ownership
 
-[The publication policy](../../.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
 Use `./` within the same source directory and `@/` across frontend source
 directories. `@/` resolves to this checkout's `src/`. Pure catalog and calendar
 data may use only their permitted local erased type edges; follow

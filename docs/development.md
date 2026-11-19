@@ -1,38 +1,48 @@
-# Develop a change
+# Develop a feature
 
-Use the existing checkout under the [working-checkout rule](../.agents/rules/branches.md#working-checkout). Inspect its branch, Git status, index and relevant diffs before editing. Preserve unrelated tracked, staged and untracked work.
+Use this workflow for a change to an existing screen, form or frontend contract. Complete [local setup](usage.md) first, then work in the existing checkout under the [working-checkout rule](../.agents/rules/branches.md#working-checkout). Inspect the current branch and changes before editing; preserve unrelated tracked, staged and untracked work.
 
-## Prepare the root toolchain
+Keep one root npm project with source in `src/`. Developers choose the backend through the local [HTTP integration boundary](authentication.md#backend-integration); do not add workspaces, backend SDKs, local-package links or source imports from another checkout.
 
-Install the Node version in [`.nvmrc`](../.nvmrc) and use its bundled npm. From the repository root in PowerShell, install exactly the locked dependencies:
+## 1. Define the behavior and find its owner
+
+Describe the user-visible result and the failure it must handle. For example, a list refresh failure should keep accepted rows and offer retry. Read the closest implementation and tests before selecting an abstraction.
+
+Use [architecture](architecture.md) to locate startup, routes, providers and shared infrastructure. Read feature APIs, types, forms and nearby tests in the owning `src/features/<feature>` directory. Cross-feature appearance vocabulary and the profile-name limit belong in `src/shared/contracts`.
+
+## 2. Change the owning contract and interaction
+
+Keep endpoint paths and HTTP request/response types in the feature's `api.ts` and `types.ts`. Normalize nullable data at that boundary. Keep transport/session behavior in `src/shared/api`; document incompatible HTTP or permission changes and the requirements for a compatible backend.
+
+Before importing from another feature or app module, check the [dependency boundaries](architecture.md#feature-dependency-boundaries) and the exact approved edges in [the checker](../scripts/check-boundaries.mjs). Use reviewed named authentication or roles API, hook or erased type exports through the owning public `index.ts`, and the approved app hooks, route configuration or access policy. Preserve the checker's exact named edges. Keep another feature's UI/private helpers and app composition internals out of the dependency. A new dependency needs a reviewed ownership requirement and positive/negative boundary regressions. Keep a feature-specific abstraction local until a real shared contract is needed.
+
+Follow the owning screen's direct request lifecycle. Authentication, account and business screens own cancellation in their effects and submit handlers, with synchronous submission locks where needed. Include every filter and identifier in request identity and forward the supplied cancellation signal to the feature API. Preserve session generations and stale-result guards described in [authentication and requests](authentication.md). Reuse shared filter hooks and library helpers instead of copying query parsing or password generation into a feature.
+
+For interface changes, read [DESIGN](../DESIGN.md), the closest `*.stories.tsx`, and the canonical [React](../.agents/rules/react.md) and [styling](../.agents/rules/styling.md) rules. Keep React, Ant Design/antd-style, React Router and Axios. Reuse component props and semantic tokens before adding custom styling.
+
+Cover the relevant populated, empty, loading, initial failure, retained-data refresh failure, validation, submitting and permitted/read-only states. Preserve native keyboard interaction, reduced motion, narrow layouts, RTL/LTR and light/dark/compact behavior.
+
+## 3. Connect routes, permissions and labels
+
+When adding a route, define its path, layout and access metadata in [route configuration](../src/app/config/routes.ts), then connect its page importer in [Routes](../src/app/Routes.tsx). Add a navigation entry only when the product needs one. Keep access decisions in the existing [pure policy](../src/app/lib/access.ts). Client visibility and guards do not enforce server authorization.
+
+Reuse translated labels where their meaning matches. Add a new key to every registered catalog when needed, preserving interpolation names and genuine translations. Follow [localization](localization.md); language, direction and calendar remain API-owned, while theme and compact mode are browser preferences.
+
+## 4. Verify the behavior
+
+Add or update tests beside the changed owner. Cross-module cases belong in `src/test/integration`; shared render helpers live in `src/test/render.tsx`. Use complete feature API/client mocks or the declared synthetic HTTP fixtures, and make unexpected requests fail. [Testing](testing.md) explains which evidence each suite supplies.
+
+Run the smallest relevant cases first. For a user-list change, for example:
 
 ```sh
-npm ci --strict-peer-deps --no-audit --no-fund
+npx vitest run src/features/users/Users.test.tsx src/features/users/api.test.ts
 ```
 
-The command should finish without dependency or peer-resolution failures. Resolve runtime or lockfile mismatches before running checks. Do not replace locked installation with unreviewed dependency updates.
+Run this and other commands from the repository root after installing locked dependencies. The command executes the selected tests using the repository's isolated Vitest configuration. Check the affected happy path, failure path, cancellation and permission behavior; a passing test count alone does not demonstrate those cases.
 
-Keep one standalone root npm project. Do not add workspaces, local-package links, backend SDKs or source dependencies on another checkout. The consuming developer chooses a backend implementing the local HTTP contract.
+Run `npm run check:boundaries` after changing imports or ownership. When extending an approved edge, also run its focused [boundary tests](../scripts/check-boundaries.test.mjs) and confirm that unrelated feature internals and upward shared imports still fail.
 
-## Find the current owner
-
-Read [the publication policy](../.github/bootstrap-policy.json), [task map](../.agents/navigation.json), owning source and nearby tests. The policy is the exact admitted inventory. Plain paths to application owners in instructions express constraints for their admission; they do not make the application available.
-
-Repository publication and CI policy belong to [the snapshot validator](../scripts/validate-bootstrap.mjs) and [CI checker](../scripts/check-ci.mjs). Assistant guidance belongs to [settings](../.agents/settings.json), [the guidance checker](../scripts/check-guidance.mjs) and existing guides. [The manifest](../.agents/validation.json) owns commands and profiles.
-
-## Change and verify the behavior
-
-Define the observable result and the failure it must handle. Change its owning source and retain meaningful positive and negative regressions. Synthetic fixtures must be disposable and independent of real environments, credentials, databases, uploads, browser profiles or operator services.
-
-Run the smallest relevant check first. Guidance iteration uses:
-
-```sh
-npm run validate -- guidance
-```
-
-Read the actual result and diagnostics. Numerical coverage, duplication and analyzer metrics are advisory; retain behavioral assertions, type safety, lint and security controls. [Testing](testing.md) explains available evidence, and [validation](validation.md) defines the complete gate before an authorized commit or publication.
-
-When application modules are admitted, keep feature APIs, wire types, forms and tests with their feature. Preserve memory-only tokens, session generations, bounded shared refresh, cancellation, stale-result guards, all ten catalogs and Persian calendar data. API metadata owns language, direction and calendar; browser preferences own theme and compact mode.
+Use the current type, lint and broader check commands from [the manifest](../.agents/validation.json). Follow [validation](validation.md) for the complete required gate before an authorized commit, push or handoff. A focused run does not replace that gate.
 
 ## Own build artifacts during publication
 
@@ -40,6 +50,8 @@ Run build stamping and release packaging after the builder has stopped. The invo
 
 If restoration cannot complete because the public build path is occupied, keep the reported recovery directory. Inspect the occupied path and recover the retained build deliberately; the helpers do not recursively delete build contents to force restoration. After an interrupted process, inspect `.kernel-build-*/build` or `.kernel-release-*/build` beside the original build path. Restore the retained directory only after confirming the original path is free and its publisher has stopped.
 
-## Update the owning guide
+## 5. Update the guide that owns the change
 
-Update the existing guide with behavior or procedure changes. Keep prose English and task-oriented. [Contributing](../CONTRIBUTING.md) owns publication and review boundaries. Keep scratch exports, generated evidence and recovery files in ignored repository-local directories; never use them as implementation checkouts.
+Update the existing usage, contract, testing or deployment guide when its instructions or behavior change. Link to configuration and command owners instead of copying another complete inventory. Keep documentation in English and product catalogs complete.
+
+Keep scratch exports, generated evidence and recovery files in ignored directories inside this repository; validation exports are verification-only and must never become implementation checkouts. Keep real local configuration out of source fixtures and commits. Use [Contributing](../CONTRIBUTING.md) for review and publication; preparing or testing a change does not grant permission to publish it.
