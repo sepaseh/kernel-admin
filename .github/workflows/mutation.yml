@@ -33,7 +33,7 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Install locked mutation dependencies
-        run: npm ci --strict-peer-deps --no-audit --no-fund
+        run: npm ci --strict-peer-deps --ignore-scripts --no-audit --no-fund
 
       - name: Run every owner test for each mutant
         run: npm run test:mutation

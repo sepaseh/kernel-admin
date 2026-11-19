@@ -146,6 +146,10 @@ source and test analysis, enabled bug and security rules, coverage inputs,
 scanner execution and the remaining quality-gate conditions. Do not broaden
 source, test or coverage exclusions to obtain a passing result.
 
+The smoke and staging Playwright specs, setup modules and configs stay in
+static analysis. The scanner configuration leaves those six test files out of
+the coverage calculation for application and tooling code.
+
 After importing, moving or recreating the repository, organization or Sonar
 project:
 

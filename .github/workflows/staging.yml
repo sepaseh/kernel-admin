@@ -43,9 +43,9 @@ jobs:
       - name: Validate staging targets
         run: node scripts/validate-workflow-targets.mjs staging
 
-      - run: npm ci --strict-peer-deps --no-audit --no-fund
+      - run: npm ci --strict-peer-deps --ignore-scripts --no-audit --no-fund
 
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run browser:install:all
 
       - run: npm run test:staging
 

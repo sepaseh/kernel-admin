@@ -49,9 +49,9 @@ jobs:
       - name: Validate smoke-test targets
         run: node scripts/validate-workflow-targets.mjs smoke
 
-      - run: npm ci --strict-peer-deps --no-audit --no-fund
+      - run: npm ci --strict-peer-deps --ignore-scripts --no-audit --no-fund
 
-      - run: npx playwright install --with-deps chromium
+      - run: npm run browser:install
 
       - run: npm run test:smoke
 

@@ -30,6 +30,8 @@ const readRepositoryFile = (path) =>
 const readWorkflow = (name) =>
   parse(readRepositoryFile(`.github/workflows/${name}.yml`));
 
+const installDependencies =
+  "npm ci --strict-peer-deps --ignore-scripts --no-audit --no-fund";
 const optionalWorkflows = [
   { name: "mutation", job: "mutation", script: "test:mutation" },
   { name: "staging", job: "validate", script: "test:staging" },
@@ -202,7 +204,7 @@ describe("optional verification workflows", () => {
         step.uses?.startsWith("actions/setup-node@"),
       );
       const installIndex = steps.findIndex(
-        (step) => step.run === "npm ci --strict-peer-deps --no-audit --no-fund",
+        (step) => step.run === installDependencies,
       );
       expect(nodeIndex).toBeGreaterThanOrEqual(0);
       expect(installIndex).toBeGreaterThan(nodeIndex);
@@ -259,11 +261,23 @@ describe("optional verification workflows", () => {
   });
 
   it.each([
-    { name: "staging", job: "validate", mode: "staging" },
-    { name: "deployment-smoke", job: "smoke", mode: "smoke" },
+    {
+      name: "staging",
+      job: "validate",
+      mode: "staging",
+      browserScript: "browser:install:all",
+      browsers: "chromium firefox webkit",
+    },
+    {
+      name: "deployment-smoke",
+      job: "smoke",
+      mode: "smoke",
+      browserScript: "browser:install",
+      browsers: "chromium",
+    },
   ])(
     "$name rejects unsafe targets before dependencies, browsers or the suite",
-    ({ name, job, mode }) => {
+    ({ name, job, mode, browserScript, browsers }) => {
       const suite = readWorkflow(name).jobs[job];
       const steps = suite.steps;
       const prefix = mode.toUpperCase();
@@ -285,11 +299,11 @@ describe("optional verification workflows", () => {
       const nodeIndex = steps.findIndex((step) =>
         step.uses?.startsWith("actions/setup-node@"),
       );
-      const installIndex = steps.findIndex((step) =>
-        step.run?.startsWith("npm ci "),
+      const installIndex = steps.findIndex(
+        (step) => step.run === installDependencies,
       );
-      const browserIndex = steps.findIndex((step) =>
-        step.run?.startsWith("npx playwright install "),
+      const browserIndex = steps.findIndex(
+        (step) => step.run === `npm run ${browserScript}`,
       );
       const testIndex = steps.findIndex(
         (step) => step.run === `npm run test:${mode}`,
@@ -303,6 +317,9 @@ describe("optional verification workflows", () => {
         expect(steps[index]["continue-on-error"]).toBeUndefined();
       }
       const scripts = JSON.parse(readRepositoryFile("package.json")).scripts;
+      expect(scripts[browserScript]).toBe(
+        `playwright install --with-deps ${browsers}`,
+      );
       expect(scripts[`test:${mode}`]).toBe(
         `playwright test --config ${mode}.config.ts`,
       );

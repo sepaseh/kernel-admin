@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const deploymentUrl = new URL(
-  process.env.SMOKE_BASE_URL ?? "http://smoke-target.invalid/",
+  process.env.SMOKE_BASE_URL ?? "https://smoke-target.invalid/",
 );
 
 if (!deploymentUrl.pathname.endsWith("/")) {
