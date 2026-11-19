@@ -1,0 +1,363 @@
+import { mocked } from "storybook/test";
+
+import type { ContentRequest } from "@/features/contents";
+import type { SettingsRequest } from "@/features/settings";
+import { apiClient, setUnauthorizedHandler } from "@/shared/api";
+import { clearAccessToken } from "@/shared/api";
+import { defaultPageSize } from "@/shared/config";
+import { getPage } from "@/shared/lib";
+
+import {
+  permissions,
+  roles as initialRoles,
+  sampleAccount,
+  sampleContentCategories,
+  sampleContents,
+  sampleFiles,
+  sampleFaqs,
+  sampleLanguages,
+  sampleSettings,
+  users as initialUsers,
+} from "./fixtures";
+import { rejectUnexpectedRequest, resetRequestGuard } from "./request-guard";
+
+export { assertNoUnexpectedRequests } from "./request-guard";
+
+export const resetStoryMocks = (state = "populated") => {
+  resetRequestGuard();
+  clearAccessToken();
+  mocked(setUnauthorizedHandler).mockReset();
+  let faqs = state === "empty" ? [] : structuredClone(sampleFaqs);
+  let roles = state === "roles-empty" ? [] : structuredClone(initialRoles);
+  let users = state === "users-empty" ? [] : structuredClone(initialUsers);
+  let categories =
+    state === "content-categories-empty"
+      ? []
+      : structuredClone(sampleContentCategories);
+  let contents =
+    state === "contents-empty" ? [] : structuredClone(sampleContents);
+  let files = state === "files-empty" ? [] : structuredClone(sampleFiles);
+  let settings = structuredClone(sampleSettings);
+  const account = structuredClone(sampleAccount);
+  let calendar = ["2026-09-15", "2026-09-23"];
+  let faqSequence = 0;
+  let categorySequence = 0;
+  let contentSequence = 0;
+  let roleSequence = 0;
+  let userSequence = 0;
+  let uploadSequence = 0;
+  let settingsAttempts = 0;
+  mocked(apiClient.get)
+    .mockReset()
+    .mockImplementation(async (url, config) => {
+      if (url === "/settings") {
+        settingsAttempts += 1;
+        if (state === "settings-retry" && settingsAttempts === 1)
+          throw new Error("Synthetic settings failure");
+        return structuredClone(settings);
+      }
+      if (url === "/languages")
+        return structuredClone(Object.values(sampleLanguages));
+      if (url === "/account/me") {
+        if (state === "account-loading") return new Promise(() => undefined);
+        if (state === "account-error")
+          throw new Error("Synthetic account unavailable");
+        return structuredClone(account);
+      }
+      if (url === "/calendar") return [...calendar];
+      if (url === "/roles/permissions") return structuredClone(permissions);
+      if (url === "/content-categories") {
+        if (state === "content-categories-loading")
+          return new Promise(() => undefined);
+        if (state === "content-categories-error")
+          throw new Error("Synthetic content-categories unavailable");
+        return structuredClone(categories);
+      }
+      const category = categories.find(
+        ({ id }) => url === `/content-categories/${id}`,
+      );
+      if (category) return structuredClone(category);
+      if (url === "/contents") {
+        if (state === "contents-loading") return new Promise(() => undefined);
+        if (state === "contents-error")
+          throw new Error("Synthetic contents unavailable");
+        const params = config?.params as
+          Record<string, string | undefined> | undefined;
+        const filtered = contents.filter(
+          (content) =>
+            (!params?.title ||
+              content.title
+                .toLowerCase()
+                .includes(params.title.toLowerCase())) &&
+            (!params?.content_category_id ||
+              content.contentCategory.id === params.content_category_id),
+        );
+        const start = (getPage(params?.page) - 1) * defaultPageSize;
+        return {
+          items: structuredClone(
+            filtered.slice(start, start + defaultPageSize),
+          ),
+          total: filtered.length,
+        };
+      }
+      const content = contents.find(({ id }) => url === `/contents/${id}`);
+      if (content) return structuredClone(content);
+      if (url === "/files") {
+        if (state === "files-loading") return new Promise(() => undefined);
+        if (state === "files-error")
+          throw new Error("Synthetic files unavailable");
+        return structuredClone(files);
+      }
+      if (url === "/roles" || url === "/users") {
+        const resource = url.slice(1);
+        if (state === `${resource}-loading`)
+          return new Promise(() => undefined);
+        if (state === `${resource}-error`)
+          throw new Error(`Synthetic ${resource} unavailable`);
+        if (url === "/roles") return structuredClone(roles);
+
+        const params = config?.params as
+          Record<string, string | undefined> | undefined;
+        const firstName = params?.first_name?.toLowerCase();
+        const lastName = params?.last_name?.toLowerCase();
+        const filtered = users.filter(
+          (user) =>
+            (!firstName || user.firstName.toLowerCase().includes(firstName)) &&
+            (!lastName || user.lastName.toLowerCase().includes(lastName)) &&
+            (!params?.mobile || user.mobile.includes(params.mobile)) &&
+            (!params?.status || user.status === params.status),
+        );
+        return { items: structuredClone(filtered), total: filtered.length };
+      }
+      const role = roles.find(({ id }) => url === `/roles/${id}`);
+      if (role) return structuredClone(role);
+      const user = users.find(({ id }) => url === `/users/${id}`);
+      if (user) return structuredClone(user);
+      if (url === "/faqs") {
+        if (state === "loading") return new Promise(() => undefined);
+        if (state === "error")
+          throw new Error("Synthetic FAQ service unavailable");
+        return structuredClone(faqs);
+      }
+      const item = faqs.find(({ id }) => url === `/faqs/${id}`);
+      if (item) return structuredClone(item);
+      return rejectUnexpectedRequest("GET", url);
+    });
+  mocked(apiClient.post)
+    .mockReset()
+    .mockImplementation(async (url, request) => {
+      if (url === "/auth/login" || url === "/auth/register")
+        return { accessToken: "synthetic-story-token" };
+      if (url === "/auth/otp-request")
+        return { expiresIn: 300, remainingSeconds: 60 };
+      if (
+        [
+          "/auth/forgot-password",
+          "/auth/change-password",
+          "/auth/logout",
+        ].includes(url)
+      )
+        return undefined;
+      if (url === "/calendar") {
+        calendar.push((request as { date: string }).date);
+        return undefined;
+      }
+      if (url === "/content-categories") {
+        const created = {
+          id: `category-created-${++categorySequence}`,
+          ...(request as { name: string }),
+        };
+        categories.push(created);
+        return structuredClone(created);
+      }
+      if (url === "/contents") {
+        const { contentCategoryId, coverImageId, ...values } =
+          request as ContentRequest;
+        const contentCategory = categories.find(
+          ({ id }) => id === contentCategoryId,
+        );
+        const coverImage = files.find(({ id }) => id === coverImageId);
+        if (!contentCategory || !coverImage)
+          throw new Error(
+            "Synthetic content requires a known category and image",
+          );
+        const created = {
+          id: `content-created-${++contentSequence}`,
+          ...values,
+          contentCategory,
+          coverImage,
+        };
+        contents.push(created);
+        return structuredClone(created);
+      }
+      if (url === "/roles") {
+        const created = {
+          id: `role-created-${++roleSequence}`,
+          ...(request as Pick<(typeof roles)[number], "name" | "permissions">),
+        };
+        roles.push(created);
+        return structuredClone(created);
+      }
+      if (url === "/users") {
+        const created = {
+          id: `user-created-${++userSequence}`,
+          roles: [],
+          isSystemAdmin: false,
+          ...(request as Pick<
+            (typeof users)[number],
+            "firstName" | "lastName" | "mobile" | "status"
+          >),
+        };
+        users.push(created);
+        return structuredClone(created);
+      }
+      if (url !== "/faqs") return rejectUnexpectedRequest("POST", url);
+      const created = {
+        id: `faq-created-${++faqSequence}`,
+        ...(request as { question: string; answer: string }),
+      };
+      faqs = [...faqs, created];
+      return structuredClone(created);
+    });
+  mocked(apiClient.patch)
+    .mockReset()
+    .mockImplementation(async (url, request) => {
+      if (url === "/account/update-profile") {
+        Object.assign(account, request);
+        return structuredClone(account);
+      }
+      if (url === "/faqs/sort") {
+        const ids = (request as { ids: string[] }).ids;
+        faqs.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+        return undefined;
+      }
+      if (url === "/content-categories/sort") {
+        const ids = (request as { ids: string[] }).ids;
+        categories.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+        return undefined;
+      }
+      const category = categories.find(
+        ({ id }) => url === `/content-categories/${id}`,
+      );
+      if (category) {
+        Object.assign(category, request);
+        return structuredClone(category);
+      }
+      const content = contents.find(({ id }) => url === `/contents/${id}`);
+      if (content) {
+        const { contentCategoryId, coverImageId, ...values } =
+          request as ContentRequest;
+        const contentCategory = categories.find(
+          ({ id }) => id === contentCategoryId,
+        );
+        const coverImage = files.find(({ id }) => id === coverImageId);
+        if (!contentCategory || !coverImage)
+          throw new Error(
+            "Synthetic content requires a known category and image",
+          );
+        Object.assign(content, values, { contentCategory, coverImage });
+        return structuredClone(content);
+      }
+      const role = roles.find(({ id }) => url === `/roles/${id}`);
+      if (role) {
+        Object.assign(role, request);
+        return structuredClone(role);
+      }
+      const user = users.find(
+        ({ id }) =>
+          url === `/users/${id}` ||
+          url === `/users/${id}/status` ||
+          url === `/users/${id}/system-admin`,
+      );
+      if (user) {
+        Object.assign(user, request);
+        return structuredClone(user);
+      }
+      const item = faqs.find(({ id }) => url === `/faqs/${id}`);
+      if (!item) return rejectUnexpectedRequest("PATCH", url);
+      Object.assign(item, request);
+      return structuredClone(item);
+    });
+  mocked(apiClient.del)
+    .mockReset()
+    .mockImplementation(async (url) => {
+      if (
+        url.startsWith("/calendar/") &&
+        calendar.includes(url.slice("/calendar/".length))
+      ) {
+        calendar = calendar.filter((date) => url !== `/calendar/${date}`);
+        return undefined;
+      }
+      if (roles.some(({ id }) => url === `/roles/${id}`)) {
+        roles = roles.filter(({ id }) => url !== `/roles/${id}`);
+        return undefined;
+      }
+      if (users.some(({ id }) => url === `/users/${id}`)) {
+        users = users.filter(({ id }) => url !== `/users/${id}`);
+        return undefined;
+      }
+      if (categories.some(({ id }) => url === `/content-categories/${id}`)) {
+        categories = categories.filter(
+          ({ id }) => url !== `/content-categories/${id}`,
+        );
+        return undefined;
+      }
+      if (contents.some(({ id }) => url === `/contents/${id}`)) {
+        contents = contents.filter(({ id }) => url !== `/contents/${id}`);
+        return undefined;
+      }
+      if (files.some(({ id, isUsed }) => url === `/files/${id}` && !isUsed)) {
+        files = files.filter(({ id }) => url !== `/files/${id}`);
+        return undefined;
+      }
+      const item = faqs.find(({ id }) => url === `/faqs/${id}`);
+      if (!item) return rejectUnexpectedRequest("DELETE", url);
+      faqs = faqs.filter(({ id }) => id !== item.id);
+      return undefined;
+    });
+  mocked(apiClient.put)
+    .mockReset()
+    .mockImplementation(async (url, request) => {
+      if (url === "/settings") {
+        const { darkLogoId, lightLogoId, languageCode, ...values } =
+          request as SettingsRequest;
+        const language =
+          Object.values(sampleLanguages).find(
+            ({ code }) => code === languageCode,
+          ) ?? settings.language;
+        settings = {
+          ...settings,
+          ...values,
+          language: { ...language },
+          darkLogo: files.find(({ id }) => id === darkLogoId),
+          lightLogo: files.find(({ id }) => id === lightLogoId),
+        };
+        return structuredClone(settings);
+      }
+      if (users.some(({ id }) => url === `/users/${id}/password`))
+        return undefined;
+      const user = users.find(({ id }) => url === `/users/${id}/roles`);
+      if (user) {
+        user.roles = roles
+          .filter(({ id }) =>
+            (request as { roleIds: string[] }).roleIds.includes(id),
+          )
+          .map(({ id, name }) => ({ id, name }));
+        return undefined;
+      }
+      return rejectUnexpectedRequest("PUT", url);
+    });
+  mocked(apiClient.upload)
+    .mockReset()
+    .mockImplementation(async (url, request) => {
+      if (url !== "/files") return rejectUnexpectedRequest("UPLOAD", url);
+      const created = {
+        id: `file-uploaded-${++uploadSequence}`,
+        url: "/logo.svg",
+        size: (request as { file: File }).file.size,
+        isUsed: false,
+      };
+      files.push(created);
+      return structuredClone(created);
+    });
+};

@@ -156,6 +156,7 @@ jobs:
           path: |
             coverage/unit/lcov.info
             coverage/governance/lcov.info
+            coverage/storybook/lcov.info
             coverage/governance/powershell.xml
             coverage/verification-coverage.json
           if-no-files-found: error

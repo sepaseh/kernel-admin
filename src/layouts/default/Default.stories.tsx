@@ -1,0 +1,192 @@
+import { apiClient } from "@/shared/api";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { ComponentProps } from "react";
+import { useEffect } from "react";
+import type { RouteObject } from "react-router";
+import { expect, mocked, userEvent, waitFor, within } from "storybook/test";
+
+import type { RouteKey } from "@/app/config";
+import { useCore } from "@/app/hooks";
+import type { CurrentUser } from "@/features/account/types.ts";
+import { i18nInstance } from "@/shared/i18n";
+import { StoryShell } from "../../../.storybook/StoryShell";
+import { sampleLanguages } from "../../../.storybook/fixtures";
+
+import { DefaultLayout } from "./Default";
+
+const account: CurrentUser = {
+  firstName: "Sample",
+  id: "storybook-user",
+  isSystemAdmin: true,
+  lastName: "Admin",
+  mobile: "09120000000",
+  permissions: [],
+  status: "active",
+};
+
+type DefaultLayoutStoryProps = Pick<
+  ComponentProps<typeof StoryShell>,
+  "initialLanguage" | "initialTheme" | "initialUser" | "withUser"
+>;
+type LayoutContentProps = { route: RouteKey; title: string };
+
+const LayoutContent = ({ route, title }: LayoutContentProps) => {
+  const { setCurrentRoute } = useCore();
+  useEffect(() => setCurrentRoute(route), [route, setCurrentRoute]);
+  return <h2>{title}</h2>;
+};
+
+const layoutRoutes: RouteObject[] = [
+  {
+    path: "/",
+    element: <DefaultLayout />,
+    children: [
+      {
+        index: true,
+        element: <LayoutContent route="root" title="Dashboard content" />,
+      },
+      {
+        path: "users",
+        element: <LayoutContent route="users" title="Users destination" />,
+      },
+    ],
+  },
+  { path: "/auth", element: <h1>Signed out destination</h1> },
+];
+
+const DefaultLayoutStory = (props: DefaultLayoutStoryProps) => (
+  <StoryShell initialUser={account} routes={layoutRoutes} {...props} />
+);
+
+const meta = {
+  component: DefaultLayout,
+  parameters: { ownsMain: true },
+  render: () => <DefaultLayoutStory />,
+  title: "Layouts/Default",
+} satisfies Meta<typeof DefaultLayout>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Desktop: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole("heading", { name: "Dashboard content" }),
+    ).toBeVisible();
+    await userEvent.click(
+      canvas.getByRole("button", { name: i18nInstance.t("account") }),
+    );
+    const body = within(canvasElement.ownerDocument.body);
+    await waitFor(() =>
+      expect(body.getByText(i18nInstance.t("darkMode"))).toBeVisible(),
+    );
+    await userEvent.keyboard("{Escape}");
+  },
+};
+
+export const Mobile: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("heading", { name: "Dashboard content" });
+    await userEvent.click(
+      canvas.getByRole("button", { name: i18nInstance.t("menu") }),
+    );
+    const body = within(canvasElement.ownerDocument.body);
+    const drawer = await body.findByRole("dialog");
+    await userEvent.click(
+      within(drawer).getByText(i18nInstance.t("userManagement")),
+    );
+    const destination = within(drawer).getByRole("link", {
+      name: i18nInstance.t("users"),
+    });
+    destination.focus();
+    await userEvent.keyboard("{Enter}");
+    await expect(
+      await canvas.findByRole("heading", { name: "Users destination" }),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    await expect(mocked(apiClient.get)).toHaveBeenCalledOnce();
+  },
+};
+
+export const LoadingAccount: Story = {
+  parameters: { fixtureState: "account-loading" },
+  render: () => <DefaultLayoutStory withUser={false} />,
+  play: async ({ canvasElement }) => {
+    await expect(mocked(apiClient.get)).toHaveBeenCalledOnce();
+    await expect(canvasElement.querySelector(".ant-spin")).toBeVisible();
+    await expect(
+      within(canvasElement).queryByRole("heading", {
+        name: "Dashboard content",
+      }),
+    ).not.toBeInTheDocument();
+  },
+};
+
+export const DarkRtl: Story = {
+  globals: { direction: "rtl", language: "fa", theme: "dark" },
+  render: () => (
+    <DefaultLayoutStory
+      initialLanguage={sampleLanguages.fa}
+      initialTheme="dark"
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByRole("heading", {
+        name: "Dashboard content",
+      }),
+    ).toBeVisible();
+    await expect(canvasElement.ownerDocument.documentElement).toHaveAttribute(
+      "dir",
+      "rtl",
+    );
+    await expect(canvasElement.ownerDocument.documentElement).toHaveAttribute(
+      "lang",
+      "fa",
+    );
+  },
+};
+
+export const AccountFailure: Story = {
+  parameters: { fixtureState: "account-error" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText("Synthetic account unavailable"),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", {
+        name: i18nInstance.t("retry"),
+      }),
+    ).toBeEnabled();
+    await expect(
+      within(canvasElement.ownerDocument.body).queryByLabelText(
+        i18nInstance.t("loading"),
+      ),
+    ).not.toBeInTheDocument();
+  },
+};
+
+export const Logout: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("heading", { name: "Dashboard content" });
+    await userEvent.click(
+      canvas.getByRole("button", { name: i18nInstance.t("account") }),
+    );
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByText(
+        i18nInstance.t("logout"),
+      ),
+    );
+    await expect(
+      await canvas.findByText("Signed out destination"),
+    ).toBeVisible();
+    await expect(apiClient.post).toHaveBeenCalledWith("/auth/logout");
+  },
+};
