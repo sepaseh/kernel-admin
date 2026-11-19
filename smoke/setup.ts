@@ -1,9 +1,5 @@
-import { createRequire } from "node:module";
+import { validateSmokeTargets } from "../scripts/validate-workflow-targets.mjs";
 
-const { validateSmokeTargets } = createRequire(import.meta.url)(
-  "../scripts/validate-workflow-targets.mjs",
-) as { validateSmokeTargets: (environment: NodeJS.ProcessEnv) => void };
-
-export default () => {
+export default function setupSmoke() {
   validateSmokeTargets(process.env);
-};
+}

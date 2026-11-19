@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, type Request, test } from "@playwright/test";
 
 const apiHealthUrl = process.env.STAGING_API_HEALTH_URL;
 
@@ -19,19 +19,22 @@ test("loads the deployed application and same-origin assets", async ({
 }) => {
   const applicationOrigin = new URL(test.info().project.use.baseURL as string)
     .origin;
+  const isApplicationAsset = (request: Request) =>
+    ["font", "script", "stylesheet"].includes(request.resourceType()) &&
+    new URL(request.url()).origin === applicationOrigin;
   const failedAssets: string[] = [];
   let assetCount = 0;
 
   page.on("response", (response) => {
-    const resourceType = response.request().resourceType();
-    if (
-      ["font", "script", "stylesheet"].includes(resourceType) &&
-      new URL(response.url()).origin === applicationOrigin
-    ) {
-      assetCount += 1;
-      if (!response.ok()) {
-        failedAssets.push(response.url());
-      }
+    if (!isApplicationAsset(response.request())) return;
+    assetCount += 1;
+    if (!response.ok()) {
+      failedAssets.push(response.url());
+    }
+  });
+  page.on("requestfailed", (request) => {
+    if (isApplicationAsset(request)) {
+      failedAssets.push(request.url());
     }
   });
 

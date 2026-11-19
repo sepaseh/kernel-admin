@@ -1,9 +1,5 @@
-import { createRequire } from "node:module";
+import { validateStagingTargets } from "../scripts/validate-workflow-targets.mjs";
 
-const { validateStagingTargets } = createRequire(import.meta.url)(
-  "../scripts/validate-workflow-targets.mjs",
-) as { validateStagingTargets: (environment: NodeJS.ProcessEnv) => void };
-
-export default () => {
+export default function setupStaging() {
   validateStagingTargets(process.env);
-};
+}

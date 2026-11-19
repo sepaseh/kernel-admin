@@ -197,6 +197,7 @@
     "scripts/validate-deployment-env.test.mjs",
     "scripts/validate-production-env.mjs",
     "scripts/validate-production-env.test.mjs",
+    "scripts/validate-workflow-targets.d.mts",
     "scripts/validate-workflow-targets.mjs",
     "scripts/validate-workflow-targets.test.mjs",
     "scripts/validate.mjs",
