@@ -391,6 +391,37 @@ test("comparison reads reviewed provenance without marking or overwriting baseli
   assert.equal(fixture.events.at(-1), "release");
 });
 
+test("comparison only writes results after the reused build passes its post-capture check", async () => {
+  const integrity = new Error("synthetic verification build changed");
+  const fixture = syntheticVisualDrivers();
+  fixture.drivers.withVerificationBuild = async (capture) => {
+    fixture.events.push("verify-before");
+    await capture();
+    fixture.events.push("verify-after");
+    throw integrity;
+  };
+
+  await assert.rejects(
+    runVisual({ platform: "win32", drivers: fixture.drivers }),
+    (error) => error === integrity,
+  );
+  assert.deepEqual(fixture.events, [
+    "runtime",
+    "baseline",
+    "images",
+    "lock",
+    "verify-before",
+    "ports",
+    "browser",
+    "metadata",
+    "capture",
+    "metadata",
+    "images",
+    "verify-after",
+    "release",
+  ]);
+});
+
 test("compatible Node upgrades warn once, retain both runtimes and preserve image comparison failures", async (context) => {
   const warnings = [];
   context.mock.method(console, "warn", (message) => warnings.push(message));

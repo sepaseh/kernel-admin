@@ -9,7 +9,12 @@ import { useAntd } from "@/app/hooks";
 import { getRoutePermissions } from "@/app/lib";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { modalKeys } from "@/shared/config";
-import { useAbortController, useLock } from "@/shared/hooks";
+import {
+  getDrawerId,
+  useAbortController,
+  useGoBack,
+  useLock,
+} from "@/shared/hooks";
 import { SortableTable } from "@/shared/ui/sortable-table";
 
 import {
@@ -26,11 +31,11 @@ export const ContentCategoriesPage = () => {
     [],
   );
   const [loading, setLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<ContentCategory["id"]>();
   const [submitting, setSubmitting] = useState(false);
   const { cancel, start } = useAbortController();
   const { messageAPI, modalAPI } = useAntd();
-  const { pathname, search } = useLocation();
+  const goBack = useGoBack();
+  const { pathname, search, state } = useLocation();
   const { lock, unlock } = useLock();
   const navigate = useNavigate();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
@@ -56,6 +61,11 @@ export const ContentCategoriesPage = () => {
       if (!signal.aborted) setLoading(false);
     }
   }, [messageAPI, start]);
+
+  const handleFormFinish = () => {
+    void fetchData();
+    goBack();
+  };
 
   const handleDelete = (id: ContentCategory["id"]) => {
     if (!canDelete || submitting) return;
@@ -88,10 +98,9 @@ export const ContentCategoriesPage = () => {
   const handleUpdate = (id: ContentCategory["id"]) => {
     if (!canUpdate || submitting) return;
 
-    setSelectedId(id);
     void navigate(
       { hash: modalKeys.update, pathname, search },
-      { state: true },
+      { state: { id } },
     );
   };
 
@@ -196,7 +205,11 @@ export const ContentCategoriesPage = () => {
           type="primary"
         />
       )}
-      <ContentCategoryForm id={selectedId} onFinish={fetchData} />
+      <ContentCategoryForm
+        id={getDrawerId(state)}
+        onClose={goBack}
+        onFinish={handleFormFinish}
+      />
     </>
   );
 };

@@ -436,17 +436,21 @@ export async function withVerificationBuild(
   environment,
   operation,
 ) {
-  await verifyVerificationBuild(repository, environment);
+  const before = await verifyVerificationBuild(repository, environment);
   let result, failure;
+  let failed = false;
   try {
     result = await operation();
   } catch (error) {
+    failed = true;
     failure = error;
   }
   try {
-    await verifyVerificationBuild(repository, environment);
+    const after = await verifyVerificationBuild(repository, environment);
+    if (JSON.stringify(before) !== JSON.stringify(after))
+      throw new Error("The verification build changed during the operation.");
   } catch (error) {
-    if (failure)
+    if (failed)
       throw new AggregateError(
         [failure, error],
         "Verification operation and build integrity both failed.",
@@ -454,7 +458,7 @@ export async function withVerificationBuild(
       );
     throw error;
   }
-  if (failure) throw failure;
+  if (failed) throw failure;
   return result;
 }
 
@@ -792,14 +796,12 @@ async function captureVisualResult({
     throw new Error("Visual source changed while the child built or captured.");
 
   if (!update) await drivers.baselineImages(baseline);
-  const result = {
+  return {
     ...metadata,
     baselineIdentity: baseline,
     mode: update ? "update" : "compare",
     exitCode,
   };
-  await drivers.writeResult(result);
-  return result;
 }
 
 export async function runVisual({
@@ -826,13 +828,12 @@ export async function runVisual({
   let result, failure;
   let failed = false;
   try {
-    result = await captureVisualResult({
-      update,
-      platform,
-      drivers,
-      runtime,
-      baseline,
-    });
+    const capture = () =>
+      captureVisualResult({ update, platform, drivers, runtime, baseline });
+    result = drivers.withVerificationBuild
+      ? await drivers.withVerificationBuild(capture)
+      : await capture();
+    await drivers.writeResult(result);
   } catch (error) {
     failed = true;
     failure = error;
@@ -875,7 +876,8 @@ async function createVisualDrivers(platform, inherited) {
   const resultsDirectory = path.join(repository, "coverage/visual");
   const runDirectory = path.join(resultsDirectory, `run-${randomUUID()}`);
   const environment = visualEnvironment(inherited);
-  if (inherited.KERNEL_REUSE_VERIFICATION_BUILD === "1") {
+  const reuseBuild = inherited.KERNEL_REUSE_VERIFICATION_BUILD === "1";
+  if (reuseBuild) {
     environment.KERNEL_REUSE_VERIFICATION_BUILD = "1";
     environment.VITE_RELEASE_ID = "application-verification";
   }
@@ -907,6 +909,10 @@ async function createVisualDrivers(platform, inherited) {
     baselineImages: (metadata) =>
       assertVisualBaselineImages(baselineDirectory, metadata),
     lock: () => acquireVisualLock(resultsDirectory),
+    ...(reuseBuild && {
+      withVerificationBuild: (capture) =>
+        withVerificationBuild(repository, environment, capture),
+    }),
     ports: () => assertVisualPortsAvailable(),
     browserVersion: () =>
       inspectVisualBrowser(

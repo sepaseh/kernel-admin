@@ -67,6 +67,7 @@ Ordinary local and PR verification uses Chromium. Complete verification substitu
 [Pact consumer tests](../vitest.contract.config.ts) call the real adapters against an owned local mock provider. They verify consumer expectations; a developer's chosen backend needs its own authorized integration verification. Browser journeys and consumer contracts supply different evidence.
 
 Where admitted, error-recovery tests retain the fallback, reload and route-access assertions. Performance checks run through the independent browser and Lighthouse tooling.
+Lighthouse checks settings and form readiness during a separate synthetic preparation navigation, while the audit retains the network and page-error guards.
 
 ## Review appearance
 
@@ -101,7 +102,9 @@ Keep the original capture result separate from the baseline's human review recor
 
 The runner owns its preview, strict ports and process lock. An occupied port fails before contacting another service. Windows cleanup captures process identities, refreshes eligible descendants and operates through retained, identity-verified process handles.
 
-Windows identity capture starts when the child reports a successful spawn, before interruption. Snapshot output has an explicit 16 MiB buffer limit. If the early capture fails, interruption retries it once while the owned root is still running and cancellation has not been requested; a failed retry preserves both errors and never authorizes an unverified tree stop. Stop receives the retained snapshot through piped standard input, keeping snapshot size out of the command line. Cleanup refreshes eligible descendants while the original root identity remains valid; after the root exits, it can stop only previously captured identities. Descendants first created after the last successful capture cannot be safely inferred and are not selected by PID alone. Normal child completion cancels a pending capture and waits for the helper to actually close.
+When a visual run stops unexpectedly and leaves `coverage/visual/.visual-run.lock`, use the PID recorded in the file to identify the previous runner. Confirm that the runner and its owned Playwright, Chromium and preview server processes have exited. Remove only that lock file before retrying the visual run. If you cannot confirm the processes have stopped, leave the lock in place.
+
+Windows identity capture starts when the child reports a successful spawn, before interruption. Snapshot output has an explicit 16 MiB buffer limit. If the early capture fails, interruption retries it once while the owned root is still running and cancellation has not been requested. A failed retry preserves both errors and never authorizes an unverified tree stop. Stop receives the retained snapshot through piped standard input, keeping snapshot size out of the command line. After the root exits, cleanup can discover new descendants through surviving captured processes whose identities still match. Normal child completion cancels a pending capture and waits for the helper to actually close.
 
 Keep these cases in the split [runner](../scripts/run-visual.test.mjs), [integration](../scripts/run-visual.integration.test.mjs) and [environment](../scripts/visual-environment.test.mjs) suites:
 

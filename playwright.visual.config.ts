@@ -1,7 +1,13 @@
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { LaunchOptions } from "@playwright/test";
 import { chromium, defineConfig } from "@playwright/test";
+
+const { windowsChromiumLaunchOptions } = createRequire(import.meta.url)(
+  "./scripts/visual-environment.mjs",
+) as { windowsChromiumLaunchOptions: () => LaunchOptions };
 
 if (process.env.KERNEL_VISUAL_RUNNER !== "1")
   throw new Error(
@@ -73,7 +79,10 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:4185",
     browserName: "chromium",
     channel: "chromium",
-    launchOptions: { executablePath: chromium.executablePath() },
+    launchOptions: {
+      ...windowsChromiumLaunchOptions(),
+      executablePath: chromium.executablePath(),
+    },
     locale: "en-US",
     timezoneId: "UTC",
     reducedMotion: "reduce",

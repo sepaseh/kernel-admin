@@ -10,7 +10,7 @@ import type { ContentCategory } from "@/features/content-categories";
 import { uploadFile } from "@/features/files";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { modalKeys } from "@/shared/config";
-import { useAbortController, useGoBack, useLock } from "@/shared/hooks";
+import { useAbortController, useLock } from "@/shared/hooks";
 import { FormDrawer } from "@/shared/ui/form-drawer";
 import { ImageUpload } from "@/shared/ui/image-upload";
 import { RichTextEditor } from "@/shared/ui/rich-text-editor";
@@ -23,6 +23,7 @@ type ContentFormValues = Omit<ContentRequest, "coverImageId"> &
 
 type ContentFormProps = {
   id?: Content["id"];
+  onClose: () => void;
   onFinish: () => void;
   options: { categories: ContentCategory[] };
 };
@@ -31,6 +32,7 @@ const initialFocusField = "title" satisfies keyof ContentRequest;
 
 export const ContentForm = ({
   id,
+  onClose,
   onFinish,
   options: { categories },
 }: ContentFormProps) => {
@@ -43,7 +45,6 @@ export const ContentForm = ({
   const { cancel, start } = useAbortController();
   const { messageAPI } = useAntd();
   const { settings } = useCore();
-  const goBack = useGoBack();
   const { hash } = useLocation();
   const { lock, unlock } = useLock();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
@@ -56,7 +57,7 @@ export const ContentForm = ({
     if (submitting || uploading) return;
 
     cancel();
-    goBack();
+    onClose();
   };
 
   const handleSubmit = async ({ coverImage, ...values }: ContentFormValues) => {
@@ -89,7 +90,6 @@ export const ContentForm = ({
 
       void messageAPI.success(t("contentSaved"));
       onFinish();
-      goBack();
     } catch (error) {
       if (signal.aborted || isCancel(error)) return;
 
@@ -102,7 +102,10 @@ export const ContentForm = ({
     }
   };
 
-  useLayoutEffect(() => cancel, [cancel, goBack, id, isCreate, isUpdate, open]);
+  useLayoutEffect(
+    () => cancel,
+    [cancel, id, isCreate, isUpdate, onClose, open],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -112,7 +115,8 @@ export const ContentForm = ({
       unlock();
 
       if (!open) {
-        if (isCreate || isUpdate) goBack();
+        setUploading(false);
+        if (isCreate || isUpdate) onClose();
 
         return;
       }
@@ -120,7 +124,7 @@ export const ContentForm = ({
       if (!isUpdate) return;
 
       if (id === undefined) {
-        goBack();
+        onClose();
         return;
       }
 
@@ -143,7 +147,7 @@ export const ContentForm = ({
         if (signal.aborted) return;
 
         if (error instanceof Error) void messageAPI.error(error.message);
-        goBack();
+        onClose();
       } finally {
         if (!signal.aborted) setLoading(false);
       }
@@ -153,11 +157,11 @@ export const ContentForm = ({
   }, [
     cancel,
     form,
-    goBack,
     id,
     isCreate,
     isUpdate,
     messageAPI,
+    onClose,
     open,
     start,
     unlock,
@@ -167,7 +171,6 @@ export const ContentForm = ({
     <FormDrawer
       afterOpenChange={(open) => {
         if (!open) {
-          setUploading(false);
           form.resetFields();
           return;
         }
@@ -218,24 +221,27 @@ export const ContentForm = ({
         >
           <Input.TextArea autoSize={{ minRows: 2, maxRows: 4 }} />
         </Form.Item>
-        <Form.Item<ContentFormValues>
-          label={t("coverImage")}
-          name="coverImage"
-          rules={[{ required: true }]}
-        >
-          <ImageUpload
-            disabled={loading || submitting}
+        {open && (
+          <Form.Item<ContentFormValues>
             label={t("coverImage")}
-            onLoadingChange={setUploading}
-            onError={(error) => {
-              void messageAPI.error(error.message);
-            }}
-            settings={settings.imageSettings.contents}
-            upload={(file, onProgress) =>
-              uploadFile(file, "contents", onProgress)
-            }
-          />
-        </Form.Item>
+            name="coverImage"
+            preserve={false}
+            rules={[{ required: true }]}
+          >
+            <ImageUpload
+              disabled={loading || submitting}
+              label={t("coverImage")}
+              onLoadingChange={setUploading}
+              onError={(error) => {
+                void messageAPI.error(error.message);
+              }}
+              settings={settings.imageSettings.contents}
+              upload={(file, onProgress, signal) =>
+                uploadFile(file, "contents", onProgress, signal)
+              }
+            />
+          </Form.Item>
+        )}
         <Form.Item<ContentFormValues>
           label={t("body")}
           name="body"

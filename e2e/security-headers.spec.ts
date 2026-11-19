@@ -15,15 +15,21 @@ test.describe("production security headers", () => {
     const headers = response!.headers();
     const contentSecurityPolicy = headers["content-security-policy"];
 
-    expect(contentSecurityPolicy).toContain("default-src 'self'");
-    expect(contentSecurityPolicy).toContain("object-src 'none'");
-    expect(contentSecurityPolicy).toContain("frame-ancestors 'none'");
+    expect(contentSecurityPolicy).toBeDefined();
     const directives = contentSecurityPolicy.split(";").map((directive) => {
       const [name, ...sources] = directive.trim().split(/\s+/);
       return [name.toLowerCase(), ...sources];
     });
-    const scriptSources = directives.filter(([name]) => name === "script-src");
-    expect(scriptSources).toEqual([["script-src", "'self'"]]);
+    for (const [name, source] of [
+      ["default-src", "'self'"],
+      ["object-src", "'none'"],
+      ["frame-ancestors", "'none'"],
+      ["script-src", "'self'"],
+    ]) {
+      expect(directives.filter(([directive]) => directive === name)).toEqual([
+        [name, source],
+      ]);
+    }
     expect(directives.filter(([name]) => name === "script-src-elem")).toEqual(
       [],
     );

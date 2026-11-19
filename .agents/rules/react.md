@@ -62,8 +62,11 @@ through retries; a new login must not inherit an old mutation or logout completi
   associations; `Form.Item.name` remains the submitted data path.
 - Keep permission-controlled drawers mounted and derive `open` internally from
   their own action hash and canonical operation permission. Gate detail reads
-  and submission too. Handle denied actions and missing IDs in the existing
-  effect through `useGoBack`; ignore sibling drawer hashes.
+  and submission too. Use the parent page's `onClose` for canceling and for
+  failures to open the form, including denied actions and missing IDs. Ignore
+  sibling drawer hashes. The page owns return navigation through `useGoBack`
+  and stores each edit target ID in its history entry. On a successful save,
+  notify the page through `onFinish` so it can refresh the list and close the drawer.
 - Use the existing synchronous/ref submission lock as well as submitting state.
   Cancel abandoned reads and reject late results before updating the form.
 - Type Ant Design submit handlers as `FormProps<Values>["onFinish"]`.

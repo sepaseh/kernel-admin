@@ -1,14 +1,37 @@
-import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { type ComponentProps, useCallback } from "react";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
-import { sampleAccount, user } from "../../../../../.storybook/fixtures";
+import { apiClient } from "@/shared/api";
+import { useGoBack } from "@/shared/hooks";
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "../../../../../.storybook/StoryShell";
 
+import { sampleAccount, user } from "../../../../../.storybook/fixtures";
+import { StoryShell } from "../../../../../.storybook/StoryShell";
 import { UserForm } from "./UserForm";
 
+type RoutedUserFormProps = ComponentProps<typeof UserForm>;
+
+const RoutedUserForm = ({
+  onClose,
+  onFinish,
+  ...args
+}: RoutedUserFormProps) => {
+  const goBack = useGoBack();
+  const handleClose = useCallback(() => {
+    onClose();
+    goBack();
+  }, [goBack, onClose]);
+  const handleFinish = () => {
+    onFinish();
+    goBack();
+  };
+
+  return <UserForm {...args} onClose={handleClose} onFinish={handleFinish} />;
+};
+
 const meta = {
+  args: { onClose: fn() },
   component: UserForm,
   title: "Features/Users/UserForm",
 } satisfies Meta<typeof UserForm>;
@@ -20,7 +43,7 @@ export const Create: Story = {
   args: { onFinish: fn() },
   render: (args) => (
     <StoryShell initialEntries={["/#create"]}>
-      <UserForm {...args} />
+      <RoutedUserForm {...args} />
     </StoryShell>
   ),
   play: async ({ args, canvasElement }) => {
@@ -61,7 +84,7 @@ export const Update: Story = {
   args: { id: user.id, onFinish: fn() },
   render: (args) => (
     <StoryShell initialEntries={["/#update"]}>
-      <UserForm {...args} />
+      <RoutedUserForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {
@@ -85,7 +108,7 @@ export const ValidationErrors: Story = {
   args: { onFinish: fn() },
   render: (args) => (
     <StoryShell initialEntries={["/#create"]}>
-      <UserForm {...args} />
+      <RoutedUserForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {
@@ -110,7 +133,7 @@ export const DeniedCreate: Story = {
         permissions: ["users.read"],
       }}
     >
-      <UserForm {...args} />
+      <RoutedUserForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {

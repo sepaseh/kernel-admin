@@ -1,18 +1,41 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { type ComponentProps, useCallback } from "react";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+
 import { FaqForm } from "@/features/faqs/components/faq-form/FaqForm";
 import { apiClient } from "@/shared/api";
+import { useGoBack } from "@/shared/hooks";
 import { i18n } from "@/shared/i18n";
+
+import { sampleAccount, sampleFaqs } from "../../../../../.storybook/fixtures";
 import { StoryShell } from "../../../../../.storybook/StoryShell";
-import { sampleFaqs, sampleAccount } from "../../../../../.storybook/fixtures";
+
+const RoutedFaqForm = ({
+  id,
+  onClose,
+  onFinish,
+}: ComponentProps<typeof FaqForm>) => {
+  const goBack = useGoBack();
+  const handleClose = useCallback(() => {
+    onClose();
+    goBack();
+  }, [goBack, onClose]);
+
+  const handleFinish = () => {
+    onFinish();
+    goBack();
+  };
+
+  return <FaqForm id={id} onClose={handleClose} onFinish={handleFinish} />;
+};
 
 const meta = {
   title: "Features/FAQ/FaqForm",
   component: FaqForm,
-  args: { onFinish: fn() },
+  args: { onClose: fn(), onFinish: fn() },
   render: (args) => (
     <StoryShell initialEntries={["/faqs#create"]}>
-      <FaqForm {...args} />
+      <RoutedFaqForm {...args} />
     </StoryShell>
   ),
 } satisfies Meta<typeof FaqForm>;
@@ -49,7 +72,7 @@ export const Update: Story = {
   args: { id: sampleFaqs[0].id },
   render: (args) => (
     <StoryShell initialEntries={["/faqs#update"]}>
-      <FaqForm {...args} />
+      <RoutedFaqForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {
@@ -95,7 +118,7 @@ export const DeniedCreate: Story = {
         permissions: ["faqs.read"],
       }}
     >
-      <FaqForm {...args} />
+      <RoutedFaqForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {

@@ -1,18 +1,41 @@
-import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { type ComponentProps, useCallback } from "react";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+
+import { apiClient } from "@/shared/api";
+import { useGoBack } from "@/shared/hooks";
+import { i18nInstance } from "@/shared/i18n";
 
 import {
   permissions,
   roles,
   sampleAccount,
 } from "../../../../../.storybook/fixtures";
-import { i18nInstance } from "@/shared/i18n";
 import { StoryShell } from "../../../../../.storybook/StoryShell";
-
 import { RoleForm } from "./RoleForm";
 
+type RoutedRoleFormProps = ComponentProps<typeof RoleForm>;
+
+const RoutedRoleForm = ({
+  onClose,
+  onFinish,
+  ...args
+}: RoutedRoleFormProps) => {
+  const goBack = useGoBack();
+  const handleClose = useCallback(() => {
+    onClose();
+    goBack();
+  }, [goBack, onClose]);
+  const handleFinish = () => {
+    onFinish();
+    goBack();
+  };
+
+  return <RoleForm {...args} onClose={handleClose} onFinish={handleFinish} />;
+};
+
 const meta = {
+  args: { onClose: fn() },
   component: RoleForm,
   title: "Features/Roles/RoleForm",
 } satisfies Meta<typeof RoleForm>;
@@ -24,7 +47,7 @@ export const Create: Story = {
   args: { onFinish: fn(), options: { permissions } },
   render: (args) => (
     <StoryShell initialEntries={["/#create"]}>
-      <RoleForm {...args} />
+      <RoutedRoleForm {...args} />
     </StoryShell>
   ),
   play: async ({ args, canvasElement }) => {
@@ -57,7 +80,7 @@ export const Update: Story = {
   },
   render: (args) => (
     <StoryShell initialEntries={["/#update"]}>
-      <RoleForm {...args} />
+      <RoutedRoleForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {
@@ -78,7 +101,7 @@ export const ValidationErrors: Story = {
   args: { onFinish: fn(), options: { permissions } },
   render: (args) => (
     <StoryShell initialEntries={["/#create"]}>
-      <RoleForm {...args} />
+      <RoutedRoleForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {
@@ -104,7 +127,7 @@ export const DeniedCreate: Story = {
         permissions: ["roles.read"],
       }}
     >
-      <RoleForm {...args} />
+      <RoutedRoleForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {

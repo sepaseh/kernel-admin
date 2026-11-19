@@ -1,24 +1,24 @@
 // @vitest-environment jsdom
 import { act, fireEvent, waitFor } from "@testing-library/react";
 import { CanceledError } from "axios";
-import type { ComponentProps, ReactNode } from "react";
+import { type ComponentProps, type ReactNode, useCallback } from "react";
 import type * as ReactI18next from "react-i18next";
 import { MemoryRouter, Outlet, Route, Routes, useNavigate } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CurrentUser } from "@/features/account";
 import * as rolesApi from "@/features/roles/api";
-import { RoleForm } from "@/features/roles/components/role-form/RoleForm";
+import { RoleForm as RoleDrawerForm } from "@/features/roles/components/role-form/RoleForm";
 import * as usersApi from "@/features/users/api";
-import { UserForm } from "@/features/users/components/user-form/UserForm";
-import { UserRoleForm } from "@/features/users/components/user-role-form/UserRoleForm";
+import { UserForm as UserDrawerForm } from "@/features/users/components/user-form/UserForm";
+import { UserRoleForm as UserRoleDrawerForm } from "@/features/users/components/user-role-form/UserRoleForm";
 import type { User } from "@/features/users/types";
 import {
   clearAccessToken,
   getSessionSignal,
   setAccessToken,
 } from "@/shared/api/token";
-import type * as SharedHooks from "@/shared/hooks";
+import * as SharedHooks from "@/shared/hooks";
 import type * as FormDrawerModule from "@/shared/ui/form-drawer";
 import { render, screen } from "@/test/render";
 
@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => {
   };
   return {
     goBack: vi.fn(),
+    onClose: vi.fn(),
     realGoBack: false,
     messageAPI,
     notificationAPI,
@@ -116,6 +117,44 @@ const userData: User = {
   roles: [{ id: "role-1", name: "Operators" }],
   status: "active",
 };
+
+const useDrawerCallbacks = (onFinish: () => void) => {
+  const goBack = SharedHooks.useGoBack();
+  const onClose = useCallback(() => {
+    mocks.onClose();
+    goBack();
+  }, [goBack]);
+
+  return {
+    onClose,
+    onFinish: () => {
+      onFinish();
+      goBack();
+    },
+  };
+};
+
+const RoleForm = (
+  props: Omit<ComponentProps<typeof RoleDrawerForm>, "onClose">,
+) => {
+  const callbacks = useDrawerCallbacks(props.onFinish);
+  return <RoleDrawerForm {...props} {...callbacks} />;
+};
+
+const UserForm = (
+  props: Omit<ComponentProps<typeof UserDrawerForm>, "onClose">,
+) => {
+  const callbacks = useDrawerCallbacks(props.onFinish);
+  return <UserDrawerForm {...props} {...callbacks} />;
+};
+
+const UserRoleForm = (
+  props: Omit<ComponentProps<typeof UserRoleDrawerForm>, "onClose">,
+) => {
+  const callbacks = useDrawerCallbacks(props.onFinish);
+  return <UserRoleDrawerForm {...props} {...callbacks} />;
+};
+
 const formAtHash = (ui: ReactNode, hash: string) => (
   <MemoryRouter initialEntries={[`/${hash}`]}>
     <Routes>
@@ -313,6 +352,7 @@ describe("user identity form", () => {
     });
     expect(mocks.messageSuccess).not.toHaveBeenCalled();
     expect(mocks.goBack).toHaveBeenCalledOnce();
+    expect(mocks.onClose).not.toHaveBeenCalled();
     expect(onFinish).toHaveBeenCalledOnce();
   }, 10_000);
 
@@ -541,6 +581,7 @@ describe("role form", () => {
     );
     expect(mocks.messageSuccess).toHaveBeenCalledWith("roleUpdated");
     expect(mocks.goBack).toHaveBeenCalledOnce();
+    expect(mocks.onClose).not.toHaveBeenCalled();
     expect(onFinish).toHaveBeenCalledOnce();
   });
 });
@@ -572,6 +613,8 @@ describe("user access forms", () => {
       ),
     );
     expect(mocks.messageSuccess).toHaveBeenCalledWith("rolesUpdated");
+    expect(mocks.goBack).toHaveBeenCalledOnce();
+    expect(mocks.onClose).not.toHaveBeenCalled();
     expect(onFinish).toHaveBeenCalledOnce();
   });
 });
@@ -642,6 +685,7 @@ describe("form cancellation", () => {
       await user.click(await screen.findByRole("button", { name: "cancel" }));
 
       expect(mocks.goBack).toHaveBeenLastCalledWith();
+      expect(mocks.onClose).toHaveBeenCalledExactlyOnceWith();
     },
   );
 });

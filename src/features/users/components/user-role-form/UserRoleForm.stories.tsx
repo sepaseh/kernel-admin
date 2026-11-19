@@ -1,23 +1,48 @@
-import { apiClient } from "@/shared/api";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { type ComponentProps, useCallback } from "react";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
-import { roles, sampleAccount, user } from "../../../../../.storybook/fixtures";
+import { apiClient } from "@/shared/api";
+import { useGoBack } from "@/shared/hooks";
 import { i18nInstance } from "@/shared/i18n";
-import { StoryShell } from "../../../../../.storybook/StoryShell";
 
+import { roles, sampleAccount, user } from "../../../../../.storybook/fixtures";
+import { StoryShell } from "../../../../../.storybook/StoryShell";
 import { UserRoleForm } from "./UserRoleForm";
+
+type RoutedUserRoleFormProps = ComponentProps<typeof UserRoleForm>;
+
+const RoutedUserRoleForm = ({
+  onClose,
+  onFinish,
+  ...args
+}: RoutedUserRoleFormProps) => {
+  const goBack = useGoBack();
+  const handleClose = useCallback(() => {
+    onClose();
+    goBack();
+  }, [goBack, onClose]);
+  const handleFinish = () => {
+    onFinish();
+    goBack();
+  };
+
+  return (
+    <UserRoleForm {...args} onClose={handleClose} onFinish={handleFinish} />
+  );
+};
 
 const meta = {
   args: {
     id: user.id,
+    onClose: fn(),
     onFinish: fn(),
     options: { roles },
   },
   component: UserRoleForm,
   render: (args) => (
     <StoryShell initialEntries={["/#roles"]}>
-      <UserRoleForm {...args} />
+      <RoutedUserRoleForm {...args} />
     </StoryShell>
   ),
   title: "Features/Users/UserRoleForm",
@@ -63,7 +88,7 @@ export const DeniedUpdate: Story = {
         permissions: ["users.read"],
       }}
     >
-      <UserRoleForm {...args} />
+      <RoutedUserRoleForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {

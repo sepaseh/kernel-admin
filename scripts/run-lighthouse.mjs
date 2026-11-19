@@ -179,7 +179,7 @@ export async function runLighthouse({
     const reports = getLighthouseReports(result);
     await writeReports(reportDirectory, reports);
     controller.signal.throwIfAborted();
-    await fixture?.verify();
+    await fixture?.verifyTraffic();
     controller.signal.throwIfAborted();
     score = evaluateLighthouseReport(result.lhr);
   } catch (error) {
@@ -238,7 +238,7 @@ export async function prepareLighthouseFixture(
   try {
     const context = browser.contexts()[0],
       unexpected = [];
-    let settingsRequests = 0;
+    let settingsLoadedDuringPreparation = false;
     await context.route("**/*", (route) => {
       const request = route.request(),
         target = new URL(request.url());
@@ -247,7 +247,7 @@ export async function prepareLighthouseFixture(
         target.href === "https://api.example.com/settings" &&
         request.method() === "GET"
       ) {
-        settingsRequests++;
+        settingsLoadedDuringPreparation = true;
         return route.fulfill({ json: settings("en") });
       }
       unexpected.push(`${request.method()} ${target.href}`);
@@ -265,15 +265,15 @@ export async function prepareLighthouseFixture(
       .first()
       .waitFor({ state: "visible" });
     await page.getByRole("heading", { level: 1 }).waitFor({ state: "visible" });
-    const verify = () => {
-      if (!settingsRequests || unexpected.length)
-        throw new Error(
-          `Lighthouse fixture failed: ${unexpected.join("; ") || "settings not loaded"}`,
-        );
+    const verifyTraffic = () => {
+      if (unexpected.length)
+        throw new Error(`Lighthouse fixture failed: ${unexpected.join("; ")}`);
     };
-    verify();
+    verifyTraffic();
+    if (!settingsLoadedDuringPreparation)
+      throw new Error("Lighthouse preparation failed: settings not loaded.");
     await page.close();
-    return { verify, dispose: () => browser.close() };
+    return { verifyTraffic, dispose: () => browser.close() };
   } catch (error) {
     try {
       await browser.close();
@@ -332,7 +332,7 @@ async function main() {
       ? await withVerificationBuild(repository, process.env, operation)
       : await operation();
   console.info(
-    `Lighthouse verification passed with a performance score of ${score}.`,
+    `Lighthouse reported a performance score of ${score}. The synthetic authentication readiness check ran on the preparation page.`,
   );
 }
 

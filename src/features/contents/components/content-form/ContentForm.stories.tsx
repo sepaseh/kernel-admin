@@ -1,18 +1,38 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { ComponentProps } from "react";
 import { useNavigate } from "react-router";
 import { expect, fn, mocked, userEvent, waitFor, within } from "storybook/test";
+
 import { ContentForm } from "@/features/contents/components/content-form/ContentForm";
 import { apiClient } from "@/shared/api";
+import { useGoBack } from "@/shared/hooks";
 import { i18n } from "@/shared/i18n";
 import { deferred } from "@/test/deferred";
-import { StoryShell } from "../../../../../.storybook/StoryShell";
+
 import {
+  sampleAccount,
   sampleContentCategories,
   sampleContents,
-  sampleAccount,
   sampleFiles,
   sampleSettings,
 } from "../../../../../.storybook/fixtures";
+import { StoryShell } from "../../../../../.storybook/StoryShell";
+
+type RoutedContentFormProps = Omit<
+  ComponentProps<typeof ContentForm>,
+  "onClose"
+>;
+
+const RoutedContentForm = ({ onFinish, ...args }: RoutedContentFormProps) => {
+  const goBack = useGoBack();
+
+  const handleFinish = () => {
+    onFinish();
+    goBack();
+  };
+
+  return <ContentForm {...args} onClose={goBack} onFinish={handleFinish} />;
+};
 
 const UploadHistoryControls = () => {
   const navigate = useNavigate();
@@ -33,14 +53,14 @@ const UploadHistoryControls = () => {
 
 const meta = {
   title: "Features/Contents/ContentForm",
-  component: ContentForm,
+  component: RoutedContentForm,
   args: { onFinish: fn(), options: { categories: sampleContentCategories } },
   render: (args) => (
     <StoryShell initialEntries={["/contents#create"]}>
-      <ContentForm {...args} />
+      <RoutedContentForm {...args} />
     </StoryShell>
   ),
-} satisfies Meta<typeof ContentForm>;
+} satisfies Meta<typeof RoutedContentForm>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -66,7 +86,7 @@ export const Update: Story = {
   args: { id: sampleContents[0].id },
   render: (args) => (
     <StoryShell initialEntries={["/contents#update"]}>
-      <ContentForm {...args} />
+      <RoutedContentForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {
@@ -97,7 +117,7 @@ export const SaveExistingContent: Story = {
   args: { id: sampleContents[0].id },
   render: (args) => (
     <StoryShell initialEntries={["/contents#update"]}>
-      <ContentForm {...args} />
+      <RoutedContentForm {...args} />
     </StoryShell>
   ),
   play: async ({ args, canvasElement }) => {
@@ -158,7 +178,7 @@ export const DeniedCreate: Story = {
         permissions: ["contents.read"],
       }}
     >
-      <ContentForm {...args} />
+      <RoutedContentForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {
@@ -175,7 +195,7 @@ export const UploadBackReopen: Story = {
   render: (args) => (
     <StoryShell initialEntries={["/contents", "/contents#create"]}>
       <UploadHistoryControls />
-      <ContentForm {...args} />
+      <RoutedContentForm {...args} />
     </StoryShell>
   ),
   play: async ({ args, canvasElement }) => {
@@ -227,8 +247,13 @@ export const UploadBackReopen: Story = {
       await expect(apiClient.upload).toHaveBeenCalledWith(
         "/files",
         { context: "contents", file: expect.any(File) },
-        { onUploadProgress: expect.any(Function), signal: undefined },
+        {
+          onUploadProgress: expect.any(Function),
+          signal: expect.any(AbortSignal),
+        },
       );
+      const signal = mocked(apiClient.upload).mock.calls[0]?.[2]?.signal;
+      await expect(signal?.aborted).toBe(false);
       await expect(title).toBeDisabled();
       await expect(
         dialog.getByRole("button", { name: i18n.t("submit") }),
@@ -241,6 +266,7 @@ export const UploadBackReopen: Story = {
         expect(body.queryByRole("dialog")).not.toBeInTheDocument(),
       );
       await waitFor(() => expect(input).not.toBeInTheDocument());
+      await expect(signal?.aborted).toBe(true);
       await userEvent.click(
         canvas.getByRole("button", { name: "Reopen content form fixture" }),
       );

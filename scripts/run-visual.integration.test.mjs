@@ -475,6 +475,59 @@ test("verification operations retain their original error and post-operation int
   });
 });
 
+test("verification operations reject a rebuilt distribution with a fresh valid record", async () => {
+  await withBuildFixture(async (directory, environment) => {
+    const build = () =>
+      buildVerification({
+        repository: directory,
+        environment,
+        build: async () => 0,
+      });
+    await build();
+
+    await assert.rejects(
+      withVerificationBuild(directory, environment, async () => {
+        await writeFile(path.join(directory, "dist/app.js"), "rebuilt output");
+        await build();
+      }),
+      /verification build changed during the operation/i,
+    );
+    await verifyVerificationBuild(directory, environment);
+  });
+});
+
+test("verification operations distinguish successful undefined from falsy rejections", async () => {
+  await withBuildFixture(async (directory, environment) => {
+    await buildVerification({
+      repository: directory,
+      environment,
+      build: async () => 0,
+    });
+    const run = (operation) =>
+      withVerificationBuild(directory, environment, operation);
+
+    assert.equal(await run(async () => undefined), undefined);
+    for (const reason of [undefined, null, false, 0, ""]) {
+      await assert.rejects(
+        run(async () => {
+          throw reason;
+        }),
+        (error) => error === reason,
+      );
+    }
+    await assert.rejects(
+      run(async () => {
+        await writeFile(path.join(directory, "dist/app.js"), "changed output");
+        throw undefined;
+      }),
+      (error) =>
+        error instanceof AggregateError &&
+        error.errors[0] === undefined &&
+        /stale/.test(error.errors[1].message),
+    );
+  });
+});
+
 test("source provenance includes App, providers, fonts and capture inputs without reading private files", async () => {
   const configuration = [
     ".nvmrc",
@@ -655,7 +708,8 @@ test("the actual visual config requires declared capture for update flags and fo
             ? `process.argv.push(${JSON.stringify(scenario.flag)});`
             : "",
           `const configuration = await import(${JSON.stringify(configuration.href)});`,
-          "console.log(configuration.default.updateSnapshots);",
+          "const { updateSnapshots, use } = configuration.default;",
+          "console.log(JSON.stringify({ updateSnapshots, launchOptions: use.launchOptions }));",
         ].join("\n"),
       ],
       {
@@ -692,7 +746,20 @@ test("the actual visual config requires declared capture for update flags and fo
       assert.match(result.stderr, scenario.error, label);
     } else {
       assert.equal(result.status, 0, result.stderr);
-      assert.equal(result.stdout.trim(), scenario.expected, label);
+      const { updateSnapshots, launchOptions } = JSON.parse(result.stdout);
+      assert.equal(updateSnapshots, scenario.expected, label);
+      assert.ok(path.isAbsolute(launchOptions.executablePath), label);
+      if (process.platform === "win32") {
+        const [original] = launchOptions.ignoreDefaultArgs;
+        assert.match(original, /^--disable-features=/, label);
+        assert.deepEqual(
+          launchOptions.args,
+          [`${original},TcpPortRandomizationWin`],
+          label,
+        );
+      } else {
+        assert.deepEqual(Object.keys(launchOptions), ["executablePath"], label);
+      }
     }
   }
 });
@@ -884,6 +951,7 @@ test("the visual CLI rejects incomplete source or binds a pending capture to its
   const original = {
     argv: process.argv,
     ci: process.env.CI,
+    reuseBuild: process.env.KERNEL_REUSE_VERIFICATION_BUILD,
     exitCode: process.exitCode,
     info: console.info,
     error: console.error,
@@ -894,6 +962,7 @@ test("the visual CLI rejects incomplete source or binds a pending capture to its
   try {
     process.argv = [process.execPath, script, "--update"];
     process.env.CI = "";
+    delete process.env.KERNEL_REUSE_VERIFICATION_BUILD;
     process.exitCode = undefined;
     console.info = (message) => messages.push(message);
     console.error = (message) => errors.push(message);
@@ -981,6 +1050,11 @@ test("the visual CLI rejects incomplete source or binds a pending capture to its
     process.argv = original.argv;
     if (original.ci === undefined) delete process.env.CI;
     else process.env.CI = original.ci;
+    if (original.reuseBuild === undefined) {
+      delete process.env.KERNEL_REUSE_VERIFICATION_BUILD;
+    } else {
+      process.env.KERNEL_REUSE_VERIFICATION_BUILD = original.reuseBuild;
+    }
     process.exitCode = original.exitCode;
     console.info = original.info;
     console.error = original.error;

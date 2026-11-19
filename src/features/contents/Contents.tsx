@@ -26,9 +26,11 @@ import {
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { defaultPageSize, modalKeys } from "@/shared/config";
 import {
+  getDrawerId,
   useAbortController,
   useDebouncedFilters,
   useFilterParams,
+  useGoBack,
   useLock,
 } from "@/shared/hooks";
 import { getPage } from "@/shared/lib";
@@ -43,14 +45,14 @@ export const ContentsPage = () => {
   const [categories, setCategories] = useState<ContentCategory[]>([]);
   const [contents, setContents] = useState<Content[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<Content["id"]>();
   const [submitting, setSubmitting] = useState(false);
   const [total, setTotal] = useState(0);
   const { cancel, start } = useAbortController();
   const { messageAPI, modalAPI, token } = useAntd();
   const { filters, setFilters } = useFilterParams<ContentQuery>();
   const debouncedHandleFilter = useDebouncedFilters(setFilters);
-  const { pathname, search } = useLocation();
+  const goBack = useGoBack();
+  const { pathname, search, state } = useLocation();
   const { lock, unlock } = useLock();
   const navigate = useNavigate();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
@@ -78,6 +80,11 @@ export const ContentsPage = () => {
       if (!signal.aborted) setLoading(false);
     }
   }, [filters, messageAPI, start]);
+
+  const handleFormFinish = () => {
+    void fetchData();
+    goBack();
+  };
 
   const handleDelete = (id: Content["id"]) => {
     if (!canDelete || submitting) return;
@@ -111,10 +118,9 @@ export const ContentsPage = () => {
   const handleUpdate = (id: Content["id"]) => {
     if (!canUpdate || submitting) return;
 
-    setSelectedId(id);
     void navigate(
       { hash: modalKeys.update, pathname, search },
-      { state: true },
+      { state: { id } },
     );
   };
 
@@ -272,8 +278,9 @@ export const ContentsPage = () => {
         />
       )}
       <ContentForm
-        id={selectedId}
-        onFinish={fetchData}
+        id={getDrawerId(state)}
+        onClose={goBack}
+        onFinish={handleFormFinish}
         options={{ categories }}
       />
     </>

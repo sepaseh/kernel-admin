@@ -8,7 +8,7 @@ import { useAntd } from "@/app/hooks";
 import { getRoutePermissions } from "@/app/lib";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { modalKeys } from "@/shared/config";
-import { useAbortController, useGoBack, useLock } from "@/shared/hooks";
+import { useAbortController, useLock } from "@/shared/hooks";
 import { FormDrawer } from "@/shared/ui/form-drawer";
 
 import {
@@ -20,6 +20,7 @@ import type { ContentCategory, ContentCategoryRequest } from "../../types";
 
 type ContentCategoryFormProps = {
   id?: ContentCategory["id"];
+  onClose: () => void;
   onFinish: () => void;
 };
 
@@ -27,6 +28,7 @@ const initialFocusField = "name" satisfies keyof ContentCategoryRequest;
 
 export const ContentCategoryForm = ({
   id,
+  onClose,
   onFinish,
 }: ContentCategoryFormProps) => {
   const { t } = useTranslation();
@@ -36,7 +38,6 @@ export const ContentCategoryForm = ({
   const [submitting, setSubmitting] = useState(false);
   const { cancel, start } = useAbortController();
   const { messageAPI } = useAntd();
-  const goBack = useGoBack();
   const { hash } = useLocation();
   const { lock, unlock } = useLock();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
@@ -50,7 +51,7 @@ export const ContentCategoryForm = ({
 
   const handleClose = () => {
     cancel();
-    goBack();
+    onClose();
   };
 
   const handleSubmit = async (values: ContentCategoryRequest) => {
@@ -78,7 +79,6 @@ export const ContentCategoryForm = ({
 
       void messageAPI.success(t("contentSaved"));
       onFinish();
-      handleClose();
     } catch (error) {
       if (signal.aborted || isCancel(error)) return;
 
@@ -91,7 +91,10 @@ export const ContentCategoryForm = ({
     }
   };
 
-  useLayoutEffect(() => cancel, [cancel, goBack, id, isCreate, isUpdate, open]);
+  useLayoutEffect(
+    () => cancel,
+    [cancel, id, isCreate, isUpdate, onClose, open],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -101,7 +104,7 @@ export const ContentCategoryForm = ({
       unlock();
 
       if (!open) {
-        if (isCreate || isUpdate) goBack();
+        if (isCreate || isUpdate) onClose();
 
         return;
       }
@@ -109,7 +112,7 @@ export const ContentCategoryForm = ({
       if (!isUpdate) return;
 
       if (id === undefined) {
-        goBack();
+        onClose();
         return;
       }
 
@@ -126,7 +129,7 @@ export const ContentCategoryForm = ({
         if (signal.aborted) return;
 
         if (error instanceof Error) void messageAPI.error(error.message);
-        goBack();
+        onClose();
       } finally {
         if (!signal.aborted) setLoading(false);
       }
@@ -136,11 +139,11 @@ export const ContentCategoryForm = ({
   }, [
     cancel,
     form,
-    goBack,
     id,
     isCreate,
     isUpdate,
     messageAPI,
+    onClose,
     open,
     start,
     unlock,

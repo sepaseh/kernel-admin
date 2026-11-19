@@ -8,7 +8,7 @@ import { useAntd } from "@/app/hooks";
 import { getRoutePermissions } from "@/app/lib";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { modalKeys } from "@/shared/config";
-import { useAbortController, useGoBack, useLock } from "@/shared/hooks";
+import { useAbortController, useLock } from "@/shared/hooks";
 import { FormDrawer } from "@/shared/ui/form-drawer";
 
 import { createFaq, fetchFaq, updateFaq } from "../../api";
@@ -16,12 +16,13 @@ import type { Faq, FaqRequest } from "../../types";
 
 type FaqFormProps = {
   id?: Faq["id"];
+  onClose: () => void;
   onFinish: () => void;
 };
 
 const initialFocusField = "question" satisfies keyof FaqRequest;
 
-export const FaqForm = ({ id, onFinish }: FaqFormProps) => {
+export const FaqForm = ({ id, onClose, onFinish }: FaqFormProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm<FaqRequest>();
   const [loadedId, setLoadedId] = useState<Faq["id"]>();
@@ -29,7 +30,6 @@ export const FaqForm = ({ id, onFinish }: FaqFormProps) => {
   const [submitting, setSubmitting] = useState(false);
   const { cancel, start } = useAbortController();
   const { messageAPI } = useAntd();
-  const goBack = useGoBack();
   const { hash } = useLocation();
   const { lock, unlock } = useLock();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
@@ -40,7 +40,7 @@ export const FaqForm = ({ id, onFinish }: FaqFormProps) => {
 
   const handleClose = () => {
     cancel();
-    goBack();
+    onClose();
   };
 
   const handleSubmit = async (values: FaqRequest) => {
@@ -68,7 +68,6 @@ export const FaqForm = ({ id, onFinish }: FaqFormProps) => {
 
       void messageAPI.success(t("contentSaved"));
       onFinish();
-      handleClose();
     } catch (error) {
       if (signal.aborted || isCancel(error)) return;
 
@@ -81,7 +80,10 @@ export const FaqForm = ({ id, onFinish }: FaqFormProps) => {
     }
   };
 
-  useLayoutEffect(() => cancel, [cancel, goBack, id, isCreate, isUpdate, open]);
+  useLayoutEffect(
+    () => cancel,
+    [cancel, id, isCreate, isUpdate, onClose, open],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -91,7 +93,7 @@ export const FaqForm = ({ id, onFinish }: FaqFormProps) => {
       unlock();
 
       if (!open) {
-        if (isCreate || isUpdate) goBack();
+        if (isCreate || isUpdate) onClose();
 
         return;
       }
@@ -99,7 +101,7 @@ export const FaqForm = ({ id, onFinish }: FaqFormProps) => {
       if (!isUpdate) return;
 
       if (id === undefined) {
-        goBack();
+        onClose();
         return;
       }
 
@@ -116,7 +118,7 @@ export const FaqForm = ({ id, onFinish }: FaqFormProps) => {
         if (signal.aborted) return;
 
         if (error instanceof Error) void messageAPI.error(error.message);
-        goBack();
+        onClose();
       } finally {
         if (!signal.aborted) setLoading(false);
       }
@@ -126,11 +128,11 @@ export const FaqForm = ({ id, onFinish }: FaqFormProps) => {
   }, [
     cancel,
     form,
-    goBack,
     id,
     isCreate,
     isUpdate,
     messageAPI,
+    onClose,
     open,
     start,
     unlock,

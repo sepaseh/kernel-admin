@@ -6,6 +6,13 @@ import {
   useNavigate,
 } from "react-router";
 
+export const getDrawerId = (state: unknown): string | undefined => {
+  if (typeof state !== "object" || state === null || !("id" in state))
+    return undefined;
+
+  return typeof state.id === "string" && state.id ? state.id : undefined;
+};
+
 export const useGoBack = (): ((to?: To, options?: NavigateOptions) => void) => {
   const { pathname, search, state } = useLocation();
   const navigate = useNavigate();
