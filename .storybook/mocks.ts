@@ -114,9 +114,20 @@ export const resetStoryMocks = (state = "populated") => {
           return new Promise(() => undefined);
         if (state === `${resource}-error`)
           throw new Error(`Synthetic ${resource} unavailable`);
-        return url === "/roles"
-          ? structuredClone(roles)
-          : { items: structuredClone(users), total: users.length };
+        if (url === "/roles") return structuredClone(roles);
+
+        const params = config?.params as
+          Record<string, string | undefined> | undefined;
+        const firstName = params?.first_name?.toLowerCase();
+        const lastName = params?.last_name?.toLowerCase();
+        const filtered = users.filter(
+          (user) =>
+            (!firstName || user.firstName.toLowerCase().includes(firstName)) &&
+            (!lastName || user.lastName.toLowerCase().includes(lastName)) &&
+            (!params?.mobile || user.mobile.includes(params.mobile)) &&
+            (!params?.status || user.status === params.status),
+        );
+        return { items: structuredClone(filtered), total: filtered.length };
       }
       const role = roles.find(({ id }) => url === `/roles/${id}`);
       if (role) return structuredClone(role);
