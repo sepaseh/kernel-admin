@@ -23,6 +23,7 @@ Measured unit and governance coverage belongs in `coverage/unit/lcov.info` and `
 Use uniquely owned synthetic fixtures. Never read real environment files, credentials, databases, uploads or browser state. Synchronize asynchronous fixtures on actual state or process completion and preserve cleanup failures. Keep meaningful regressions and declared product-test deadlines intact.
 
 Where admitted, error-recovery tests retain the fallback, reload and route-access assertions. Performance checks run through the independent browser and Lighthouse tooling.
+Lighthouse checks settings and form readiness during a separate synthetic preparation navigation, while the audit retains the network and page-error guards.
 
 ## Review appearance
 
@@ -31,6 +32,8 @@ Component, browser, accessibility and visual checks require their owners and gen
 ## Compare and approve images
 
 Visual baselines require runtime, source, hash and explicit human-review provenance. New captures remain pending until reviewed. Do not overwrite approved images, widen tolerances or promote candidates merely to pass CI. Static admission does not establish fresh visual approval.
+
+When a visual run stops unexpectedly and leaves `coverage/visual/.visual-run.lock`, use the PID recorded in the file to identify the previous runner. Confirm that the runner and its owned Playwright, Chromium and preview server processes have exited. Remove only that lock file before retrying the visual run. If you cannot confirm the processes have stopped, leave the lock in place.
 
 ## Interpret hosted results
 

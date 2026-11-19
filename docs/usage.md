@@ -61,7 +61,7 @@ Stop the server with `Ctrl+C`. Restart it after changing configuration.
 | `VITE_APP_BASE_URL` | `/` or a canonical slash-terminated application base path, such as `/console/`. |
 | `VITE_RELEASE_ID`   | Public build identifier. Production releases use a new immutable identifier.    |
 
-The example and Vite configuration (`vite.config.ts`) define public values. See [deployment](deployment.md) for the public input contract and release prerequisites.
+The example and [Vite configuration](../vite.config.ts) define public values. See [deployment](deployment.md) for the public input contract and release prerequisites.
 
 Values already set in the process environment override values loaded from local files. Synthetic validation also disables local environment-file discovery. Use a separate terminal for an API-backed local run after working with the synthetic setup in [validation](validation.md).
 
