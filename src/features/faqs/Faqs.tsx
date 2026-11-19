@@ -9,7 +9,12 @@ import { useAntd } from "@/app/hooks";
 import { getRoutePermissions } from "@/app/lib";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { modalKeys } from "@/shared/config";
-import { useAbortController, useLock } from "@/shared/hooks";
+import {
+  getDrawerId,
+  useAbortController,
+  useGoBack,
+  useLock,
+} from "@/shared/hooks";
 import { SortableTable } from "@/shared/ui/sortable-table";
 
 import { deleteFaq, fetchFaqs, sortFaqs } from "./api";
@@ -20,11 +25,11 @@ export const FaqsPage = () => {
   const { t } = useTranslation();
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<Faq["id"]>();
   const [submitting, setSubmitting] = useState(false);
   const { cancel, start } = useAbortController();
   const { messageAPI, modalAPI } = useAntd();
-  const { pathname, search } = useLocation();
+  const goBack = useGoBack();
+  const { pathname, search, state } = useLocation();
   const { lock, unlock } = useLock();
   const navigate = useNavigate();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
@@ -50,6 +55,11 @@ export const FaqsPage = () => {
       if (!signal.aborted) setLoading(false);
     }
   }, [messageAPI, start]);
+
+  const handleFormFinish = () => {
+    void fetchData();
+    goBack();
+  };
 
   const handleDelete = (id: Faq["id"]) => {
     if (!canDelete || submitting) return;
@@ -82,10 +92,9 @@ export const FaqsPage = () => {
   const handleUpdate = (id: Faq["id"]) => {
     if (!canUpdate || submitting) return;
 
-    setSelectedId(id);
     void navigate(
       { hash: modalKeys.update, pathname, search },
-      { state: true },
+      { state: { id } },
     );
   };
 
@@ -195,7 +204,11 @@ export const FaqsPage = () => {
           type="primary"
         />
       )}
-      <FaqForm id={selectedId} onFinish={fetchData} />
+      <FaqForm
+        id={getDrawerId(state)}
+        onClose={goBack}
+        onFinish={handleFormFinish}
+      />
     </>
   );
 };

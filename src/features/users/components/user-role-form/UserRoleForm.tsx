@@ -9,7 +9,7 @@ import { getRoutePermissions } from "@/app/lib";
 import type { Role } from "@/features/roles";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { modalKeys } from "@/shared/config";
-import { useAbortController, useGoBack, useLock } from "@/shared/hooks";
+import { useAbortController, useLock } from "@/shared/hooks";
 import { FormDrawer } from "@/shared/ui/form-drawer";
 
 import { fetchUser, updateUserRoles } from "../../api";
@@ -17,12 +17,14 @@ import type { User, UserRoleRequest } from "../../types";
 
 type UserRoleFormProps = {
   id?: User["id"];
+  onClose: () => void;
   onFinish: () => void;
   options: { roles: Role[] };
 };
 
 export const UserRoleForm = ({
   id,
+  onClose,
   onFinish,
   options: { roles },
 }: UserRoleFormProps) => {
@@ -33,7 +35,6 @@ export const UserRoleForm = ({
   const [submitting, setSubmitting] = useState(false);
   const { cancel, start } = useAbortController();
   const { messageAPI } = useAntd();
-  const goBack = useGoBack();
   const { hash } = useLocation();
   const { lock, unlock } = useLock();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
@@ -43,7 +44,7 @@ export const UserRoleForm = ({
 
   const handleClose = () => {
     cancel();
-    goBack();
+    onClose();
   };
 
   const handleSubmit: FormProps<UserRoleRequest>["onFinish"] = async (
@@ -68,7 +69,6 @@ export const UserRoleForm = ({
 
       void messageAPI.success(t("rolesUpdated"));
       onFinish();
-      handleClose();
     } catch (error) {
       if (signal.aborted || isCancel(error)) return;
 
@@ -81,7 +81,7 @@ export const UserRoleForm = ({
     }
   };
 
-  useLayoutEffect(() => cancel, [cancel, goBack, id, isRoles, open]);
+  useLayoutEffect(() => cancel, [cancel, id, isRoles, onClose, open]);
 
   useEffect(() => {
     void (async () => {
@@ -91,13 +91,13 @@ export const UserRoleForm = ({
       unlock();
 
       if (!open) {
-        if (isRoles) goBack();
+        if (isRoles) onClose();
 
         return;
       }
 
       if (id === undefined) {
-        goBack();
+        onClose();
         return;
       }
 
@@ -113,13 +113,13 @@ export const UserRoleForm = ({
         if (signal.aborted) return;
 
         if (error instanceof Error) void messageAPI.error(error.message);
-        goBack();
+        onClose();
       } finally {
         if (!signal.aborted) setLoading(false);
       }
     })();
     return cancel;
-  }, [cancel, form, goBack, id, isRoles, messageAPI, open, start, unlock]);
+  }, [cancel, form, id, isRoles, messageAPI, onClose, open, start, unlock]);
 
   return (
     <FormDrawer

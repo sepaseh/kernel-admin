@@ -1,21 +1,50 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { type ComponentProps, useCallback } from "react";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+
 import { ContentCategoryForm } from "@/features/content-categories/components/content-category-form/ContentCategoryForm";
 import { apiClient } from "@/shared/api";
+import { useGoBack } from "@/shared/hooks";
 import { i18n } from "@/shared/i18n";
-import { StoryShell } from "../../../../../.storybook/StoryShell";
+
 import {
-  sampleContentCategories,
   sampleAccount,
+  sampleContentCategories,
 } from "../../../../../.storybook/fixtures";
+import { StoryShell } from "../../../../../.storybook/StoryShell";
+
+const RoutedContentCategoryForm = ({
+  id,
+  onClose,
+  onFinish,
+}: ComponentProps<typeof ContentCategoryForm>) => {
+  const goBack = useGoBack();
+  const handleClose = useCallback(() => {
+    onClose();
+    goBack();
+  }, [goBack, onClose]);
+
+  const handleFinish = () => {
+    onFinish();
+    goBack();
+  };
+
+  return (
+    <ContentCategoryForm
+      id={id}
+      onClose={handleClose}
+      onFinish={handleFinish}
+    />
+  );
+};
 
 const meta = {
   title: "Features/ContentCategories/ContentCategoryForm",
   component: ContentCategoryForm,
-  args: { onFinish: fn() },
+  args: { onClose: fn(), onFinish: fn() },
   render: (args) => (
     <StoryShell initialEntries={["/content-categories#create"]}>
-      <ContentCategoryForm {...args} />
+      <RoutedContentCategoryForm {...args} />
     </StoryShell>
   ),
 } satisfies Meta<typeof ContentCategoryForm>;
@@ -45,7 +74,7 @@ export const Update: Story = {
   args: { id: sampleContentCategories[0].id },
   render: (args) => (
     <StoryShell initialEntries={["/content-categories#update"]}>
-      <ContentCategoryForm {...args} />
+      <RoutedContentCategoryForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {
@@ -84,7 +113,7 @@ export const DeniedCreate: Story = {
         permissions: ["content-categories.read"],
       }}
     >
-      <ContentCategoryForm {...args} />
+      <RoutedContentCategoryForm {...args} />
     </StoryShell>
   ),
   play: async ({ canvasElement }) => {

@@ -45,6 +45,29 @@ Implement in the existing checkout under [the working-checkout rule](../.agents/
 
 When production source must remain unchanged, present the exact failing file, trigger, evidence and minimal proposal in the chat or authorized PR materials and discuss the edit first. Honor existing approval for that scope. A failing test alone does not authorize a source rewrite.
 
+## Review the temporary dependency exception
+
+`npm run audit` preserves the complete raw npm report and its high-severity
+threshold. Until **2026-12-01T00:00:00Z**, it can accept only
+[GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf)
+and transitive findings caused solely by that advisory. Every locked copy of
+`picomatch` must be version `4.0.7`, appear in the report and be marked as a
+development dependency. Every reported package in the blocking dependency chain
+must also be development-only. An unrelated high or critical advisory, an
+incomplete report, an unverifiable lockfile, a different version or an expired
+exception remains a failure. Unrelated lower-severity findings remain visible
+under the existing high-severity threshold.
+
+This is temporary risk acceptance, not a patched dependency.
+[Snyk has revoked the advisory](https://security.snyk.io/vuln/SNYK-JS-PICOMATCH-21248802),
+while GitHub still reports no patched version. The inspected tool configurations
+use source-controlled glob patterns; no application input path into pattern
+compilation was found. Untrusted changes to tooling can still exhaust CI
+resources. The command prints an explicit acceptance notice when this exception
+applies. At expiry, retain any failure and review the upstream advisory and
+available releases before an ordinary dependency update or removal of the
+exception; do not extend it automatically.
+
 ## Interpret the evidence
 
 The full profile checks actual admitted source. Unit and governance reports must contain genuine measurements for that snapshot. Application admission requires composition and genuine build, contract, browser and applicable visual checks. Declarations, installed dependencies and configured components cannot replace execution.

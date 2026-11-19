@@ -238,7 +238,7 @@ describe("image upload request lifecycle", () => {
   });
 
   it.each(["success", "failure"] as const)(
-    "ignores a late upload %s after the control unmounts",
+    "aborts on unmount and ignores a late upload %s",
     async (outcome) => {
       const pending = deferred<SyntheticImage>();
       upload.mockReturnValueOnce(pending.promise);
@@ -246,8 +246,11 @@ describe("image upload request lifecycle", () => {
       chooseFile(container);
       await waitFor(() => expect(upload).toHaveBeenCalledTimes(1));
       expect(onLoadingChange).toHaveBeenLastCalledWith(true);
+      const signal = upload.mock.calls[0][2];
+      expect(signal.aborted).toBe(false);
 
       unmount();
+      expect(signal.aborted).toBe(true);
       const busyChanges = onLoadingChange.mock.calls.length;
       await act(async () => {
         if (outcome === "success") pending.resolve(acceptedImage);

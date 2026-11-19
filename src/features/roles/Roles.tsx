@@ -16,7 +16,12 @@ import { useAntd } from "@/app/hooks";
 import { getRoutePermissions } from "@/app/lib";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { modalKeys } from "@/shared/config";
-import { useAbortController, useLock } from "@/shared/hooks";
+import {
+  getDrawerId,
+  useAbortController,
+  useGoBack,
+  useLock,
+} from "@/shared/hooks";
 
 import { deleteRole, fetchPermissions, fetchRoles } from "./api";
 import { RoleForm } from "./components/role-form/RoleForm";
@@ -27,11 +32,11 @@ export const RolesPage = () => {
   const [loading, setLoading] = useState(false);
   const [permissions, setPermissions] = useState<PermissionGroup[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [selectedId, setSelectedId] = useState<Role["id"]>();
   const [submitting, setSubmitting] = useState(false);
   const { cancel, start } = useAbortController();
   const { messageAPI, modalAPI } = useAntd();
-  const { pathname, search } = useLocation();
+  const goBack = useGoBack();
+  const { pathname, search, state } = useLocation();
   const { lock, unlock } = useLock();
   const navigate = useNavigate();
   const { currentUser } = useOutletContext<DefaultLayoutContext>();
@@ -57,6 +62,11 @@ export const RolesPage = () => {
       if (!signal.aborted) setLoading(false);
     }
   }, [messageAPI, start]);
+
+  const handleFormFinish = () => {
+    void fetchData();
+    goBack();
+  };
 
   const handleDelete = (id: Role["id"]) => {
     if (!canDelete || submitting) return;
@@ -89,10 +99,9 @@ export const RolesPage = () => {
   const handleUpdate = (id: Role["id"]) => {
     if (!canUpdate || submitting) return;
 
-    setSelectedId(id);
     void navigate(
       { hash: modalKeys.update, pathname, search },
-      { state: true },
+      { state: { id } },
     );
   };
 
@@ -205,8 +214,9 @@ export const RolesPage = () => {
         />
       )}
       <RoleForm
-        id={selectedId}
-        onFinish={fetchData}
+        id={getDrawerId(state)}
+        onClose={goBack}
+        onFinish={handleFormFinish}
         options={{ permissions }}
       />
     </>

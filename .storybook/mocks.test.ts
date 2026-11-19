@@ -279,6 +279,22 @@ test("created users keep independent identities through reads, updates and delet
   await expect(apiClient.get(`/users/${second.id}`)).resolves.toEqual(second);
 });
 
+test.each([
+  [{ mobile: "09121111111" }, [users[0]]],
+  [{ first_name: "SAR" }, [users[0]]],
+  [{ last_name: "KAR" }, [users[1]]],
+  [{ status: "inactive" }, [users[1]]],
+  [{ mobile: "09121111111", status: "inactive" }, []],
+])(
+  "user collection filters its items and total for %j",
+  async (params, items) => {
+    await expect(apiClient.get("/users", { params })).resolves.toEqual({
+      items,
+      total: items.length,
+    });
+  },
+);
+
 test("uploads never reuse an identity after another uploaded file is deleted", async () => {
   const first = await apiClient.upload<StoredFile>("/files", { file });
   const second = await apiClient.upload<StoredFile>("/files", { file });
