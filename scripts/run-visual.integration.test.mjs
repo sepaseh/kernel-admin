@@ -951,6 +951,7 @@ test("the visual CLI rejects incomplete source or binds a pending capture to its
   const original = {
     argv: process.argv,
     ci: process.env.CI,
+    reuseBuild: process.env.KERNEL_REUSE_VERIFICATION_BUILD,
     exitCode: process.exitCode,
     info: console.info,
     error: console.error,
@@ -961,6 +962,7 @@ test("the visual CLI rejects incomplete source or binds a pending capture to its
   try {
     process.argv = [process.execPath, script, "--update"];
     process.env.CI = "";
+    delete process.env.KERNEL_REUSE_VERIFICATION_BUILD;
     process.exitCode = undefined;
     console.info = (message) => messages.push(message);
     console.error = (message) => errors.push(message);
@@ -1048,6 +1050,11 @@ test("the visual CLI rejects incomplete source or binds a pending capture to its
     process.argv = original.argv;
     if (original.ci === undefined) delete process.env.CI;
     else process.env.CI = original.ci;
+    if (original.reuseBuild === undefined) {
+      delete process.env.KERNEL_REUSE_VERIFICATION_BUILD;
+    } else {
+      process.env.KERNEL_REUSE_VERIFICATION_BUILD = original.reuseBuild;
+    }
     process.exitCode = original.exitCode;
     console.info = original.info;
     console.error = original.error;
