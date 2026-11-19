@@ -84,6 +84,8 @@ try {
     $global:Missing = @()
     $global:Reused = @()
     $global:Denied = @()
+    $global:ExitedBeforeKill = @()
+    $global:ExitCheckFailed = @()
     $global:WaitFailed = @()
     $global:DisposeFailed = @()
     function Read-SyntheticProcesses { param($ClassName, $Property, $ErrorAction)
@@ -106,8 +108,14 @@ try {
         if ($global:Reused -contains $Id) { $start = $start.AddSeconds(1) }
         $result = [pscustomobject]@{Id=[int]$Id; StartTime=$start}
         $result | Add-Member ScriptProperty SafeHandle { $global:Events.Add('pin:' + $this.Id); return 1 }
+        $result | Add-Member ScriptProperty HasExited {
+            $global:Events.Add('exit:' + $this.Id)
+            if ($global:ExitCheckFailed -contains $this.Id) { throw 'Synthetic exit state unavailable' }
+            return $global:ExitedBeforeKill -contains $this.Id
+        }
         $result | Add-Member ScriptMethod Kill {
             if ($global:Denied -contains $this.Id) { throw 'Synthetic AccessDenied' }
+            if ($global:ExitedBeforeKill -contains $this.Id) { throw 'Synthetic process already exited' }
             $global:Events.Add('kill:' + $this.Id)
             $global:Killed.Add($this.Id)
         }
@@ -165,6 +173,21 @@ try {
     $rejected = $false
     try { Stop-VisualProcessTreeSnapshot 10 $snapshot -ReadProcess $readProcess } catch { $rejected = $_.Exception.Message -match 'AccessDenied' }
     if (-not $rejected -or ($global:Killed -join ',') -ne '30,10') { throw 'Cleanup failures must remain visible while remaining owned cleanup runs' }
+    $global:ExitCheckFailed = @(20); $global:Killed.Clear(); $global:Disposed.Clear(); $rejected = $false
+    try { Stop-VisualProcessTreeSnapshot 10 $snapshot -ReadProcess $readProcess } catch {
+        $rejected = $_.Exception.Message -match 'AccessDenied'
+    }
+    if (-not $rejected -or -not $global:Disposed.Contains(20) -or ($global:Killed -join ',') -ne '30,10') {
+        throw 'An unavailable exit check must preserve the native stop error and dispose the pinned handle.'
+    }
+    $global:ExitCheckFailed = @(); $global:Denied = @(); $global:ExitedBeforeKill = @(20)
+    $global:Killed.Clear(); $global:Waits.Clear(); $global:Disposed.Clear(); $global:Events.Clear()
+    Stop-VisualProcessTreeSnapshot 10 $snapshot -ReadProcess $readProcess
+    if (($global:Killed -join ',') -ne '30,10' -or ($global:Waits -join ',') -ne '30,10' -or
+        -not $global:Disposed.Contains(20) -or $global:Events.IndexOf('exit:20') -le $global:Events.IndexOf('pin:20')) {
+        throw 'A process that exits before Kill must be verified through its pinned handle, then disposed.'
+    }
+    $global:ExitedBeforeKill = @()
     $global:Denied = @(); $global:WaitFailed = @(20); $rejected = $false
     $global:Killed.Clear(); $global:Waits.Clear(); $global:Disposed.Clear()
     try { Stop-VisualProcessTreeSnapshot 10 $snapshot -ReadProcess $readProcess } catch { $rejected = $_.Exception.Message -match 'Synthetic exit wait failed for PID 20' }
@@ -247,6 +270,18 @@ try {
     if (($global:Killed -join ',') -ne '30,20') {
         throw 'A root that exited during taskkill must not strand its captured orphans.'
     }
+    $lateOrphans = @(
+        [pscustomobject]@{ProcessId=70; ParentProcessId=30; CreationDate=[datetime]'2026-10-31T00:06:00Z'},
+        [pscustomobject]@{ProcessId=80; ParentProcessId=20; CreationDate=[datetime]'2026-10-31T00:06:00Z'}
+    )
+    $global:ProcessInfos = @($baselineInfos) + @($newChildren) + @($lateOrphans)
+    $global:EnumerationOverride = @($global:ProcessInfos | Where-Object { $_.ProcessId -notin @(10,20) })
+    $global:Missing = @(10,20); $global:Killed.Clear(); $global:Requests.Clear()
+    Invoke-VisualProcessTreeCommand -Mode Stop -RootProcessId 10 -StartedAfter $after -StartedBefore $before -ReadInput { $encoded } -ReadProcesses $readProcesses -ReadProcess $readProcess
+    if (($global:Killed -join ',') -ne '70,30' -or $global:Requests.Contains(50) -or
+        $global:Requests.Contains(60) -or $global:Requests.Contains(80)) {
+        throw 'Refresh after root exit must add only descendants of a surviving verified branch.'
+    }
 
     # Reused identities cannot replace captured ancestry or make new children owned.
     $global:Missing = @(); $global:EnumerationOverride = $null
@@ -266,6 +301,18 @@ try {
         -not $global:Requests.Contains(20)) {
         throw 'A reused descendant must reject its new subtree while safe refreshed branches and captured orphans are attempted.'
     }
+    $global:EnumerationOverride = @($global:ProcessInfos | Where-Object { $_.ProcessId -ne 10 })
+    $global:Missing = @(10); $global:Killed.Clear(); $global:Requests.Clear(); $rejected = $false
+    try {
+        Invoke-VisualProcessTreeCommand -Mode Stop -RootProcessId 10 -StartedAfter $after -StartedBefore $before -ReadInput { $encoded } -ReadProcesses $readProcesses -ReadProcess $readProcess
+    } catch {
+        $rejected = $_.Exception.Message -match 'conflicts with its captured identity' -and
+            $_.Exception.Message -match 'was reused'
+    }
+    if (-not $rejected -or ($global:Killed -join ',') -ne '30' -or $global:Requests.Contains(70)) {
+        throw 'A missing root must never extend ownership through a reused captured PID.'
+    }
+    $global:Missing = @(); $global:EnumerationOverride = $null
 
     # A matching captured descendant cannot restore trust below conflicting fresh parentage.
     $global:ProcessInfos = @($baselineInfos | ForEach-Object {

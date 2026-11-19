@@ -126,12 +126,18 @@ const parseCoverageLine = (line, record) => {
     if (record.source)
       throw new Error("LCOV records must end before another source");
     record.source = safeRelative(line.slice(3));
-    record.sources.add(record.source);
+    if (!record.sources.has(record.source))
+      record.sources.set(record.source, 0);
     return;
   }
   if (line.startsWith("DA:")) {
-    if (!record.source || !/^DA:[1-9]\d*,\d+(?:,[^,\s]+)?$/.test(line))
+    const lineNumber = /^DA:([1-9]\d*),\d+(?:,[^,\s]+)?$/.exec(line)?.[1];
+    if (!record.source || !lineNumber)
       throw new Error("LCOV requires valid measured line records");
+    record.sources.set(
+      record.source,
+      Math.max(record.sources.get(record.source), Number(lineNumber)),
+    );
     record.measured = true;
     return;
   }
@@ -151,7 +157,7 @@ const coverageSources = (bytes) => {
     source: undefined,
     measured: false,
     records: 0,
-    sources: new Set(),
+    sources: new Map(),
   };
   const lines = new TextDecoder("utf-8", { fatal: true })
     .decode(bytes)
@@ -165,6 +171,7 @@ const coverageSources = (bytes) => {
 export const readCoverage = async (
   root,
   reportPath = "coverage/unit/lcov.info",
+  sourcePaths,
 ) => {
   const { filename, info } = await regularFile(root, reportPath);
   if (info.size === 0 || info.size > maximumCoverageBytes)
@@ -172,10 +179,25 @@ export const readCoverage = async (
   const bytes = await readFile(filename);
   if (bytes.length === 0 || bytes.length > maximumCoverageBytes)
     throw new Error("Measured LCOV must be nonempty and at most 32 MiB");
-  await Promise.all(
-    [...coverageSources(bytes)].map((source) => regularFile(root, source)),
-  );
+
+  for (const [source, lastMeasuredLine] of coverageSources(bytes)) {
+    assertAttestedSource(sourcePaths, source);
+    const { filename: sourceFilename } = await regularFile(root, source);
+    const text = await readFile(sourceFilename, "utf8");
+    const lines = text.split(/\r\n|[\n\r\u2028\u2029]/u);
+    const lineCount = lines.length - (lines.at(-1) === "" ? 1 : 0);
+    if (lastMeasuredLine > lineCount)
+      throw new Error("LCOV contains a line outside its source: " + source);
+  }
+
   return bytes;
+};
+
+const assertAttestedSource = (sourcePaths, source) => {
+  if (sourcePaths && !sourcePaths.has(source))
+    throw new Error(
+      "Coverage source is outside the attested Git tree: " + source,
+    );
 };
 
 export const evidenceManifest = (identity, reports, suite) => ({
@@ -228,9 +250,10 @@ const readOrdinary = async (
   return bytes;
 };
 
-const readPowershellCoverage = async (root, required) => {
+const readPowershellCoverage = async (root, required, sourcePaths) => {
   const { info } = await regularFile(root, powershellReport, !required);
   if (!info) return;
+  assertAttestedSource(sourcePaths, powershellSource);
   const bytes = await readOrdinary(root, powershellReport);
   const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes).trim();
   const body =
@@ -421,15 +444,19 @@ const runCoverageEvidence = async ({
   suite,
   platform,
   identity,
+  git,
   verifying,
   options,
 }) => {
   const reportPath = `coverage/${suite}/lcov.info`;
   const manifestPath = `coverage/${suite}/ci-evidence.json`;
-  const bytes = await readCoverage(root, reportPath);
+  const sourcePaths = new Set(
+    git(["ls-tree", "-rz", "--name-only", identity.tree]).split("\0"),
+  );
+  const bytes = await readCoverage(root, reportPath, sourcePaths);
   const powershell =
     suite === "governance"
-      ? await readPowershellCoverage(root, platform === "win32")
+      ? await readPowershellCoverage(root, platform === "win32", sourcePaths)
       : undefined;
   const reports = [{ reportPath, bytes }, ...(powershell ? [powershell] : [])];
   const expected = evidenceManifest(identity, reports, suite);
@@ -513,6 +540,7 @@ export const runEvidence = async (
     suite,
     platform,
     identity,
+    git: readGit,
     verifying,
     options,
   });

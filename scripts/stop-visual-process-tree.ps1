@@ -19,12 +19,42 @@ function Get-VisualProcessChildrenIndex {
     return $children
 }
 
+function Add-MissingCapturedVisualProcesses {
+    param($Processes, $CapturedEntries)
+
+    $liveIds = [System.Collections.Generic.HashSet[int]]::new()
+    foreach ($processInfo in $Processes) {
+        $null = $liveIds.Add([int]$processInfo.ProcessId)
+    }
+    $capturedIds = [System.Collections.Generic.HashSet[int]]::new()
+    $missingIds = [System.Collections.Generic.HashSet[int]]::new()
+    foreach ($entry in $CapturedEntries) {
+        $processId = [int]$entry.processId
+        $null = $capturedIds.Add($processId)
+        if ($liveIds.Contains($processId)) { continue }
+        $null = $missingIds.Add($processId)
+        [pscustomobject]@{
+            ProcessId = $processId
+            ParentProcessId = [int]$entry.parentProcessId
+            CreationDate = [datetime]::new([long]$entry.createdAt, [DateTimeKind]::Utc)
+        }
+    }
+
+    # A missing captured PID can connect existing branches, but cannot establish new ownership.
+    foreach ($processInfo in $Processes) {
+        if ($missingIds.Contains([int]$processInfo.ParentProcessId) -and
+            -not $capturedIds.Contains([int]$processInfo.ProcessId)) { continue }
+        $processInfo
+    }
+}
+
 function Get-VisualProcessTreeSnapshot {
     param(
         [ValidateRange(1, [int]::MaxValue)][int]$RootProcessId,
         [datetimeoffset]$StartedAfter,
         [datetimeoffset]$StartedBefore,
-        [scriptblock]$ReadProcesses
+        [scriptblock]$ReadProcesses,
+        $CapturedEntries
     )
 
     $processes = if ($ReadProcesses) {
@@ -35,6 +65,10 @@ function Get-VisualProcessTreeSnapshot {
             -Property ProcessId, ParentProcessId, CreationDate -ErrorAction Stop)
     }
     $root = $processes | Where-Object { $_.ProcessId -eq $RootProcessId }
+    if (-not $root -and $CapturedEntries) {
+        $processes = @(Add-MissingCapturedVisualProcesses -Processes $processes -CapturedEntries $CapturedEntries)
+        $root = $processes | Where-Object { $_.ProcessId -eq $RootProcessId }
+    }
     if (-not $root) { throw 'The owned visual process no longer exists.' }
     $created = $root.CreationDate.ToUniversalTime()
     if ($StartedBefore -le $StartedAfter -or
@@ -51,7 +85,9 @@ function Get-VisualProcessTreeSnapshot {
             throw 'The visual process ancestry contains a cycle.'
         }
         foreach ($child in @($children[[int]$processInfo.ProcessId] | Sort-Object ProcessId)) {
-            if ($child.CreationDate -ge $processInfo.CreationDate) { & $visit $child }
+            if ($child.CreationDate.ToUniversalTime() -ge $processInfo.CreationDate.ToUniversalTime()) {
+                & $visit $child
+            }
         }
         $ordered.Add([pscustomobject]@{
             processId = [int]$processInfo.ProcessId
@@ -121,8 +157,14 @@ function Stop-VerifiedVisualProcess {
         if ($microseconds -ne $Entry.createdAt) {
             throw "The captured visual PID $($Entry.processId) was reused."
         }
-        $current.Kill()
-        return $current
+        try {
+            $current.Kill()
+            return $current
+        } catch {
+            $killFailure = $_
+            try { $exited = $current.HasExited } catch { throw $killFailure }
+            if (-not $exited) { throw $killFailure }
+        }
     } catch {
         $failure = $_
         try {
@@ -132,6 +174,7 @@ function Stop-VerifiedVisualProcess {
         }
         throw $failure
     }
+    $current.Dispose()
 }
 
 function Stop-VisualProcessTreeSnapshot {
@@ -243,20 +286,19 @@ function Stop-CapturedVisualProcessTree {
         [scriptblock]$ReadProcess
     )
 
-    $null = Get-ValidatedVisualProcessEntries $RootProcessId $Snapshot
+    $capturedEntries = Get-ValidatedVisualProcessEntries -RootProcessId $RootProcessId -Snapshot $Snapshot
     $refreshFailure = $null
     try {
-        $fresh = Get-VisualProcessTreeSnapshot $RootProcessId $StartedAfter $StartedBefore `
-            -ReadProcesses $ReadProcesses
-        $merged = Merge-VisualProcessTreeSnapshots $RootProcessId $Snapshot $fresh
+        $fresh = Get-VisualProcessTreeSnapshot -RootProcessId $RootProcessId `
+            -StartedAfter $StartedAfter -StartedBefore $StartedBefore `
+            -ReadProcesses $ReadProcesses -CapturedEntries $capturedEntries
+        $merged = Merge-VisualProcessTreeSnapshots -RootProcessId $RootProcessId -Original $Snapshot -Fresh $fresh
         $Snapshot = $merged.snapshot
         if ($merged.conflicts.Count) {
             $refreshFailure = [System.InvalidOperationException]::new($merged.conflicts -join '; ')
         }
     } catch {
-        if ($_.Exception.Message -notmatch 'owned visual process no longer exists') {
-            $refreshFailure = $_.Exception
-        }
+        $refreshFailure = $_.Exception
     }
     try {
         Stop-VisualProcessTreeSnapshot $RootProcessId $Snapshot -ReadProcess $ReadProcess

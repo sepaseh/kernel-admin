@@ -145,7 +145,7 @@ export async function acquireVisualLock(
   } catch (error) {
     if (error.code === "EEXIST")
       throw new Error(
-        "Another visual run owns the build outputs. Do not overlap visual runs.",
+        `Another visual run owns the build outputs. See the lock file at ${filename}.`,
         { cause: error },
       );
     throw error;

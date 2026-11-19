@@ -130,7 +130,14 @@ test("visual run lock excludes a concurrent runner and releases for the next one
   try {
     const release = await acquireVisualLock(directory);
     try {
-      await assert.rejects(acquireVisualLock(directory), /Another visual run/);
+      const filename = path.join(directory, ".visual-run.lock");
+      await assert.rejects(
+        acquireVisualLock(directory),
+        (error) =>
+          error.message.includes("Another visual run") &&
+          error.message.includes(filename),
+      );
+      assert.equal(await readFile(filename, "utf8"), `${process.pid}\n`);
     } finally {
       await release();
     }

@@ -75,7 +75,7 @@ const lighthouseFixtureDriver = ({
 };
 
 describe("Lighthouse authentication fixture readiness", () => {
-  it("uses document readiness and the actual settings/form guards without waiting for every subresource", async () => {
+  it("checks readiness on the preparation page and keeps guarding audit traffic", async () => {
     const fixture = lighthouseFixtureDriver();
     const prepared = await prepareLighthouseFixture(
       fixture.chromium,
@@ -86,7 +86,7 @@ describe("Lighthouse authentication fixture readiness", () => {
     expect(fixture.settings).toHaveBeenCalledExactlyOnceWith("en");
     expect(fixture.ready).toHaveBeenCalledTimes(2);
     expect(fixture.page.close).toHaveBeenCalledOnce();
-    expect(() => prepared.verify()).not.toThrow();
+    expect(() => prepared.verifyTraffic()).not.toThrow();
     const auditTarget = await fixture.browser.contexts()[0].newPage();
     expect(auditTarget).not.toBe(fixture.page);
     const application = await auditTarget.request(
@@ -95,7 +95,7 @@ describe("Lighthouse authentication fixture readiness", () => {
     expect(application.continue).toHaveBeenCalledOnce();
     expect(application.fulfill).not.toHaveBeenCalled();
     expect(application.abort).not.toHaveBeenCalled();
-    expect(() => prepared.verify()).not.toThrow();
+    expect(() => prepared.verifyTraffic()).not.toThrow();
     const settings = await auditTarget.request(
       "https://api.example.com/settings",
     );
@@ -103,12 +103,12 @@ describe("Lighthouse authentication fixture readiness", () => {
       json: { language: "en" },
     });
     expect(fixture.settings).toHaveBeenCalledTimes(2);
-    expect(() => prepared.verify()).not.toThrow();
+    expect(() => prepared.verifyTraffic()).not.toThrow();
     const foreign = await auditTarget.request(
       "https://foreign.example.test/private",
     );
     expect(foreign.abort).toHaveBeenCalledExactlyOnceWith("blockedbyclient");
-    expect(() => prepared.verify()).toThrow(/foreign\.example\.test/);
+    expect(() => prepared.verifyTraffic()).toThrow(/foreign\.example\.test/);
     await prepared.dispose();
     expect(fixture.browser.close).toHaveBeenCalledOnce();
   });
@@ -207,7 +207,7 @@ const lifecycle = (failures = {}) => {
     prepareFixture: vi.fn(async () => {
       act("fixture");
       return {
-        verify: async () => act("verify"),
+        verifyTraffic: async () => act("verify"),
         dispose: async () => act("fixture-close"),
       };
     }),
@@ -356,7 +356,7 @@ describe("owned Lighthouse lifecycle", () => {
     const fixture = lifecycle(),
       signals = new EventEmitter();
     fixture.options.prepareFixture.mockResolvedValue({
-      verify: async () => undefined,
+      verifyTraffic: async () => undefined,
       dispose: async () => {
         signals.emit("SIGTERM");
       },
@@ -488,7 +488,7 @@ describe("owned Lighthouse lifecycle", () => {
     expect(fixture.events.at(-1)).toBe("preview-close");
   });
 
-  it("writes both reports, verifies the real fixture and cleans every owned resource", async () => {
+  it("writes both reports, checks fixture traffic and cleans every owned resource", async () => {
     const fixture = lifecycle();
     await expect(runLighthouse(fixture.options)).resolves.toBe(60);
     expect(fixture.events).toEqual([

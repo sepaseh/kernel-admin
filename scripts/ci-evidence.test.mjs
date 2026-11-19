@@ -34,6 +34,7 @@ const head = "d".repeat(40);
 const base = "e".repeat(40);
 const lcov = (source = "src/example.ts") =>
   `TN:\nSF:${source}\nDA:1,1\nLF:1\nLH:1\nend_of_record\n`;
+const trackedSources = "scripts/stop-visual-process-tree.ps1\0src/example.ts\0";
 const powershell =
   '<coverage version="1"><file path="scripts/stop-visual-process-tree.ps1"><lineToCover lineNumber="1" covered="true"/><lineToCover lineNumber="3" covered="false"/></file></coverage>\n';
 const identityOptions = () => ({
@@ -54,6 +55,9 @@ const identityOptions = () => ({
     },
   },
   git: (args) => {
+    if (args.slice(0, 3).join(" ") === "ls-tree -rz --name-only")
+      return trackedSources;
+
     const commands = {
       "rev-parse HEAD": commit,
       "rev-parse HEAD^{tree}": tree,
@@ -1035,6 +1039,25 @@ test("validates every source in a report containing multiple records", async (co
   await assert.rejects(readCoverage(options.root), { code: "ENOENT" });
 });
 
+test("validates LCOV line bounds during recording and verification", async (context) => {
+  const options = await fixture(context);
+  const report = path.join(options.root, "coverage/unit/lcov.info");
+  const uncovered = lcov().replace("DA:1,1", "DA:1,0").replace("LH:1", "LH:0");
+  await writeFile(report, uncovered);
+  await runEvidence("--record", options);
+  await runEvidence("--verify-coverage", options);
+
+  for (const line of ["2", "100", "9007199254740993"]) {
+    const outOfBounds = uncovered.replace("DA:1,0", `DA:${line},0`);
+    await writeFile(report, outOfBounds + uncovered);
+    for (const mode of ["--record", "--verify-coverage"])
+      await assert.rejects(
+        runEvidence(mode, options),
+        /LCOV contains a line outside its source: src\/example\.ts/,
+      );
+  }
+});
+
 test("rejects absolute, escaping, ambiguous and missing source paths", async (context) => {
   const options = await fixture(context);
   for (const source of [
@@ -1119,7 +1142,7 @@ test("CLI handler publishes the artifact and rejects tampering in an isolated su
   };
   const script = `import { runEvidence } from ${JSON.stringify(new URL("./ci-evidence.mjs", import.meta.url).href)};
     const input = JSON.parse(process.argv[1]);
-    const values = ${JSON.stringify({ "rev-parse HEAD": commit, "rev-parse HEAD^{tree}": tree, "rev-parse HEAD:.github/workflows/ci.yml": workflow, "diff --name-only HEAD --": "" })};
+    const values = ${JSON.stringify({ "rev-parse HEAD": commit, "rev-parse HEAD^{tree}": tree, "rev-parse HEAD:.github/workflows/ci.yml": workflow, "diff --name-only HEAD --": "", ["ls-tree -rz --name-only " + tree]: trackedSources })};
     await runEvidence(process.argv[2], { ...input, git: args => values[args.join(" ")] });`;
   const run = (mode) =>
     spawnSync(
@@ -1191,12 +1214,7 @@ test(
     git("config", "user.email", "ci-fixture@example.invalid");
     git("config", "commit.gpgSign", "false");
     git("config", "core.hooksPath", emptyConfig);
-    git(
-      "add",
-      ".github/workflows/ci.yml",
-      "src/example.ts",
-      "coverage/unit/lcov.info",
-    );
+    git("add", ".github/workflows/ci.yml", "src/example.ts");
     git("commit", "-m", "test: create synthetic CI evidence fixture");
     const fixtureCommit = git("rev-parse", "HEAD");
     const fixtureTree = git("rev-parse", "HEAD^{tree}");
@@ -1253,5 +1271,19 @@ test(
     });
     const verified = run("--verify-coverage");
     assert.equal(verified.status, 0, verified.stderr);
+
+    await writeFile(path.join(root, "src/generated.ts"), "export {};\n");
+    await writeFile(
+      path.join(root, "coverage/unit/lcov.info"),
+      lcov("src/generated.ts"),
+    );
+    for (const mode of ["--record", "--verify-coverage"]) {
+      const unattested = run(mode);
+      assert.equal(unattested.status, 1);
+      assert.match(
+        unattested.stderr,
+        /outside the attested Git tree: src\/generated\.ts/,
+      );
+    }
   },
 );
