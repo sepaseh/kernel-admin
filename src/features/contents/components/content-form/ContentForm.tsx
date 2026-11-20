@@ -1,4 +1,4 @@
-import { Form, Input, Select } from "antd";
+import { Button, Drawer, Form, Input, Select, Space } from "antd";
 import { isCancel } from "axios";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,7 +11,6 @@ import { uploadFile } from "@/features/files";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { modalKeys } from "@/shared/config";
 import { useAbortController, useLock } from "@/shared/hooks";
-import { FormDrawer } from "@/shared/ui/form-drawer";
 import { ImageUpload } from "@/shared/ui/image-upload";
 import { RichTextEditor } from "@/shared/ui/rich-text-editor";
 
@@ -168,7 +167,7 @@ export const ContentForm = ({
   ]);
 
   return (
-    <FormDrawer
+    <Drawer
       afterOpenChange={(open) => {
         if (!open) {
           form.resetFields();
@@ -177,15 +176,33 @@ export const ContentForm = ({
 
         form.focusField(initialFocusField);
       }}
+      closeIcon={false}
+      footer={
+        <Space>
+          <Button loading={submitting} onClick={handleClose}>
+            {t("cancel")}
+          </Button>
+          <Button
+            disabled={
+              loading ||
+              uploading ||
+              submitting ||
+              (isUpdate && loadedId !== id)
+            }
+            loading={submitting}
+            onClick={() => form.submit()}
+            type="primary"
+          >
+            {t("submit")}
+          </Button>
+        </Space>
+      }
       loading={loading}
+      mask={{ closable: false }}
       onClose={handleClose}
-      onSubmit={() => form.submit()}
       open={open}
       size="large"
-      submitDisabled={
-        loading || uploading || submitting || (isUpdate && loadedId !== id)
-      }
-      submitting={submitting}
+      styles={{ footer: { textAlign: "end" } }}
       title={t(isUpdate ? "update" : "create")}
     >
       <Form<ContentFormValues>
@@ -273,6 +290,6 @@ export const ContentForm = ({
           />
         </Form.Item>
       </Form>
-    </FormDrawer>
+    </Drawer>
   );
 };

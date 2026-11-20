@@ -54,6 +54,19 @@ export const routeTree = {
       },
     },
   },
+  contents: {
+    label: "contents",
+    layout: "default",
+    path: "/contents",
+    permissions: {
+      access: "contents.read",
+      actions: {
+        canCreate: "contents.create",
+        canDelete: "contents.delete",
+        canUpdate: "contents.update",
+      },
+    },
+  },
   faqs: {
     label: "faqs",
     layout: "default",
@@ -62,8 +75,8 @@ export const routeTree = {
       access: "faqs.read",
       actions: {
         canCreate: "faqs.create",
-        canUpdate: "faqs.update",
         canDelete: "faqs.delete",
+        canUpdate: "faqs.update",
       },
     },
   },
@@ -80,19 +93,6 @@ export const routeTree = {
     layout: "auth",
     path: "/auth/forgot-password",
     permissions: { access: "public", actions: {} },
-  },
-  contents: {
-    label: "contents",
-    layout: "default",
-    path: "/contents",
-    permissions: {
-      access: "contents.read",
-      actions: {
-        canCreate: "contents.create",
-        canDelete: "contents.delete",
-        canUpdate: "contents.update",
-      },
-    },
   },
   notFound: {
     layout: "standalone",

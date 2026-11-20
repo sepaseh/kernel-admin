@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { RichTextEditor } from "@/shared/ui/rich-text-editor/RichTextEditor";
+
 import { i18n } from "@/shared/i18n";
+import { RichTextEditor } from "@/shared/ui/rich-text-editor/RichTextEditor";
 
 const initialContent = "Direct editor content";
 
@@ -54,17 +55,48 @@ export const ReadOnly: Story = {
     });
     await expect(editor).toHaveAttribute("aria-readonly", "true");
     await expect(editor).toHaveTextContent("Direct editor content");
+    const toolbar = within(
+      within(canvasElement).getByRole("group", { name: i18n.t("body") }),
+    );
+    await expect(
+      toolbar.getByRole("combobox", { name: i18n.t("editorHeading") }),
+    ).toBeDisabled();
+    for (const button of toolbar.getAllByRole("button")) {
+      await expect(button).toBeDisabled();
+    }
   },
 };
 export const PersianDark: Story = {
   args: { direction: "rtl" },
   globals: { language: "fa", theme: "dark" },
   play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole("textbox", { name: i18n.t("body") });
+    await expect(editor).toHaveAttribute("dir", "rtl");
+    const toolbar = within(canvas.getByRole("group", { name: i18n.t("body") }));
+    const heading = toolbar.getByRole("combobox", {
+      name: i18n.t("editorHeading"),
+    });
     await expect(
-      await within(canvasElement).findByRole("textbox", {
-        name: i18n.t("body"),
-      }),
-    ).toHaveAttribute("dir", "rtl");
+      within(heading).getByRole("option", { name: i18n.t("editorParagraph") }),
+    ).toBeInTheDocument();
+    await expect(
+      within(heading).getByRole("option", { name: "H2" }),
+    ).toBeInTheDocument();
+    await expect(
+      within(heading).getByRole("option", { name: "H3" }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(editor);
+    toolbar.getByRole("button", { name: i18n.t("editorBold") }).focus();
+    await userEvent.tab({ shift: true });
+    await expect(heading).toHaveFocus();
+    await userEvent.selectOptions(heading, "2");
+
+    await expect(heading).toHaveValue("2");
+    await waitFor(() =>
+      expect(editor.querySelector("h2")).toHaveTextContent(initialContent),
+    );
   },
 };
 

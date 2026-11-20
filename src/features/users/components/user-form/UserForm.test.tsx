@@ -7,7 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ComponentProps } from "react";
+import type * as Antd from "antd";
 import { MemoryRouter, Outlet, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,7 +15,6 @@ import type { CurrentUser } from "@/features/account";
 import { clearAccessToken, setAccessToken } from "@/shared/api/token";
 import { useGoBack } from "@/shared/hooks";
 import { i18n } from "@/shared/i18n";
-import type * as FormDrawerModule from "@/shared/ui/form-drawer";
 import { deferred } from "@/test/deferred";
 
 import { createUser, fetchUser, updateUser } from "../../api";
@@ -38,12 +37,13 @@ vi.mock("../../api", () => ({
 vi.mock("@/app/hooks", () => ({
   useAntd: () => ({ messageAPI: messages, notificationAPI: notification }),
 }));
-vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
-  const { FormDrawer } = await importOriginal<typeof FormDrawerModule>();
+vi.mock("antd", async (importOriginal) => {
+  const actual = await importOriginal<typeof Antd>();
 
   return {
-    FormDrawer: (props: ComponentProps<typeof FormDrawer>) => (
-      <FormDrawer
+    ...actual,
+    Drawer: (props: Antd.DrawerProps) => (
+      <actual.Drawer
         {...props}
         afterOpenChange={(open) => {
           props.afterOpenChange?.(open);

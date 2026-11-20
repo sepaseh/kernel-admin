@@ -12,7 +12,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("core context hook", () => {
+describe("useCore", () => {
   it("returns the exact provided context", () => {
     const value = { currentRoute: "root" } as CoreContextValue;
     const wrapper = ({ children }: PropsWithChildren) => (

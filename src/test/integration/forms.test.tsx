@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, waitFor } from "@testing-library/react";
+import type * as Antd from "antd";
 import { CanceledError } from "axios";
 import { type ComponentProps, type ReactNode, useCallback } from "react";
 import type * as ReactI18next from "react-i18next";
@@ -19,7 +20,6 @@ import {
   setAccessToken,
 } from "@/shared/api/token";
 import * as SharedHooks from "@/shared/hooks";
-import type * as FormDrawerModule from "@/shared/ui/form-drawer";
 import { render, screen } from "@/test/render";
 
 const mocks = vi.hoisted(() => {
@@ -89,12 +89,12 @@ vi.mock("react-i18next", async (importOriginal) => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock("@/shared/ui/form-drawer", async (importOriginal) => {
-  const actual = await importOriginal<typeof FormDrawerModule>();
+vi.mock("antd", async (importOriginal) => {
+  const actual = await importOriginal<typeof Antd>();
   return {
     ...actual,
-    FormDrawer: (props: ComponentProps<typeof actual.FormDrawer>) => (
-      <actual.FormDrawer
+    Drawer: (props: Antd.DrawerProps) => (
+      <actual.Drawer
         {...props}
         afterOpenChange={(open) => {
           if (open && mocks.deferDrawerOpening)

@@ -1,28 +1,31 @@
 # Design conventions
 
-Use this guide when designing or reviewing an administration screen. The existing stack is React/Vite, Ant Design/antd-style, React Router and Axios. Read the closest admitted component and feature contract before choosing a new abstraction or styling approach, plus stories when available. [Development](docs/development.md) describes the implementation workflow.
-
-The admitted application includes shared controls, theme and preference helpers,
-local assets, core providers, authentication and feature screens, and their tests.
+Identify the user task, primary action and relevant states before changing the
+interface. Start with the feature owner and existing shared controls. Use the
+closest component stories and see [Development](docs/development.md) for the
+implementation workflow.
 
 ## Reuse current owners
 
-| Design concern                                    | Existing owner                                                                         |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Light/dark/compact algorithms and semantic colors | [Antd provider](src/app/providers/antd/Antd.tsx), using the selected API palette       |
-| Typography and local assets                       | [`src/assets/styles`](src/assets/styles) and the licensed local Vazirmatn font         |
-| Reusable controls and form containers             | [`src/shared/ui`](src/shared/ui); feature-specific forms stay with their feature       |
-| Route vocabulary and presentation permissions     | [Route metadata](src/app/config/routes.ts) and [access helpers](src/app/lib/access.ts) |
+| Design concern                                | Existing owner                                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Light, dark and compact algorithms and colors | [Ant Design provider](src/app/providers/antd/Antd.tsx) uses the selected API palette.            |
+| Typography and local assets                   | [Root styles](src/index.css) load the licensed local Vazirmatn font.                             |
+| Reusable controls and feature forms           | [Shared UI](src/shared/ui) provides common controls. Feature forms own their drawers and fields. |
+| Route vocabulary and presentation permissions | [Route metadata](src/app/config/routes.ts) and [access helpers](src/app/lib/access.ts)           |
 
-Prefer Ant Design props and tokens. Use antd-style for owned custom styles, logical spacing for RTL/LTR and direct named Lucide icons with explicit size/currentColor. Decorative icons use `aria-hidden`; controls need translated accessible names. Use component-specific props types directly on the props parameter, without `FC`; follow the [React rules](.agents/rules/react.md).
+Prefer Ant Design props and semantic tokens. Use antd-style for component styles and logical spacing for both text directions. Give Lucide icons an explicit size and `currentColor`. Mark decorative icons with `aria-hidden` and give controls translated accessible names. [Styling rules](.agents/rules/styling.md) · [React rules](.agents/rules/react.md)
 
-The API chooses language, direction, calendar and palettes. A browser preference selects theme/compact presentation. Keep the complete local catalogs and use [localization](docs/localization.md) for language and date behavior. The API authorizes operations independently of the visible menu or control state.
+Use Ant Design `Drawer` directly in feature editors. Give each `Form` a descriptive name and route its footer submit button through the same validation as keyboard submission. Keep delete triggers neutral and apply danger styling to the confirmation action. [User form](src/features/users/components/user-form/UserForm.tsx) · [Localization](docs/localization.md)
 
 ## Review the interaction
 
-1. Define the task, required permission and expected result. Identify the existing control to reuse, or its story when admitted.
-2. Check populated screens and the states below with translated labels and realistic content lengths.
-3. Use the affected unit or jsdom component tests for their admitted scope. Use component stories and application tests when their owners are admitted. Review image candidates and assistive-technology behavior separately where applicable.
+Use the rendered interface to verify changed interactions and report the checks
+that actually ran.
+
+1. Identify the user task, required permission and expected result. Find an existing control or story to use as the starting point.
+2. Exercise the populated screen and the relevant states below. In the component story, change language and direction independently, then check theme and density with realistic content lengths. [Storybook fixtures](docs/localization.md#fixtures-and-checks)
+3. Verify the changed interaction with component or application browser tests. For a drawer or destructive confirmation, open it using the keyboard, check its controls and dismiss it with Escape. Check the resulting focus and whether cancellation leaves the data untouched. [Application accessibility cases](e2e/accessibility.spec.ts)
 
 | State or condition                    | Expected behavior                                                                                                |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -34,6 +37,6 @@ The API chooses language, direction, calendar and palettes. A browser preference
 | Narrow layout, RTL/LTR or long labels | Controls remain operable, content remains readable and spacing uses logical directions.                          |
 | Light/dark/compact or reduced motion  | Semantic contrast and focus indicators remain visible, with the existing motion preference respected.            |
 
-Storybook offers synthetic component interaction and accessibility checks. Application browser tests, reviewed image comparison and manual assistive-technology review require separate evidence. Use [testing](docs/testing.md) and [validation](docs/validation.md); do not treat a design image or component pass as a deployed implementation.
+Use Storybook for isolated component interactions and application browser tests for composed flows. Review actual palette contrast and assistive-technology behavior separately from automated accessibility results. Follow the baseline review workflow when changing an approved image. [Testing](docs/testing.md) · [Validation](docs/validation.md)
 
 The [design skill](.agents/skills/design-ui/SKILL.md) describes optional concept/asset/tool handoffs. Use only available tools and authorized uploads/publication. Keep source, assets and licenses intact; a hosted artifact does not change this repository by itself.

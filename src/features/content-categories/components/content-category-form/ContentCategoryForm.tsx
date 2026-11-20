@@ -1,4 +1,4 @@
-import { Form, Input } from "antd";
+import { Button, Drawer, Form, Input, Space } from "antd";
 import { isCancel } from "axios";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -9,7 +9,6 @@ import { getRoutePermissions } from "@/app/lib";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { modalKeys } from "@/shared/config";
 import { useAbortController, useLock } from "@/shared/hooks";
-import { FormDrawer } from "@/shared/ui/form-drawer";
 
 import {
   createContentCategory,
@@ -150,7 +149,7 @@ export const ContentCategoryForm = ({
   ]);
 
   return (
-    <FormDrawer
+    <Drawer
       afterOpenChange={(open) => {
         if (!open) {
           form.resetFields();
@@ -159,12 +158,27 @@ export const ContentCategoryForm = ({
 
         form.focusField(initialFocusField);
       }}
+      closeIcon={false}
+      footer={
+        <Space>
+          <Button loading={submitting} onClick={handleClose}>
+            {t("cancel")}
+          </Button>
+          <Button
+            disabled={loading || submitting || (isUpdate && loadedId !== id)}
+            loading={submitting}
+            onClick={() => form.submit()}
+            type="primary"
+          >
+            {t("submit")}
+          </Button>
+        </Space>
+      }
       loading={loading}
+      mask={{ closable: false }}
       onClose={handleClose}
-      onSubmit={() => form.submit()}
       open={open}
-      submitDisabled={loading || submitting || (isUpdate && loadedId !== id)}
-      submitting={submitting}
+      styles={{ footer: { textAlign: "end" } }}
       title={t(isUpdate ? "update" : "create")}
     >
       <Form<ContentCategoryRequest>
@@ -182,6 +196,6 @@ export const ContentCategoryForm = ({
           <Input />
         </Form.Item>
       </Form>
-    </FormDrawer>
+    </Drawer>
   );
 };

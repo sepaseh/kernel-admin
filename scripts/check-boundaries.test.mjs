@@ -1198,6 +1198,11 @@ test("runtime adapters may import only exact declared packages contained in this
       "@dnd-kit/utilities",
       "@dnd-kit/utilities",
     ],
+    [
+      "src/shared/ui/sortable-table/reorder-rows.ts",
+      "@dnd-kit/sortable",
+      "@dnd-kit/sortable",
+    ],
   ]) {
     const adapter = path.join(root, source);
     const target = path.join(root, "node_modules", dependency, "index.d.ts");
@@ -1227,7 +1232,7 @@ test("retired dialog focus stays unpublished and React dependencies retain their
   const helper = path.join(root, "src/shared/lib/dialog-focus.ts");
   for (const source of [
     "src/app/hooks/useAntd.ts",
-    "src/shared/ui/form-drawer/FormDrawer.tsx",
+    "src/features/users/components/user-form/UserForm.tsx",
   ]) {
     const owner = path.join(root, source);
     assert.match(
@@ -1246,7 +1251,7 @@ test("retired dialog focus stays unpublished and React dependencies retain their
   const react = path.join(root, "node_modules/@types/react/index.d.ts");
   for (const [source, typeOnly] of [
     ["src/app/hooks/useAntd.ts", false],
-    ["src/shared/ui/form-drawer/FormDrawer.tsx", true],
+    ["src/shared/ui/otp-input/OtpInput.tsx", true],
   ]) {
     const owner = path.join(root, source);
     assert.equal(
@@ -1288,8 +1293,8 @@ test("retired dialog focus stays unpublished and React dependencies retain their
       );
   }
   for (const source of [
-    "src/shared/ui/form-drawer/FormDrawer.tsx",
     "src/shared/lib/dialog-focus.ts",
+    "src/shared/ui/password-fields/PasswordFields.tsx",
   ])
     assert.match(
       check("react", react, path.join(root, source), false, "@types/react"),
@@ -1334,7 +1339,7 @@ test("OTP accessibility owns only its exact React and translation runtime depend
     );
   }
   for (const owner of [
-    "src/shared/ui/form-drawer/FormDrawer.tsx",
+    "src/shared/ui/password-fields/PasswordFields.tsx",
     "src/shared/ui/route-loading/RouteLoading.tsx",
   ])
     assert.match(
@@ -1761,8 +1766,8 @@ test("only the actual literal application and editor stylesheet edges are admitt
     ["src/main.tsx", "./index.css", "src/index.css"],
     [
       "src/shared/ui/rich-text-editor/RichTextEditor.tsx",
-      "quill/dist/quill.core.css",
-      "node_modules/quill/dist/quill.core.css",
+      "quill/dist/quill.snow.css",
+      "node_modules/quill/dist/quill.snow.css",
     ],
   ]) {
     const owner = path.join(root, source),
