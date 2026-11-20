@@ -1,13 +1,57 @@
 # Local translation catalogs
 
-The standalone admin owns src/shared/i18n. Each locales/<code>.ts is the only message catalog for that language, as a flat Record<string, string> with all labels at the root. catalogs.ts registers those objects directly; index.ts initializes i18next and date.ts initializes date vendors. Do not add common.ts/admin.ts catalogs, per-language folders or compatibility reexports. Catalog data modules remain pure and do not import React, i18next, Day.js or runtime adapters. Persian calendar data stays separate in dayjs/fa.ts because it is calendar adapter data, not UI messages.
+## Maintain catalogs
 
-All ten codes in locales.ts require a genuine, complete code-named file with the registered root message keys, such as locales/fa.ts or locales/en.ts. Reuse an existing semantic root key inside that catalog before adding copy, and remove superseded aliases. Never use empty catalogs, English spreads or English placeholder copies as translations. Preserve i18next {{variable}} placeholders, key parity, file/registry agreement and the English bootstrap fallback. User-entered data is not translation data.
+Keep one flat `Record<string, string>` catalog in
+`src/shared/i18n/locales/<code>.ts` for each of the ten codes in `locales.ts`.
+`catalogs.ts` registers the catalog objects directly. Keep
+shared and admin-only messages in the same catalog for each language. Reuse
+semantic root keys and remove superseded aliases.
 
-Imports inside the adapter use local ./ modules; other frontend modules use @/shared/i18n paths. Catalog source and integrity tests are entirely local, without shared translation packages or external project sources. Wire language codes must remain compatible with the local HTTP contract. Public API settings are the sole language authority before and after authentication. i18next starts with fixed en. Core fetches settings on mount and offers an inline retry after initial loading fails. Accepting saved settings cancels a pending read; Core does not revalidate on window focus. It ignores legacy localStorage language values and storage events without reading, writing or deleting them, and exposes no language setter, applying API-derived language to i18next, Ant Design and Day.js. Only system super-admins may change the language chooser; it remains disabled for ordinary settings editors. Ordinary settings.update saves may include the current languageCode because the backend ignores unauthorized language changes. Preserve theme/logo rights and apply the language returned by the API after saving. Theme/compact persistence and cross-tab synchronization stay intact.
+Keep message keys and placeholders consistent across all catalogs. Give every
+key a genuine, nonempty translation in each supported language.
+Preserve i18next `{{variable}}` placeholders and retain English for bootstrap
+and runtime fallback. Apply the [ordering rules](ordering.md) to translation keys.
 
-The settings HTTP adapter returns typed metadata without runtime normalization or validation. Preserve the complete server language object. Ant Design and document.dir use its direction; Day.js and Calendar use its calendar. Local code maps may select vendor locale modules; they cannot choose direction or calendar. Calendar values/labels must apply metadata explicitly and reset a retained date instance when its calendar changes; persisted calendar date keys remain Gregorian YYYY-MM-DD.
+Use the existing i18next adapter and `useTranslation` for user-visible text.
+Use i18next pluralization for count-based messages.
 
-The date.ts runtime adapter registers the real vendor locales and supplies their Jalali month names through Intl Persian-calendar formatting. Use dayjsLocaleName(code) to map product language codes to vendor names, including en to en-gb. Keep Gregorian Persian months distinct from jmonths in pure dayjs/fa.ts. Both calendars must format with all ten loaded vendor locales rather than relying on an unregistered locale falling back to en in tests.
+Keep catalog data and its integrity tests local. Catalogs contain UI messages
+and use pure data modules with only their permitted type imports. Put Persian
+calendar adapter data in `dayjs/fa.ts`. Use local imports within the adapter
+and `@/shared/i18n` from other frontend modules. Keep wire language codes
+compatible with the local HTTP contract. [Type-only imports](imports.md#type-only-edges)
 
-Run affected runtime and jsdom component tests through the published unit coverage command and typecheck. Select admitted Storybook browser checks from the manifest. `test:i18n` is not a published script. Preserve complete flat key and placeholder parity, canonical catalog object propagation, removed duplicates, calendar data, pure data imports and exactly ten code-named message files through the owning tests and review. See [Localization](../../docs/localization.md).
+## Apply settings metadata
+
+Public API settings own language, direction and calendar before and after sign-in.
+`index.ts` initializes i18next with `en`. Core loads settings on mount and offers
+an inline retry for a failed first load. Accepting a save cancels the pending read.
+Keep settings independent of window-focus and storage events, and leave legacy
+stored language values untouched. Preserve browser persistence and cross-tab
+synchronization for theme and compact mode.
+
+Keep the language control restricted to authorized system super-admins.
+Ordinary `settings.update` saves omit `languageCode` and retain theme and logo
+permissions. Apply the settings returned by the API after a save. The HTTP
+adapter returns typed metadata without runtime normalization or validation.
+Pass the complete language object through to consumers.
+
+## Apply calendar metadata
+
+Use API direction for Ant Design and `document.dir`. Use API calendar for Day.js
+and Calendar. Product language codes may choose vendor locale modules. Use
+`dayjsLocaleName(code)` for the mapping, including `en` to `en-gb`.
+
+`date.ts` registers the vendor locales and uses `Intl` Persian-calendar formatting
+to supply Jalali month names. Keep Gregorian Persian month data and `jmonths`
+separate. Apply calendar metadata explicitly to labels and values, reset retained
+date instances when the calendar changes and persist Gregorian `YYYY-MM-DD` keys.
+Verify both calendars with all ten loaded vendor locales.
+
+## Verify a localization change
+
+Use typecheck and the unit coverage suite for catalog integrity, runtime behavior
+and jsdom components. Use synthetic language metadata for an affected Storybook
+check. Select commands for the current change from the manifest.
+[Localization guide](../../docs/localization.md) · [Storybook fixtures](../../docs/localization.md#fixtures-and-checks) · [Validation manifest](../validation.json)

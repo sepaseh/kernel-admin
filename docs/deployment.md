@@ -1,6 +1,9 @@
 # Build, package and deploy
 
-Use this guide to prepare an immutable frontend release and verify an authorized deployment. Build and package from verified application source. The configured backend owns authentication, authorization, data and storage.
+Use this guide to prepare an immutable release and verify an authorized
+deployment.
+Build and package from verified application source. The configured backend
+owns authentication, authorization, data and storage.
 
 ## Before you start
 
@@ -29,7 +32,7 @@ Use only the reviewed synthetic examples as source references: [browser build va
 | `ADMIN_HOST`          | Bare public admin hostname used by the hosting configuration.                                  |
 | `PUBLIC_ASSET_ORIGIN` | Optional explicit public media origin for hosting policy.                                      |
 
-Browser build values are public. The API must allow the actual frontend origin and independently authorize every request. Changing a build value requires a new build; serving an old bundle with different host settings does not rewrite it.
+The release build requires a canonical API origin such as `https://api.example.invalid`. A trailing slash or a development path prefix such as `/v1` fails the [release origin check](../scripts/validate-deployment-env.mjs). The API must allow the browser's actual frontend origin and independently authorize each request. Changing any browser build value requires a new release.
 
 ## Build an immutable package
 
@@ -53,17 +56,15 @@ After complete source verification, this PowerShell example builds and packages 
 
    Expect static assets and `dist/_kernel/build.json`. Port 3000 is the local API example from [usage](usage.md); no API needs to be running for this build. For a real release, use the selected target's public HTTPS API origin, canonical base path and new immutable ID.
 
-   Keep `KERNEL_SYNTHETIC_ENV` set to `1` when supplying public build values explicitly; it disables environment-file discovery.
-
 3. Package that completed build:
 
-   ```sh
-   node scripts/package-release.mjs --release=release-demo-001
+   ```powershell
+   node scripts/package-release.mjs --release=$env:VITE_RELEASE_ID
    ```
 
    Expect `releases/release-demo-001/release.json` and `releases/release-demo-001/public/`. A non-root base such as `/console/` places application files under `public/console/`; the host's document root still points at `public/`.
 
-4. Check the package identity and intended public contents before promotion. The [packager](../scripts/package-release.mjs) rejects an existing output directory, mismatched build/release IDs and symbolic-link assets. It excludes known private filenames but does not scan arbitrary asset contents for secrets.
+4. Wait for the packager to exit successfully and print the packaged release ID and directory. Check `release.json` for the expected `releaseId`, `apiOrigin`, `basePath` and `entrypoint`. Review the contents of files beneath `public/` for accidental sensitive data before promotion. The [packager](../scripts/package-release.mjs) excludes known private filenames and rejects symbolic-link assets. A failed copy can leave a partial release directory.
 
 Keep the build parent trusted and owned. Build identity publication uses private sibling staging and an atomic rename; it does not protect against an actor controlling that parent. Generated `dist/` and `releases/` outputs stay out of commits. Repository-specific review evidence, recovery files and scratch exports belong in ignored repository-local directories.
 
@@ -81,7 +82,7 @@ The [health helper](../scripts/healthcheck.mjs) makes network requests. Replace 
 node scripts/healthcheck.mjs https://admin.example.invalid/console/ release-demo-001 /console/
 ```
 
-`admin.example.invalid` is a placeholder, not a live target. A zero exit code means the helper received an HTML document and the expected same-origin release identity. Credentials, query/fragment, invalid base paths, redirects and mismatched release identity fail the check. When providing an expected release, also provide its canonical base path; a deep route must remain beneath it.
+The helper requests the application document and then `/console/_kernel/release` on the same origin. Success is silent (exit code 0). It requires HTTP 200 from both endpoints, HTML from the document and the expected `release` field from the identity response. Each request has a five-second timeout and rejects redirects. Supply the canonical base explicitly when checking a deep route under it.
 
 | Failure                              | Check                                                                                                           |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
@@ -92,4 +93,11 @@ node scripts/healthcheck.mjs https://admin.example.invalid/console/ release-demo
 
 Keep the prior verified package and configuration until the new release passes its target checks. To roll back, select that prior package/configuration and repeat verification with its original release ID and base path. Do not rebuild an old identifier with new contents. Preserve operator TLS/configuration privately and exercise restore procedures on an authorized isolated target.
 
-The admitted mutation and release workflows require separate authorization to dispatch. Consult their inputs and target validators before an authorized operation. Report the actual revision, target, result and first failure. Deployment and provider compatibility require evidence from the authorized target.
+## Verify an authorized deployment in GitHub Actions
+
+- Use [Deployment smoke tests](../.github/workflows/deployment-smoke.yml) to check a particular release. Supply the application base URL, API health URL and deployment ID. Their hostnames must match `SMOKE_ALLOWED_APP_HOST` and `SMOKE_ALLOWED_API_HOST`, and the ID must match `SMOKE_EXPECTED_DEPLOYMENT_ID`. The suite checks static assets, direct navigation, API health and the served `_kernel/build.json` release ID.
+- Use [Staging validation](../.github/workflows/staging.yml) for browser journeys, accessibility, response headers and API health. Supply the application base URL and API health URL matching `STAGING_ALLOWED_APP_HOST` and `STAGING_ALLOWED_API_HOST`. The sign-in check expects English from the staging application's language configuration.
+
+Both workflows are manually dispatched. Confirm authorization for the specific target and operation. If setup rejects a target, compare the requested URLs and release ID with the configured values before retrying. See the [target validator](../scripts/validate-workflow-targets.mjs) and each run's Playwright report for the first failure.
+
+The separate [Release workflow](../.github/workflows/release.yml) runs Release Please on `main` to manage GitHub releases and release PRs. Deploy the immutable package or image through the selected host's release procedure.

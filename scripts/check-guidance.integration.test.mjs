@@ -490,7 +490,7 @@ test("maintained guides accept real titled and parenthesized targets", async (co
 
 test("local query targets and case-insensitive external schemes resolve correctly", async (context) => {
   const { root, write } = await createFixture(context);
-  await write("docs/guide.md", "# Synthetic target\n");
+  await write("docs/guide.md", '# Section\n\n<a id="section?literal"></a>\n');
   await write(
     "docs/development.md",
     [
@@ -502,6 +502,99 @@ test("local query targets and case-insensitive external schemes resolve correctl
     ].join("\n"),
   );
   assert.deepEqual((await checkGuidance(root)).errors, []);
+});
+
+test("Markdown fragment checks validate local headings without scanning unavailable bodies", async (context) => {
+  const { root, write, writeUnadmitted } = await createFixture(context);
+  await write(
+    "docs/guide.md",
+    [
+      "# Same",
+      "# Same-1",
+      "# Same",
+      "## Review **the** `UI` [guide](development.md) &amp; café ##",
+      "",
+      "A Setext heading",
+      "----------------",
+      "",
+      "> ## Quoted section",
+      "",
+      "- ### List section",
+      "",
+      '<h2 id="ExplicitHeading">Custom HTML heading</h2>',
+      "",
+      'Text <a name="Legacy &amp; Named"></a>.',
+      "",
+      "```md",
+      "# Fenced example",
+      "```",
+      "",
+      "    # Indented example",
+      "",
+      "<!--",
+      "# Commented example",
+      '<a id="hidden-anchor"></a>',
+      "-->",
+    ].join("\n"),
+  );
+  await writeUnadmitted("docs/operator.md", "[unread](never-read.md)\n");
+  const valid = [
+    "# Local `heading`",
+    "",
+    "[self](#local-heading)",
+    "[repeated](guide.md#same-2)",
+    "[formatted](guide.md#review-the-ui-guide--caf%C3%A9)",
+    "[setext](guide.md#a-setext-heading)",
+    "[quoted](guide.md#quoted-section)",
+    "[list](guide.md#list-section)",
+    "[HTML](guide.md#ExplicitHeading)",
+    "[named](guide.md#Legacy%20%26%20Named)",
+    "[source line](../owner.ts#L1)",
+    "[unadmitted](operator.md#unchecked)",
+    "[empty fragment](#)",
+    "[same-page top](#top)",
+    "[other-page top](guide.md#TOP)",
+    "[encoded top](#%74op)",
+    "",
+    "[section by reference][section]",
+    "",
+    '[section]: guide.md#quoted-section "Quoted section"',
+    "",
+    "```md",
+    "[fenced]: guide.md#example-only",
+    "```",
+    "``[inline example](#example-only)``",
+  ];
+  await write("docs/development.md", valid.join("\n"));
+  assert.deepEqual((await checkGuidance(root)).errors, []);
+  const missing = [
+    "#missing-local",
+    "guide.md#fenced-example",
+    "guide.md#indented-example",
+    "guide.md#commented-example",
+    "guide.md#hidden-anchor",
+    "guide.md#explicitheading",
+  ];
+  await write(
+    "docs/development.md",
+    [
+      ...valid,
+      ...missing.map((link) => `[Bad](${link})`),
+      "[Bad](#%ZZ)",
+      "[Missing file](absent.md#top)",
+      "[Bad reference][broken]",
+      "",
+      "[broken]: guide.md#missing-reference",
+    ].join("\n"),
+  );
+  assert.deepEqual((await checkGuidance(root)).errors, [
+    ...missing.map(
+      (link) => `Missing Markdown heading: docs/development.md: ${link}`,
+    ),
+    "Invalid Markdown heading fragment: docs/development.md: #%ZZ",
+    "Missing or unsafe guide link: docs/development.md: absent.md#top",
+    "Missing Markdown heading: docs/development.md: guide.md#missing-reference",
+  ]);
 });
 
 test("only the three reviewed public environment templates are valid guide targets", async (context) => {

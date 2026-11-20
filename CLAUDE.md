@@ -1,3 +1,7 @@
 # Optional host entry point
 
-Follow [AGENTS](AGENTS.md) and the canonical rules in [`.agents/README.md`](.agents/README.md). This adapter adds no permissions or product rules and does not prove that a host loaded it automatically.
+Follow [AGENTS.md](AGENTS.md) and use the
+[assistant guidance index](.agents/README.md) to find task-specific rules,
+source owners and validation. This optional adapter adds no product rules,
+permissions or runtime dependencies. Record host-reported loading when available and leave discovery unknown when the
+host supplies no evidence.

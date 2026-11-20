@@ -1,28 +1,60 @@
 # Testing
 
-Use the [manifest](../validation.json) and [validation policy](../../docs/validation.md). Start with the smallest relevant check, then run the declared full profile on the exact isolated proposed snapshot before an authorized commit, push or handoff. Focused profiles do not replace required checks.
+## Choose checks
 
-The admitted application includes unit, jsdom component, governance, Storybook,
-application browser, visual, Pact and operational suites; select their commands
-from the manifest.
+Start with the smallest declared check that covers the changed behavior. Select
+commands from the [validation manifest](../validation.json).
 
-Preserve measured coverage, assertions, stress corpora and declared product-test deadlines. Numerical metrics are advisory under [code quality](code-quality.md); execution, assertion, type/lint and security failures remain required evidence. Visual/process-tree commands, their synthetic fixtures and CI evidence requests use actual completion and explicit cancellation without configured wall-clock deadlines. Browser output and static assets do not replace unit/governance LCOV. Do not skip checks, disable unrelated accessibility rules or widen tolerances to conceal a failure. When the owner explicitly withdraws a product requirement, update only its corresponding assertions and the documented [test scope](../../docs/testing.md#review-appearance); retain the remaining audits and report that decision.
+Choose the [test owner](../../docs/testing.md#choose-the-test-owner) that can
+observe the change. Exercise stale completions, cancellation, permissions and
+failure paths where applicable. Follow [exact-source validation](../../docs/validation.md#validate-the-exact-proposed-source)
+before an authorized commit, push or handoff.
 
-Synchronize asynchronous fixtures on actual state, IPC, stream completion or process closure. Do not add fixed sleeps, polling delays, retry counts or helper deadlines to guess readiness. Reject early errors and premature closure, support explicit cancellation and await owned resource closure before removing files. Keep product-timing assertions on controlled clocks and preserve declared browser and CI execution budgets.
+## Isolate fixtures
 
-Choose tests for observable behavior: pure helper cases, request/session integration, component interaction, synthetic governance bypass regressions and real application/browser behavior as appropriate. Cover stale/cancelled results, permission boundaries and actual failure paths rather than mirroring implementation details. Use [authentication](../../docs/authentication.md) and [testing](../../docs/testing.md) for fixture ownership.
+Use [synthetic fixtures](safety.md#secrets-and-local-state) and disposable
+resources owned by the test. Exercise observable success and failure.
 
-When a consumer test mocks a feature API or the shared client, mock that boundary completely. Dedicated transport integration tests use owned synthetic fixtures. Never use spy passthrough, a real API, credentials, environments, databases, uploads or another checkout's service as a fixture. Storybook toolbar values must remain synthetic metadata, not production language preferences. Keep `*.stories.tsx` beside the source owner under `src/`.
+Mock a feature API or shared client completely, with no spy passthrough. Dedicated transport tests use owned synthetic endpoints.
+Import operational helpers and synthetic drivers without starting infrastructure.
+Follow the [external action rules](safety.md#external-systems) and
+[deployment guide](../../docs/deployment.md) for checks against real targets.
 
-Use disposable uniquely owned resources. Cleanup only owned directories, processes, ports and containers, and preserve primary plus cleanup errors. Operational helper imports and synthetic drivers must not launch real infrastructure. Actual provider, Docker, staging or deployment checks require their own authorized target and operation.
+Keep stories beside their source owner under `src/`. Use synthetic toolbar
+metadata and explicit request handling for the [Storybook tests](../../docs/testing.md#test-components-in-storybook).
+Follow [contract fixture quality](collection-quality.md) when changing HTTP examples.
 
-Windows visual cleanup captures and refreshes process identities, pins each process handle before identity verification and termination, and issues every verified stop before waiting for exits. Repeated interruption cancels the active helper even after the visual child closes; cleanup ownership remains until the helper actually closes. Preserve captured-orphan, PID-reuse, refresh-conflict, handle-disposal and combined-failure regressions. Measured PowerShell coverage joins the same source-bound artifact as the JavaScript reports without repeating the suite.
+## Synchronize and clean up
 
-Visual comparison keeps runtime provenance, image hashes, tolerances and human approval. Fresh captures remain pending until the user reviews them; updates are forbidden in CI. Record actual failures, optional host skips and unexecuted work honestly. Routine checks do not require a dated QA report or an additional full-suite invocation.
+Synchronize with observable readiness, completion, errors and close events. Use
+controlled clocks for timing behavior and explicit cancellation for interrupted
+work. Preserve the first operation failure and any cleanup failures.
 
-When production source must remain unchanged, a failing check is evidence for
-discussion, not permission to edit it. Present the exact file, trigger, test
-evidence and minimal proposal in the current chat and discuss the source change
-before editing, honoring existing approval for that scope. Do not add a maintained
-investigation or decision log. Correct a faulty fixture only when evidence
-supports that conclusion and retain genuine failing assertions.
+Wait for application state, IPC, stream completion or process closure. Reject
+early errors and premature closure. Avoid fixed sleeps, polling delays, retry
+counts or extra deadlines to guess readiness. Preserve browser and CI budgets.
+Visual/process-tree commands, their synthetic fixtures and CI evidence requests
+use actual completion and explicit cancellation without wall-clock deadlines.
+
+Wait for owned resources to close before removing files. Clean up only owned
+directories, processes, ports and containers. Preserve the [Windows process cleanup regressions](../../docs/testing.md#test-windows-process-cleanup)
+when changing capture, interruption or termination.
+
+## Preserve test evidence
+
+Keep behavioral assertions, accessibility checks, stress inputs, declared
+product deadlines and measured coverage. Preserve source-bound reports when
+reusing evidence for analysis. See [validation evidence](../../docs/validation.md#interpret-the-evidence)
+for the separate LCOV, PowerShell and browser results and
+[code quality](code-quality.md#static-analysis-findings) for advisory metrics.
+
+Follow [image comparison and approval](../../docs/testing.md#compare-and-approve-images)
+for reviewed baselines, runtime provenance, hashes, tolerances and CI restrictions.
+When the owner explicitly withdraws a product requirement, update only its
+assertions and documented [test scope](../../docs/testing.md#review-appearance).
+Retain the remaining audits and report the decision.
+
+Report actual failures, optional host skips and unexecuted work. Correct a
+fixture only when evidence identifies a fixture defect. Retain genuine failing
+assertions. If production source must remain unchanged, follow the
+[discussion and evidence requirements](../../AGENTS.md#scope-and-safety).

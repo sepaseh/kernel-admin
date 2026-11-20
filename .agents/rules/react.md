@@ -1,22 +1,17 @@
 # React
 
-These Ant Design, i18next, icon and React Router conventions apply to this standalone admin. Keep components, hooks and accessibility consistent with the existing source.
-
-The admitted application includes shared controls, hooks, core providers,
-authentication screens, route composition and feature screens.
+Use these rules for component structure, hooks, forms and routing. Follow the
+[import policy](imports.md#source-owners) for source ownership.
 
 ## Components
 
 - Keep one exported React component per `.tsx` file when practical.
-- When a function component receives props, define a component-specific named
-  `type` and annotate its props parameter directly; infer the return type and
-  do not use `FC` or another component-function type. Components without props
-  do not need a dummy props type or parameter. Use `PropsWithChildren` for
-  optional `ReactNode` children, directly when children are the only input.
-  Declare required or narrower children types explicitly.
-- Put reusable UI pieces in `src/shared/ui`.
-- Keep route-level screens in their owning `src/features/<feature>` directory.
-- Keep feature-specific forms beside the owning feature.
+- Use a named props type on the component parameter and infer the return type.
+  Omit the props type and parameter for components without props.
+  Use a component-specific name. Avoid `FC` and other component-function types.
+  Use `PropsWithChildren` for optional `ReactNode` children, directly when
+  children are the only input. Declare required or narrower children types
+  explicitly.
 - Do not define React components inside another component render body.
 
 ```tsx
@@ -49,11 +44,11 @@ export const UserCard = ({ name }: UserCardProps) => <div>{name}</div>;
 
 ## Request lifecycle
 
-For admin reads, cancellation, stale-result guards, timeouts and session-bound
-refresh/logout, follow [request reliability](../../docs/authentication.md).
-Use direct async/await and local request state in the owning page or provider,
-with the existing `useAbortController` and `useLock` helpers. Preserve request identity
-through retries; a new login must not inherit an old mutation or logout completion.
+Keep direct `async`/`await` and request state in the owning page or provider.
+Follow the [read lifecycle](../../docs/authentication.md#read-resources),
+[mutation guards](../../docs/authentication.md#mutation-guards) and
+[session generations](../../docs/authentication.md#session-generations) for
+controller ownership, submission locking and stale-result checks.
 
 ## Forms
 
@@ -67,8 +62,10 @@ through retries; a new login must not inherit an old mutation or logout completi
   sibling drawer hashes. The page owns return navigation through `useGoBack`
   and stores each edit target ID in its history entry. On a successful save,
   notify the page through `onFinish` so it can refresh the list and close the drawer.
-- Use the existing synchronous/ref submission lock as well as submitting state.
-  Cancel abandoned reads and reject late results before updating the form.
+- If a drawer owns an image upload, unmount the field on close so `ImageUpload`
+  can abort the request. Forward its upload signal to the owning file API and
+  preserve the guards against late results. [Content drawer](../../src/features/contents/components/content-form/ContentForm.tsx)
+- Apply the [request lifecycle](#request-lifecycle) to detail reads and writes.
 - Type Ant Design submit handlers as `FormProps<Values>["onFinish"]`.
 - Put the asynchronous submit logic directly in that handler. Do not add a
   `NonNullable` wrapper or a second callback whose only job is to discard the
@@ -84,16 +81,12 @@ through retries; a new login must not inherit an old mutation or logout completi
 
 ## Independent resources and read-only screens
 
-- Give independent list/lookup resources their own loading, error and retry state
-  in their owning component. One failed optional lookup should not
-  erase a usable list or unrelated options. Requests may run concurrently; use
-  an aggregate failure only when the screen genuinely requires the complete set.
-- Preserve cancellation and request-generation guards when parameter or session
-  changes invalidate a read. Do not replace them with unguarded async effects.
-- A view-only requirement must not gain placeholder CRUD or unsupported write
-  handlers. Mounted drawers must enforce read-only permissions internally.
-  Retain only actions supported by
-  the current contract/permissions; the API remains authoritative.
+- Follow the [read lifecycle](../../docs/authentication.md#read-resources) for
+  independent list and lookup state. Requests may run concurrently. Use an
+  aggregate failure only when the screen needs the complete set to operate.
+- Show only actions supported by the current contract and permissions. Keep
+  view-only screens free of placeholder writes and apply the permission checks
+  in [Forms](#forms) to mounted drawers. The API authorizes each operation.
 
 ## Rendering patterns
 
@@ -137,39 +130,19 @@ through retries; a new login must not inherit an old mutation or logout completi
 
 ## Translations
 
-All user-visible text should go through `react-i18next`.
-
-- Reuse existing root keys for UI meanings shared across admin features, for
-  example `t("login")`. Add new shared labels to all ten languages in
-  the root of `src/shared/i18n/locales/<code>.ts`, removing superseded keys.
-- Add admin-only copy to the same `src/shared/i18n/locales/<code>.ts` for every
-  registered language; do not duplicate existing strings or keep old aliases.
-- Consume translations through the admin's existing i18next adapter and `useTranslation`;
-  keep one code-named file per language without split common/admin files. All ten catalogs must be complete; runtime
-  fallback is only emergency behavior and cannot satisfy the completeness gate.
-- Keep locale keys alphabetized.
-- Use i18next pluralization for count-based strings.
+Follow the [localization rules](localization.md#maintain-catalogs) for
+user-visible text, catalog changes and pluralization.
 
 ## Icons
 
-- Import the specific named icons directly from `lucide-react` at feature and
-  layout call sites.
-- Set an explicit `size` suited to the control. Use `currentColor` so the icon
-  follows Ant Design text, hover, disabled and semantic colors.
-- Hide decorative icons with `aria-hidden`; the owning button, link or control
-  supplies its translated accessible name.
-- Do not copy Material SVG paths, recreate `SvgIcon`, add local icon wrappers,
-  or introduce a string/name-based icon registry. Keep Ant Design components,
-  theme tokens and feature ownership unchanged.
+Follow the [styling rules for icons](styling.md#icons) for imports, sizing,
+color and accessible names.
 
 ## Routing
 
 - Define route keys and paths in `src/app/config/routes.ts`.
 - Update `src/app/config/routes.ts` when route access metadata changes. Keep access
   decisions in the pure policy functions under `src/app/lib`.
-- Check [the publication policy](../../.github/bootstrap-policy.json) before
-  assuming an application entry point or App/Routes composition is admitted.
-  While `applicationReady` is false, metadata and component tests cannot establish
-  a runnable application. Activation requires the admitted composition and genuine
-  build, application browser and reviewed visual checks in the
-  [canonical full gate](../validation.json).
+- Check that the application entry and route composition are admitted. Use the
+  application build and Chromium journeys for routed behavior, and follow the
+  appearance review workflow for affected images. [Publication policy](../../.github/bootstrap-policy.json) · [Application journeys](../../docs/testing.md#test-application-journeys-and-contracts) · [Appearance review](../../docs/testing.md#review-appearance)
