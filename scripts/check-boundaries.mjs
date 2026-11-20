@@ -15,8 +15,6 @@ const productionPaths = [
   "src/layouts/default/components/navigation/Navigation.tsx",
   "src/layouts/default/components/breadcrumbs/index.ts",
   "src/layouts/default/components/navigation/index.ts",
-  "src/shared/ui/request-error/RequestError.tsx",
-  "src/shared/ui/request-error/index.ts",
   "src/shared/storage/hooks/index.ts",
   "src/shared/ui/error-boundary/ErrorFallback.tsx",
   "src/main.tsx",
@@ -119,8 +117,6 @@ const productionPaths = [
   "src/shared/ui/digits-input/index.ts",
   "src/shared/ui/error-boundary/ErrorBoundary.tsx",
   "src/shared/ui/error-boundary/index.ts",
-  "src/shared/ui/form-drawer/FormDrawer.tsx",
-  "src/shared/ui/form-drawer/index.ts",
   "src/shared/ui/otp-input/OtpInput.tsx",
   "src/shared/ui/otp-input/index.ts",
   "src/shared/ui/password-fields/PasswordFields.tsx",
@@ -153,6 +149,7 @@ const productionPaths = [
   "src/features/faqs/types.ts",
   "src/shared/ui/sortable-table/SortableTable.tsx",
   "src/shared/ui/sortable-table/index.ts",
+  "src/shared/ui/sortable-table/reorder-rows.ts",
   "src/features/content-categories/ContentCategories.tsx",
   "src/features/content-categories/api.ts",
   "src/features/content-categories/components/content-category-form/ContentCategoryForm.tsx",
@@ -165,7 +162,6 @@ const productionPaths = [
   "src/features/contents/types.ts",
   "src/shared/ui/rich-text-editor/LazyRichTextEditor.tsx",
   "src/shared/ui/rich-text-editor/RichTextEditor.tsx",
-  "src/shared/ui/rich-text-editor/RichTextToolbar.tsx",
   "src/shared/ui/rich-text-editor/index.ts",
 ];
 const runtimeImports = {
@@ -191,11 +187,6 @@ const runtimeImports = {
     "react",
     "react-i18next",
     "react-quill-new",
-  ],
-  "src/shared/ui/rich-text-editor/RichTextToolbar.tsx": [
-    "lucide-react",
-    "react-i18next",
-    "antd-style",
   ],
 
   "src/features/content-categories/ContentCategories.tsx": [
@@ -231,6 +222,7 @@ const runtimeImports = {
     "lucide-react",
     "react",
   ],
+  "src/shared/ui/sortable-table/reorder-rows.ts": ["@dnd-kit/sortable"],
   "src/features/account/components/password-form/PasswordForm.tsx": [
     "antd",
     "axios",
@@ -255,7 +247,6 @@ const runtimeImports = {
     "react-i18next",
     "react-router",
   ],
-  "src/shared/ui/request-error/RequestError.tsx": ["antd", "react-i18next"],
   "src/GlobalStyle.tsx": ["antd-style"],
   "src/features/files/Files.tsx": [
     "antd",
@@ -351,7 +342,6 @@ const runtimeImports = {
     "react",
     "react-i18next",
   ],
-  "src/shared/ui/form-drawer/FormDrawer.tsx": ["antd", "react-i18next"],
   "src/shared/ui/otp-input/OtpInput.tsx": ["antd", "react", "react-i18next"],
   "src/shared/ui/password-fields/PasswordFields.tsx": ["antd", "react-i18next"],
   "src/shared/ui/route-loading/RouteLoading.tsx": ["antd", "react-i18next"],
@@ -454,6 +444,7 @@ const typeImports = {
     "antd",
     "react",
   ],
+  "src/shared/ui/sortable-table/reorder-rows.ts": ["@dnd-kit/core"],
   "src/features/account/components/password-form/PasswordForm.tsx": ["antd"],
   "src/features/account/components/profile-form/ProfileForm.tsx": ["antd"],
   "src/layouts/default/components/breadcrumbs/Breadcrumbs.tsx": ["i18next"],
@@ -474,7 +465,6 @@ const typeImports = {
   "src/layouts/default/Default.tsx": ["antd"],
   "src/shared/hooks/useGoBack.ts": ["react-router"],
   "src/shared/ui/digits-input/DigitsInput.tsx": ["antd"],
-  "src/shared/ui/form-drawer/FormDrawer.tsx": ["react"],
   "src/shared/ui/otp-input/OtpInput.tsx": ["react"],
   "src/shared/api/client.ts": ["axios"],
   "src/features/account/Account.tsx": [],
@@ -652,7 +642,7 @@ const publishedModules = (root) =>
   new Set(productionPaths.map((file) => path.join(root, file)));
 const stylesheetImports = {
   "src/shared/ui/rich-text-editor/RichTextEditor.tsx": {
-    "quill/dist/quill.core.css": "node_modules/quill/dist/quill.core.css",
+    "quill/dist/quill.snow.css": "node_modules/quill/dist/quill.snow.css",
   },
 
   "src/main.tsx": { "./index.css": "src/index.css" },

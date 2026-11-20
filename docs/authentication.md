@@ -1,8 +1,6 @@
 # Authentication and request lifecycles
 
-Use this reference when changing an HTTP adapter, session transition or asynchronous screen. Start with the relevant owner and its tests:
-
-The application composes transport, feature HTTP adapters, settings metadata, guarded requests, providers and authentication forms. Local tests use synthetic responses. Live backend integration requires separate verification.
+Use this reference when changing an HTTP adapter, session transition or asynchronous screen. The owner and regression examples for each change are listed below.
 
 | Change                                        | Owner                                                                              | Regression examples                                                                           |
 | --------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -15,13 +13,13 @@ The application composes transport, feature HTTP adapters, settings metadata, gu
 | Profile mutation and refresh                  | [Profile form](../src/features/account/components/profile-form/ProfileForm.tsx)    | [Profile lifecycles](../src/features/account/components/profile-form/ProfileForm.test.tsx)    |
 | Password mutation and session cleanup         | [Password form](../src/features/account/components/password-form/PasswordForm.tsx) | [Password lifecycles](../src/features/account/components/password-form/PasswordForm.test.tsx) |
 
-Feature HTTP owners consume the configured backend. Database operations, authorization, session revocation and cookie/CORS policy belong to that service. Client presentation checks do not enforce server authorization.
+The backend owns database operations, authorization, session revocation and cookie and CORS policy. The frontend uses account permissions to decide which routes and controls to present. The API authorizes each operation independently.
 
 ## Backend integration
 
-Developers choose a compatible backend through `VITE_API_BASE_URL`. The local feature `api.ts` and `types.ts` files define this frontend's requests and expected responses; no particular backend implementation, repository, request collection or tooling is required. Adapt this project's HTTP boundary when integrating a service with a different contract.
+Select a compatible backend through `VITE_API_BASE_URL`. Local feature `api.ts` and `types.ts` files define the requests and expected responses. Adapt those owners when integrating a service with a different contract. [Public configuration](usage.md#application-configuration-reference)
 
-Use the [HTTP transport tests](../src/shared/api/transport.test.ts), [settings fixture](../e2e/fixtures.ts), [application HTTP fixtures](../e2e/shared/admin-fixtures.ts) and [consumer contracts](../contract/api.contract.test.ts) for request and response examples. Startup requires a compatible `/settings` response before routes render. Authenticated features require compatible login, refresh and permission behavior. Builds and synthetic tests need no running backend. Verify the chosen service separately when real integration testing is authorized.
+Startup requires a compatible `GET /settings` response before routes render. For a signed-in session, the authentication endpoints supply credentials and `GET /account/me` supplies the current user and permissions. Use the transport, consumer-contract and browser fixtures for synthetic request and response examples. Verify the chosen service separately against those expectations. [HTTP transport tests](../src/shared/api/transport.test.ts) · [Settings fixture](../e2e/fixtures.ts) · [Application HTTP fixtures](../e2e/shared/admin-fixtures.ts) · [Consumer contracts](../contract/api.contract.test.ts)
 
 Paginated list adapters, including the [users list adapter](../src/features/users/api.ts), send only the page number and their declared filters. The backend owns the fixed page size of 24; adapters omit `size` from HTTP requests, query inputs and URL filters. Select declared request fields explicitly so an extra `size` URL parameter cannot reach the API. Tables use `defaultPageSize` from [shared configuration](../src/shared/config/constants.ts), also 24, for pagination and row numbering.
 
@@ -35,7 +33,7 @@ JSON request keys become snake case and response keys become camel case. FormDat
 
 `AdminApiError` preserves the HTTP status, a nonempty API message and its structured cause when supplied. Other failures use translated timeout, network or unexpected-error text. Only bounded safe request IDs are retained. Cancellation remains an Axios cancellation. Keep credentials and request payloads out of diagnostics.
 
-The client's request classification determines refresh behavior:
+The client uses the request method and path to decide which operations can refresh the session.
 
 | Request                                                      | Session behavior                                                                                                                     |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -47,15 +45,17 @@ The classification is defined in `client.ts`. Public settings reads may still ca
 
 ## Session generations
 
-Bearer credentials stay in memory. Login/logout starts a new authentication generation; refreshing a token remains in the existing generation.
+Bearer credentials stay in memory. Signing in or clearing the token advances the authentication generation and aborts requests bound to the old generation. Refreshing replaces the token in the current generation. On a protected page, an initial `GET /account/me` that returns 401 can refresh the session through the backend cookie, even after a page reload has cleared memory. [Token handling](../src/shared/api/token.ts) · [Refresh handling](../src/shared/api/refresh.ts)
 
 A protected operation captures its generation synchronously when called. The queued interceptor checks it before dispatch, and the client checks again after fulfillment before returning data. A stale generation is cancelled before it can return data or expire a newer login.
 
-Concurrent attributed protected 401s share one refresh per generation. Each eligible request can replay once after successful same-generation refresh if it has not been cancelled. A cancelled waiter does not cancel another waiter's shared refresh. Refresh retries a network or server failure once after its existing one-second retry interval. Exhausted network, timeout and server failures preserve the current session and propagate an error for a later manual retry without replaying the failed operation. Other refresh failures, including definitive 401/403 rejection or an invalid access-token response, and a current retried 401 expire the current session once.
+Concurrent protected 401s share one refresh per generation. A delayed 401 joins an active refresh or reuses the newer token if refresh already completed. Each eligible request can replay once while its caller and session generation are active. Cancelling a caller releases that caller and lets the shared refresh continue for other requests. [Replay tests](../src/shared/api/client.test.ts)
+
+Refresh retries a network, timeout or server failure once after one second. If that retry fails with a transient error, the client preserves the session and reports the error for a later manual retry. Definitive rejection, an invalid refresh token response or a 401 after replay clears the current session. A 403 from `GET /account/me` also ends the current session. Other protected 403 responses report the operation's authorization failure. [Session handling](../src/shared/api/client.ts) · [Refresh handling](../src/shared/api/refresh.ts)
 
 Public or unattributed failures cannot refresh or clear a login. Network failures, timeouts, 429s and 5xx responses do not automatically replay mutations. The eligible 401 replay is separate from an ordinary network retry.
 
-Login/registration validate a nonblank access token and check both cancellation and generation before installing it, even after transport fulfillment. Logout deduplicates within its initiating generation and cannot clear a newer login. Client cleanup does not prove server-session revocation.
+Login and registration validate a nonblank access token and check cancellation and generation after transport completes. Logout shares one request within its initiating generation and clears that generation locally when the request settles. Server-session revocation depends on the backend's response and cookie handling. [Authentication adapter](../src/features/auth/api.ts) · [Logout tests](../src/features/auth/logout.test.ts)
 
 ## Read resources
 
@@ -63,7 +63,7 @@ Screens and layouts own their read state and direct effects. Bind each read to e
 
 Use [`useAbortController`](../src/shared/hooks/useAbortController.ts) where the owning request workflow needs a replaceable controller: `start()` aborts its previous request, and `cancel()` invalidates pending work. Keep independent list and optional lookup loading, error and retry state separate. A failed optional lookup must not erase a usable list. Preserve accepted data on a refresh failure and expose an explicit retry; cancellation does not create a user-visible failure.
 
-The [default layout](../src/layouts/default/Default.tsx) owns current-user loading. It waits for the initial accepted user before rendering protected children and exposes that user, an awaited reload and local session cleanup through [`DefaultLayoutContext`](../src/layouts/default/types.ts). During a refresh, it keeps the Outlet mounted so child form state survives. Refresh failures retain accepted identity and show retry feedback; initial failures also offer logout. The layout checks its mounted state, request cancellation and initiating authentication generation before accepting data or handling a failure. Core owns settings and appearance preferences.
+The default layout owns current-user loading. It waits for the initial accepted user before rendering protected children and exposes that user, an awaitable reload and local session cleanup through its outlet context. Initial and subsequent retryable failures use the [shared error fallback](../src/shared/ui/error-boundary/ErrorFallback.tsx) with a request-specific title and a retry action that reloads the current user. Subsequent failures keep the outlet and accepted identity visible. Session expiration clears the protected state and returns to sign-in. The layout checks its mounted state, request cancellation and initiating generation before accepting data or handling a failure. [Default layout](../src/layouts/default/Default.tsx) · [Outlet context](../src/layouts/default/types.ts)
 
 ## Mutation guards
 
@@ -87,11 +87,11 @@ The settings adapter returns typed API responses without runtime envelope valida
 
 The settings form tracks light and dark logo operations independently through the image control's `onLoadingChange` callback. Decoding, cropping and uploading keep Submit and Reset unavailable, and the submit handler checks pending logo work before acquiring its save lock. Crop confirmation and cancellation remain available. Saving resumes after both controls finish and uses their accepted logo identifiers.
 
-| Symptom                                               | First check                                                                                                                            |
-| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Settings metadata is rejected                         | Confirm the configured API URL, response metadata and exact allowed browser origin. `localhost` and `127.0.0.1` are different origins. |
-| A protected request repeatedly returns 401            | Trace its initiating generation, the shared refresh result and the single replay in `client.test.ts`.                                  |
-| A request returns 403                                 | Check the API's permission decision and the current account; changing a menu guard cannot grant access.                                |
-| A completed request changes the wrong screen or login | Check loader dependencies, mutation identity, signal forwarding and post-fulfillment guards.                                           |
+| Symptom                                               | First check                                                                                                                        |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Settings cannot load or the UI fails to render        | Check the API base URL, response shape and exact allowed browser origin. See [runtime metadata](localization.md#runtime-metadata). |
+| A protected request repeatedly returns 401            | Trace its initiating generation, the shared refresh result and the single replay in `client.test.ts`.                              |
+| A request returns 403                                 | Check the API's permission decision and the current account; changing a menu guard cannot grant access.                            |
+| A completed request changes the wrong screen or login | Check loader dependencies, mutation identity, signal forwarding and post-fulfillment guards.                                       |
 
 Record a sanitized route template such as `/users/:id`, with query values and user identifiers removed, plus the HTTP status and safe `X-Request-Id`. Exclude credentials and payloads. Document changed HTTP/session expectations at the local integration boundary and use the synthetic fixtures described in [testing](testing.md).

@@ -1,4 +1,4 @@
-import { Checkbox, Form, type FormProps } from "antd";
+import { Button, Checkbox, Drawer, Form, type FormProps, Space } from "antd";
 import { isCancel } from "axios";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -10,7 +10,6 @@ import type { Role } from "@/features/roles";
 import type { DefaultLayoutContext } from "@/layouts/default";
 import { modalKeys } from "@/shared/config";
 import { useAbortController, useLock } from "@/shared/hooks";
-import { FormDrawer } from "@/shared/ui/form-drawer";
 
 import { fetchUser, updateUserRoles } from "../../api";
 import type { User, UserRoleRequest } from "../../types";
@@ -122,18 +121,33 @@ export const UserRoleForm = ({
   }, [cancel, form, id, isRoles, messageAPI, onClose, open, start, unlock]);
 
   return (
-    <FormDrawer
+    <Drawer
       afterOpenChange={(open) => {
         if (!open) form.resetFields();
       }}
-      loading={loading}
-      onClose={handleClose}
-      onSubmit={() => form.submit()}
-      open={open}
-      submitDisabled={
-        loading || submitting || id === undefined || loadedId !== id
+      closeIcon={false}
+      footer={
+        <Space>
+          <Button loading={submitting} onClick={handleClose}>
+            {t("cancel")}
+          </Button>
+          <Button
+            disabled={
+              loading || submitting || id === undefined || loadedId !== id
+            }
+            loading={submitting}
+            onClick={() => form.submit()}
+            type="primary"
+          >
+            {t("submit")}
+          </Button>
+        </Space>
       }
-      submitting={submitting}
+      loading={loading}
+      mask={{ closable: false }}
+      onClose={handleClose}
+      open={open}
+      styles={{ footer: { textAlign: "end" } }}
       title={t("roles")}
     >
       <Form<UserRoleRequest>
@@ -151,6 +165,6 @@ export const UserRoleForm = ({
           />
         </Form.Item>
       </Form>
-    </FormDrawer>
+    </Drawer>
   );
 };

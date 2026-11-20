@@ -37,9 +37,8 @@ test("admin-role-drawer-en-dark", async ({ page }) => {
   await expect(
     page.getByRole("dialog", { name: fixture.messages.create }),
   ).toBeVisible();
-  await expect(
-    page.getByLabel(fixture.messages.name, { exact: true }),
-  ).toBeVisible();
+  const nameField = page.getByLabel(fixture.messages.name, { exact: true });
+  await expect(nameField).toBeVisible();
   await expect(
     page.getByRole("checkbox", {
       name: `${fixture.messages.update} ${fixture.messages.users}`,
@@ -47,6 +46,9 @@ test("admin-role-drawer-en-dark", async ({ page }) => {
     }),
   ).toBeVisible();
   await waitForVisualReady(page, { language: "en", theme: "dark" });
+  await expect(nameField).toBeFocused();
+  await nameField.blur();
+  await expect(nameField).not.toBeFocused();
   await expect(page).toHaveScreenshot("admin-role-drawer-en-dark.png");
   expect(fixture.unexpectedRequests).toEqual([]);
 });

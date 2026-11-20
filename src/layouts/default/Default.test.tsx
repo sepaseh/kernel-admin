@@ -20,11 +20,11 @@ import type * as SharedApi from "@/shared/api";
 import {
   AdminApiError,
   clearAccessToken,
-  setUnauthorizedHandler,
   setAccessToken,
+  setUnauthorizedHandler,
 } from "@/shared/api";
-import { render, screen } from "@/test/render";
 import { deferred } from "@/test/deferred";
+import { render, screen } from "@/test/render";
 
 import { DefaultLayout } from "./Default";
 import type { DefaultLayoutContext } from "./types";
@@ -450,20 +450,25 @@ describe("DefaultLayout", () => {
   });
 
   it.each([
-    new Error("Temporarily offline"),
-    new AdminApiError("Forbidden", 403),
-  ])("keeps the session and offers retry after $message", async (error) => {
-    vi.mocked(fetchCurrentUser).mockRejectedValueOnce(error);
-    const { user } = renderLayout();
-    await screen.findByText(error.message);
-    expect(clearAccessToken).not.toHaveBeenCalled();
-    expect(
-      screen.queryByRole("heading", { name: "Dashboard content" }),
-    ).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "retry" }));
-    await screen.findByRole("heading", { name: "Dashboard content" });
-    expect(fetchCurrentUser).toHaveBeenCalledTimes(2);
-  });
+    { error: new Error("Temporarily offline"), title: "Temporarily offline" },
+    { error: new AdminApiError("Forbidden", 403), title: "Forbidden" },
+    { error: new Error(""), title: "currentUserLoadFailed" },
+  ])(
+    "keeps the session and offers retry after $title",
+    async ({ error, title }) => {
+      vi.mocked(fetchCurrentUser).mockRejectedValueOnce(error);
+      const { user } = renderLayout();
+      expect(await screen.findByRole("alert")).toHaveTextContent(title);
+      expect(screen.getByText("unexpectedError")).toBeVisible();
+      expect(clearAccessToken).not.toHaveBeenCalled();
+      expect(
+        screen.queryByRole("heading", { name: "Dashboard content" }),
+      ).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "retry" }));
+      await screen.findByRole("heading", { name: "Dashboard content" });
+      expect(fetchCurrentUser).toHaveBeenCalledTimes(2);
+    },
+  );
 
   it("keeps accepted identity and child input mounted while a refresh fails, then retries", async () => {
     const pending = deferred<CurrentUser>();
@@ -479,7 +484,10 @@ describe("DefaultLayout", () => {
 
     await act(async () => pending.reject(new Error("Refresh unavailable")));
 
-    expect(await screen.findByText("Refresh unavailable")).toBeVisible();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Refresh unavailable",
+    );
+    expect(screen.getByText("unexpectedError")).toBeVisible();
     expect(screen.getByLabelText("Unsaved child content")).toBe(input);
     expect(input).toHaveValue("Draft remains");
     expect(screen.getByLabelText("account identity")).toHaveTextContent(

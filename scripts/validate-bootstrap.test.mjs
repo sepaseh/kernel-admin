@@ -58,10 +58,6 @@ const completeApplicationFiles = [
   "src/layouts/default/components/navigation/Navigation.stories.tsx",
   "src/layouts/default/components/breadcrumbs/index.ts",
   "src/layouts/default/components/navigation/index.ts",
-  "src/shared/ui/request-error/RequestError.tsx",
-  "src/shared/ui/request-error/RequestError.test.tsx",
-  "src/shared/ui/request-error/RequestError.stories.tsx",
-  "src/shared/ui/request-error/index.ts",
   "src/shared/storage/hooks/index.ts",
   "src/shared/ui/error-boundary/ErrorFallback.tsx",
   ".agents/README.md",
@@ -263,9 +259,10 @@ const completeApplicationFiles = [
   "src/app/config/routes.ts",
   "src/app/contexts/Core.ts",
   "src/app/contexts/index.ts",
-  "src/app/hooks/context.test.tsx",
   "src/app/hooks/index.ts",
+  "src/app/hooks/useAntd.test.tsx",
   "src/app/hooks/useAntd.ts",
+  "src/app/hooks/useCore.test.tsx",
   "src/app/hooks/useCore.ts",
   "src/app/lib/access.test.ts",
   "src/app/lib/access.ts",
@@ -278,10 +275,12 @@ const completeApplicationFiles = [
   "src/app/providers/core/Core.test.tsx",
   "src/app/providers/core/Core.tsx",
   "src/app/providers/index.ts",
-  "src/assets/assets.test.ts",
   "src/assets/fonts/vazirmatn/OFL.txt",
   "src/assets/fonts/vazirmatn/Vazirmatn-Variable.woff2",
+  "src/assets/fonts/vazirmatn/vazirmatn.test.ts",
+  "src/assets/public-assets.test.ts",
   "src/assets/styles/index.css",
+  "src/assets/styles/styles.test.ts",
   "src/assets/styles/vazirmatn.css",
   "src/features/account/Account.stories.tsx",
   "src/features/account/Account.test.tsx",
@@ -399,13 +398,14 @@ const completeApplicationFiles = [
   "src/shared/lib/index.ts",
   "src/shared/lib/transform.test.ts",
   "src/shared/lib/transform.ts",
+  "src/shared/storage/compact.test.ts",
   "src/shared/storage/compact.ts",
   "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
   "src/shared/storage/hooks/useLocalStorageWatcher.ts",
   "src/shared/storage/index.ts",
-  "src/shared/storage/preferences.test.ts",
   "src/shared/storage/state.test.ts",
   "src/shared/storage/state.ts",
+  "src/shared/storage/theme.test.ts",
   "src/shared/storage/theme.ts",
   "src/shared/ui/digits-input/DigitsInput.stories.tsx",
   "src/shared/ui/digits-input/DigitsInput.test.tsx",
@@ -415,10 +415,6 @@ const completeApplicationFiles = [
   "src/shared/ui/error-boundary/ErrorBoundary.test.tsx",
   "src/shared/ui/error-boundary/ErrorBoundary.tsx",
   "src/shared/ui/error-boundary/index.ts",
-  "src/shared/ui/form-drawer/FormDrawer.stories.tsx",
-  "src/shared/ui/form-drawer/FormDrawer.test.tsx",
-  "src/shared/ui/form-drawer/FormDrawer.tsx",
-  "src/shared/ui/form-drawer/index.ts",
   "src/shared/ui/icon/Icon.stories.tsx",
   "src/shared/ui/otp-input/OtpInput.stories.tsx",
   "src/shared/ui/otp-input/OtpInput.test.tsx",
@@ -485,6 +481,7 @@ const completeApplicationFiles = [
   "src/shared/hooks/useFilterParams.test.tsx",
   "src/shared/hooks/useFilterParams.ts",
   "src/shared/lib/allowed-value.ts",
+  "src/shared/lib/pagination.test.ts",
   "src/shared/lib/pagination.ts",
   "src/shared/lib/password.test.ts",
   "src/shared/lib/password.ts",
@@ -505,6 +502,8 @@ const completeApplicationFiles = [
   "src/shared/ui/sortable-table/SortableTable.test.tsx",
   "src/shared/ui/sortable-table/SortableTable.tsx",
   "src/shared/ui/sortable-table/index.ts",
+  "src/shared/ui/sortable-table/reorder-rows.test.ts",
+  "src/shared/ui/sortable-table/reorder-rows.ts",
   "src/features/faqs/Faqs.stories.tsx",
   "src/features/faqs/components/faq-form/FaqForm.stories.tsx",
   "src/shared/ui/sortable-table/SortableTable.stories.tsx",
@@ -535,9 +534,6 @@ const completeApplicationFiles = [
   "src/shared/ui/rich-text-editor/RichTextEditor.stories.tsx",
   "src/shared/ui/rich-text-editor/RichTextEditor.test.tsx",
   "src/shared/ui/rich-text-editor/RichTextEditor.tsx",
-  "src/shared/ui/rich-text-editor/RichTextToolbar.stories.tsx",
-  "src/shared/ui/rich-text-editor/RichTextToolbar.test.tsx",
-  "src/shared/ui/rich-text-editor/RichTextToolbar.tsx",
   "src/shared/ui/rich-text-editor/index.ts",
 ];
 const applicationPolicy = () =>
@@ -561,10 +557,6 @@ const applicationFiles = [
   "src/layouts/default/components/navigation/Navigation.stories.tsx",
   "src/layouts/default/components/breadcrumbs/index.ts",
   "src/layouts/default/components/navigation/index.ts",
-  "src/shared/ui/request-error/RequestError.tsx",
-  "src/shared/ui/request-error/RequestError.test.tsx",
-  "src/shared/ui/request-error/RequestError.stories.tsx",
-  "src/shared/ui/request-error/index.ts",
   ".github/workflows/codeql.yml",
   ".github/workflows/dast.yml",
   ".github/workflows/release.yml",
@@ -646,6 +638,7 @@ const applicationFiles = [
   "src/shared/hooks/useFilterParams.test.tsx",
   "src/shared/hooks/useFilterParams.ts",
   "src/shared/lib/allowed-value.ts",
+  "src/shared/lib/pagination.test.ts",
   "src/shared/lib/pagination.ts",
   "src/shared/lib/password.test.ts",
   "src/shared/lib/password.ts",
@@ -666,6 +659,8 @@ const applicationFiles = [
   "src/shared/ui/sortable-table/SortableTable.test.tsx",
   "src/shared/ui/sortable-table/SortableTable.tsx",
   "src/shared/ui/sortable-table/index.ts",
+  "src/shared/ui/sortable-table/reorder-rows.test.ts",
+  "src/shared/ui/sortable-table/reorder-rows.ts",
   "src/features/content-categories/ContentCategories.test.tsx",
   "src/features/content-categories/ContentCategories.tsx",
   "src/features/content-categories/api.ts",
@@ -687,8 +682,6 @@ const applicationFiles = [
   "src/shared/ui/rich-text-editor/LazyRichTextEditor.tsx",
   "src/shared/ui/rich-text-editor/RichTextEditor.test.tsx",
   "src/shared/ui/rich-text-editor/RichTextEditor.tsx",
-  "src/shared/ui/rich-text-editor/RichTextToolbar.test.tsx",
-  "src/shared/ui/rich-text-editor/RichTextToolbar.tsx",
   "src/shared/ui/rich-text-editor/index.ts",
 ];
 const isCoreAuthPhaseFile = (file) =>
@@ -1730,7 +1723,7 @@ test("core-auth preserves its complete prior closure, owners and tests without a
     current.allowedFiles.length,
   );
   const phaseFiles = current.allowedFiles.filter(isCoreAuthPhaseFile);
-  assert.equal(phaseFiles.length, 38);
+  assert.equal(phaseFiles.length, 39);
   for (const missing of phaseFiles)
     assert.throws(
       () =>
@@ -1824,7 +1817,7 @@ test("Storybook verification requires every explicit story, isolated configurati
   const current = await historicalStorybookPolicy();
   assert.equal(current.phase, "storybook-verification");
   const required = current.allowedFiles.filter(isStorybookPhaseFile);
-  assert.equal(required.length, 52);
+  assert.equal(required.length, 50);
   for (const missing of required) {
     assert.throws(
       () =>

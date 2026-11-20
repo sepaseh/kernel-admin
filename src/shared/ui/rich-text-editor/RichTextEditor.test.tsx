@@ -7,25 +7,41 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { i18n } from "@/shared/i18n";
 
 import { RichTextEditor } from "./RichTextEditor";
 
-const ControlledEditor = () => {
+const ControlledEditor = ({ disabled = false }: { disabled?: boolean }) => {
   const [value, setValue] = useState("<p>Original body</p>");
 
   return (
     <>
-      <RichTextEditor onChange={setValue} value={value} />
+      <RichTextEditor disabled={disabled} onChange={setValue} value={value} />
       <output aria-label="Saved body">{value}</output>
     </>
   );
 };
 
-beforeEach(async () => {
+beforeEach(async ({ onTestFinished }) => {
+  // Quill reads selection bounds when focusing; jsdom does not provide layout.
+  const bounds = Object.getOwnPropertyDescriptor(
+    Range.prototype,
+    "getBoundingClientRect",
+  );
+  Object.defineProperty(Range.prototype, "getBoundingClientRect", {
+    configurable: true,
+    value: () => new DOMRect(),
+  });
+  onTestFinished(() => {
+    if (bounds) {
+      Object.defineProperty(Range.prototype, "getBoundingClientRect", bounds);
+    } else {
+      Reflect.deleteProperty(Range.prototype, "getBoundingClientRect");
+    }
+  });
   await i18n.changeLanguage("en");
 });
 
@@ -100,25 +116,128 @@ describe("rich text editor", () => {
     ).toBeEnabled();
   });
 
-  it("applies formatting and restores it through the toolbar's undo and redo actions", async ({
-    onTestFinished,
-  }) => {
-    // Quill reads selection bounds when focusing; jsdom does not provide layout.
-    const bounds = Object.getOwnPropertyDescriptor(
-      Range.prototype,
-      "getBoundingClientRect",
+  it("keeps generated toolbar controls scoped to their own editor", () => {
+    render(
+      <>
+        <section aria-label="Read-only editor">
+          <RichTextEditor direction="rtl" disabled value="<p>Read-only</p>" />
+        </section>
+        <section aria-label="Editable editor">
+          <RichTextEditor value="<p>Editable</p>" />
+        </section>
+      </>,
     );
-    Object.defineProperty(Range.prototype, "getBoundingClientRect", {
-      configurable: true,
-      value: () => new DOMRect(),
+
+    const readOnly = within(
+      screen.getByRole("region", { name: "Read-only editor" }),
+    );
+    const editable = within(
+      screen.getByRole("region", { name: "Editable editor" }),
+    );
+    const readOnlyBody = readOnly.getByRole("textbox", {
+      name: i18n.t("body"),
     });
-    onTestFinished(() => {
-      if (bounds) {
-        Object.defineProperty(Range.prototype, "getBoundingClientRect", bounds);
-      } else {
-        Reflect.deleteProperty(Range.prototype, "getBoundingClientRect");
-      }
+    const editableBody = editable.getByRole("textbox", {
+      name: i18n.t("body"),
     });
+    const readOnlyToolbar = within(
+      readOnly.getByRole("group", { name: i18n.t("body") }),
+    );
+    const editableToolbar = within(
+      editable.getByRole("group", { name: i18n.t("body") }),
+    );
+
+    expect(readOnlyBody).toHaveAttribute("dir", "rtl");
+    expect(readOnlyBody).toHaveAttribute("aria-readonly", "true");
+    expect(editableBody).toHaveAttribute("dir", "ltr");
+    expect(editableBody).toHaveAttribute("aria-readonly", "false");
+    expect(
+      readOnlyToolbar.getByRole("button", { name: i18n.t("editorBold") }),
+    ).toBeDisabled();
+    expect(
+      editableToolbar.getByRole("button", { name: i18n.t("editorBold") }),
+    ).toBeEnabled();
+    expect(
+      readOnlyToolbar.getByRole("combobox", { name: i18n.t("editorHeading") }),
+    ).toBeDisabled();
+    expect(
+      editableToolbar.getByRole("combobox", { name: i18n.t("editorHeading") }),
+    ).toBeEnabled();
+  });
+
+  it("keeps formatting actions from submitting its containing form", async () => {
+    const user = userEvent.setup();
+    const submit = vi.fn<NonNullable<ComponentProps<"form">["onSubmit"]>>(
+      (event) => event.preventDefault(),
+    );
+    render(
+      <form onSubmit={submit}>
+        <ControlledEditor />
+      </form>,
+    );
+    const toolbar = within(screen.getByRole("group", { name: i18n.t("body") }));
+
+    for (const label of [
+      "editorBold",
+      "editorItalic",
+      "editorUnderline",
+      "editorQuote",
+      "editorBulletList",
+      "editorOrderedList",
+      "editorUndo",
+      "editorRedo",
+      "editorClear",
+    ] as const) {
+      const button = toolbar.getByRole("button", { name: i18n.t(label) });
+      expect(button).toBeEnabled();
+      expect(button).toHaveAttribute("type", "button");
+      await user.click(button);
+    }
+
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it("preserves the chosen heading while controls are disabled and re-enabled", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ControlledEditor />);
+    const editor = screen.getByRole("textbox", { name: i18n.t("body") });
+    const toolbar = within(screen.getByRole("group", { name: i18n.t("body") }));
+    const heading = toolbar.getByRole("combobox", {
+      name: i18n.t("editorHeading"),
+    });
+
+    await user.click(editor);
+    await user.selectOptions(heading, "2");
+    await waitFor(() =>
+      expect(editor.querySelector("h2")).toHaveTextContent("Original body"),
+    );
+    expect(heading).toHaveValue("2");
+
+    rerender(<ControlledEditor disabled />);
+
+    expect(heading).toBeDisabled();
+    await user.selectOptions(heading, "3");
+    expect(heading).toHaveValue("2");
+    expect(editor.querySelector("h2")).toHaveTextContent("Original body");
+    for (const button of toolbar.getAllByRole("button")) {
+      expect(button).toBeDisabled();
+    }
+
+    rerender(<ControlledEditor />);
+    await user.click(editor);
+    await user.selectOptions(heading, "3");
+
+    expect(heading).toBeEnabled();
+    expect(heading).toHaveValue("3");
+    await waitFor(() =>
+      expect(editor.querySelector("h3")).toHaveTextContent("Original body"),
+    );
+    for (const button of toolbar.getAllByRole("button")) {
+      expect(button).toBeEnabled();
+    }
+  });
+
+  it("applies formatting and restores it through the toolbar's undo and redo actions", async () => {
     const user = userEvent.setup();
     render(<ControlledEditor />);
     const editor = screen.getByRole("textbox", { name: i18n.t("body") });

@@ -1,16 +1,15 @@
 import {
   closestCenter,
   DndContext,
+  type DragEndEvent,
+  type DraggableAttributes,
+  type DraggableSyntheticListeners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
-  type DraggableAttributes,
-  type DraggableSyntheticListeners,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -26,7 +25,7 @@ import {
   useContext,
 } from "react";
 
-type SortableRecord = { id: string };
+import { reorderRows, type SortableRecord } from "./reorder-rows";
 
 type SortableTableProps<T extends SortableRecord> = Pick<
   TableProps<T>,
@@ -110,6 +109,18 @@ function SortableRow(
   return <DraggableRow {...props} data-row-key={id} />;
 }
 
+const tableComponents = { body: { row: SortableRow } };
+
+const getRowId = ({ id }: SortableRecord) => id;
+
+const createDragColumn = (dragLabel: string) => ({
+  align: "center" as const,
+  key: "sort",
+  render: () => <DragHandle label={dragLabel} />,
+  title: dragLabel,
+  width: 48,
+});
+
 export function SortableTable<T extends SortableRecord>({
   columns,
   data,
@@ -128,43 +139,34 @@ export function SortableTable<T extends SortableRecord>({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+  const isDragDisabled = disabled || !sortable;
   const baseColumns = columns ?? [];
-  const dragColumn = {
-    align: "center" as const,
-    key: "sort",
-    render: () => <DragHandle label={dragLabel} />,
-    title: dragLabel,
-    width: 48,
-  };
   const sortableColumns: TableProps<T>["columns"] = [
-    ...(sortable ? [dragColumn] : []),
+    ...(sortable ? [createDragColumn(dragLabel)] : []),
     ...baseColumns,
   ];
 
   function handleDragEnd({ active, over }: DragEndEvent) {
-    if (disabled || !sortable || !over || active.id === over.id) return;
-    const activeIndex = data.findIndex(({ id }) => id === active.id);
-    const overIndex = data.findIndex(({ id }) => id === over.id);
-    if (activeIndex >= 0 && overIndex >= 0) {
-      const reorderedData = arrayMove(data, activeIndex, overIndex);
-      void onReorder(reorderedData);
-    }
+    if (isDragDisabled) return;
+
+    const reorderedData = reorderRows(data, active.id, over?.id);
+    if (reorderedData) void onReorder(reorderedData);
   }
 
   return (
-    <DisabledContext value={disabled || !sortable}>
+    <DisabledContext value={isDragDisabled}>
       <DndContext
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
         sensors={sensors}
       >
         <SortableContext
-          items={data.map(({ id }) => id)}
+          items={data.map(getRowId)}
           strategy={verticalListSortingStrategy}
         >
           <Table<T>
             columns={sortableColumns}
-            components={{ body: { row: SortableRow } }}
+            components={tableComponents}
             dataSource={data}
             expandable={expandable}
             loading={loading}

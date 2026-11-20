@@ -9,6 +9,7 @@ import {
   Tooltip,
 } from "antd";
 import { useResponsive } from "antd-style";
+import { isCancel } from "axios";
 import {
   FoldVertical,
   LogOut,
@@ -35,7 +36,6 @@ import {
   type CurrentUser,
   fetchCurrentUser as fetchCurrentUserRequest,
 } from "@/features/account";
-import { isCancel } from "axios";
 import { logout } from "@/features/auth";
 import {
   AdminApiError,
@@ -44,10 +44,10 @@ import {
   getAccessTokenVersion,
   setUnauthorizedHandler,
 } from "@/shared/api";
-
 import { useAbortController, useLock } from "@/shared/hooks";
 import { getErrorMessage } from "@/shared/lib";
-import { RequestError } from "@/shared/ui/request-error";
+import { ErrorFallback } from "@/shared/ui/error-boundary";
+
 import { Breadcrumbs } from "./components/breadcrumbs";
 import { Navigation } from "./components/navigation";
 import type { DefaultLayoutContext } from "./types";
@@ -186,12 +186,14 @@ export const DefaultLayout = () => {
       />
     );
 
+  const currentUserErrorTitle = error?.message || t("currentUserLoadFailed");
+
   if (!currentUser)
     return (
       <>
-        <RequestError
-          error={error ?? new Error(t("currentUserLoadFailed"))}
+        <ErrorFallback
           onRetry={fetchCurrentUser}
+          title={currentUserErrorTitle}
         />
         {error instanceof AdminApiError && error.status === 403 && (
           <Button danger loading={loggingOut} onClick={handleLogout}>
@@ -332,7 +334,12 @@ export const DefaultLayout = () => {
           width: "100%",
         }}
       >
-        {error && <RequestError error={error} onRetry={fetchCurrentUser} />}
+        {error && (
+          <ErrorFallback
+            onRetry={fetchCurrentUser}
+            title={currentUserErrorTitle}
+          />
+        )}
         <Breadcrumbs currentRoute={currentRoute} items={allowedNavigation} />
         <Outlet
           context={

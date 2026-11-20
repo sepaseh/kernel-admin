@@ -357,7 +357,7 @@
         "src/shared/hooks/useLock.ts",
         "src/features/users/Users.tsx",
         "src/features/users/components/user-form/UserForm.tsx",
-        "src/shared/ui/request-error/RequestError.tsx"
+        "src/shared/ui/error-boundary/ErrorFallback.tsx"
       ],
       "contracts": ["docs/authentication.md"],
       "tests": [
@@ -418,7 +418,6 @@
         "src/shared/ui/digits-input/DigitsInput.tsx",
         "src/shared/ui/otp-input/OtpInput.tsx",
         "src/shared/ui/password-fields/PasswordFields.tsx",
-        "src/shared/ui/form-drawer/FormDrawer.tsx",
         "src/shared/ui/error-boundary/ErrorBoundary.tsx",
         "src/shared/ui/route-loading/RouteLoading.tsx",
         "src/assets/styles/index.css",
@@ -434,7 +433,7 @@
         "src/shared/lib/allowed-value.ts",
         "src/shared/lib/pagination.ts",
         "src/shared/lib/password.ts",
-        "src/shared/ui/request-error/RequestError.tsx",
+        "src/shared/ui/error-boundary/ErrorFallback.tsx",
         "src/test/setup.ts",
         "src/test/browser.ts",
         "vitest.config.ts",
@@ -449,26 +448,29 @@
       ],
       "tests": [
         "src/app/providers/antd/Antd.test.tsx",
+        "src/shared/storage/compact.test.ts",
         "src/shared/storage/state.test.ts",
-        "src/shared/storage/preferences.test.ts",
+        "src/shared/storage/theme.test.ts",
         "src/shared/storage/hooks/useLocalStorageWatcher.test.ts",
         "src/shared/hooks/useGoBack.test.tsx",
         "src/shared/ui/digits-input/DigitsInput.test.tsx",
         "src/shared/ui/otp-input/OtpInput.test.tsx",
         "src/shared/ui/password-fields/PasswordFields.test.tsx",
-        "src/shared/ui/form-drawer/FormDrawer.test.tsx",
         "src/shared/ui/error-boundary/ErrorBoundary.test.tsx",
         "src/shared/ui/route-loading/RouteLoading.test.tsx",
-        "src/assets/assets.test.ts",
+        "src/assets/fonts/vazirmatn/vazirmatn.test.ts",
+        "src/assets/public-assets.test.ts",
+        "src/assets/styles/styles.test.ts",
         "src/shared/hooks/useAbortController.test.tsx",
         "src/shared/hooks/useLock.test.tsx",
         "src/shared/ui/image-upload/ImageUpload.test.tsx",
         "src/shared/ui/image-upload/image.test.ts",
         "src/shared/hooks/useDebouncedFilters.test.tsx",
         "src/shared/hooks/useFilterParams.test.tsx",
+        "src/shared/lib/pagination.test.ts",
         "src/shared/lib/password.test.ts",
         "src/features/users/api.helpers.test.ts",
-        "src/shared/ui/request-error/RequestError.test.tsx"
+        "src/layouts/default/Default.test.tsx"
       ],
       "checks": ["boundaries", "typecheck", "lint", "unit-coverage"],
       "rules": [
@@ -546,7 +548,7 @@
       "tests": [
         "src/app/providers/antd/Antd.test.tsx",
         "src/test/storybook/StoryShell.test.tsx",
-        "src/shared/ui/form-drawer/FormDrawer.stories.tsx"
+        "src/features/faqs/components/faq-form/FaqForm.stories.tsx"
       ],
       "checks": [
         "typecheck",
