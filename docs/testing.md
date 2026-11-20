@@ -1,8 +1,10 @@
 # Write and maintain tests
 
-Storybook browser files run sequentially so animation, visibility and focus assertions remain reliable under their existing deadlines. All stories, behavioral assertions and browser coverage remain enabled.
-
-Use this guide when adding a regression or changing a fixture. [Validation](validation.md) owns how to select and run verification profiles, prepare an exact source snapshot and interpret hosted evidence.
+Run the smallest test that exercises the changed behavior. Use the
+[validation manifest](../.agents/validation.json) to select related checks.
+Before an authorized commit or PR, run the full profile as described in
+[validation](validation.md).
+Use this guide to choose the test owner, add a regression and review fixture behavior.
 
 ## Choose the test owner
 
@@ -15,20 +17,20 @@ Use this guide when adding a regression or changing a fixture. [Validation](vali
 | Composed application journey                      | `e2e/`                                     | Built-panel behavior through the browser with explicit API handlers.     |
 | Consumer wire expectations                        | `contract/`                                | Real consumer adapters against an owned local Pact mock provider.        |
 
-Give each script a direct regression suite with the same basename: `<script>.test.mjs`, or `<script>.test.ps1` for PowerShell. Keep cases for different implementation owners in their matching suites. A separate `*.integration.test.mjs` suite may exercise composition across boundaries. Reusable Node fixture setup belongs in flat `*.test-support.mjs` helpers; helpers register no tests. Feature-specific fixtures stay with their owner; do not create another backend or depend on another checkout's service.
+Give each script a direct regression suite with the same basename, using `<script>.test.mjs` or `<script>.test.ps1` for PowerShell. Keep cases for different implementation owners in their matching suites. A separate `*.integration.test.mjs` suite may exercise composition across boundaries. Put reusable Node fixture setup in flat `*.test-support.mjs` helpers that register no tests. Keep feature-specific fixtures with their owner and use only the repository's synthetic services.
 
 ## Add a regression
 
 1. Describe the triggering action and expected visible result. Read the closest existing case and the behavior's source owner before choosing a fixture.
 2. Supply complete synthetic data and explicit HTTP responses. Reject undeclared requests rather than allowing a fixture to reach a real service. For stories, exercise real feature adapters through a fully replaced shared HTTP client; the shared request guard must catch unconfigured calls even when a component catches the error.
 3. Exercise relevant success and failure paths. For asynchronous work, cover cancellation, resource replacement, session changes and late results. Preserve allowed/read-only behavior instead of merely checking implementation calls.
-4. Run the smallest relevant case first. For example, this command uses the installed Vitest configuration from the repository root:
+4. Run the smallest relevant case first. After installing locked dependencies, check the HTTP client from the repository root with the local Vitest runner.
 
    ```sh
-   npx vitest run src/shared/api/client.test.ts
+   npm exec --no -- vitest run src/shared/api/client.test.ts
    ```
 
-   Expect a nonzero exit code for any failed assertion. Use [validation](validation.md) for the required gate before a commit or PR handoff.
+   The runner exits nonzero on a failed assertion. Confirm that a new regression case catches the original failure and passes with the fix. Use the [required validation gate](validation.md#validate-the-exact-proposed-source) before a commit or PR handoff.
 
 5. Check cleanup and diagnostics. Use disposable, uniquely owned directories, ports, processes and resource labels. Attempt every owned cleanup and preserve both the primary and cleanup errors. Keep review evidence and recovery files in ignored repository-local directories.
 
@@ -45,7 +47,7 @@ Operational helper imports must stay free of environment-file reads, network req
 
 ## Test components in Storybook
 
-The isolated [Storybook Vite configuration](../.storybook/vite.config.ts) disables ambient environment-file and VITE discovery. The [browser test configuration](../vitest.storybook.config.ts) runs registered play interactions in real Chromium; accessibility violations fail.
+The isolated [Storybook Vite configuration](../.storybook/vite.config.ts) disables ambient environment-file and VITE discovery. The [browser test configuration](../vitest.storybook.config.ts) runs story files sequentially in real Chromium. This keeps animation, visibility and focus assertions reliable within their deadlines. Accessibility violations from enabled rules fail the run.
 
 The same Storybook run records V8 coverage for application source under `src/`
 and writes `coverage/storybook/lcov.info`. Test files, stories and test helpers
@@ -58,6 +60,25 @@ Use the real UI, theme and feature adapters with a complete replacement for the 
 
 Created roles, users and uploads keep distinct fixture IDs until the next reset, including after deletions. The StoryShell fixture ignores identity reloads started before its session was cleared. Unit regressions cover these behaviors alongside the browser stories.
 
+### Verify read-only users
+
+1. From the repository root, run the installed Storybook server.
+
+   ```sh
+   npm exec --no -- storybook dev --host 127.0.0.1 --port 6006 --exact-port --ci
+   ```
+
+2. Open <http://127.0.0.1:6006> and select **Features / Users / Page / Read Only**.
+   The [story](../src/features/users/Users.stories.tsx) uses a synthetic account
+   with `users.read`.
+3. Confirm the user list is visible and the controls for creating, editing or
+   deleting a user or changing their password are absent. Stop Storybook with
+   Ctrl+C when finished.
+
+Select the named story again if a different permission state is shown. This
+scenario verifies how the UI presents permissions. API authorization has its
+own contract and checks.
+
 ## Test application journeys and contracts
 
 [Playwright](../playwright.config.ts) starts an owned strict-port preview of the built panel. Its fixtures supply explicit synthetic API handlers and reject unexpected external requests. Preserve settings initialization, permission checks before protected page imports, account/session transitions, retained read data and mutation cancellation.
@@ -66,14 +87,16 @@ Ordinary local and PR verification uses Chromium. Complete verification substitu
 
 [Pact consumer tests](../vitest.contract.config.ts) call the real adapters against an owned local mock provider. They verify consumer expectations; a developer's chosen backend needs its own authorized integration verification. Browser journeys and consumer contracts supply different evidence.
 
-Where admitted, error-recovery tests retain the fallback, reload and route-access assertions. Performance checks run through the independent browser and Lighthouse tooling.
+Error-recovery tests retain the fallback, reload and route-access assertions. Performance checks run through the independent browser and Lighthouse tooling.
 Lighthouse checks settings and form readiness during a separate synthetic preparation navigation, while the audit retains the network and page-error guards.
+
+For an authorized deployment, use the separate [staging and smoke profiles](validation.md#interpret-the-evidence). The staging asset test records same-origin script, stylesheet and font failures from HTTP error responses and requests that fail before receiving a response. Keep both paths when changing the fixture.
 
 ## Review appearance
 
 For an affected screen, exercise translated names/errors, keyboard submission, invalid-field error associations, modal semantics, Escape and protection against accidental destructive submission. Preserve reduced motion and logical RTL/LTR layout across light/dark/compact variants. Static font tests inspect licensed WOFF2 data and CSS; the font journey separately checks loading from the application origin. These checks do not establish interpolation at every weight or deployed accessibility.
 
-Storybook and application axe audits exclude `color-contrast`; application audits
+Storybook and synthetic application E2E axe audits exclude `color-contrast`. The application E2E audits
 also exclude `scrollable-region-focusable`. The API-owned palettes and Ant
 Design's displayed colors remain unchanged; automated checks do not impose a
 numerical color-contrast threshold. Protected admin pages identify the current

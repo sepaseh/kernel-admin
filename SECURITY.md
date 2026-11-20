@@ -1,19 +1,30 @@
 # Security policy
 
-## Report a vulnerability
+## Report a vulnerability privately
 
-1. Use [private vulnerability reporting](https://github.com/sepaseh/kernel-admin/security/advisories/new) when available. If that channel is unavailable, ask the owner for a secure reporting channel before sharing sensitive details.
-2. Include the affected revision, route or component, observed behavior, expected behavior and impact. Provide a minimal synthetic reproduction where possible.
-3. Remove credentials, cookies, authorization headers, real user records and sensitive payloads from the report. Keep sensitive reproduction details out of public issues, PRs and commits.
+Use **Report a vulnerability** in the repository's GitHub **Security** tab when
+private reporting is available. Otherwise, ask the repository owner for a
+secure channel before sharing technical details. Keep reports and sensitive
+details out of public issues, pull requests, commits and logs.
+
+Include the affected revision, feature or endpoint, expected and observed
+behavior, potential impact and steps using synthetic data. Redact credentials,
+tokens, personal information and sensitive payloads from the report and any
+attachments. Review error messages and nested causes before sharing them.
+
+For a failed request, include the HTTP status and a sanitized request ID if
+available. Use a route template such as `/users/:id` instead of a real URL
+with identifiers or query values. Keep cookies and authorization headers out
+of the report. [Private vulnerability reporting](https://github.com/sepaseh/kernel-admin/security/advisories/new)
 
 ## Boundaries to preserve
 
-| Boundary                                  | Required behavior                                                                                                                                                                    | Detailed owner                                                                                 |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| Browser credentials and asynchronous work | Bearer credentials stay in memory. Login/logout generations, bounded shared refresh, cancellation and post-fulfillment guards prevent old work from changing a newer login.          | [Authentication and requests](docs/authentication.md)                                          |
-| Server authority                          | The API authorizes every operation and owns session revocation, abuse controls, data, uploads and storage. Client route guards and hidden controls only govern presentation.         | [Application architecture](docs/architecture.md)                                               |
-| Untrusted responses and diagnostics       | Access tokens receive runtime validation; settings use typed models without runtime envelope validation. Render untrusted data safely and retain only safe error/request-ID details. | [Shared client](src/shared/api/client.ts) and [settings adapter](src/features/settings/api.ts) |
-| Public settings and preferences           | Language, direction and calendar remain API-owned; browser preferences contain theme/compact only.                                                                                   | [Localization](docs/localization.md)                                                           |
+| Boundary                                  | Required behavior                                                                                                                                                                                        | Detailed owner                                                                                                                          |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser credentials and asynchronous work | Bearer credentials stay in memory. Login/logout generations, bounded shared refresh, cancellation and post-fulfillment guards prevent old work from changing a newer login.                              | [Authentication and requests](docs/authentication.md)                                                                                   |
+| Server authority                          | The API authorizes every operation and owns session revocation, abuse controls, data, uploads and storage. Client route guards and hidden controls only govern presentation.                             | [Application architecture](docs/architecture.md)                                                                                        |
+| Untrusted responses and diagnostics       | The token parser requires a nonblank access-token string. The settings adapter trusts typed metadata at runtime. The client checks request-ID format. Server error messages and causes remain untrusted. | [Token parser](src/shared/api/token.ts), [shared client](src/shared/api/client.ts) and [settings adapter](src/features/settings/api.ts) |
+| Public settings and preferences           | Language, direction and calendar remain API-owned; browser preferences contain theme/compact only.                                                                                                       | [Localization](docs/localization.md)                                                                                                    |
 
 Review HTTP, token/cookie, CORS/Origin and permission expectations against the developer's selected backend when its integration boundary changes. Preserve the single eligible protected-401 replay and avoid automatically replaying writes after ordinary transient failures. Synthetic consumer contracts do not establish provider behavior, cookie security or a completed security audit.
 

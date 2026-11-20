@@ -2,6 +2,8 @@ import { lstat, readdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { parsers as htmlParsers } from "prettier/plugins/html";
+import { parsers as markdownParsers } from "prettier/plugins/markdown";
 import semver from "semver";
 
 import {
@@ -495,10 +497,17 @@ const documentationAdmission = async (root) => {
           "Publication documentation needs an explicit allowedFiles array",
         ],
       };
-    return {
-      files: new Set(policy.allowedFiles.filter(isMaintainedMarkdown)),
-      errors: [],
-    };
+    const files = new Set();
+    const errors = [];
+    for (const filename of policy.allowedFiles.filter(isMaintainedMarkdown)) {
+      if (
+        filename.includes("\\") ||
+        path.posix.normalize(filename) !== filename
+      )
+        errors.push(`Publication Markdown path must be canonical: ${filename}`);
+      else files.add(filename);
+    }
+    return { files, errors };
   } catch (error) {
     return {
       files: new Set(),
@@ -549,18 +558,21 @@ const inspectDocumentationLanguage = async (
   );
   return inspected.flat();
 };
-const inspectMarkdownLink = async (root, filename, link) => {
-  if (/^(?:https?:|mailto:|codex:|#)/i.test(link)) return [];
+const inspectMarkdownLink = async (root, filename, link, headingsFor) => {
+  if (/^(?:https?:|mailto:|codex:)/i.test(link)) return [];
+  const hash = link.indexOf("#");
+  const fragment = hash === -1 ? "" : link.slice(hash + 1);
+  let relative;
   try {
     const target = decodeURIComponent(
       link.split(/[?#]/)[0].replace(/^<|>$/g, ""),
     );
-    const relative =
-      path
-        .relative(root, path.resolve(root, path.dirname(filename), target))
-        .replaceAll(path.sep, "/") || ".";
+    relative = target
+      ? path
+          .relative(root, path.resolve(root, path.dirname(filename), target))
+          .replaceAll(path.sep, "/") || "."
+      : filename;
     await checkedPath(root, relative);
-    return [];
   } catch (error) {
     const reason =
       error instanceof UnsafeGuidancePathError
@@ -568,6 +580,26 @@ const inspectMarkdownLink = async (root, filename, link) => {
         : "Missing or unsafe guide link";
     return [reason + ": " + filename + ": " + link];
   }
+  if (!fragment) return [];
+  const headings = await headingsFor(relative);
+  if (!headings) return [];
+  let anchor;
+  try {
+    anchor = decodeURIComponent(fragment);
+  } catch {
+    return [`Invalid Markdown heading fragment: ${filename}: ${link}`];
+  }
+  const query = link.indexOf("?");
+  if (
+    query !== -1 &&
+    query < hash &&
+    /^L[1-9]\d*(?:-L[1-9]\d*)?$/.test(anchor) &&
+    new URLSearchParams(link.slice(query + 1, hash)).get("plain") === "1"
+  )
+    return [];
+  return anchor.toLowerCase() === "top" || headings.has(anchor)
+    ? []
+    : [`Missing Markdown heading: ${filename}: ${link}`];
 };
 const markdownIndent = (line, start = 0) => {
   let end = start,
@@ -1280,23 +1312,94 @@ export const markdownLinks = (markdown) => {
   }
   return links;
 };
-const inspectMarkdown = async (root, filename) => {
-  let content;
+function* documentNodes(children) {
+  const pending = children.toReversed();
+  while (pending.length) {
+    const node = pending.pop();
+    yield node;
+    for (const child of (node.children ?? []).toReversed()) pending.push(child);
+  }
+}
+
+const explicitHtmlAnchors = (markup) => {
+  if (!/<(?:a|h[1-6])(?=[\s>])/i.test(markup)) return [];
+  try {
+    const { children } = htmlParsers.html.parse(markup, {});
+    const anchors = [];
+    for (const node of documentNodes(children)) {
+      if (!/^(?:a|h[1-6])$/i.test(node.name ?? "")) continue;
+      for (const attribute of node.attrs) {
+        if (
+          !/^id$/i.test(attribute.name) &&
+          !(node.name.toLowerCase() === "a" && /^name$/i.test(attribute.name))
+        )
+          continue;
+        const anchor = (attribute.valueTokens ?? [])
+          .map((token) => token.parts[0])
+          .join("");
+        if (anchor) anchors.push(anchor);
+      }
+    }
+    return anchors;
+  } catch {
+    // Unparseable raw HTML supplies no verifiable anchor.
+    return [];
+  }
+};
+
+const markdownDetails = (markdown) => {
+  const headings = new Set();
+  const explicit = new Set();
+  const references = [];
+  const nextSuffix = new Map();
+  const { children } = markdownParsers.markdown.parse(markdown, {});
+  for (const node of documentNodes(children)) {
+    if (node.type === "definition" && /#./.test(node.url))
+      references.push(node.url);
+    if (node.type === "html") {
+      for (const anchor of explicitHtmlAnchors(node.value))
+        explicit.add(anchor);
+    }
+    if (node.type !== "heading") continue;
+    const base = [...documentNodes(node.children)]
+      .filter(({ type }) => type === "text" || type === "inlineCode")
+      .map(({ value }) => value)
+      .join("")
+      .trim()
+      .toLowerCase()
+      .replace(/\r?\n/g, " ")
+      .replace(/[^\p{L}\p{N}\p{M} _-]/gu, "")
+      .replaceAll(" ", "-");
+    let anchor = base;
+    let suffix = nextSuffix.get(base) ?? 1;
+    while (headings.has(anchor)) anchor = `${base}-${suffix++}`;
+    nextSuffix.set(base, suffix);
+    headings.add(anchor);
+  }
+  return { headings: headings.union(explicit), references };
+};
+
+const readMarkdownGuide = async (root, filename) => {
   try {
     let directory = path.posix.dirname(filename.replaceAll("\\", "/"));
     while (directory !== ".") {
       await checkedPath(root, directory);
       directory = path.posix.dirname(directory);
     }
-    content = await readSource(root, filename);
+    const content = await readSource(root, filename);
+    return { content, ...markdownDetails(content) };
   } catch (error) {
-    return [
-      `Missing or unsafe maintained guide: ${filename}: ${error.message}`,
-    ];
+    return {
+      error: `Missing or unsafe maintained guide: ${filename}: ${error.message}`,
+    };
   }
+};
+const inspectMarkdown = async (root, filename, document, headingsFor) => {
+  const { content, error, references } = await document;
+  if (error) return [error];
   const links = await Promise.all(
-    markdownLinks(content).map((link) =>
-      inspectMarkdownLink(root, filename, link),
+    [...markdownLinks(content), ...references].map((link) =>
+      inspectMarkdownLink(root, filename, link, headingsFor),
     ),
   );
   return links.flat();
@@ -1370,8 +1473,18 @@ export const checkGuidance = async (directory = repository) => {
     inspectDocumentationLanguage(root, admission.files),
   ]);
   const publicMarkdown = [...admission.files].sort();
+  const documents = new Map(
+    publicMarkdown.map((filename) => [
+      filename,
+      readMarkdownGuide(root, filename),
+    ]),
+  );
+  const headingsFor = async (filename) =>
+    (await documents.get(filename))?.headings;
   const inspected = await Promise.all(
-    publicMarkdown.map((filename) => inspectMarkdown(root, filename)),
+    [...documents].map(([filename, document]) =>
+      inspectMarkdown(root, filename, document, headingsFor),
+    ),
   );
   errors.push(
     ...admission.errors,

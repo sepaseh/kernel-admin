@@ -1,37 +1,31 @@
 ---
 name: design-ui
-description: Design or refine published Kernel Admin components and stories with the existing Ant Design stack, including concepts and authorized design handoffs.
+description: Design or refine Kernel Admin screens, components and stories with the existing Ant Design stack, including concepts and authorized design handoffs.
 ---
 
 # Design UI
 
-Read [AGENTS](../../../AGENTS.md), [DESIGN](../../../DESIGN.md) and the closest source
-recipe. Follow canonical styling, React and localization guidance, plus Storybook
-guidance when admitted, rather than copying product rules into another design guide.
+Read [AGENTS.md](../../../AGENTS.md), the [design system](../../../DESIGN.md)
+and the owner of the affected interface in the current checkout. Identify the
+requested deliverable and available tools. Follow the
+[remote action rules](../../rules/safety.md#external-systems) for uploads and
+publication.
 
-1. Identify the requested deliverable: concept/asset/design handoff, component or
-   story code in this checkout, or an explicitly authorized hosted prototype.
-   Select only available tools and read their relevant skill before use. Keep
-   source upload/publication within existing user authorization and clarify only
-   material missing decisions.
-2. Inspect actual components, token/asset owners and affected HTTP types. Reuse
-   Ant Design, antd-style, React Router, Axios and directly typed component props
-   with component-specific names and type-only imports. Preserve API-owned language, direction,
-   calendar and permissions; preview controls are synthetic fixtures.
-3. Implement the authorized scope with translated labels, request/session guards,
-   permission boundaries, keyboard behavior and responsive/theme states. Respect
-   the admitted capability in [the publication policy](../../../.github/bootstrap-policy.json).
-   While `applicationReady` is false, component/story implementation does not
-   establish an application entry point, route composition or production deployment.
-4. Select actual checks from [the manifest](../../validation.json), following
-   [validation](../../../docs/validation.md) and
-   [validate-change](../validate-change/SKILL.md). Use unit and jsdom component
-   tests, plus isolated Storybook browser interaction/accessibility
-   evidence for registered cases when that suite is admitted. Application E2E
-   and visual comparison require admitted owners, genuine current-revision runs
-   and human-reviewed baselines; a component pass or historical image cannot supply
-   that evidence. Guidance-only work uses the focused guidance profile during iteration;
-   an authorized commit/push/PR handoff still requires the complete full gate.
-5. Report concrete source/artifact locations, actual checks, visual observations
-   and remaining limits. Distinguish a design artifact, component implementation
-   and verified hosting. Optional adapters cannot prove automatic host loading.
+1. Confirm whether the request is for a concept, asset, design handoff, screen,
+   component, story or explicitly authorized hosted prototype. Read the relevant
+   skill before using a design tool. Clarify missing decisions that materially
+   affect the scope.
+2. Inspect existing components, tokens, assets and affected HTTP types. For a
+   routed screen, trace its entry and layout before changing the feature.
+   [Routes](../../../src/app/Routes.tsx) · [Import rules](../../rules/imports.md)
+3. Implement the authorized scope against the admitted source. Use existing
+   owners for request lifecycles, permission checks, translated labels, keyboard
+   interactions and visual states.
+   [Publication policy](../../../.github/bootstrap-policy.json) · [React](../../rules/react.md) · [Styling](../../rules/styling.md) · [Localization](../../rules/localization.md)
+4. Review the delivered artifact for concept or handoff work. For an implemented
+   interaction, review its story or routed screen. Use applicable approved
+   images and follow the validation workflow for the scope.
+   [Design review](../../../DESIGN.md#review-the-interaction) · [Validation workflow](../validate-change/SKILL.md) · [Appearance review](../../../docs/testing.md#review-appearance)
+
+Report the deliverable, reused or changed components and tokens, actual checks,
+visual observations and evidence limits.

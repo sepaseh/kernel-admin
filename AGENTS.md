@@ -1,33 +1,72 @@
 # Assistant entry point
 
-[The publication policy](.github/bootstrap-policy.json) defines the currently admitted source. Application conventions below apply when their owners are admitted; plain paths can identify planned owners and do not establish a runnable application or successful execution.
-
-Read [assistant guidance](.agents/README.md), its [settings index](.agents/settings.json) and the relevant canonical rules before changing source. Use the existing [architecture](docs/architecture.md), [development guide](docs/development.md) and [task map](.agents/navigation.json) to locate current owners. Follow [Contributing](CONTRIBUTING.md).
+Read the [assistant guidance index](.agents/README.md) and
+[Contributing](CONTRIBUTING.md) before making changes. Use the
+[publication policy](.github/bootstrap-policy.json) to confirm the current phase
+and admitted files. Read the applicable rules, source owners and tests. Verify
+behavior against the current source and actual checks.
 
 ## Scope and safety
 
-Preserve unrelated tracked, staged and untracked work. Never read real environment files, credentials, keys, databases, uploads or browser state as test fixtures. Use the existing checkout; an additional worktree, clone or copied implementation checkout requires prior explicit authorization under the [working-checkout rule](.agents/rules/branches.md#working-checkout).
+Use the existing checkout and preserve unrelated tracked, staged and untracked
+work. Get explicit user authorization for any additional worktree, clone or
+copied implementation checkout, including when delegating.
+[Working-checkout rules](.agents/rules/branches.md#working-checkout)
 
-Keep one standalone root project. Do not add workspaces, backend SDKs, local-package links or external project source dependencies. A consuming developer chooses a backend implementing the local HTTP contract.
-
-The [publication policy](.github/bootstrap-policy.json) identifies the admitted application source. Follow the [development guide](docs/development.md) for its React, Ant Design, React Router and Axios owners. Preserve memory-only tokens, session generations, bounded shared refresh, cancellation and stale-result guards. Source admission and test configuration do not establish successful execution.
+Use disposable synthetic fixtures. Keep real environments, credentials, keys,
+databases, uploads and browser state out of fixtures. Follow the
+[safety rules](.agents/rules/safety.md#secrets-and-local-state) for public examples,
+private state and authorized access.
 
 When production source must remain unchanged, explain the exact failing file,
-trigger, evidence and minimal proposal in the current chat and discuss the change
-before editing it. Honor existing approval for that scope. Keep investigation
-evidence in the chat or authorized PR materials, not a maintained decision log.
-A failing test does not authorize a source rewrite; retain genuine regressions.
+trigger, evidence and minimal proposal in the current chat. Discuss the change
+before editing and honor existing approval for that scope. Retain genuine
+failing assertions.
 
 ## Git and review
 
-Use a verified feature branch and PR for every change to `main`. Never push directly to protected `main`, force-push it or bypass protection. Honor existing authorization; committing, publishing, requesting a provider review and merging are distinct action boundaries.
+When reviewing a PR or addressing review feedback, read
+[Address review feedback](.agents/rules/code-review.md#address-review-feedback)
+at the start of the task, before switching branches or editing files. Record the
+outcome and verification for each finding. Reply in the original review thread
+when authorized.
 
-Plan for at most 80 GitHub changed-file entries per PR; 100 is the mandatory publication maximum. Before opening a PR or pushing further changes, count its complete live base-to-proposed-head diff, including additions, deletions, renames and binaries; one rename is one entry. Split larger work into reviewable PRs. Do not publish more than 100 entries without prior explicit user authorization for that specific oversized scope; cohesion alone is not an exception. Recount after scope or base changes. Follow [Git workflow](.agents/rules/git.md), [PR policy](.agents/rules/pull-requests.md) and the [review skill](.agents/skills/review-pr/SKILL.md).
+Use a verified feature branch and PR for changes to protected `main`.
+Honor existing authorization for the same action and scope. Follow the
+[Git workflow](.agents/rules/git.md) and
+[remote action boundaries](.agents/rules/safety.md#external-systems).
+Review the complete diff against the intended base before publication. Follow
+the [PR scope rules](.agents/rules/pull-requests.md#before-creation) and the
+[review workflow](.agents/skills/review-pr/SKILL.md).
+
+Keep direct pushes and force pushes to protected `main` prohibited. Committing,
+publishing, requesting review and merging require separate authorization.
+Publishing over 100 changed-file entries requires explicit authorization for
+that specific scope. Count the complete diff against the live intended base
+before opening a PR or pushing further changes.
 
 ## Verification and documentation
 
-The [validation manifest](.agents/validation.json) owns commands and profiles. Start focused, then run its complete `full` profile on the exact proposed publication export before an authorized commit, push or handoff. Keep behavioral assertions, type safety, lint and security controls intact. Numerical coverage, duplication, complexity and analyzer scores are advisory; they do not justify extra abstractions, shallow tests or cosmetic source rewrites. Follow [code quality](.agents/rules/code-quality.md). Report actual results and unavailable evidence.
+Start with a focused check from the [validation manifest](.agents/validation.json).
+Preserve required checks, assertions, type safety, lint and security controls.
+Report actual results, failures and unavailable evidence. Follow the
+[validation workflow](.agents/skills/validate-change/SKILL.md).
 
-Maintain English, current, task-oriented documentation through the [documentation map](docs/README.md). Guides describe current behavior and procedures, without PR numbers, commit hashes, CI-run results or past owner decisions. Keep required visual-baseline provenance in its technical metadata. When UI catalogs are admitted, retain all ten catalogs and Persian calendar data; the API owns language, direction and calendar, while browser preferences own theme and compact mode.
+Keep maintained documentation and assistant instructions in English, current
+and organized by reader task. Use the [documentation index](docs/README.md)
+and the [documentation rules](.agents/rules/guidance.md).
 
-Only the reviewed examples at `.env.example`, `deploy/docker/compose.env.example` and `deploy/native/nginx.env.example` may become public source fixtures when admitted. Their private counterparts remain unread. Deployment source and optional hooks do not authorize operational targets or prove automatic execution.
+Before an authorized commit, push or handoff, run the required `full` profile
+on the exact proposed source export. Follow the local rules for
+[advisory metrics](.agents/rules/code-quality.md#static-analysis-findings),
+execution evidence, localization contracts and visual-baseline provenance.
+
+## Source boundaries
+
+Keep one standalone root project. Do not add workspaces, backend SDKs,
+local-package links or external project source dependencies. Follow the
+[import rules](.agents/rules/imports.md) and the
+[local HTTP contract](.agents/rules/api-collection.md).
+Preserve memory-only tokens, session generations, bounded shared refresh,
+cancellation and stale-result guards.
+[Authentication and request lifecycles](docs/authentication.md)

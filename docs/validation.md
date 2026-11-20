@@ -1,8 +1,11 @@
 # Validate a source change
 
-Use this guide to choose checks and prepare evidence for a commit or PR. [Testing](testing.md) explains how to write fixtures; [deployment](deployment.md) covers packaging and authorized target operations.
-
-[The validation manifest](../.agents/validation.json) owns check commands, profiles, required/advisory kinds and CI responsibility. [Settings](../.agents/settings.json) project that inventory. Read those owners instead of maintaining another complete command list in prose.
+The [validation manifest](../.agents/validation.json) defines check commands,
+profiles and execution order.
+[Settings](../.agents/settings.json) project required and advisory checks and
+CI responsibility from that inventory. Use this guide to prepare evidence for
+a commit or PR. See [testing](testing.md) for fixtures and [deployment](deployment.md)
+for packaging and authorized target operations.
 
 ## Choose a profile
 
@@ -17,21 +20,21 @@ Use this guide to choose checks and prepare evidence for a commit or PR. [Testin
 | Check an explicitly authorized staging deployment                | `staging`     | Four browser projects validate public journeys, assets, accessibility, headers and API health.              |
 | Check an explicitly authorized released deployment               | `smoke`       | Chromium checks the public application, API health and served immutable release identity.                   |
 
-The application `full` profile includes the required [actionlint runner](../scripts/run-actionlint.mjs). It verifies the pinned official archive's SHA-256 and checks the actual workflows. The first run needs access to the official release asset. Optional ShellCheck and Pyflakes are disabled consistently.
+The `full` profile includes the required [actionlint runner](../scripts/run-actionlint.mjs). It verifies the pinned official archive's SHA-256 and checks the actual workflows. A run without a verified cached archive needs access to the official release asset. The runner disables optional ShellCheck and Pyflakes integrations.
 
-Use the Node release in [`.nvmrc`](../.nvmrc) and its bundled npm. Install locked dependencies before running a check. During a documentation edit, run this from the repository root:
+Use the Node release in [`.nvmrc`](../.nvmrc) and its bundled npm. Install locked dependencies before running a check. Start a documentation change by checking links, guidance and their focused regressions from the repository root.
 
 ```sh
 npm run validate -- guidance
 ```
 
-The runner names each selected check and returns a nonzero exit code on failure. Inspect the result of advisory entries too; their classification does not turn an observed failure into a pass.
+The runner prints each command as it starts and stops at the first failure with a nonzero exit code. This also applies to advisory checks that you explicitly select.
 
 ## Validate the exact proposed source
 
-Implement in the existing checkout and follow the [working-checkout rule](../.agents/rules/branches.md#working-checkout). The required disposable validation export is verification-only: keep it under an ignored repository-local directory such as `coverage/validation/`, record its source commit/tree and included changes, and never use it as another implementation workspace. Preserve unrelated local work and exclude operator state.
+Implement in the existing checkout under the [working-checkout rule](../.agents/rules/branches.md#working-checkout). Use a disposable export only for verification.
 
-1. Select the exact proposed publication snapshot. Check its actual phase, `applicationReady` and admitted paths in [the publication policy](../.github/bootstrap-policy.json). Export only that selection into a new ignored repository-local directory and record its source commit/tree and included changes. Preserve file bytes and exclude unrelated local work and operator state. A pass over extra local files does not validate a different partial PR.
+1. Select the exact proposed publication snapshot. Check its actual phase, `applicationReady` and admitted paths in [the publication policy](../.github/bootstrap-policy.json). Export only that selection into a new ignored repository-local directory such as `coverage/validation/` and record its source commit/tree and included changes. Preserve file bytes and exclude unrelated local work and operator state. A pass over extra local files does not validate a different partial PR.
 2. Open a PowerShell session in that verification export's root. Set the public synthetic values used by CI before building or running the full profile:
 
    ```powershell
@@ -44,9 +47,9 @@ Implement in the existing checkout and follow the [working-checkout rule](../.ag
 
    These values disable operator environment-file discovery and identify the synthetic verification build. Direct this session's `TMP`, `TEMP` and `TMPDIR` to an existing ignored repository-local scratch directory so temporary fixtures also stay inside the repository. Set `GIT_CEILING_DIRECTORIES` to their common verification parent directory so fixtures cannot discover the implementation repository through an ancestor; owned Git fixtures initialize their own repository below it. Do not load a real environment, browser profile, credential, database or upload as a fixture.
 
-3. Install the locked dependencies and Chromium, then run the complete required gate:
+3. Install the locked dependencies and Chromium, then run the complete required gate in the same PowerShell session. Run each command only after the preceding one succeeds.
 
-   ```sh
+   ```powershell
    npm ci --strict-peer-deps --no-audit --no-fund
    npm run browser:install
    npm run validate -- full
@@ -61,16 +64,17 @@ For `complete`, install browsers with `npm run browser:install:all` before runni
 
 ## Resolve a failed check
 
-| Failure                                                          | Next action                                                                                                                                                                                                                                   |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Unexpected bootstrap path`                                      | Compare the proposed snapshot with the publication inventory. A local file such as `CHANGELOG.md` may exist without being admitted. Resolve the publication scope while preserving local work; do not silently admit or delete files to pass. |
-| `Verification build reuse requires the synthetic CI environment` | Apply the public values above in the same session, then rerun the required profile.                                                                                                                                                           |
-| Browser executable or host dependency missing                    | Run the declared browser installation for the selected profile, then retain any setup failure as an unavailable prerequisite.                                                                                                                 |
-| Missing approval or visual runtime mismatch                      | Use the approved runtime and reviewed baseline. Do not promote new captures or change tolerances as a workaround.                                                                                                                             |
-| Stale build or changed report bytes                              | Produce fresh evidence for the exact source; reject the old build or artifact.                                                                                                                                                                |
-| Required Git executable unavailable                              | Restore the supported tool prerequisite. Evidence commands use an absolute Git executable rather than searching `PATH`.                                                                                                                       |
+| Failure                                                          | Next action                                                                                                                                                                                           |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Unexpected bootstrap path`                                      | Compare the reported path with the allowed files in the publication policy. Keep unrelated local files out of the export and resolve any intended source additions through the publication inventory. |
+| `Verification build reuse requires the synthetic CI environment` | Apply the public values above in the same session, then rerun the required profile.                                                                                                                   |
+| Browser executable or host dependency missing                    | Run the declared browser installation for the selected profile, then retain any setup failure as an unavailable prerequisite.                                                                         |
+| Missing approval or visual runtime mismatch                      | Use the approved runtime and reviewed baseline. Do not promote new captures or change tolerances as a workaround.                                                                                     |
+| Stale build or changed report bytes                              | Produce fresh evidence for the exact source; reject the old build or artifact.                                                                                                                        |
+| Required Git executable unavailable                              | Restore the supported tool prerequisite. Evidence commands use an absolute Git executable rather than searching `PATH`.                                                                               |
+| Formatting fails in a fresh Windows checkout                     | Compare its file endings with the committed bytes and the applicable [Git attributes](../.gitattributes). Verify the fix against the fresh checkout form that failed.                                 |
 
-`performance` uses the configured Lighthouse budgets and throttling. Numerical coverage, duplication, complexity, mutation, bundle and performance scores are advisory; meaningful assertions, type/lint/build failures, invalid reports and security controls remain required. Report an audit/setup failure plainly. Scores alone do not justify source rewrites or shallow tests.
+`performance` uses the configured Lighthouse budgets and throttling. CI evaluates the manifest's bounded audit exception immediately before running Lighthouse. Once that exception expires, a Lighthouse execution failure blocks the CI aggregate. Numerical coverage, duplication, complexity, mutation, bundle and performance scores remain advisory. Preserve meaningful assertions, type/lint/build checks, report validation and security controls.
 
 ## Review the temporary dependency exception
 
@@ -85,15 +89,14 @@ incomplete report, an unverifiable lockfile, a different version or an expired
 exception remains a failure. Unrelated lower-severity findings remain visible
 under the existing high-severity threshold.
 
-This is temporary risk acceptance, not a patched dependency.
-[Snyk has revoked the advisory](https://security.snyk.io/vuln/SNYK-JS-PICOMATCH-21248802),
-while GitHub still reports no patched version. The inspected tool configurations
-use source-controlled glob patterns; no application input path into pattern
-compilation was found. Untrusted changes to tooling can still exhaust CI
-resources. The command prints an explicit acceptance notice when this exception
-applies. At expiry, retain any failure and review the upstream advisory and
-available releases before an ordinary dependency update or removal of the
-exception; do not extend it automatically.
+GitHub and [Snyk](https://security.snyk.io/vuln/SNYK-JS-PICOMATCH-21248802)
+both list the advisory as withdrawn. The local exception still applies its
+deadline and lockfile checks whenever npm reports the advisory. The relevant
+tool configurations use source-controlled glob patterns. Untrusted tooling
+changes can still exhaust CI resources. The command prints an acceptance notice
+when the exception applies. At expiry, retain any failure and review the
+upstream advisory and available releases before an ordinary dependency update
+or removal of the exception. Do not extend it automatically.
 
 ## Interpret the evidence
 
@@ -104,8 +107,11 @@ and reports stay under `coverage/`. Run `npm run validate -- mutation` on an
 isolated public source export, never with operator files or a real environment.
 
 Staging and deployment smoke workflows are manual-only. Their commands enforce
-the same allowlists as the workflow before any browser or HTTP request. Staging
-requires `STAGING_BASE_URL`, `STAGING_API_HEALTH_URL`,
+the same allowlists as the workflow before any browser or HTTP request. Install
+staging's locked browser matrix with `npm run browser:install:all`. The hosted
+smoke workflow installs locked Chromium with `npm run browser:install`. The
+local smoke command uses the installed Chrome channel. Staging requires
+`STAGING_BASE_URL`, `STAGING_API_HEALTH_URL`,
 `STAGING_ALLOWED_APP_HOST` and `STAGING_ALLOWED_API_HOST`. Smoke requires the
 corresponding `SMOKE_` variables plus matching `SMOKE_DEPLOYMENT_ID` and
 `SMOKE_EXPECTED_DEPLOYMENT_ID`; the served `_kernel/build.json` must also carry
@@ -147,8 +153,11 @@ scanner execution and the remaining quality-gate conditions. Do not broaden
 source, test or coverage exclusions to obtain a passing result.
 
 The smoke and staging Playwright specs, setup modules and configs stay in
-static analysis. The scanner configuration leaves those six test files out of
-the coverage calculation for application and tooling code.
+static analysis. The current SonarQube Cloud scope defaults to the whole project
+and reports `sonar.sources`, `sonar.tests` and `sonar.test.inclusions` as
+inactive. The scanner lists these six files under `sonar.coverage.exclusions`.
+Verify their static analysis in the Sonar branch view when the files are outside
+the pull request diff. Verify their coverage exclusions in the scanner log.
 
 After importing, moving or recreating the repository, organization or Sonar
 project:
@@ -187,10 +196,10 @@ Windows run finishes its cleanup; only the newest pending event in that group is
 retained. PR metadata changes therefore cannot build an unbounded queue, and
 nightly/manual compatibility runs use separate groups.
 
-Each triggered workflow runs fresh verification, including PR title and
-description edits. Application and analysis jobs check out `${{ github.sha }}`
-directly, matching the scope job's default checkout. PR runs verify the event's
-merge commit; artifact verification retains the exact commit and tree binding.
+PR title and description edits trigger fresh verification. Application and
+analysis jobs check out `${{ github.sha }}`, matching the scope job's default
+checkout. In a PR run, this SHA is the event's merge commit. Confirm the PR
+head, base and verified merge tree before relying on its results.
 Independent jobs partition the canonical required profile:
 
 | Job                          | Responsibility                                                                             |
@@ -239,6 +248,31 @@ time for cleanup and report upload. See [the CI workflow](../.github/workflows/c
 [coverage and build evidence](../scripts/ci-evidence.mjs) and
 [Git guidance](../.agents/rules/pull-requests.md) for the execution and authorization
 boundaries.
+
+## Run CI on GitLab or Gitea
+
+GitLab runs `full-validation` for merge requests within the project and
+pushes to the default branch. Gitea runs **Full validation** for pull requests
+within the repository and pushes to `main`. Fork requests are outside the
+scope of these jobs. [GitLab pipeline](../.gitlab-ci.yml) · [Gitea workflow](../.gitea/workflows/ci.yaml)
+
+Use a dedicated, isolated Windows x64 worker with PowerShell 7, Git for Windows
+and the Node version in [`.nvmrc`](../.nvmrc) on its PATH. Assign the
+`kernel-windows-x64` tag to the GitLab runner with the PowerShell Core shell.
+For Gitea, enable repository Actions and use the `kernel-windows-x64:host`
+runner label. Keep the worker and its job environment free of production
+credentials and services. Allow access to the npm registry and official
+Playwright and actionlint downloads. The Gitea runner also fetches the pinned
+checkout action from GitHub. [GitLab shells](https://docs.gitlab.com/runner/shells/) · [Gitea runner labels](https://docs.gitea.com/runner/labels/)
+
+Each job installs the locked dependencies and Chromium and executes the
+canonical `full` profile with synthetic inputs. After a run, inspect the job
+on the merge or pull request and use its log to identify the first failing
+check. If the job is pending, check that an eligible worker with the
+required tag or label is online. Configure required status checks on the
+destination separately if they should block merges. GitHub's CodeQL, Sonar
+and review provider evidence belongs to the GitHub workflows and protection
+settings.
 
 ## Review PR scope before opening
 

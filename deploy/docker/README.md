@@ -1,6 +1,10 @@
-# Build and run the Docker service
+# Docker deployment
 
-Use this procedure to build an immutable frontend image and start it on an authorized local Linux Docker engine. Developers configure a compatible HTTP backend separately from this static frontend image. [Deployment](../../docs/deployment.md) owns public configuration, release identity and target verification.
+Use this guide to prepare and verify deployment on an authorized Linux Docker
+engine. See [deployment](../../docs/deployment.md) for the release and verification
+procedure.
+Build the immutable frontend image and configure its compatible HTTP backend
+separately. The deployment guide owns public configuration and release identity.
 
 ## Prerequisites
 
@@ -37,10 +41,10 @@ The [Compose definition](compose.yaml) maps the selected public ports to interna
 
    On a host using the local Unix socket, use `unix:///var/run/docker.sock` instead. Do not change a global Docker context or builder to select this deployment.
 
-2. Resolve and inspect the public Compose configuration. [Shell environment variables take precedence](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/) over the explicit `--env-file` during interpolation. Clear or correct public input overrides before resolving the configuration. Use the terminal where `$dockerEngine` was assigned in step 1; repeat that step in a fresh terminal:
+2. In the PowerShell session where you set `$publicInputs` and `$dockerEngine`, resolve the Compose configuration. Clear or correct any shell variables overriding the public input file. [Docker Compose interpolation precedence](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/).
 
    ```powershell
-   docker --host $dockerEngine compose --env-file coverage/deployment/compose-public.conf -f deploy/docker/compose.yaml config
+   docker --host $dockerEngine compose --env-file $publicInputs -f deploy/docker/compose.yaml config
    ```
 
    Confirm the image tag, build arguments, bindings and TLS mount source. This result describes the configuration; it does not establish a built image or healthy service.
@@ -48,12 +52,20 @@ The [Compose definition](compose.yaml) maps the selected public ports to interna
 3. Build the new release image and start the service:
 
    ```powershell
-   docker --host $dockerEngine compose --env-file coverage/deployment/compose-public.conf -f deploy/docker/compose.yaml up --build --detach admin
+   docker --host $dockerEngine compose --env-file $publicInputs -f deploy/docker/compose.yaml up --build --detach admin
    ```
 
-   Expect image `kernel-admin:<VITE_RELEASE_ID>` and the `admin` service. Startup validates required public host/base/release values and runs `nginx -t` before serving. Use the same explicit engine and input file to inspect service status and logs.
+   Expect image `kernel-admin:<VITE_RELEASE_ID>` and the `admin` service. Startup validates required public host/base/release values and runs `nginx -t` before serving.
 
-4. Require healthy container status, then perform [authorized target verification](../../docs/deployment.md#verify-and-recover) with the same release ID and base path. Container health checks use HTTPS loopback with certificate/hostname verification and exact release identity; a redirect or mismatch fails. Container health alone does not establish external DNS, listener reachability or API compatibility.
+4. Check the container status, including containers that exited during startup.
+
+   ```powershell
+   docker --host $dockerEngine compose --env-file $publicInputs -f deploy/docker/compose.yaml ps --all admin
+   ```
+
+   Wait for `healthy`. The [health check](admin-healthcheck.sh) requests `_kernel/release` under the application base over HTTPS loopback. It verifies the certificate for `ADMIN_HOST` and expects HTTP 200 with the exact release ID. For an exited or restarting container, inspect the startup error with `docker --host $dockerEngine compose --env-file $publicInputs -f deploy/docker/compose.yaml logs admin`.
+
+5. Check the public URL using the same release ID and base path to verify the external listener. Follow [target verification](../../docs/deployment.md#verify-and-recover).
 
 Browser values and the rendered Nginx policy are baked into the image. Changing the public input file or restarting an old image cannot rewrite them. Build a new immutable release image for changed values; do not reuse an old release identifier for different bytes.
 

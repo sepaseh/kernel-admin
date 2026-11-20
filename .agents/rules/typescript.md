@@ -57,11 +57,8 @@ const statusLabel: Record<Status, string> = {
 
 ## Runtime validation
 
-Fail fast for required internal values, but validate untrusted external data before trusting it.
-
-- Required internal state/config: throw clearly when missing.
-- API/user input: validate or normalize at the boundary.
-- Truly optional data: handle explicitly without pretending it is required.
+Validate untrusted input at the boundary. Fail clearly when required internal
+state or configuration is missing. Handle genuinely optional data explicitly.
 
 ## Prefer optional values over null
 
@@ -70,8 +67,8 @@ Fail fast for required internal values, but validate untrusted external data bef
   union.
 - Do not combine optional syntax with a nullable union such as
   `value?: string | null`; use `value?: string`.
-- Prefer omission to `null` in API examples and request payloads when absence
-  has no distinct domain meaning.
+- Follow the [HTTP contract rules](api-collection.md) for omission and explicit
+  `null` values in API payloads and examples.
 - Normalize nullable external response fields at the API boundary before they
   enter domain models or application state.
 - Keep `null` only when it has a distinct domain or protocol meaning, or when a
@@ -80,16 +77,13 @@ Fail fast for required internal values, but validate untrusted external data bef
 
 ## Shared types
 
-- Keep domain types beside their owning feature in `src/features/<feature>/types.ts`.
-- Keep infrastructure contracts beside the shared module that owns them.
-- Keep permission contracts in `src/features/roles/types.ts`.
-- For new feature types, use the domain name for a model, `Query` for query-string
-  inputs and `Request` for write bodies. Use `Response` for an actual wrapper or
-  materially different response shape; prefer singular domain names in query
-  names even when the result is a list.
-- Use component-specific names such as `ImageUploadProps` for React component inputs. Preserve established library/wire
-  names and existing public types during unrelated work; naming guidance does
-  not authorize a cosmetic rename sweep.
+- Follow the [import policy](imports.md#source-owners) for domain, infrastructure
+  and permission type ownership.
+- Use singular names for domain models, `Query` for query inputs, `Request` for
+  write bodies and `Response` for a wire wrapper or materially different response
+  shape. Preserve existing public names and contract fields during unrelated work.
+- Follow the [React rules](react.md#components) for component props. Keep the
+  domain name singular in query type names, even when the result is a list.
 
 ## Derive types from their source of truth
 
@@ -97,8 +91,8 @@ Fail fast for required internal values, but validate untrusted external data bef
   the consumer type from it instead of repeating a primitive, union, object
   shape, or function signature manually.
 - Use indexed access types such as `User["id"]` for domain fields and utility
-  types such as `Parameters<>`, `ReturnType<>`, and `ComponentProps<>` when
-  they keep consumers synchronized with the owning contract.
+  types such as `Parameters<>` and `ReturnType<>` when they keep consumers
+  synchronized with the owning contract.
 - Do not duplicate a type merely to make a local annotation shorter. Prefer a
   named derived alias when the inline expression would hurt readability.
 - Define a standalone type when it represents a genuinely independent domain
@@ -113,13 +107,10 @@ type DeleteUserId = User["id"];
 type ManuallyTypedUserId = string;
 ```
 
-For query filters matching model fields, use `Partial<Pick<Model, "field">>`
-rather than repeating their types. Keep distinct wire representations explicit.
-Compose paginated queries with `PaginationQuery` from `@/shared/api`: optional
-string `page`, defaulted in the service to `"1"`. The backend owns the fixed page
-size of 24. Services send only `page` and their declared filters, without `size`
-or offset. Omit `size` from query inputs and URL filters, and select declared
-request fields explicitly so undeclared URL parameters cannot enter HTTP requests.
-Tables use the shared `defaultPageSize` of 24 for pagination and row numbering.
-Encode boolean filters as `"0"`/`"1"`,
-omitting an unset value while keeping domain/response fields boolean.
+Use `ComponentProps<>` when deriving props from an existing component.
+
+For query filters matching model fields, use `Partial<Pick<Model, "field">>`.
+Compose paginated queries with `PaginationQuery` from `@/shared/api` and default
+its optional string `page` to `"1"` in the service. Omit offset from wire queries.
+Encode boolean filters as `"0"` or `"1"` and omit an unset filter. Keep
+domain and response fields boolean. [Pagination contract](../../docs/authentication.md#backend-integration)

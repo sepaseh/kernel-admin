@@ -1,17 +1,17 @@
-# Application architecture
+# Kernel Admin architecture
 
 Use this overview to locate an application responsibility before changing its implementation. For setup, follow [usage](usage.md); for an implementation workflow, follow [development](development.md).
 
-Kernel Admin is one independent React/Vite TypeScript application. Developers select a compatible backend through `VITE_API_BASE_URL`. That service owns authentication execution, authorization, database access and storage; this repository owns the panel, local catalogs and [HTTP contracts and examples](authentication.md#backend-integration). No particular backend repository or other checkout is required.
+Kernel Admin is a standalone React and Vite client written in TypeScript. The configured backend handles authentication, authorization, data and storage. This repository owns the panel, local catalogs and the HTTP boundary it expects from a compatible service. [Backend integration](authentication.md#backend-integration)
 
 ## Follow startup
 
-1. [The entry point](../src/main.tsx) mounts [App](../src/app/App.tsx) through the root and application public exports. The application and Storybook share [root CSS](../src/index.css), which loads the existing reset and font styles.
-2. [`CoreProvider`](../src/app/providers/core/Core.tsx) loads public settings with an owned cancellation signal. It displays loading or an inline retry before exposing accepted settings to its children. The settings API uses typed response models without runtime envelope validation.
-3. `App` composes the Ant Design provider, shared global styles and lazy routes after settings are available. Ant Design applies the API-owned palette, language and direction, together with browser theme and compact preferences.
-4. [Routes](../src/app/Routes.tsx) builds the data router from the [route metadata](../src/app/config/routes.ts). Public layout and page modules can load together. The router checks protected page access before running its lazy importer and sends allowed import failures to the route error fallback.
+1. The entry point loads the root styles and mounts `App` under React Strict Mode. `App` puts `CoreProvider` inside the application error boundary. [Entry point](../src/main.tsx) · [Application composition](../src/app/App.tsx)
+2. `CoreProvider` loads public settings before it renders any routes, including sign-in. It shows a loading indicator or a retry action until it accepts a response. [Core provider](../src/app/providers/core/Core.tsx)
+3. With settings available, `App` renders the Ant Design provider, global styles and lazy router. UI libraries use the settings metadata and the browser's theme and compact preferences. [Localization](localization.md#runtime-metadata)
+4. The browser router pairs route metadata with page and layout loaders and uses the configured application base path. Public page and layout modules can load together. Protected pages load only after the layout accepts the current user and the route access check passes. A denied route redirects to the dashboard. A permitted route whose module fails to load reaches the route error fallback. [Router](../src/app/Routes.tsx) · [Route definitions](../src/app/config/routes.ts) · [Route tests](../src/app/Routes.test.tsx)
 
-The [default layout](../src/layouts/default/Default.tsx) loads the current user before rendering protected children. It retains accepted data and keeps the Outlet mounted during a refresh or refresh failure. It exposes the current user, awaited reload and session cleanup through its typed Outlet context. Menu and route checks describe what the client presents; the API authorizes each request independently.
+The default layout derives available navigation from the current user. It keeps accepted data and the `Outlet` mounted while identity refreshes or a retryable refresh fails. It exposes the current user, an awaitable reload and session cleanup through its outlet context. The API authorizes each request independently. [Default layout](../src/layouts/default/Default.tsx) · [Access helpers](../src/app/lib/access.ts) · [Request lifecycles](authentication.md#read-resources)
 
 ## Locate the owner
 
@@ -24,17 +24,15 @@ The [default layout](../src/layouts/default/Default.tsx) loads the current user 
 | Shared product vocabulary                         | [`src/shared/contracts`](../src/shared/contracts)            | Reuse the profile-name limit and appearance contracts across features.                    |
 | Catalog data and runtime adapters                 | [`src/shared/i18n`](../src/shared/i18n)                      | Keep pure catalog/calendar data separate from UI and vendor initialization.               |
 
-The API selects language, text direction, calendar, logos and palettes. A browser theme choice selects which accepted palette to display; it does not change the global settings contract. See [localization](localization.md) and [authentication and requests](authentication.md) for the detailed lifecycles.
-
 ## Feature dependency boundaries
 
 Keep screens, APIs, request/response types, forms, hooks and tools with their owning `src/features/<feature>`. Shared modules provide domain-independent infrastructure and controls; their local source dependencies stay within `src/shared`. Application composition belongs in `app`, and route shells belong in `layouts`.
 
-Features use only the exact authentication API/OTP, roles API/type, settings-to-files and contents-to-categories/files capabilities declared by [the boundary checker](../scripts/check-boundaries.mjs). Settings imports the reviewed file upload service and erased file models through the files public exports. Users imports only its declared roles list service and erased role model. The contents list imports only `fetchContentCategories` and erased `ContentCategory` through the category public index. The content form imports the files `uploadFile` service and erased `ContentCategory`; its HTTP models import only erased `ContentCategory` and `StoredFile` through their owning public indexes. Account, Settings, Files, Calendar, Roles, Users, FAQ, category and content screens and their declared forms may import the erased `DefaultLayoutContext` from the default layout; layout components and other internals remain private. The [import rules](../.agents/rules/imports.md) describe enforcement and how to review a new dependency.
+The boundary checker lists the permitted cross-feature services and type imports. For example, Contents reads categories through the category feature's public entry and uploads cover images through the Files entry. Protected screens consume the erased `DefaultLayoutContext` through the default layout's public entry. Check the approved edges before introducing a dependency. [Boundary checker](../scripts/check-boundaries.mjs) · [Import rules](../.agents/rules/imports.md)
 
 Content forms use the shared lazy rich-text editor for headings, emphasis, block quotes and ordered or unordered lists. Loaded and pasted links become ordinary text while those basic formats remain available. After a successful deletion, the contents list returns to its first page while retaining the active filters. Closing the content form removes its cover field and resets the form. The image uploader cancels its active request when it unmounts.
 
-Each page owns opening and closing its drawers. The page stores the selected record ID in the edit history entry so Back and Forward restore the corresponding record. Forms keep their permission and request guards and call `onClose` on cancellation or failure to open. After a successful save the form calls `onFinish`, and the page starts refreshing the list and closes the drawer without waiting for the refresh.
+Pages open drawers with an action hash and store the selected record ID in the edit history entry. Back and Forward restore the corresponding record. A direct edit URL without an ID returns to the list. The form owns permission checks, validation and request cancellation, then calls `onClose` on cancellation or failure to open. A successful save calls `onFinish`, which starts a list refresh and closes the drawer immediately. [Drawer history helpers](../src/shared/hooks/useGoBack.ts) · [Contents page](../src/features/contents/Contents.tsx)
 
 ## Trace a change
 

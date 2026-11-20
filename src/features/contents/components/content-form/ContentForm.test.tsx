@@ -175,6 +175,11 @@ const submitButton = () =>
   screen.getByRole("button", { name: i18n.t("submit") });
 const formHash = () => screen.getByLabelText("Content form hash").textContent;
 
+const findBodyEditor = async () => {
+  await act(() => vi.dynamicImportSettled());
+  return screen.findByRole("textbox", { name: i18n.t("body") });
+};
+
 beforeEach(async () => {
   vi.resetAllMocks();
   vi.mocked(createContent).mockResolvedValue(content);
@@ -186,24 +191,15 @@ beforeEach(async () => {
 });
 
 describe("content form", () => {
-  it("requires visible body text and saves the selected category and uploaded cover", async () => {
+  it("keeps the form locked during a retried cover upload", async () => {
     const pendingUpload = deferred<StoredFile>();
     vi.mocked(uploadFile)
       .mockRejectedValueOnce(new Error("Synthetic cover upload failed"))
       .mockReturnValueOnce(pendingUpload.promise);
     renderForm("#create");
-    const user = userEvent.setup();
     const title = await screen.findByRole("textbox", { name: i18n.t("title") });
-    const excerpt = screen.getByRole("textbox", { name: i18n.t("excerpt") });
-    const body = await screen.findByRole("textbox", { name: i18n.t("body") });
+    const body = await findBodyEditor();
     const submit = submitButton();
-
-    fireEvent.change(title, { target: { value: "New title" } });
-    fireEvent.change(excerpt, { target: { value: "A short excerpt" } });
-    await user.click(
-      screen.getByRole("combobox", { name: i18n.t("category") }),
-    );
-    await user.click(await screen.findByText(category.name));
 
     selectCover("failed-cover.png");
     await waitFor(() =>
@@ -232,6 +228,30 @@ describe("content form", () => {
     await act(async () => pendingUpload.resolve(uploadedCover));
     expect(
       screen.getByRole("img", { name: i18n.t("coverImage") }),
+    ).toHaveAttribute("src", uploadedCover.url);
+    expect(submit).toBeEnabled();
+    expect(title).toBeEnabled();
+    expect(body).toHaveAttribute("aria-readonly", "false");
+  });
+
+  it("requires visible body text and saves the selected category and uploaded cover", async () => {
+    renderForm("#create");
+    const user = userEvent.setup();
+    const title = await screen.findByRole("textbox", { name: i18n.t("title") });
+    const excerpt = screen.getByRole("textbox", { name: i18n.t("excerpt") });
+    const body = await findBodyEditor();
+    const submit = submitButton();
+
+    fireEvent.change(title, { target: { value: "New title" } });
+    fireEvent.change(excerpt, { target: { value: "A short excerpt" } });
+    await user.click(
+      screen.getByRole("combobox", { name: i18n.t("category") }),
+    );
+    await user.click(await screen.findByText(category.name));
+
+    selectCover("cover.png");
+    expect(
+      await screen.findByRole("img", { name: i18n.t("coverImage") }),
     ).toHaveAttribute("src", uploadedCover.url);
     fireEvent.click(submit);
     expect(await screen.findByText(i18n.t("bodyRequired"))).toBeVisible();
@@ -309,9 +329,7 @@ describe("content form", () => {
     expect(
       screen.getByRole("textbox", { name: i18n.t("excerpt") }),
     ).toHaveValue(content.excerpt);
-    expect(
-      await screen.findByRole("textbox", { name: i18n.t("body") }),
-    ).toHaveTextContent("Existing body");
+    expect(await findBodyEditor()).toHaveTextContent("Existing body");
     expect(
       screen.getByRole("img", { name: i18n.t("coverImage") }),
     ).toHaveAttribute("src", existingCover.url);
@@ -351,7 +369,7 @@ describe("content form", () => {
     });
     renderForm("#update", content.id);
     await screen.findByDisplayValue(content.title);
-    await screen.findByRole("textbox", { name: i18n.t("body") });
+    await findBodyEditor();
 
     fireEvent.click(submitButton());
 

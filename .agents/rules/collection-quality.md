@@ -1,19 +1,19 @@
 # Contract fixture quality
 
-Parse changed JSON and inspect the affected local HTTP DTOs, normalization,
-synthetic fixtures and consumer documentation together. Search for obsolete fields
-after a rename. Do not scan ignored operator state, generated output or
-dependencies, read real environments, or send live API requests to validate an
-example.
+Update the affected Axios, MSW or Pact fixture against the [local HTTP
+contract](api-collection.md) and its consumer documentation. Cover the request
+fields the client sends and the response fields the adapter reads, including
+backend-supplied defaults. Use the endpoint and permission contracts as evidence
+for deletion, authorization and other lifecycle behavior.
 
-Axios/MSW fixtures verify this client's expectations. Admitted Pact consumer cases
-must remain synthetic.
-Document and test those HTTP expectations locally. The consuming developer
-chooses a compatible backend; external project source or documentation is not a
-prerequisite. Disclose unexecuted deployed-backend verification separately.
+## Validate changes
 
-Keep the requested contract scope focused, payloads realistic and non-sensitive,
-and JSON valid. Sort keys only where order has no contract meaning; preserve
-ordered arrays. Verify defaults and resulting response fields together, and do
-not add speculative endpoints or assume deletion, authorization or lifecycle
-semantics from UI labels.
+- Parse changed JSON.
+- Search maintained source, examples and tests for old field names after renames.
+  Exclude ignored operator state, dependencies and generated output.
+
+Sort keys only where order has no contract meaning and preserve ordered arrays.
+
+Use realistic synthetic payloads, including synthetic values for signed URLs and
+personal fields. Follow the [fixture isolation rules](testing.md#isolate-fixtures)
+for request handling and target access.

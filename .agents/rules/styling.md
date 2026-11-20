@@ -1,33 +1,39 @@
 # Styling
 
-Use Ant Design and antd-style with the source recipes in
-[DESIGN](../../DESIGN.md) and [UI foundation](../../docs/development.md).
+Use Ant Design and antd-style. Start with the closest component and the
+[design guide](../../DESIGN.md).
 
 ## Theme architecture
 
-The current theme owner is `src/app/providers/antd/Antd.tsx`. Reuse Ant Design
-semantic tokens and algorithms; appearance types own Theme
-and all seven palette fields. The `AntdProvider` must follow API
-language and direction metadata. Only theme and compact mode are browser preferences.
+`AntdProvider` owns UI theme configuration. Reuse Ant Design semantic tokens
+and algorithms. The appearance contract defines `Theme` and the seven palette
+fields. Follow the localization rules for metadata and browser preferences.
+[Ant Design provider](../../src/app/providers/antd/Antd.tsx) · [Appearance contract](../../src/shared/contracts/appearance.ts) · [Settings metadata](localization.md#apply-settings-metadata)
 
 Prefer Ant Design component props before custom styles. Keep inline `style` or
-Ant Design `styles` for local layout, and shared global styling in
-`src/index.css`, `src/GlobalStyle.tsx` and `src/assets/styles`. Read [the publication policy](../../.github/bootstrap-policy.json)
-for admitted entry/build sources and `applicationReady`, and [the manifest](../validation.json)
-for required checks. While readiness is false, a component change cannot establish
-application activation. Introducing an entry point requires its genuine application checks.
+Ant Design `styles` for local layout and use logical spacing that works in both
+text directions. Keep global styling in `src/index.css`, `src/GlobalStyle.tsx`
+and `src/assets/styles`.
 
-Keep table delete triggers visually neutral; apply danger treatment to the
+## Interaction styling
+
+Keep table delete triggers visually neutral and apply danger treatment to the
 confirmation button. Preserve translated accessible names, visible focus,
-reduced-motion behavior and narrow/desktop layouts. Current component tests use
-jsdom. Use isolated Storybook checks for affected browser behavior when that suite
-is admitted, without claiming production visual evidence.
+reduced-motion behavior and narrow and desktop layouts. Follow the
+[design review steps](../../DESIGN.md#review-the-interaction) for verification.
+
+## Icons
+
+Use named `lucide-react` imports directly at feature and layout call sites.
+Give icons an explicit `size` and `currentColor` so they follow Ant Design's
+text, hover, disabled and semantic colors. Mark decorative icons `aria-hidden`
+and give their owning controls translated accessible names. Reuse these imports
+and Ant Design props. Keep copied Material SVG paths, `SvgIcon`, local icon
+wrappers and string-based registries out of the UI.
 
 ## Style object readability
 
-Keep style properties alphabetical when order has no semantic effect. Do not mix
-a CSS shorthand and its longhand in one object, or reorder spreads/computed
-properties in a way that changes behavior. Root ESLint currently catches duplicate
-keys but does not publish the future `local/style-props-alphabetical-order` or
-`local/style-props-no-shorthand-conflicts` rules. Review these conventions directly;
-do not claim an unavailable fixer enforces them.
+Use the [ordering rules](ordering.md) for style properties. Preserve the order
+of spreads and computed keys when it affects the result. Use either a CSS
+shorthand or its longhand properties in a given style object. ESLint checks duplicate keys.
+Review property ordering and shorthand conflicts directly in changed styles.

@@ -1,22 +1,36 @@
 # Kernel Admin
 
-A standalone React/Vite TypeScript administration panel using Ant Design, React Router and Axios. Developers choose a compatible backend for authentication, authorization, data and storage.
+Kernel Admin is the standalone administration frontend for a compatible HTTP
+API. It uses React, TypeScript, Vite, Ant Design, React Router and Axios.
+The backend supplies authentication, authorizes operations and stores data.
 
-## Start here
+## Run locally
 
-| Your goal                 | Guide                                           |
-| ------------------------- | ----------------------------------------------- |
-| Install and run the panel | [Run and configure](docs/usage.md)              |
-| Explore what is included  | [Included capabilities](#included-capabilities) |
-| Work with the source      | [Develop a feature](docs/development.md)        |
-| Deploy the application    | [Build, package and deploy](docs/deployment.md) |
+Use the Node version pinned in [`.nvmrc`](.nvmrc) and its bundled npm. For sign-in, you also need the address of a compatible API and an account on that service. [Backend integration](docs/authentication.md#backend-integration)
 
-Local setup requires the Node version in [`.nvmrc`](.nvmrc) and its bundled npm. Opening the panel also requires a backend compatible with the local [HTTP contracts and examples](docs/authentication.md#backend-integration). The [run guide](docs/usage.md) covers installation, public configuration and the first sign-in. Builds and synthetic source checks need no live backend; [testing](docs/testing.md) describes their fixtures.
+1. Install dependencies from the repository root.
+
+   ```sh
+   npm ci --strict-peer-deps --no-audit --no-fund
+   ```
+
+2. Create `.env.local` from the public example if you have no local configuration. Set `VITE_API_BASE_URL` to your API address and use `/` for `VITE_APP_BASE_URL` in this quick start. Configure the API to allow the frontend origin `http://127.0.0.1:5173` with credentials. [Public example](.env.example) · [Local configuration and troubleshooting](docs/usage.md)
+
+3. Start the installed Vite server.
+
+   ```sh
+   npm exec --no -- vite --host 127.0.0.1 --port 5173 --strictPort
+   ```
+
+4. Open the sign-in page. The form appears after the frontend loads public settings from the API. [Local sign-in](http://127.0.0.1:5173/auth)
+
+Storybook uses synthetic fixtures so you can explore the components without a running backend. [Test components in Storybook](docs/testing.md#test-components-in-storybook)
 
 ## Included capabilities
 
-- Sign-in, registration, password recovery and account/profile editing.
+- Sign-in, registration, password recovery and account management.
 - User management, role assignments and role permissions.
+- Content, content categories and frequently asked questions.
 - Global settings, appearance and logo uploads.
 - Calendar and file-management screens.
 - Ten UI languages, RTL/LTR layouts, API-selected calendars, light/dark themes
@@ -25,20 +39,18 @@ Local setup requires the Node version in [`.nvmrc`](.nvmrc) and its bundled npm.
 Available routes and actions depend on the account's backend-assigned permissions.
 The backend supplies application data and enforces authorization.
 
-## Work with the source
+## Documentation
 
-Follow [development](docs/development.md) to change a feature, [testing](docs/testing.md)
-to cover its behavior and [validation](docs/validation.md) to check a proposed change.
-The [architecture guide](docs/architecture.md) explains the application structure.
+- [Documentation index](docs/README.md) for guides by task.
+- [Architecture](docs/architecture.md) for system boundaries and source ownership.
+- [Development](docs/development.md) for local setup and source changes.
+- [Validation](docs/validation.md) for required checks and evidence.
+- [Deployment](docs/deployment.md) for packaging and deployment.
 
-## Project boundaries
+## Get help and contribute
 
-Keep this repository as one root frontend project. API language, direction and calendar drive the interface; theme and compact mode are browser preferences. English repository documentation does not change the application's supported translations.
+Use repository issues for bugs and feature requests. Report suspected
+vulnerabilities privately. [Issues](https://github.com/sepaseh/kernel-admin/issues) · [Security policy](SECURITY.md)
 
-Use the [documentation map](docs/README.md) for focused references, [Contributing](CONTRIBUTING.md) for the change workflow and [Security](SECURITY.md) for private reporting. Assistants start with [AGENTS](AGENTS.md).
-
-## Deploy the application
-
-Follow [build, package and deploy](docs/deployment.md) to create a release and
-choose [Docker](deploy/docker/README.md) or [native Nginx](deploy/native/README.md)
-hosting. The guide covers configuration, health checks and rollback.
+Follow the contribution workflow to propose a change. Assistants start at the
+repository's assistant entry point. [Contributing](CONTRIBUTING.md) · [Assistant entry point](AGENTS.md)
