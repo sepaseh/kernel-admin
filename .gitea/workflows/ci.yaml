@@ -1,0 +1,45 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+env:
+  KERNEL_SYNTHETIC_ENV: "1"
+  STORYBOOK_DISABLE_TELEMETRY: "1"
+  VITE_API_BASE_URL: https://api.example.com
+  VITE_APP_BASE_URL: /
+  VITE_RELEASE_ID: application-verification
+
+jobs:
+  full-validation:
+    name: Full validation
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: kernel-windows-x64
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out the event revision
+        uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify the Node runtime
+        run: |
+          $expected = (Get-Content .nvmrc -Raw).Trim()
+          $actual = node -p 'process.platform + "/" + process.arch + "/" + process.versions.node'
+          if ($LASTEXITCODE -ne 0 -or $actual -ne "win32/x64/$expected") {
+            throw "This job requires Node $expected on Windows x64."
+          }
+      - name: Install locked dependencies
+        run: npm.cmd ci --strict-peer-deps --no-audit --no-fund
+      - name: Install Chromium
+        run: npm.cmd run browser:install
+      - name: Run the full validation profile
+        run: npm.cmd run validate -- full

@@ -247,6 +247,31 @@ time for cleanup and report upload. See [the CI workflow](../.github/workflows/c
 [Git guidance](../.agents/rules/pull-requests.md) for the execution and authorization
 boundaries.
 
+## Run CI on GitLab or Gitea
+
+GitLab runs `full-validation` for merge requests within the project and
+pushes to the default branch. Gitea runs **Full validation** for pull requests
+within the repository and pushes to `main`. Fork requests are outside the
+scope of these jobs. [GitLab pipeline](../.gitlab-ci.yml) · [Gitea workflow](../.gitea/workflows/ci.yaml)
+
+Use a dedicated, isolated Windows x64 worker with PowerShell 7, Git for Windows
+and the Node version in [`.nvmrc`](../.nvmrc) on its PATH. Assign the
+`kernel-windows-x64` tag to the GitLab runner with the PowerShell Core shell.
+For Gitea, enable repository Actions and use the `kernel-windows-x64:host`
+runner label. Keep the worker and its job environment free of production
+credentials and services. Allow access to the npm registry and official
+Playwright and actionlint downloads. The Gitea runner also fetches the pinned
+checkout action from GitHub. [GitLab shells](https://docs.gitlab.com/runner/shells/) · [Gitea runner labels](https://docs.gitea.com/runner/labels/)
+
+Each job installs the locked dependencies and Chromium and executes the
+canonical `full` profile with synthetic inputs. After a run, inspect the job
+on the merge or pull request and use its log to identify the first failing
+check. If the job is pending, check that an eligible worker with the
+required tag or label is online. Configure required status checks on the
+destination separately if they should block merges. GitHub's CodeQL, Sonar
+and review provider evidence belongs to the GitHub workflows and protection
+settings.
+
 ## Review PR scope before opening
 
 Before opening a PR or pushing further changes, verify its live intended base and

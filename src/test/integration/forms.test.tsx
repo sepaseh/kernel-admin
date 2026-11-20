@@ -328,7 +328,9 @@ describe("user identity form", () => {
     const onFinish = vi.fn();
     const { user } = renderAtHash(<UserForm onFinish={onFinish} />, "#create");
 
-    await user.type(await screen.findByLabelText("firstName"), "Ada");
+    const firstName = await screen.findByLabelText("firstName");
+    await waitFor(() => expect(firstName).toHaveFocus());
+    await user.type(firstName, "Ada");
     await user.type(screen.getByLabelText("lastName"), "Lovelace");
     await user.type(screen.getByLabelText("mobile"), "09120000000");
     await user.click(screen.getByRole("button", { name: "submit" }));

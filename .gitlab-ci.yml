@@ -1,0 +1,31 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_PROJECT_ID == $CI_PROJECT_ID && $CI_MERGE_REQUEST_PROJECT_ID == $CI_PROJECT_ID'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+variables:
+  GIT_STRATEGY: clone
+  KERNEL_SYNTHETIC_ENV: "1"
+  STORYBOOK_DISABLE_TELEMETRY: "1"
+  VITE_API_BASE_URL: https://api.example.com
+  VITE_APP_BASE_URL: /
+  VITE_RELEASE_ID: application-verification
+
+full-validation:
+  rules:
+    - when: on_success
+  stage: test
+  tags:
+    - kernel-windows-x64
+  timeout: 90 minutes
+  before_script:
+    - |
+      $expected = (Get-Content .nvmrc -Raw).Trim()
+      $actual = node -p 'process.platform + "/" + process.arch + "/" + process.versions.node'
+      if ($LASTEXITCODE -ne 0 -or $actual -ne "win32/x64/$expected") {
+        throw "This job requires Node $expected on Windows x64."
+      }
+  script:
+    - npm.cmd ci --strict-peer-deps --no-audit --no-fund
+    - npm.cmd run browser:install
+    - npm.cmd run validate -- full
