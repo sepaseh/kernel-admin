@@ -153,9 +153,11 @@ scanner execution and the remaining quality-gate conditions. Do not broaden
 source, test or coverage exclusions to obtain a passing result.
 
 The smoke and staging Playwright specs, setup modules and configs stay in
-static analysis. The scanner configuration leaves those six test files out of
-the coverage calculation for application and tooling code. Verify file analysis
-in the Sonar report and check coverage exclusions in the scanner log.
+static analysis. The current SonarQube Cloud scope defaults to the whole project
+and reports `sonar.sources`, `sonar.tests` and `sonar.test.inclusions` as
+inactive. The scanner lists these six files under `sonar.coverage.exclusions`.
+Verify their static analysis in the Sonar branch view when the files are outside
+the pull request diff. Verify their coverage exclusions in the scanner log.
 
 After importing, moving or recreating the repository, organization or Sonar
 project:

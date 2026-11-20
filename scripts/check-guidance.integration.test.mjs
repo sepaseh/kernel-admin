@@ -423,6 +423,27 @@ test("admitted Markdown never follows symbolic source directories", async (conte
   assert.ok(!errors.includes("never-read.md"));
 });
 
+test("a noncanonical publication path fails before its Markdown is read", async (context) => {
+  const { root, write, writeUnadmitted, json } = await createFixture(context);
+  await writeUnadmitted("docs/guide.md", "[unread](never-read.md)\n");
+  await write("docs/development.md", "[section](guide.md#missing)\n");
+  const alias = "./docs/guide.md";
+  await json(".github/bootstrap-policy.json", {
+    allowedFiles: ["docs/development.md", alias],
+  });
+  assert.deepEqual((await checkGuidance(root)).errors, [
+    `Publication Markdown path must be canonical: ${alias}`,
+  ]);
+
+  await write("docs/guide.md", "# Existing section\n");
+  await json(".github/bootstrap-policy.json", {
+    allowedFiles: ["docs/development.md", "docs/guide.md"],
+  });
+  assert.deepEqual((await checkGuidance(root)).errors, [
+    "Missing Markdown heading: docs/development.md: guide.md#missing",
+  ]);
+});
+
 test("unadmitted operator Markdown remains unread while filename checks stay recursive", async (context) => {
   const { root, writeUnadmitted, json } = await createFixture(context);
   await json(".github/bootstrap-policy.json", {
@@ -550,6 +571,9 @@ test("Markdown fragment checks validate local headings without scanning unavaila
     "[HTML](guide.md#ExplicitHeading)",
     "[named](guide.md#Legacy%20%26%20Named)",
     "[source line](../owner.ts#L1)",
+    "[Markdown source line](guide.md?plain=1#L1)",
+    "[Markdown source range](guide.md?plain=1#L1-L3)",
+    "[Heading with query](guide.md?example=1#quoted-section)",
     "[unadmitted](operator.md#unchecked)",
     "[empty fragment](#)",
     "[same-page top](#top)",
@@ -574,6 +598,9 @@ test("Markdown fragment checks validate local headings without scanning unavaila
     "guide.md#commented-example",
     "guide.md#hidden-anchor",
     "guide.md#explicitheading",
+    "guide.md#L1",
+    "guide.md?plain=0#L1",
+    "guide.md?plain=1#missing-heading",
   ];
   await write(
     "docs/development.md",
@@ -582,6 +609,8 @@ test("Markdown fragment checks validate local headings without scanning unavaila
       ...missing.map((link) => `[Bad](${link})`),
       "[Bad](#%ZZ)",
       "[Missing file](absent.md#top)",
+      "[Missing Markdown source](absent.md?plain=1#L1)",
+      "[Unsafe Markdown target](../.env.local/guide.md?plain=1#L1)",
       "[Bad reference][broken]",
       "",
       "[broken]: guide.md#missing-reference",
@@ -593,6 +622,8 @@ test("Markdown fragment checks validate local headings without scanning unavaila
     ),
     "Invalid Markdown heading fragment: docs/development.md: #%ZZ",
     "Missing or unsafe guide link: docs/development.md: absent.md#top",
+    "Missing or unsafe guide link: docs/development.md: absent.md?plain=1#L1",
+    "Unsafe guide link: docs/development.md: ../.env.local/guide.md?plain=1#L1",
     "Missing Markdown heading: docs/development.md: guide.md#missing-reference",
   ]);
 });

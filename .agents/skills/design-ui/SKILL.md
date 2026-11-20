@@ -22,8 +22,9 @@ publication.
    owners for request lifecycles, permission checks, translated labels, keyboard
    interactions and visual states.
    [Publication policy](../../../.github/bootstrap-policy.json) · [React](../../rules/react.md) · [Styling](../../rules/styling.md) · [Localization](../../rules/localization.md)
-4. Review the affected interaction in its story or routed screen. Use the
-   applicable approved images and follow the validation workflow for the scope.
+4. Review the delivered artifact for concept or handoff work. For an implemented
+   interaction, review its story or routed screen. Use applicable approved
+   images and follow the validation workflow for the scope.
    [Design review](../../../DESIGN.md#review-the-interaction) · [Validation workflow](../validate-change/SKILL.md) · [Appearance review](../../../docs/testing.md#review-appearance)
 
 Report the deliverable, reused or changed components and tokens, actual checks,

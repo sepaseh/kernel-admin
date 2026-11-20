@@ -497,10 +497,17 @@ const documentationAdmission = async (root) => {
           "Publication documentation needs an explicit allowedFiles array",
         ],
       };
-    return {
-      files: new Set(policy.allowedFiles.filter(isMaintainedMarkdown)),
-      errors: [],
-    };
+    const files = new Set();
+    const errors = [];
+    for (const filename of policy.allowedFiles.filter(isMaintainedMarkdown)) {
+      if (
+        filename.includes("\\") ||
+        path.posix.normalize(filename) !== filename
+      )
+        errors.push(`Publication Markdown path must be canonical: ${filename}`);
+      else files.add(filename);
+    }
+    return { files, errors };
   } catch (error) {
     return {
       files: new Set(),
@@ -582,6 +589,14 @@ const inspectMarkdownLink = async (root, filename, link, headingsFor) => {
   } catch {
     return [`Invalid Markdown heading fragment: ${filename}: ${link}`];
   }
+  const query = link.indexOf("?");
+  if (
+    query !== -1 &&
+    query < hash &&
+    /^L[1-9]\d*(?:-L[1-9]\d*)?$/.test(anchor) &&
+    new URLSearchParams(link.slice(query + 1, hash)).get("plain") === "1"
+  )
+    return [];
   return anchor.toLowerCase() === "top" || headings.has(anchor)
     ? []
     : [`Missing Markdown heading: ${filename}: ${link}`];
