@@ -101,8 +101,8 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "antd-img-crop": "^4.30.0",
-    "quill": "2.0.2",
-    "react-quill-new": "3.7.0"
+    "quill": "2.0.3",
+    "react-quill-new": "3.8.3"
   },
   "overrides": {
     "glob@13.0.6": "14.0.6",
